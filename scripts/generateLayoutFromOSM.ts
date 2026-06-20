@@ -181,9 +181,9 @@ const CONFIG: NeighborhoodConfig = {
     { id: "nelayan", name: "Jl. Nelayan", anchorIds: ["jl_nelayan", "baked_berawa"], roadNames: ["Jalan Nelayan"], radius: 260, fallback: { x: 760, y: 390 } },
     { id: "pantai_berawa", name: "Jl. Pantai Berawa", anchorIds: ["jl_pantai_berawa", "canggu_station"], roadNames: ["Jalan Pantai Berawa"], radius: 300, fallback: { x: 920, y: 790 } },
     { id: "tegal_sari", name: "Jl. Tegal Sari", anchorIds: ["jl_tegal_sari", "bungalow_living"], roadNames: ["Jalan Tegal Sari"], radius: 280, fallback: { x: 1540, y: 790 } },
-    { id: "finns_area", name: "FINNS / Canggu Club Area", anchorIds: ["finns_recreation_club", "finns_beach_club", "satu_satu_coffee"], radius: 300, fallback: { x: 1768, y: 300 } },
-    { id: "beach", name: "Berawa Beach Direction", anchorIds: ["berawa_beach", "finns_beach_club", "mowies_berawa"], radius: 340, fallback: { x: 350, y: 1225 } },
-    { id: "cafe_cluster", name: "Berawa Cafe Cluster", anchorIds: ["milk_madu_berawa", "canggu_station", "nude_cafe_berawa", "ulekan_berawa"], radius: 300, fallback: { x: 1190, y: 610 } }
+    { id: "finns_area", name: "FINNS / Canggu Club Area", anchorIds: ["finns_recreation_club", "finns_beach_club", "satu_satu_coffee"], radius: 280, fallback: { x: 1768, y: 300 } },
+    { id: "beach", name: "Berawa Beach Direction", anchorIds: ["berawa_beach", "finns_beach_club", "mowies_berawa"], radius: 260, fallback: { x: 350, y: 1225 } },
+    { id: "cafe_cluster", name: "Berawa Cafe Cluster", anchorIds: ["milk_madu_berawa", "canggu_station", "nude_cafe_berawa", "ulekan_berawa"], radius: 280, fallback: { x: 1190, y: 610 } }
   ],
   outputPath: path.join(repoRoot, "src/data/berawaLayout.ts"),
   cacheDir: path.join(repoRoot, "data/osm"),

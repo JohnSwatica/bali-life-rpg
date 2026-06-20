@@ -29521,21 +29521,21 @@ export const berawaAreas: MapAreaDefinition[] = [
     name: "FINNS / Canggu Club Area",
     x: 1165,
     y: 1159,
-    radius: 300
+    radius: 280
   },
   {
     id: "beach",
     name: "Berawa Beach Direction",
     x: 968,
     y: 1427,
-    radius: 340
+    radius: 260
   },
   {
     id: "cafe_cluster",
     name: "Berawa Cafe Cluster",
     x: 1198,
     y: 1171,
-    radius: 300
+    radius: 280
   }
 ];
 
