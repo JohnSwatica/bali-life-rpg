@@ -35,3 +35,7 @@ Venue rating/review fields and the `rating >= 4.5 && reviewCount >= 300` helper 
 ## 2026-06-20 - Quest Registry And Core Controllers
 
 Starter quest branching moved out of `GameScene` into `src/systems/quests/QuestRegistry.ts`, with objective handler shapes for collect, deliver, visit, buy, and talk. `GameScene` now delegates proximity targeting to `InteractionController`, keyboard movement/key binding to `InputController`, and mobile HUD/right-side button wiring to `HudController`. Rendering and broader simulation remain in `GameScene` for a later, lower-risk pass.
+
+## 2026-06-20 - Berawa Beach Direction Compression
+
+The map remains north-up, with Jl. Nelayan held toward the north and Jl. Tegal Sari to the east. The real coast is west / southwest of the FINNS-Berawa slice, so the playable route "down and left" is documented as a deliberate compression toward Berawa Beach rather than a literal claim that the beach is due south.

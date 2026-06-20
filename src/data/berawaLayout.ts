@@ -23,8 +23,9 @@ export interface VenueMapNode {
   areaId: string;
 }
 
-// North is up. South leads to Berawa Beach; east bends toward Tegal Sari.
-// This is a compressed playable plan, not a 1:1 survey map.
+// North is up. Nelayan sits north, Tegal Sari sits east, and Berawa Beach is
+// compressed toward the lower-left / southwest for playable readability.
+// This is a compressed plan, not a 1:1 survey map.
 export const berawaRoads: RoadPathDefinition[] = [
   {
     id: "jl_pantai_berawa",

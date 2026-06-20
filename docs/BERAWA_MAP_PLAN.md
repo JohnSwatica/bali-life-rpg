@@ -1,11 +1,12 @@
 # Berawa Map Plan
 
-This is a compressed playable Berawa slice, not a 1:1 survey map. North is up. South leads toward Berawa Beach. East bends toward Jl. Tegal Sari. The current goal is geographic credibility and readable play, not exact GIS accuracy.
+This is a compressed playable Berawa slice, not a 1:1 survey map. North is up, with Jl. Nelayan held near the northern edge and Jl. Tegal Sari to the east. The real coast sits west / southwest of this slice; the game deliberately compresses "down and left" into the playable direction toward Berawa Beach. The current goal is geographic credibility and readable play, not exact GIS accuracy.
 
 ## Coordinate Model
 
 - World size remains `2400 x 1700`.
 - `y` decreases northward and increases southward.
+- Lower-left / southwest is the playable beachward direction. Any old shorthand that says "south toward beach" should be read as this compression, not literal geography.
 - Roads are data-driven in `src/data/berawaLayout.ts`.
 - Road paths, area discovery radii, and venue map nodes should be edited there before adding more drawing code to `GameScene`.
 
@@ -16,7 +17,7 @@ This is a compressed playable Berawa slice, not a 1:1 survey map. North is up. S
 - `Jl. Tegal Sari`: eastern north-south/diagonal connector.
 - `FINNS / Club Lane`: branch toward the FINNS/Canggu Club/Recreation Club area.
 - `Berawa Cafe Lane`: compressed cafe/market lane tying Canggu Station, Milk & Madu, and Bungalow Living into the gameplay loop.
-- `Berawa Beach Access`: southern route toward sand, beach pickups, surf/sunset activities.
+- `Berawa Beach Access`: southwest route toward sand, beach pickups, surf/sunset activities.
 - `Soft Shortcut`: deliberately risky lane near the mud zone.
 
 ## Discovery Rules
