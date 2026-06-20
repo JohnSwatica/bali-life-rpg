@@ -10,6 +10,8 @@ import { addItem, formatInventory, getQuantity, removeItem } from "../systems/In
 import { LocalNetworkAdapter, type NetworkAdapter } from "../systems/NetworkAdapter";
 import { clearSave, loadWorldState, saveWorldState } from "../systems/Persistence";
 import { ScriptedDialogueProvider, type DialogueProvider } from "../systems/dialogue/DialogueProvider";
+import { InteractionController, type InteractionTarget } from "../systems/interaction/InteractionController";
+import { InputController, type GameKeyMap } from "../systems/input/InputController";
 import { IntentDispatcher, type IntentResult } from "../systems/intents/IntentDispatcher";
 import { getRelationship } from "../systems/relationships/RelationshipMemory";
 import {
@@ -26,7 +28,9 @@ import {
   getLocalPlayer,
   getTimePhase
 } from "../systems/WorldState";
-import { completeQuest, getQuestTrackerLines, isQuestActive, isQuestComplete, startQuest } from "../systems/QuestSystem";
+import { getQuestTrackerLines, isQuestActive, isQuestComplete, startQuest } from "../systems/QuestSystem";
+import { resolveNpcQuestInteraction } from "../systems/quests/QuestRegistry";
+import { HudController } from "../ui/hud/HudController";
 import { PhoneShell } from "../ui/phone/PhoneShell";
 import { getAllVenues } from "../systems/venues/VenueRegistry";
 import type {
@@ -44,13 +48,6 @@ import type {
 } from "../types";
 
 type Mode = "world" | "dialogue" | "shop" | "inventory" | "activity" | "community" | "phone" | "godmode";
-
-type InteractionTarget =
-  | { type: "npc"; id: string; label: string; distance: number }
-  | { type: "shop"; id: string; label: string; distance: number }
-  | { type: "pickup"; id: string; label: string; distance: number }
-  | { type: "activity"; id: string; label: string; distance: number }
-  | { type: "offender"; id: string; label: string; distance: number };
 
 interface BaliLifeDebugSnapshot {
   schemaVersion: number;
@@ -177,8 +174,6 @@ const BIKE_MUD_ZONES: MudZoneDefinition[] = [
   }
 ];
 const UI_DEPTH = 1200;
-const TOUCH_BUTTON_SIZE = 64;
-const TOUCH_JOYSTICK_RADIUS = 56;
 
 export class GameScene extends Phaser.Scene {
   private world!: WorldState;
@@ -198,14 +193,14 @@ export class GameScene extends Phaser.Scene {
   private wantedOffenders = new Map<string, WantedOffenderRuntime>();
   private playerWantedSign?: Phaser.GameObjects.Text;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private keys!: Record<
-    "W" | "A" | "S" | "D" | "E" | "I" | "C" | "B" | "P" | "F2" | "BACKTICK" | "ESC" | "SAVE" | "RESET",
-    Phaser.Input.Keyboard.Key
-  >;
+  private keys!: GameKeyMap;
   private mode: Mode = "world";
   private network: NetworkAdapter = new LocalNetworkAdapter();
   private dispatcher = new IntentDispatcher();
+  private interactionController!: InteractionController;
+  private inputController!: InputController;
   private dialogueProvider: DialogueProvider = new ScriptedDialogueProvider();
+  private hudController!: HudController;
   private phone?: PhoneShell;
   private godmodePanel?: Phaser.GameObjects.Container;
   private movementSpeedMultiplier = 1;
@@ -225,14 +220,6 @@ export class GameScene extends Phaser.Scene {
   private nightOverlay!: Phaser.GameObjects.Graphics;
   private lanternGlow!: Phaser.GameObjects.Graphics;
   private discoveryToastCooldown = 0;
-
-  private touchContainer!: Phaser.GameObjects.Container;
-  private touchHitZones = new Map<string, Phaser.GameObjects.Zone>();
-  private joystickBase!: Phaser.GameObjects.Arc;
-  private joystickKnob!: Phaser.GameObjects.Arc;
-  private joystickPointerId?: number;
-  private joystickOrigin = new Phaser.Math.Vector2();
-  private joystickVector = new Phaser.Math.Vector2();
 
   constructor() {
     super("GameScene");
@@ -263,6 +250,7 @@ export class GameScene extends Phaser.Scene {
     this.createPlayer();
     this.createTrafficBikes();
     this.createWantedOffenders();
+    this.createInteractionController();
     this.createInput();
     this.createHud();
     this.updateMapDiscovery(true);
@@ -748,61 +736,51 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  private createInteractionController(): void {
+    this.interactionController = new InteractionController({
+      getPlayerPosition: () => ({ x: this.player.x, y: this.player.y }),
+      getNpcSprite: (npcId) => this.npcSprites.get(npcId),
+      isPickupAvailable: (pickup) => this.isPickupAvailable(pickup),
+      getWantedOffenders: () => this.wantedOffenders.values(),
+      getOffenderReward: (offender) => this.getOffenderReward(offender)
+    });
+  }
+
   private createInput(): void {
-    if (!this.input.keyboard) {
+    this.inputController = new InputController(this);
+    const bindings = this.inputController.createKeyboard({
+      action: () => this.handleAction(),
+      inventory: () => this.toggleInventory(),
+      community: () => this.toggleCommunityBoard(),
+      bike: () => this.toggleBike(),
+      phone: () => this.togglePhone(),
+      godmode: () => this.toggleGodmodePanel(),
+      escape: () => {
+        if (this.godmodePanel) {
+          this.closeGodmodePanel();
+        } else if (this.phone?.isOpen) {
+          this.phone.close();
+        } else {
+          this.closePanel();
+        }
+      },
+      save: () => this.saveGame(),
+      reset: () => {
+        clearSave();
+        this.world = loadWorldState();
+        this.playerState = getLocalPlayer(this.world);
+        this.player.setPosition(this.playerState.x, this.playerState.y);
+        this.clearGroupLine();
+        this.updatePlayerBikeVisual();
+        this.showToast("Save cleared. New neighbor day started.");
+      }
+    });
+    if (!bindings) {
       return;
     }
 
-    this.cursors = this.input.keyboard.createCursorKeys();
-    this.keys = this.input.keyboard.addKeys({
-      W: Phaser.Input.Keyboard.KeyCodes.W,
-      A: Phaser.Input.Keyboard.KeyCodes.A,
-      S: Phaser.Input.Keyboard.KeyCodes.S,
-      D: Phaser.Input.Keyboard.KeyCodes.D,
-      E: Phaser.Input.Keyboard.KeyCodes.E,
-      I: Phaser.Input.Keyboard.KeyCodes.I,
-      C: Phaser.Input.Keyboard.KeyCodes.C,
-      B: Phaser.Input.Keyboard.KeyCodes.B,
-      P: Phaser.Input.Keyboard.KeyCodes.P,
-      F2: Phaser.Input.Keyboard.KeyCodes.F2,
-      BACKTICK: Phaser.Input.Keyboard.KeyCodes.BACKTICK,
-      ESC: Phaser.Input.Keyboard.KeyCodes.ESC,
-      SAVE: Phaser.Input.Keyboard.KeyCodes.F5,
-      RESET: Phaser.Input.Keyboard.KeyCodes.F9
-    }) as Record<
-      "W" | "A" | "S" | "D" | "E" | "I" | "C" | "B" | "P" | "F2" | "BACKTICK" | "ESC" | "SAVE" | "RESET",
-      Phaser.Input.Keyboard.Key
-    >;
-
-    this.keys.E.on("down", () => this.handleAction());
-    this.keys.I.on("down", () => this.toggleInventory());
-    this.keys.C.on("down", () => this.toggleCommunityBoard());
-    this.keys.B.on("down", () => this.toggleBike());
-    this.keys.P.on("down", () => this.togglePhone());
-    this.keys.F2.on("down", () => this.toggleGodmodePanel());
-    this.keys.BACKTICK.on("down", () => this.toggleGodmodePanel());
-    this.keys.ESC.on("down", () => {
-      if (this.godmodePanel) {
-        this.closeGodmodePanel();
-      } else if (this.phone?.isOpen) {
-        this.phone.close();
-      } else {
-        this.closePanel();
-      }
-    });
-    this.keys.SAVE.on("down", (event: KeyboardEvent) => {
-      event.preventDefault();
-      this.saveGame();
-    });
-    this.keys.RESET.on("down", () => {
-      clearSave();
-      this.world = loadWorldState();
-      this.playerState = getLocalPlayer(this.world);
-      this.player.setPosition(this.playerState.x, this.playerState.y);
-      this.clearGroupLine();
-      this.updatePlayerBikeVisual();
-      this.showToast("Save cleared. New neighbor day started.");
-    });
+    this.cursors = bindings.cursors;
+    this.keys = bindings.keys;
 
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => this.handlePointerDown(pointer));
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => this.handlePointerMove(pointer));
@@ -833,65 +811,16 @@ export class GameScene extends Phaser.Scene {
 
     this.nightOverlay = this.add.graphics().setScrollFactor(0).setDepth(900);
     this.lanternGlow = this.add.graphics().setDepth(905);
-    this.createTouchControls();
-    this.layoutForViewport();
-  }
-
-  private createTouchControls(): void {
-    this.touchContainer = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 2);
-    this.joystickBase = this.add.circle(0, 0, TOUCH_JOYSTICK_RADIUS, 0x101820, 0.42).setStrokeStyle(2, 0xf4d58d, 0.55);
-    this.joystickKnob = this.add.circle(0, 0, 22, 0xf4d58d, 0.75).setStrokeStyle(2, 0x101820, 0.45);
-    this.touchContainer.add([this.joystickBase, this.joystickKnob]);
-
-    const actionButton = this.makeTouchButton("ACT", () => this.handleAction());
-    const bagButton = this.makeTouchButton("BAG", () => this.toggleInventory());
-    const communityButton = this.makeTouchButton("SOC", () => this.toggleCommunityBoard());
-    const bikeButton = this.makeTouchButton("BIKE", () => this.toggleBike());
-    const phoneButton = this.makeTouchButton("PHONE", () => this.togglePhone());
-    const saveButton = this.makeTouchButton("SAVE", () => this.saveGame());
-    actionButton.setName("action-button");
-    bagButton.setName("bag-button");
-    communityButton.setName("community-button");
-    bikeButton.setName("bike-button");
-    phoneButton.setName("phone-button");
-    saveButton.setName("save-button");
-    this.touchContainer.add([actionButton, bagButton, communityButton, bikeButton, phoneButton, saveButton]);
-    this.registerTouchHitZone("action-button", () => this.handleAction());
-    this.registerTouchHitZone("bag-button", () => this.toggleInventory());
-    this.registerTouchHitZone("community-button", () => this.toggleCommunityBoard());
-    this.registerTouchHitZone("bike-button", () => this.toggleBike());
-    this.registerTouchHitZone("phone-button", () => this.togglePhone());
-    this.registerTouchHitZone("save-button", () => this.saveGame());
-  }
-
-  private makeTouchButton(label: string, onClick: () => void): Phaser.GameObjects.Container {
-    const button = this.add.container(0, 0);
-    const bg = this.add.circle(0, 0, TOUCH_BUTTON_SIZE / 2, 0x101820, 0.62).setStrokeStyle(2, 0xf4d58d, 0.65);
-    const text = this.add
-      .text(0, 0, label, {
-        fontFamily: "Inter, Arial, sans-serif",
-        fontSize: label.length > 3 ? "12px" : "15px",
-        color: "#fff8df",
-        fontStyle: "700"
-      })
-      .setOrigin(0.5);
-    button.add([bg, text]);
-    button.setSize(TOUCH_BUTTON_SIZE, TOUCH_BUTTON_SIZE);
-    return button;
-  }
-
-  private registerTouchHitZone(name: string, onClick: () => void): void {
-    const zone = this.add.zone(0, 0, TOUCH_BUTTON_SIZE, TOUCH_BUTTON_SIZE).setName(`${name}-hit-zone`).setScrollFactor(0).setDepth(UI_DEPTH + 4);
-    zone.setInteractive(new Phaser.Geom.Rectangle(0, 0, TOUCH_BUTTON_SIZE, TOUCH_BUTTON_SIZE), Phaser.Geom.Rectangle.Contains);
-    if (zone.input) {
-      zone.input.cursor = "pointer";
-    }
-    zone.on("pointerdown", (pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event?: Phaser.Types.Input.EventData) => {
-      event?.stopPropagation();
-      pointer.event?.stopPropagation();
-      onClick();
+    this.hudController = new HudController(this, UI_DEPTH, {
+      action: () => this.handleAction(),
+      inventory: () => this.toggleInventory(),
+      community: () => this.toggleCommunityBoard(),
+      bike: () => this.toggleBike(),
+      phone: () => this.togglePhone(),
+      save: () => this.saveGame()
     });
-    this.touchHitZones.set(name, zone);
+    this.hudController.createTouchControls();
+    this.layoutForViewport();
   }
 
   private updatePlayer(delta: number): void {
@@ -899,14 +828,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    const movement = new Phaser.Math.Vector2(0, 0);
-    if (this.mode === "world") {
-      if (this.cursors.left.isDown || this.keys.A.isDown) movement.x -= 1;
-      if (this.cursors.right.isDown || this.keys.D.isDown) movement.x += 1;
-      if (this.cursors.up.isDown || this.keys.W.isDown) movement.y -= 1;
-      if (this.cursors.down.isDown || this.keys.S.isDown) movement.y += 1;
-      movement.add(this.joystickVector);
-    }
+    const movement = this.inputController.getMovementVector(this.mode, this.cursors, this.keys, this.hudController.joystickVector);
 
     if (movement.lengthSq() > 0) {
       movement.normalize();
@@ -1359,17 +1281,13 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (target.type === "npc") {
-      this.interactWithNpc(target.id);
-    } else if (target.type === "shop") {
-      this.openShop(target.id);
-    } else if (target.type === "activity") {
-      this.openActivity(target.id);
-    } else if (target.type === "offender") {
-      this.confrontWantedOffender(target.id);
-    } else {
-      this.collectPickup(target.id);
-    }
+    this.interactionController.resolveTarget(target, {
+      npc: (id) => this.interactWithNpc(id),
+      shop: (id) => this.openShop(id),
+      activity: (id) => this.openActivity(id),
+      offender: (id) => this.confrontWantedOffender(id),
+      pickup: (id) => this.collectPickup(id)
+    });
   }
 
   private toggleInventory(): void {
@@ -1434,13 +1352,15 @@ export class GameScene extends Phaser.Scene {
     const routine = npc.routine.find((stop) => stop.id === state.currentRoutineId);
     this.dispatchIntent({ kind: "RecordMemory", subjectType: "npc", subjectId: npcId, memory: "visited", detail: "Spoke in world." });
 
-    if (npcId === "ibu_sari") {
-      this.handleGroceryQuest(npc);
-      return;
-    }
-
-    if (npcId === "kadek") {
-      this.handleBerawaBakeryQuest(npc);
+    const questInteraction = resolveNpcQuestInteraction(this.playerState, npcId);
+    if (questInteraction?.handled) {
+      for (const intent of questInteraction.intents) {
+        this.dispatchIntent(intent);
+      }
+      this.openDialogue(npc.name, questInteraction.dialogue);
+      if (questInteraction.shouldSave) {
+        saveWorldState(this.world);
+      }
       return;
     }
 
@@ -1448,87 +1368,6 @@ export class GameScene extends Phaser.Scene {
       npc.name,
       `${this.dialogueProvider.getLine(npcId, { memory: getRelationship(this.world, "npc", npcId) })}\n\nRight now ${npc.name} is ${routine?.label ?? "taking in the neighborhood"}.`
     );
-  }
-
-  private handleGroceryQuest(npc: NpcDefinition): void {
-    const questId = "canggu_station_restock";
-    if (!isQuestActive(this.playerState, questId) && !isQuestComplete(this.playerState, questId)) {
-      startQuest(this.playerState, questId);
-      this.openDialogue(
-        npc.name,
-        "Perfect timing. The FINNS-side grocery rush is about to start, and the young coconuts are running low. Bring me two from the Berawa beach palms and I will pay properly."
-      );
-      saveWorldState(this.world);
-      return;
-    }
-
-    if (isQuestActive(this.playerState, questId)) {
-      if (getQuantity(this.playerState, "coconut") >= 2) {
-        removeItem(this.playerState, "coconut", 2);
-        const quest = completeQuest(this.playerState, questId);
-        this.dispatchIntent({
-          kind: "RecordMemory",
-          subjectType: "npc",
-          subjectId: npc.id,
-          memory: "completed_quest",
-          detail: quest?.title
-        });
-        this.dispatchIntent({ kind: "AwardReputationTag", tag: "helpful", reason: `Completed ${quest?.title ?? questId}` });
-        this.dispatchIntent({ kind: "AdjustReputation", delta: 6, reason: `Completed ${quest?.title ?? questId}` });
-        this.openDialogue(
-          npc.name,
-          `These are exactly right. Here is Rp ${quest?.rewardMoney ?? 0}, plus coffee for the road. The Berawa grocery crowd thanks you.`
-        );
-        saveWorldState(this.world);
-      } else {
-        this.openDialogue(
-          npc.name,
-          "The palms by Berawa Beach drop coconuts after the breeze picks up. Bring me two and we can restock before the traffic wave."
-        );
-      }
-      return;
-    }
-
-    this.openDialogue(npc.name, "You helped Canggu Station breathe today. Come by when you need groceries or coffee.");
-  }
-
-  private handleBerawaBakeryQuest(npc: NpcDefinition): void {
-    const questId = "berawa_bakery_run";
-    if (!isQuestActive(this.playerState, questId) && !isQuestComplete(this.playerState, questId)) {
-      startQuest(this.playerState, questId);
-      this.openDialogue(
-        npc.name,
-        "I promised to bring a croissant before the FINNS-side meetup. Could you buy one from BAKED. Berawa?"
-      );
-      saveWorldState(this.world);
-      return;
-    }
-
-    if (isQuestActive(this.playerState, questId)) {
-      if (getQuantity(this.playerState, "butter_croissant") >= 1) {
-        removeItem(this.playerState, "butter_croissant", 1);
-        const quest = completeQuest(this.playerState, questId);
-        this.dispatchIntent({
-          kind: "RecordMemory",
-          subjectType: "npc",
-          subjectId: npc.id,
-          memory: "completed_quest",
-          detail: quest?.title
-        });
-        this.dispatchIntent({ kind: "AwardReputationTag", tag: "reliable", reason: `Completed ${quest?.title ?? questId}` });
-        this.dispatchIntent({ kind: "AdjustReputation", delta: 5, reason: `Completed ${quest?.title ?? questId}` });
-        this.openDialogue(
-          npc.name,
-          `Perfect. Still flaky, still warm. Take Rp ${quest?.rewardMoney ?? 0} and a couple of stickers for the run.`
-        );
-        saveWorldState(this.world);
-      } else {
-        this.openDialogue(npc.name, "BAKED. Berawa is just off the main Berawa stretch. Bring me one Butter Croissant.");
-      }
-      return;
-    }
-
-    this.openDialogue(npc.name, "The FINNS-side meetup survived. You move through Berawa like you know the shortcuts.");
   }
 
   private openDialogue(title: string, body: string): void {
@@ -2586,7 +2425,7 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private getOffenderReward(offender: WantedOffenderRuntime): number {
+  private getOffenderReward(offender: { wantedLevel: number }): number {
     return Math.min(MAX_BOUNTY_REWARD, 25 + offender.wantedLevel * 15);
   }
 
@@ -2616,65 +2455,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private getNearestInteraction(): InteractionTarget | undefined {
-    const candidates: InteractionTarget[] = [];
-    const px = this.player.x;
-    const py = this.player.y;
-
-    for (const npc of Object.values(npcDefinitions)) {
-      const sprite = this.npcSprites.get(npc.id);
-      if (!sprite) continue;
-      const distance = Phaser.Math.Distance.Between(px, py, sprite.x, sprite.y);
-      if (distance <= 82) {
-        candidates.push({ type: "npc", id: npc.id, label: `Talk to ${npc.name}`, distance });
-      }
-    }
-
-    for (const shop of Object.values(shopDefinitions)) {
-      const distance = Phaser.Math.Distance.Between(px, py, shop.x, shop.y);
-      if (distance <= shop.radius) {
-        candidates.push({ type: "shop", id: shop.id, label: `Enter ${shop.name}`, distance });
-      }
-    }
-
-    for (const activity of activityDefinitions) {
-      const distance = Phaser.Math.Distance.Between(px, py, activity.x, activity.y);
-      if (distance <= activity.radius) {
-        candidates.push({ type: "activity", id: activity.id, label: activity.title, distance });
-      }
-    }
-
-    for (const offender of this.wantedOffenders.values()) {
-      if (offender.wantedLevel <= 0) {
-        continue;
-      }
-      const distance = Phaser.Math.Distance.Between(px, py, offender.sprite.x, offender.sprite.y);
-      if (distance <= 78) {
-        candidates.push({
-          type: "offender",
-          id: offender.id,
-          label: `Citizen arrest ${offender.name} for Rp ${Math.min(offender.cash, this.getOffenderReward(offender))}`,
-          distance
-        });
-      }
-    }
-
-    for (const pickup of pickupDefinitions) {
-      if (!this.isPickupAvailable(pickup)) continue;
-      const distance = Phaser.Math.Distance.Between(px, py, pickup.x, pickup.y);
-      if (distance <= 64) {
-        candidates.push({ type: "pickup", id: pickup.id, label: `Pick up ${pickup.label}`, distance });
-      }
-    }
-
-    const priority = (target: InteractionTarget): number => {
-      if (target.type === "npc") return 0;
-      if (target.type === "offender") return 1;
-      if (target.type === "activity") return 2;
-      if (target.type === "shop") return 3;
-      return 4;
-    };
-
-    return candidates.sort((a, b) => priority(a) - priority(b) || a.distance - b.distance)[0];
+    return this.interactionController.getNearestInteraction();
   }
 
   private getRoutineStop(npc: NpcDefinition) {
@@ -2708,46 +2489,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
-    if (this.mode !== "world") {
-      return;
-    }
-
-    const width = this.scale.width;
-    const height = this.scale.height;
-    const inJoystickArea = pointer.x < Math.min(260, width * 0.42) && pointer.y > height - 245;
-    if (!inJoystickArea) {
-      return;
-    }
-
-    this.joystickPointerId = pointer.id;
-    this.joystickOrigin.set(pointer.x, pointer.y);
-    this.joystickBase.setPosition(pointer.x, pointer.y);
-    this.joystickKnob.setPosition(pointer.x, pointer.y);
-    this.joystickVector.set(0, 0);
+    this.hudController.handlePointerDown(pointer, this.mode);
   }
 
   private handlePointerMove(pointer: Phaser.Input.Pointer): void {
-    if (this.joystickPointerId !== pointer.id) {
-      return;
-    }
-
-    const dx = pointer.x - this.joystickOrigin.x;
-    const dy = pointer.y - this.joystickOrigin.y;
-    const distance = Math.min(TOUCH_JOYSTICK_RADIUS, Math.hypot(dx, dy));
-    const angle = Math.atan2(dy, dx);
-    const knobX = this.joystickOrigin.x + Math.cos(angle) * distance;
-    const knobY = this.joystickOrigin.y + Math.sin(angle) * distance;
-    this.joystickKnob.setPosition(knobX, knobY);
-    this.joystickVector.set(Math.cos(angle) * (distance / TOUCH_JOYSTICK_RADIUS), Math.sin(angle) * (distance / TOUCH_JOYSTICK_RADIUS));
+    this.hudController.handlePointerMove(pointer);
   }
 
   private handlePointerUp(pointer: Phaser.Input.Pointer): void {
-    if (this.joystickPointerId !== pointer.id) {
-      return;
-    }
-    this.joystickPointerId = undefined;
-    this.joystickVector.set(0, 0);
-    this.layoutTouchControls();
+    this.hudController.handlePointerUp(pointer);
   }
 
   private directionFromVector(vector: Phaser.Math.Vector2): Direction {
@@ -2762,50 +2512,8 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setZoom(width < 720 ? 0.86 : 1);
     this.promptText.setPosition(20, height - 36);
     this.toastText.setPosition(width / 2, Math.max(92, height * 0.17));
-    this.layoutTouchControls();
+    this.hudController.layoutTouchControls();
     this.redrawHudChrome();
-  }
-
-  private layoutTouchControls(): void {
-    if (!this.touchContainer) {
-      return;
-    }
-    const { width, height } = this.scale;
-    const showTouch = width < 900 || this.sys.game.device.input.touch;
-    this.touchContainer.setVisible(showTouch);
-    for (const zone of this.touchHitZones.values()) {
-      zone.setVisible(showTouch);
-      if (zone.input) {
-        zone.input.enabled = showTouch;
-      }
-    }
-
-    const baseX = 96;
-    const baseY = height - 96;
-    if (this.joystickPointerId === undefined) {
-      this.joystickBase.setPosition(baseX, baseY);
-      this.joystickKnob.setPosition(baseX, baseY);
-      this.joystickOrigin.set(baseX, baseY);
-    }
-
-    const action = this.touchContainer.getByName("action-button") as Phaser.GameObjects.Container | null;
-    const bag = this.touchContainer.getByName("bag-button") as Phaser.GameObjects.Container | null;
-    const community = this.touchContainer.getByName("community-button") as Phaser.GameObjects.Container | null;
-    const bike = this.touchContainer.getByName("bike-button") as Phaser.GameObjects.Container | null;
-    const phone = this.touchContainer.getByName("phone-button") as Phaser.GameObjects.Container | null;
-    const save = this.touchContainer.getByName("save-button") as Phaser.GameObjects.Container | null;
-    action?.setPosition(width - 86, height - 92);
-    bag?.setPosition(width - 166, height - 88);
-    community?.setPosition(width - 166, height - 168);
-    bike?.setPosition(width - 86, height - 172);
-    phone?.setPosition(width - 166, height - 248);
-    save?.setPosition(width - 86, height - 252);
-    this.touchHitZones.get("action-button")?.setPosition(width - 86, height - 92);
-    this.touchHitZones.get("bag-button")?.setPosition(width - 166, height - 88);
-    this.touchHitZones.get("community-button")?.setPosition(width - 166, height - 168);
-    this.touchHitZones.get("bike-button")?.setPosition(width - 86, height - 172);
-    this.touchHitZones.get("phone-button")?.setPosition(width - 166, height - 248);
-    this.touchHitZones.get("save-button")?.setPosition(width - 86, height - 252);
   }
 
   private redrawHudChrome(): void {
@@ -2863,7 +2571,7 @@ export class GameScene extends Phaser.Scene {
       activeGroupId: this.playerState.activeGroupId,
       groupTravelMode: this.playerState.groupTravelMode,
       groupHelpers: this.countGroupHelpers(),
-      touchControlsVisible: this.touchContainer.visible,
+      touchControlsVisible: this.hudController.touchControlsVisible,
       nearestInteraction: target?.label,
       movementSpeedMultiplier: this.movementSpeedMultiplier,
       discoveredAreaIds: [...this.world.mapDiscovery.discoveredAreaIds],

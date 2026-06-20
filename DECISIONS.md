@@ -31,3 +31,7 @@ Venue rating/review fields and the `rating >= 4.5 && reviewCount >= 300` helper 
 ## 2026-06-20 - Canonical Reputation State
 
 `WorldState.reputation` is now the canonical home for standing data: score, positive tags, hidden trust flags, redemption hook, wanted level, bounty, victim flag count, and the last flag reason. Flat reputation/wanted/bounty fields were removed from `PlayerEntityState`; legacy v1/v2 saves migrate those values into `ReputationState` under schema v3.
+
+## 2026-06-20 - Quest Registry And Core Controllers
+
+Starter quest branching moved out of `GameScene` into `src/systems/quests/QuestRegistry.ts`, with objective handler shapes for collect, deliver, visit, buy, and talk. `GameScene` now delegates proximity targeting to `InteractionController`, keyboard movement/key binding to `InputController`, and mobile HUD/right-side button wiring to `HudController`. Rendering and broader simulation remain in `GameScene` for a later, lower-risk pass.
