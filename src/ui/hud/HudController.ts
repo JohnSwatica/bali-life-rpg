@@ -20,6 +20,7 @@ export class HudController {
   private joystickPointerId?: number;
   private joystickOrigin = new Phaser.Math.Vector2();
   private movementVector = new Phaser.Math.Vector2();
+  private touchCallbacks = new Map<string, () => void>();
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -67,6 +68,10 @@ export class HudController {
 
   handlePointerDown(pointer: Phaser.Input.Pointer, mode: string): void {
     if (mode !== "world") {
+      return;
+    }
+
+    if (this.dispatchTouchButton(pointer)) {
       return;
     }
 
@@ -123,19 +128,20 @@ export class HudController {
     }
 
     const baseX = 96;
-    const baseY = height - 96;
+    const controlHeight = Math.min(height, this.getConfiguredGameHeight());
+    const baseY = controlHeight - 96;
     if (this.joystickPointerId === undefined) {
       this.joystickBase.setPosition(baseX, baseY);
       this.joystickKnob.setPosition(baseX, baseY);
       this.joystickOrigin.set(baseX, baseY);
     }
 
-    this.positionButton("action-button", width - 86, height - 92);
-    this.positionButton("bag-button", width - 166, height - 88);
-    this.positionButton("community-button", width - 166, height - 168);
-    this.positionButton("bike-button", width - 86, height - 172);
-    this.positionButton("phone-button", width - 166, height - 248);
-    this.positionButton("save-button", width - 86, height - 252);
+    this.positionButton("action-button", width - 86, controlHeight - 92);
+    this.positionButton("bag-button", width - 166, controlHeight - 88);
+    this.positionButton("community-button", width - 166, controlHeight - 168);
+    this.positionButton("bike-button", width - 86, controlHeight - 172);
+    this.positionButton("phone-button", width - 166, controlHeight - 248);
+    this.positionButton("save-button", width - 86, controlHeight - 252);
   }
 
   private makeTouchButton(label: string): Phaser.GameObjects.Container {
@@ -160,11 +166,7 @@ export class HudController {
     if (zone.input) {
       zone.input.cursor = "pointer";
     }
-    zone.on("pointerdown", (pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event?: Phaser.Types.Input.EventData) => {
-      event?.stopPropagation();
-      pointer.event?.stopPropagation();
-      onClick();
-    });
+    this.touchCallbacks.set(name, onClick);
     this.touchHitZones.set(name, zone);
   }
 
@@ -172,5 +174,27 @@ export class HudController {
     const button = this.touchContainer.getByName(name) as Phaser.GameObjects.Container | null;
     button?.setPosition(x, y);
     this.touchHitZones.get(name)?.setPosition(x, y);
+  }
+
+  private getConfiguredGameHeight(): number {
+    const configuredHeight = this.scene.sys.game.config.height;
+    return typeof configuredHeight === "number" ? configuredHeight : this.scene.scale.height;
+  }
+
+  private dispatchTouchButton(pointer: Phaser.Input.Pointer): boolean {
+    if (!this.touchControlsVisible) {
+      return false;
+    }
+    for (const [name, zone] of this.touchHitZones) {
+      if (!zone.visible || !zone.input?.enabled) {
+        continue;
+      }
+      const distance = Phaser.Math.Distance.Between(pointer.x, pointer.y, zone.x, zone.y);
+      if (distance <= TOUCH_BUTTON_SIZE / 2) {
+        this.touchCallbacks.get(name)?.();
+        return true;
+      }
+    }
+    return false;
   }
 }

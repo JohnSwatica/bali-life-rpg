@@ -81,23 +81,31 @@ function migrateWorldState(raw: Partial<WorldState> & Record<string, unknown>): 
 
 function hydratePlayerState(player: Partial<PlayerEntityState>): PlayerEntityState {
   const fresh = createInitialPlayerState();
+  const {
+    reputation: _legacyReputation,
+    wantedLevel: _legacyWantedLevel,
+    bounty: _legacyBounty,
+    flaggedByVictims: _legacyFlaggedByVictims,
+    lastFlagReason: _legacyLastFlagReason,
+    ...runtimePlayer
+  } = player as LegacyPlayerState;
   return {
     ...fresh,
-    ...player,
-    money: player.money ?? fresh.money,
-    focus: player.focus ?? fresh.focus,
-    socialEnergy: player.socialEnergy ?? fresh.socialEnergy,
-    connections: player.connections ?? fresh.connections,
-    hasBike: player.hasBike ?? false,
-    onBike: player.onBike ?? false,
-    bikeStuck: player.bikeStuck ?? false,
-    bikeCondition: player.bikeCondition ?? 100,
-    safety: player.safety ?? 100,
-    tutorialStep: player.tutorialStep ?? "earn_bike_money",
-    inventory: player.inventory ?? fresh.inventory,
-    activeQuestIds: player.activeQuestIds ?? [],
-    completedQuestIds: player.completedQuestIds ?? [],
-    joinedGroupIds: player.joinedGroupIds ?? []
+    ...runtimePlayer,
+    money: runtimePlayer.money ?? fresh.money,
+    focus: runtimePlayer.focus ?? fresh.focus,
+    socialEnergy: runtimePlayer.socialEnergy ?? fresh.socialEnergy,
+    connections: runtimePlayer.connections ?? fresh.connections,
+    hasBike: runtimePlayer.hasBike ?? false,
+    onBike: runtimePlayer.onBike ?? false,
+    bikeStuck: runtimePlayer.bikeStuck ?? false,
+    bikeCondition: runtimePlayer.bikeCondition ?? 100,
+    safety: runtimePlayer.safety ?? 100,
+    tutorialStep: runtimePlayer.tutorialStep ?? "earn_bike_money",
+    inventory: runtimePlayer.inventory ?? fresh.inventory,
+    activeQuestIds: runtimePlayer.activeQuestIds ?? [],
+    completedQuestIds: runtimePlayer.completedQuestIds ?? [],
+    joinedGroupIds: runtimePlayer.joinedGroupIds ?? []
   };
 }
 
