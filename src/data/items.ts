@@ -133,5 +133,12 @@ export const itemDefinitions: Record<string, ItemDefinition> = {
     description: "A note from a morning neighborhood sweep. It says you showed up and helped.",
     buyPrice: 0,
     sellPrice: 0
+  },
+  coconut_breakfast_bowl: {
+    id: "coconut_breakfast_bowl",
+    name: "Coconut Breakfast Bowl",
+    description: "A simple home-prepped bowl from coconut, coffee energy, and Berawa morning optimism.",
+    buyPrice: 0,
+    sellPrice: 18
   }
 };
