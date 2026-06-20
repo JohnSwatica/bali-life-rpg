@@ -1,0 +1,143 @@
+{
+  "generatedAt": "deterministic-from-cache",
+  "source": "OpenStreetMap via Nominatim and Overpass caches",
+  "bbox": {
+    "south": -8.669993906,
+    "west": 115.131881408,
+    "north": -8.640953394,
+    "east": 115.156409792
+  },
+  "world": {
+    "w": 2400,
+    "h": 1700
+  },
+  "pad": 80,
+  "roadWayCount": 1476,
+  "roadNodeCount": 7081,
+  "roadSegmentCount": 7278,
+  "roadPathCount": 1476,
+  "osmPoiCount": 875,
+  "orientation": {
+    "beach": {
+      "x": 988,
+      "y": 1402
+    },
+    "nelayan": {
+      "x": 704,
+      "y": 870
+    },
+    "tegalSari": {
+      "x": 1173,
+      "y": 1072
+    },
+    "finns": {
+      "x": 948,
+      "y": 1452
+    },
+    "sanity": {
+      "beachLowerThanNelayan": true,
+      "beachLeftOfTegalSari": true,
+      "tegalSariRightOfBeach": true
+    }
+  },
+  "venues": {
+    "matched": 7,
+    "fallback": 4,
+    "unmatched": [
+      "baked_berawa",
+      "bali_family_rental_scooter",
+      "finns_recreation_club",
+      "mowies_berawa"
+    ],
+    "matches": [
+      {
+        "venueId": "baked_berawa",
+        "source": "fallback",
+        "sourceName": "manual fallback near generated area",
+        "areaId": "nelayan",
+        "x": 635,
+        "y": 830
+      },
+      {
+        "venueId": "bali_family_rental_scooter",
+        "source": "fallback",
+        "sourceName": "manual fallback near generated area",
+        "areaId": "pantai_berawa",
+        "x": 1437,
+        "y": 698
+      },
+      {
+        "venueId": "berawa_beach",
+        "source": "anchor",
+        "sourceName": "Brekele Berawa Beach House, 1, Jalan Pantai Berawa, Canggu, Kuta Utara, Badung, Bali, Nusa Tenggara, 08456, Indonesia",
+        "areaId": "beach",
+        "x": 988,
+        "y": 1402
+      },
+      {
+        "venueId": "bungalow_living",
+        "source": "osm_poi",
+        "sourceName": "bungalow living Bali",
+        "areaId": "tegal_sari",
+        "x": 1426,
+        "y": 813
+      },
+      {
+        "venueId": "canggu_station",
+        "source": "anchor",
+        "sourceName": "Canggu Station, Jalan Pantai Berawa, Tibubeneng, Kuta Utara, Badung, Bali, Nusa Tenggara, 90361, Indonesia",
+        "areaId": "pantai_berawa",
+        "x": 1323,
+        "y": 1299
+      },
+      {
+        "venueId": "finns_recreation_club",
+        "source": "fallback",
+        "sourceName": "manual fallback near generated area",
+        "areaId": "finns_area",
+        "x": 1131,
+        "y": 1264
+      },
+      {
+        "venueId": "milk_madu_berawa",
+        "source": "anchor",
+        "sourceName": "Milk and Madu, Jalan Pantai Berawa, Tibubeneng, Kuta Utara, Badung, Bali, Nusa Tenggara, 80363, Indonesia",
+        "areaId": "cafe_cluster",
+        "x": 1286,
+        "y": 1138
+      },
+      {
+        "venueId": "mowies_berawa",
+        "source": "fallback",
+        "sourceName": "manual fallback near generated area",
+        "areaId": "beach",
+        "x": 885,
+        "y": 1408
+      },
+      {
+        "venueId": "nude_cafe_berawa",
+        "source": "anchor",
+        "sourceName": "Nude, Jalan Pantai Berawa, Tibubeneng, Kuta Utara, Badung, Bali, Nusa Tenggara, 80363, Indonesia",
+        "areaId": "cafe_cluster",
+        "x": 985,
+        "y": 1075
+      },
+      {
+        "venueId": "satu_satu_coffee",
+        "source": "anchor",
+        "sourceName": "Satu-satu coffee company, Jalan Pantai Berawa, Tibubeneng, Kuta Utara, Badung, Bali, Nusa Tenggara, 08456, Indonesia",
+        "areaId": "finns_area",
+        "x": 1381,
+        "y": 866
+      },
+      {
+        "venueId": "ulekan_berawa",
+        "source": "osm_poi",
+        "sourceName": "Ulekan",
+        "areaId": "cafe_cluster",
+        "x": 1146,
+        "y": 1099
+      }
+    ]
+  }
+}

@@ -1,0 +1,337 @@
+[
+  {
+    "id": "finns_beach_club",
+    "query": "FINNS Beach Club Berawa, Bali",
+    "results": [
+      {
+        "place_id": 30347219,
+        "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+        "osm_type": "node",
+        "osm_id": 7127738893,
+        "lat": "-8.6668176",
+        "lon": "115.1393679",
+        "class": "amenity",
+        "type": "restaurant",
+        "place_rank": 30,
+        "importance": 0.00005952773327225174,
+        "addresstype": "amenity",
+        "name": "Bondi Bakehouse",
+        "display_name": "Bondi Bakehouse, Jalan Pantai Berawa, Tibubeneng, Kuta Utara, Badung, Bali, Nusa Tenggara, 08456, Indonesia",
+        "boundingbox": [
+          "-8.6668676",
+          "-8.6667676",
+          "115.1393179",
+          "115.1394179"
+        ]
+      },
+      {
+        "place_id": 30344718,
+        "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+        "osm_type": "node",
+        "osm_id": 7127738891,
+        "lat": "-8.6667773",
+        "lon": "115.1393556",
+        "class": "amenity",
+        "type": "restaurant",
+        "place_rank": 30,
+        "importance": 0.00005952773327225174,
+        "addresstype": "amenity",
+        "name": "Mumbai Kitchen",
+        "display_name": "Mumbai Kitchen, Jalan Pantai Berawa, Tibubeneng, Kuta Utara, Badung, Bali, Nusa Tenggara, 08456, Indonesia",
+        "boundingbox": [
+          "-8.6668273",
+          "-8.6667273",
+          "115.1393056",
+          "115.1394056"
+        ]
+      },
+      {
+        "place_id": 30360980,
+        "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+        "osm_type": "node",
+        "osm_id": 7127738892,
+        "lat": "-8.6670079",
+        "lon": "115.1394215",
+        "class": "amenity",
+        "type": "restaurant",
+        "place_rank": 30,
+        "importance": 0.00005952773327225174,
+        "addresstype": "amenity",
+        "name": "Sushi Bar",
+        "display_name": "Sushi Bar, Jalan Pantai Berawa, Tibubeneng, Kuta Utara, Badung, Bali, Nusa Tenggara, 08456, Indonesia",
+        "boundingbox": [
+          "-8.6670579",
+          "-8.6669579",
+          "115.1393715",
+          "115.1394715"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "finns_recreation_club",
+    "query": "FINNS Recreation Club Canggu, Bali",
+    "results": []
+  },
+  {
+    "id": "canggu_station",
+    "query": "Canggu Station Berawa, Bali",
+    "results": [
+      {
+        "place_id": 30406963,
+        "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+        "osm_type": "node",
+        "osm_id": 4449416693,
+        "lat": "-8.6639316",
+        "lon": "115.1464753",
+        "class": "shop",
+        "type": "supermarket",
+        "place_rank": 30,
+        "importance": 0.00005952773327225174,
+        "addresstype": "shop",
+        "name": "Canggu Station",
+        "display_name": "Canggu Station, Jalan Pantai Berawa, Tibubeneng, Kuta Utara, Badung, Bali, Nusa Tenggara, 90361, Indonesia",
+        "boundingbox": [
+          "-8.6639816",
+          "-8.6638816",
+          "115.1464253",
+          "115.1465253"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "milk_madu_berawa",
+    "query": "Milk & Madu Berawa, Bali",
+    "results": [
+      {
+        "place_id": 30556318,
+        "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+        "osm_type": "node",
+        "osm_id": 6161580981,
+        "lat": "-8.6609106",
+        "lon": "115.1457721",
+        "class": "amenity",
+        "type": "cafe",
+        "place_rank": 30,
+        "importance": 0.00005952773327225174,
+        "addresstype": "amenity",
+        "name": "Milk and Madu",
+        "display_name": "Milk and Madu, Jalan Pantai Berawa, Tibubeneng, Kuta Utara, Badung, Bali, Nusa Tenggara, 80363, Indonesia",
+        "boundingbox": [
+          "-8.6609606",
+          "-8.6608606",
+          "115.1457221",
+          "115.1458221"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "baked_berawa",
+    "query": "BAKED. Berawa, Bali",
+    "results": []
+  },
+  {
+    "id": "bungalow_living",
+    "query": "Bungalow Living Bali Berawa",
+    "results": []
+  },
+  {
+    "id": "berawa_beach",
+    "query": "Berawa Beach, Canggu, Bali",
+    "results": [
+      {
+        "place_id": 30398727,
+        "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+        "osm_type": "node",
+        "osm_id": 3803587931,
+        "lat": "-8.6658835",
+        "lon": "115.1401231",
+        "class": "tourism",
+        "type": "guest_house",
+        "place_rank": 30,
+        "importance": 0.00005952773327225174,
+        "addresstype": "tourism",
+        "name": "Brekele Berawa Beach House",
+        "display_name": "Brekele Berawa Beach House, 1, Jalan Pantai Berawa, Canggu, Kuta Utara, Badung, Bali, Nusa Tenggara, 08456, Indonesia",
+        "boundingbox": [
+          "-8.6659335",
+          "-8.6658335",
+          "115.1400731",
+          "115.1401731"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "jl_pantai_berawa",
+    "query": "Jalan Pantai Berawa, Canggu, Bali",
+    "results": [
+      {
+        "place_id": 30364307,
+        "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+        "osm_type": "node",
+        "osm_id": 4418310541,
+        "lat": "-8.6441297",
+        "lon": "115.1537270",
+        "class": "amenity",
+        "type": "restaurant",
+        "place_rank": 30,
+        "importance": 0.00005952773327225174,
+        "addresstype": "amenity",
+        "name": "Nasi Lawar Bali",
+        "display_name": "Nasi Lawar Bali, 22, Jalan Pantai Berawa, Tibubeneng, Kuta Utara, Badung, Bali, Nusa Tenggara, 80361, Indonesia",
+        "boundingbox": [
+          "-8.6441797",
+          "-8.6440797",
+          "115.1536770",
+          "115.1537770"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "jl_nelayan",
+    "query": "Jalan Nelayan, Canggu, Bali",
+    "results": [
+      {
+        "place_id": 30476679,
+        "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+        "osm_type": "way",
+        "osm_id": 26545999,
+        "lat": "-8.6574074",
+        "lon": "115.1345642",
+        "class": "highway",
+        "type": "residential",
+        "place_rank": 26,
+        "importance": 0.053392861066605596,
+        "addresstype": "road",
+        "name": "Jalan Nelayan",
+        "display_name": "Jalan Nelayan, Canggu, Kuta Utara, Badung, Bali, Nusa Tenggara, 08456, Indonesia",
+        "boundingbox": [
+          "-8.6615295",
+          "-8.6531815",
+          "115.1330637",
+          "115.1356969"
+        ]
+      },
+      {
+        "place_id": 30656912,
+        "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+        "osm_type": "way",
+        "osm_id": 1126709615,
+        "lat": "-8.6522123",
+        "lon": "115.1354217",
+        "class": "highway",
+        "type": "tertiary",
+        "place_rank": 26,
+        "importance": 0.053392861066605596,
+        "addresstype": "road",
+        "name": "Jalan Nelayan",
+        "display_name": "Jalan Nelayan, Canggu, Kuta Utara, Badung, Bali, Nusa Tenggara, 08456, Indonesia",
+        "boundingbox": [
+          "-8.6531815",
+          "-8.6513759",
+          "115.1347117",
+          "115.1356513"
+        ]
+      },
+      {
+        "place_id": 30480450,
+        "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+        "osm_type": "way",
+        "osm_id": 1493213755,
+        "lat": "-8.6577691",
+        "lon": "115.1336544",
+        "class": "highway",
+        "type": "residential",
+        "place_rank": 26,
+        "importance": 0.053392861066605596,
+        "addresstype": "road",
+        "name": "Jalan Nelayan",
+        "display_name": "Jalan Nelayan, Canggu, Kuta Utara, Badung, Bali, Nusa Tenggara, 80363, Indonesia",
+        "boundingbox": [
+          "-8.6579998",
+          "-8.6575101",
+          "115.1329387",
+          "115.1343818"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "jl_tegal_sari",
+    "query": "Jalan Tegal Sari, Canggu, Bali",
+    "results": []
+  },
+  {
+    "id": "satu_satu_coffee",
+    "query": "Satu-Satu Coffee Company Berawa, Bali",
+    "results": [
+      {
+        "place_id": 30119823,
+        "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+        "osm_type": "node",
+        "osm_id": 4860940621,
+        "lat": "-8.6557796",
+        "lon": "115.1475716",
+        "class": "amenity",
+        "type": "cafe",
+        "place_rank": 30,
+        "importance": 0.00005952773327225174,
+        "addresstype": "amenity",
+        "name": "Satu-satu coffee company",
+        "display_name": "Satu-satu coffee company, Jalan Pantai Berawa, Tibubeneng, Kuta Utara, Badung, Bali, Nusa Tenggara, 08456, Indonesia",
+        "boundingbox": [
+          "-8.6558296",
+          "-8.6557296",
+          "115.1475216",
+          "115.1476216"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "nude_cafe_berawa",
+    "query": "Nude Cafe Berawa, Bali",
+    "results": [
+      {
+        "place_id": 30323307,
+        "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+        "osm_type": "node",
+        "osm_id": 5313312521,
+        "lat": "-8.6597172",
+        "lon": "115.1400690",
+        "class": "amenity",
+        "type": "cafe",
+        "place_rank": 30,
+        "importance": 0.00005952773327225174,
+        "addresstype": "amenity",
+        "name": "Nude",
+        "display_name": "Nude, Jalan Pantai Berawa, Tibubeneng, Kuta Utara, Badung, Bali, Nusa Tenggara, 80363, Indonesia",
+        "boundingbox": [
+          "-8.6597672",
+          "-8.6596672",
+          "115.1400190",
+          "115.1401190"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ulekan_berawa",
+    "query": "Ulekan Berawa, Bali",
+    "results": []
+  },
+  {
+    "id": "mowies_berawa",
+    "query": "Mowies Berawa, Bali",
+    "results": []
+  },
+  {
+    "id": "bali_family_rental_scooter",
+    "query": "Bali Family Rental Scooter Jalan Pantai Berawa Bali",
+    "results": []
+  }
+]
