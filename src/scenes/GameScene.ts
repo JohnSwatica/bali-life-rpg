@@ -1,0 +1,2949 @@
+import Phaser from "phaser";
+import { berawaAreas, berawaRoads, venueMapNodes } from "../data/berawaLayout";
+import { activityDefinitions, interestGroupDefinitions } from "../data/community";
+import { itemDefinitions } from "../data/items";
+import { collisionRects, pickupDefinitions, WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
+import { npcDefinitions } from "../data/npcs";
+import { questDefinitions } from "../data/quests";
+import { shopDefinitions } from "../data/shops";
+import { addItem, formatInventory, getQuantity, removeItem } from "../systems/Inventory";
+import { LocalNetworkAdapter, type NetworkAdapter } from "../systems/NetworkAdapter";
+import { clearSave, loadWorldState, saveWorldState } from "../systems/Persistence";
+import { ScriptedDialogueProvider, type DialogueProvider } from "../systems/dialogue/DialogueProvider";
+import { IntentDispatcher, type IntentResult } from "../systems/intents/IntentDispatcher";
+import { getRelationship } from "../systems/relationships/RelationshipMemory";
+import {
+  advanceClock,
+  formatClock,
+  getLocalPlayer,
+  getTimePhase
+} from "../systems/WorldState";
+import { completeQuest, getQuestTrackerLines, isQuestActive, isQuestComplete, startQuest } from "../systems/QuestSystem";
+import { PhoneShell } from "../ui/phone/PhoneShell";
+import { getAllVenues } from "../systems/venues/VenueRegistry";
+import type {
+  Direction,
+  GameIntent,
+  GroupTravelMode,
+  MemoryType,
+  NpcDefinition,
+  PickupDefinition,
+  PlayerEntityState,
+  ReputationTag,
+  ShopDefinition,
+  VenueActivityDefinition,
+  WorldState
+} from "../types";
+
+type Mode = "world" | "dialogue" | "shop" | "inventory" | "activity" | "community" | "phone" | "godmode";
+
+type InteractionTarget =
+  | { type: "npc"; id: string; label: string; distance: number }
+  | { type: "shop"; id: string; label: string; distance: number }
+  | { type: "pickup"; id: string; label: string; distance: number }
+  | { type: "activity"; id: string; label: string; distance: number }
+  | { type: "offender"; id: string; label: string; distance: number };
+
+interface BaliLifeDebugSnapshot {
+  schemaVersion: number;
+  mode: Mode;
+  player: {
+    x: number;
+    y: number;
+    direction: Direction;
+    hasBike: boolean;
+    onBike: boolean;
+    bikeStuck: boolean;
+    bikeCondition: number;
+    safety: number;
+  };
+  money: number;
+  focus: number;
+  socialEnergy: number;
+  connections: number;
+  reputation: number;
+  wantedLevel: number;
+  bounty: number;
+  reputationTags: string[];
+  lifestyleTags: string[];
+  portal: string;
+  relationshipCount: number;
+  inventory: string[];
+  activeQuestIds: string[];
+  completedQuestIds: string[];
+  joinedGroupIds: string[];
+  prompt: string;
+  time: string;
+  timePhase: string;
+  activeGroupId?: string;
+  groupTravelMode?: GroupTravelMode;
+  groupHelpers: number;
+  touchControlsVisible: boolean;
+  nearestInteraction?: string;
+  movementSpeedMultiplier: number;
+  discoveredAreaIds: string[];
+  discoveredVenueIds: string[];
+  revealAllMap: boolean;
+  trafficHitCooldown: number;
+  npcRoutines: Record<string, string>;
+  updatedAt: number;
+}
+
+declare global {
+  interface Window {
+    __BALI_LIFE_DEBUG__?: BaliLifeDebugSnapshot;
+  }
+}
+
+interface MudZoneDefinition {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface GroupTravelerRuntime {
+  id: string;
+  name: string;
+  hasBike: boolean;
+  sprite: Phaser.GameObjects.Sprite;
+  bikeSprite: Phaser.GameObjects.Sprite;
+}
+
+interface TrafficBikeRuntime {
+  sprite: Phaser.GameObjects.Sprite;
+  axis: "x" | "y";
+  min: number;
+  max: number;
+  fixed: number;
+  direction: 1 | -1;
+  speed: number;
+}
+
+interface WantedOffenderRuntime {
+  id: string;
+  name: string;
+  sprite: Phaser.GameObjects.Sprite;
+  bikeSprite: Phaser.GameObjects.Sprite;
+  sign: Phaser.GameObjects.Text;
+  cash: number;
+  wantedLevel: number;
+  route: Phaser.Math.Vector2[];
+  routeIndex: number;
+  speed: number;
+}
+
+const WALK_SPEED = 78;
+const BIKE_SPEED = 345;
+const GROUP_WALK_SPEED = 92;
+const GROUP_BIKE_SPEED = 255;
+const BIKE_RENTAL_ITEM_ID = "scooter_rental";
+const SCOOTER_KEY_ITEM_ID = "scooter_key";
+const REQUIRED_BIKE_HELPERS = 5;
+const MAX_PLAYER_WANTED_LEVEL = 3;
+const MAX_PLAYER_BOUNTY = 120;
+const MAX_BOUNTY_REWARD = 55;
+const FIRST_FLAG_BOUNTY = 20;
+const REPEAT_FLAG_BOUNTY = 35;
+const TRAFFIC_HIT_COOLDOWN_MS = 2200;
+const TRAFFIC_HIT_MONEY_LOSS = 10;
+const TRAFFIC_KNOCKBACK_DISTANCE = 76;
+const BIKE_MUD_ZONES: MudZoneDefinition[] = [
+  {
+    id: "berawa-shortcut-mud",
+    label: "the soft Berawa shortcut mud",
+    x: 1910,
+    y: 700,
+    width: 260,
+    height: 80
+  },
+  {
+    id: "beach-soft-sand",
+    label: "the deep beach sand",
+    x: 0,
+    y: 1320,
+    width: 2400,
+    height: 170
+  }
+];
+const UI_DEPTH = 1200;
+const TOUCH_BUTTON_SIZE = 64;
+const TOUCH_JOYSTICK_RADIUS = 56;
+
+export class GameScene extends Phaser.Scene {
+  private world!: WorldState;
+  private playerState!: PlayerEntityState;
+  private player!: Phaser.Physics.Arcade.Sprite;
+  private obstacleGroup!: Phaser.Physics.Arcade.StaticGroup;
+  private npcSprites = new Map<string, Phaser.Physics.Arcade.Sprite>();
+  private pickupSprites = new Map<string, Phaser.GameObjects.Sprite>();
+  private playerBike?: Phaser.GameObjects.Sprite;
+  private trafficBikes: TrafficBikeRuntime[] = [];
+  private trafficHitCooldown = 0;
+  private bikeHarmCooldown = 0;
+  private groupLeader?: GroupTravelerRuntime;
+  private groupFollowers: GroupTravelerRuntime[] = [];
+  private groupRoute: Phaser.Math.Vector2[] = [];
+  private groupRouteIndex = 0;
+  private wantedOffenders = new Map<string, WantedOffenderRuntime>();
+  private playerWantedSign?: Phaser.GameObjects.Text;
+  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private keys!: Record<
+    "W" | "A" | "S" | "D" | "E" | "I" | "C" | "B" | "P" | "F2" | "BACKTICK" | "ESC" | "SAVE" | "RESET",
+    Phaser.Input.Keyboard.Key
+  >;
+  private mode: Mode = "world";
+  private network: NetworkAdapter = new LocalNetworkAdapter();
+  private dispatcher = new IntentDispatcher();
+  private dialogueProvider: DialogueProvider = new ScriptedDialogueProvider();
+  private phone?: PhoneShell;
+  private godmodePanel?: Phaser.GameObjects.Container;
+  private movementSpeedMultiplier = 1;
+  private discoveryLabels: Array<{ subjectType: "area" | "venue"; id: string; label: Phaser.GameObjects.Text }> = [];
+  private unsubscribeNetwork?: () => void;
+  private networkPushTimer = 0;
+  private autosaveTimer = 0;
+
+  private hudChrome!: Phaser.GameObjects.Graphics;
+  private timeText!: Phaser.GameObjects.Text;
+  private moneyText!: Phaser.GameObjects.Text;
+  private questText!: Phaser.GameObjects.Text;
+  private promptText!: Phaser.GameObjects.Text;
+  private toastText!: Phaser.GameObjects.Text;
+  private toastTimer = 0;
+  private panel?: Phaser.GameObjects.Container;
+  private nightOverlay!: Phaser.GameObjects.Graphics;
+  private lanternGlow!: Phaser.GameObjects.Graphics;
+  private discoveryToastCooldown = 0;
+
+  private touchContainer!: Phaser.GameObjects.Container;
+  private touchHitZones = new Map<string, Phaser.GameObjects.Zone>();
+  private joystickBase!: Phaser.GameObjects.Arc;
+  private joystickKnob!: Phaser.GameObjects.Arc;
+  private joystickPointerId?: number;
+  private joystickOrigin = new Phaser.Math.Vector2();
+  private joystickVector = new Phaser.Math.Vector2();
+
+  constructor() {
+    super("GameScene");
+  }
+
+  create(): void {
+    this.world = loadWorldState();
+    this.playerState = getLocalPlayer(this.world);
+    this.phone = new PhoneShell({
+      scene: this,
+      getWorld: () => this.world,
+      dispatcher: this.dispatcher,
+      getNow: () => this.getAbsoluteMinute(),
+      save: () => saveWorldState(this.world),
+      toast: (message) => this.showToast(message),
+      onClose: () => {
+        if (this.mode === "phone") {
+          this.mode = "world";
+        }
+      }
+    });
+
+    this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    this.drawNeighborhood();
+    this.createCollision();
+    this.createPickups();
+    this.createNpcs();
+    this.createPlayer();
+    this.createTrafficBikes();
+    this.createWantedOffenders();
+    this.createInput();
+    this.createHud();
+    this.updateMapDiscovery(true);
+
+    this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
+    this.layoutForViewport();
+
+    this.unsubscribeNetwork = this.network.subscribeToWorldPatches(() => undefined);
+    void this.network.connect(this.world);
+
+    this.showToast("Welcome to Berawa near FINNS. Press E near people, venues, and pickups.");
+    this.openFirstRunHint();
+  }
+
+  update(_time: number, delta: number): void {
+    advanceClock(this.world, delta);
+    this.discoveryToastCooldown = Math.max(0, this.discoveryToastCooldown - delta);
+    this.autosaveTimer += delta;
+    if (this.autosaveTimer > 15000) {
+      this.autosaveTimer = 0;
+      saveWorldState(this.world);
+    }
+
+    this.updatePlayer(delta);
+    this.updateMapDiscovery();
+    this.updateTraffic(delta);
+    this.updateWantedOffenders(delta);
+    this.updateGroupLine(delta);
+    this.updateNpcRoutines(delta);
+    this.updatePickups();
+    this.updateHud(delta);
+    this.updateLighting();
+  }
+
+  destroy(): void {
+    this.unsubscribeNetwork?.();
+    this.network.disconnect();
+  }
+
+  private drawNeighborhood(): void {
+    const g = this.add.graphics();
+    g.setDepth(-100);
+
+    g.fillStyle(0x4f8f5d, 1);
+    g.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+
+    for (let y = 0; y < 1230; y += 48) {
+      for (let x = 0; x < WORLD_WIDTH; x += 48) {
+        const tint = (x / 48 + y / 48) % 3 === 0 ? 0x5ca66c : 0x478855;
+        g.fillStyle(tint, 0.18);
+        g.fillCircle(x + 12, y + 18, 3);
+        g.fillCircle(x + 35, y + 38, 2);
+      }
+    }
+
+    this.drawBeach(g);
+    this.drawRoads(g);
+    this.drawMarket(g);
+    this.drawBuildings(g);
+    this.drawDecorations(g);
+    this.addAreaLabels();
+  }
+
+  private drawBeach(g: Phaser.GameObjects.Graphics): void {
+    g.fillStyle(0xd9b875, 1);
+    g.fillRect(0, 1160, WORLD_WIDTH, 360);
+    g.fillStyle(0xcda561, 0.55);
+    for (let x = 20; x < WORLD_WIDTH; x += 80) {
+      g.fillCircle(x, 1245 + ((x / 40) % 5) * 18, 3);
+      g.fillCircle(x + 28, 1370 + ((x / 50) % 4) * 14, 2);
+    }
+
+    g.fillStyle(0x18708b, 1);
+    g.fillRect(0, 1505, WORLD_WIDTH, 195);
+    g.fillStyle(0x43c3c5, 0.75);
+    for (let y = 1530; y < WORLD_HEIGHT; y += 44) {
+      for (let x = 0; x < WORLD_WIDTH; x += 180) {
+        g.lineStyle(3, 0x9ee6df, 0.6);
+        g.beginPath();
+        g.moveTo(x, y);
+        for (let step = 1; step <= 12; step += 1) {
+          const progress = step / 12;
+          g.lineTo(x + progress * 160, y + Math.sin(progress * Math.PI * 2) * 14);
+        }
+        g.strokePath();
+      }
+    }
+
+    g.fillStyle(0x6d4f3a, 1);
+    g.fillRoundedRect(295, 1230, 310, 36, 12);
+    g.fillStyle(0x8b6b4e, 1);
+    g.fillRect(330, 1262, 18, 115);
+    g.fillRect(535, 1262, 18, 110);
+  }
+
+  private drawRoads(g: Phaser.GameObjects.Graphics): void {
+    for (const road of berawaRoads) {
+      g.lineStyle(road.width + 18, 0x3f484b, 1);
+      this.strokeRoadPath(g, road.points);
+    }
+
+    for (const road of berawaRoads) {
+      const roadColor = road.importance === "lane" ? 0x77715e : road.importance === "secondary" ? 0x586167 : 0x596368;
+      g.lineStyle(road.width, roadColor, 1);
+      this.strokeRoadPath(g, road.points);
+      g.lineStyle(2, 0x2e3638, 0.34);
+      this.strokeRoadPath(g, road.points);
+
+      if (road.importance === "primary") {
+        g.lineStyle(4, 0xf1d36b, 0.74);
+        this.drawDashedPath(g, road.points, 54, 62);
+      } else if (road.importance === "secondary") {
+        g.lineStyle(3, 0xf4d58d, 0.28);
+        this.drawDashedPath(g, road.points, 34, 58);
+      }
+    }
+
+    g.fillStyle(0xbcb18b, 0.22);
+    for (const road of berawaRoads.filter((candidate) => candidate.importance !== "lane")) {
+      for (const point of road.points) {
+        g.fillRoundedRect(point.x - 20, point.y - 12, 40, 24, 8);
+      }
+    }
+  }
+
+  private strokeRoadPath(g: Phaser.GameObjects.Graphics, points: Array<{ x: number; y: number }>): void {
+    if (points.length < 2) {
+      return;
+    }
+    g.beginPath();
+    g.moveTo(points[0].x, points[0].y);
+    for (const point of points.slice(1)) {
+      g.lineTo(point.x, point.y);
+    }
+    g.strokePath();
+  }
+
+  private drawDashedPath(
+    g: Phaser.GameObjects.Graphics,
+    points: Array<{ x: number; y: number }>,
+    dashLength: number,
+    gapLength: number
+  ): void {
+    for (let index = 1; index < points.length; index += 1) {
+      const start = points[index - 1];
+      const end = points[index];
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const distance = Math.hypot(dx, dy);
+      if (distance <= 0) {
+        continue;
+      }
+      const ux = dx / distance;
+      const uy = dy / distance;
+      for (let walked = 0; walked < distance; walked += dashLength + gapLength) {
+        const dashEnd = Math.min(distance, walked + dashLength);
+        g.lineBetween(start.x + ux * walked, start.y + uy * walked, start.x + ux * dashEnd, start.y + uy * dashEnd);
+      }
+    }
+  }
+
+  private drawMarket(g: Phaser.GameObjects.Graphics): void {
+    g.fillStyle(0xb89058, 1);
+    g.fillRoundedRect(1030, 520, 360, 230, 10);
+    for (let y = 535; y < 735; y += 32) {
+      for (let x = 1045; x < 1375; x += 32) {
+        g.fillStyle((x + y) % 64 === 0 ? 0xd3b071 : 0xa87947, 0.45);
+        g.fillRect(x, y, 26, 26);
+      }
+    }
+
+    this.drawStall(g, 1110, 555, 135, 75, 0xdb4d4d, "MILK & MADU");
+    this.drawStall(g, 1270, 622, 118, 72, 0x37a2a2, "BRUNCH");
+    this.drawUmbrella(g, 1045, 650, 0xf2cc5c, 0xe94f37);
+    this.drawUmbrella(g, 1340, 555, 0x3f88c5, 0xf7f1d2);
+  }
+
+  private drawBuildings(g: Phaser.GameObjects.Graphics): void {
+    this.drawBuilding(g, 480, 560, 260, 150, 0xc76d4b, 0x7d2f2f, "Canggu Station");
+    this.drawStall(g, 748, 660, 152, 64, 0x377d9f, "BIKE RENTAL");
+    this.drawBuilding(g, 235, 345, 250, 150, 0xe2c17d, 0x714c2e, "Berawa Villa");
+    this.drawBuilding(g, 560, 300, 230, 145, 0xbad3a6, 0x5c6d36, "BAKED.");
+    this.drawBuilding(g, 1410, 665, 280, 140, 0x7fb9b6, 0x304f69, "Bungalow Living");
+    this.drawFinnsClub(g);
+
+    g.fillStyle(0x86ad5f, 1);
+    g.fillRoundedRect(1910, 700, 260, 80, 8);
+    g.lineStyle(3, 0x4d7445, 1);
+    for (let x = 1925; x < 2160; x += 36) {
+      g.lineBetween(x, 706, x + 22, 775);
+    }
+    this.add.text(1960, 725, "Berawa Shortcut", this.mapLabelStyle()).setDepth(40);
+
+    this.drawStall(g, 650, 1110, 170, 78, 0x33a6b8, "FINNS BEACH");
+    this.drawStall(g, 850, 1130, 145, 70, 0xd65a31, "ATLAS");
+  }
+
+  private drawBuilding(
+    g: Phaser.GameObjects.Graphics,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    wall: number,
+    roof: number,
+    label: string
+  ): void {
+    g.fillStyle(0x000000, 0.2);
+    g.fillRoundedRect(x + 10, y + 14, width, height, 10);
+    g.fillStyle(wall, 1);
+    g.fillRoundedRect(x, y, width, height, 10);
+    g.fillStyle(roof, 1);
+    g.fillRoundedRect(x - 14, y - 24, width + 28, 52, 12);
+    g.fillStyle(0x2b1d17, 0.45);
+    for (let tx = x; tx < x + width; tx += 38) {
+      g.fillRect(tx, y - 19, 20, 42);
+    }
+    g.fillStyle(0x2e2b29, 1);
+    g.fillRoundedRect(x + width / 2 - 22, y + height - 45, 44, 45, 6);
+    g.fillStyle(0xf4cf77, 1);
+    g.fillCircle(x + width / 2 + 13, y + height - 22, 3);
+    g.fillStyle(0xf6e8c5, 0.92);
+    g.fillRoundedRect(x + 22, y + 48, 48, 36, 6);
+    g.fillRoundedRect(x + width - 70, y + 48, 48, 36, 6);
+    this.add.text(x + width / 2, y + 9, label, this.signStyle()).setOrigin(0.5, 0).setDepth(40);
+  }
+
+  private drawFinnsClub(g: Phaser.GameObjects.Graphics): void {
+    g.fillStyle(0x5f5346, 1);
+    g.fillRoundedRect(1510, 160, 52, 300, 5);
+    g.fillRoundedRect(1980, 160, 52, 300, 5);
+    g.fillStyle(0x8a6d4d, 1);
+    g.fillRoundedRect(1600, 165, 340, 160, 8);
+    g.fillStyle(0xb04335, 1);
+    g.fillRoundedRect(1575, 132, 390, 54, 8);
+    g.fillStyle(0x3f2b26, 1);
+    g.fillRoundedRect(1725, 250, 88, 75, 6);
+    g.fillStyle(0xd6a93f, 1);
+    g.fillCircle(1768, 285, 6);
+    g.fillStyle(0x567d46, 1);
+    g.fillRoundedRect(1645, 360, 255, 90, 12);
+    for (let i = 0; i < 12; i += 1) {
+      g.fillStyle(i % 2 === 0 ? 0xfff0c9 : 0xf5c0ce, 1);
+      g.fillCircle(1665 + i * 19, 395 + (i % 3) * 8, 5);
+    }
+    this.add.text(1770, 148, "FINNS Rec Club", this.signStyle()).setOrigin(0.5, 0).setDepth(40);
+  }
+
+  private drawDecorations(g: Phaser.GameObjects.Graphics): void {
+    const trees = [
+      [180, 1180],
+      [225, 1285],
+      [555, 1225],
+      [710, 1320],
+      [930, 1245],
+      [2140, 1130],
+      [2030, 500],
+      [360, 545],
+      [1310, 370],
+      [1815, 525]
+    ];
+    for (const [x, y] of trees) {
+      this.drawPalm(g, x, y);
+    }
+
+    const scooters = [
+      [800, 725, 0xe84a5f],
+      [1360, 805, 0x35a7ff],
+      [1570, 905, 0xffc857]
+    ];
+    for (const [x, y, color] of scooters) {
+      g.fillStyle(0x111111, 0.35);
+      g.fillEllipse(x, y + 18, 70, 16, 32);
+      g.fillStyle(color, 1);
+      g.fillRoundedRect(x - 28, y, 56, 18, 9);
+      g.fillStyle(0x1a2026, 1);
+      g.fillCircle(x - 22, y + 18, 8);
+      g.fillCircle(x + 24, y + 18, 8);
+    }
+
+    const lanterns = [
+      [760, 735],
+      [1015, 745],
+      [1448, 430],
+      [1588, 455],
+      [660, 1210],
+      [1850, 455]
+    ];
+    for (const [x, y] of lanterns) {
+      g.fillStyle(0x4b352d, 1);
+      g.fillRect(x - 2, y - 24, 4, 44);
+      g.fillStyle(0xf4c95d, 1);
+      g.fillCircle(x, y - 26, 8);
+    }
+
+    g.fillStyle(0x76665b, 1);
+    g.fillRoundedRect(780, 1260, 120, 90, 28);
+    g.fillRoundedRect(1110, 1315, 145, 75, 24);
+  }
+
+  private drawStall(
+    g: Phaser.GameObjects.Graphics,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    awning: number,
+    label: string
+  ): void {
+    g.fillStyle(0x000000, 0.18);
+    g.fillRoundedRect(x + 8, y + 12, width, height, 9);
+    g.fillStyle(0xc9a46b, 1);
+    g.fillRoundedRect(x, y, width, height, 8);
+    g.fillStyle(awning, 1);
+    for (let sx = x; sx < x + width; sx += 28) {
+      g.fillRoundedRect(sx, y - 18, 22, 30, 6);
+    }
+    this.add.text(x + width / 2, y + 22, label, this.signStyle()).setOrigin(0.5).setDepth(40);
+  }
+
+  private drawUmbrella(g: Phaser.GameObjects.Graphics, x: number, y: number, a: number, b: number): void {
+    g.fillStyle(0x4a382f, 1);
+    g.fillRect(x - 3, y, 6, 58);
+    g.fillStyle(a, 1);
+    g.slice(x, y, 52, Phaser.Math.DegToRad(180), Phaser.Math.DegToRad(360), false);
+    g.fillPath();
+    g.fillStyle(b, 1);
+    g.slice(x, y, 34, Phaser.Math.DegToRad(200), Phaser.Math.DegToRad(340), false);
+    g.fillPath();
+  }
+
+  private drawPalm(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
+    g.fillStyle(0x70513d, 1);
+    g.fillRoundedRect(x - 8, y - 48, 16, 62, 8);
+    g.lineStyle(9, 0x2c7f4f, 1);
+    for (let i = 0; i < 6; i += 1) {
+      const angle = (Math.PI * 2 * i) / 6;
+      const endX = x + Math.cos(angle) * 48;
+      const endY = y - 58 + Math.sin(angle) * 24;
+      g.lineBetween(x, y - 55, endX, endY);
+      g.fillStyle(0x4f9b55, 1);
+      g.fillCircle(endX, endY, 7);
+    }
+    g.lineStyle(0, 0, 0);
+    g.fillStyle(0x8b5f2f, 1);
+    g.fillCircle(x + 5, y - 42, 6);
+    g.fillCircle(x - 7, y - 40, 5);
+  }
+
+  private addAreaLabels(): void {
+    this.discoveryLabels = [];
+    this.add
+      .text(52, 48, "N\n^", {
+        ...this.mapLabelStyle(),
+        align: "center",
+        backgroundColor: "rgba(35, 30, 24, 0.46)",
+        padding: { x: 8, y: 4 }
+      })
+      .setOrigin(0.5)
+      .setDepth(45);
+
+    for (const area of berawaAreas) {
+      const label = this.add
+        .text(area.x, area.y - 44, area.name, {
+          ...this.mapLabelStyle(),
+          backgroundColor: "rgba(35, 30, 24, 0.5)",
+          padding: { x: 8, y: 4 }
+        })
+        .setOrigin(0.5)
+        .setDepth(45)
+        .setVisible(false);
+      this.discoveryLabels.push({ subjectType: "area", id: area.id, label });
+    }
+
+    const venues = new Map(getAllVenues().map((venue) => [venue.id, venue.name]));
+    for (const node of venueMapNodes) {
+      const label = this.add
+        .text(node.x, node.y - 58, venues.get(node.venueId) ?? node.venueId, {
+          ...this.mapLabelStyle(),
+          fontSize: "12px",
+          backgroundColor: "rgba(16, 24, 32, 0.52)",
+          padding: { x: 7, y: 3 }
+        })
+        .setOrigin(0.5)
+        .setDepth(45)
+        .setVisible(false);
+      this.discoveryLabels.push({ subjectType: "venue", id: node.venueId, label });
+    }
+  }
+
+  private createCollision(): void {
+    this.obstacleGroup = this.physics.add.staticGroup();
+    for (const rect of collisionRects) {
+      const zone = this.add.zone(rect.x + rect.width / 2, rect.y + rect.height / 2, rect.width, rect.height);
+      this.physics.add.existing(zone, true);
+      this.obstacleGroup.add(zone);
+    }
+  }
+
+  private createPickups(): void {
+    for (const pickup of pickupDefinitions) {
+      const sprite = this.add
+        .sprite(pickup.x, pickup.y, pickup.itemId === "coconut" ? "pickup-coconut" : "pickup-frangipani")
+        .setDepth(pickup.y)
+        .setName(pickup.id);
+      this.pickupSprites.set(pickup.id, sprite);
+    }
+  }
+
+  private createNpcs(): void {
+    for (const npc of Object.values(npcDefinitions)) {
+      const state = this.world.npcs[npc.id];
+      const sprite = this.physics.add.sprite(state.x, state.y, npc.spriteKey).setDepth(state.y).setImmovable(true);
+      sprite.body?.setSize(24, 30);
+      this.npcSprites.set(npc.id, sprite);
+    }
+  }
+
+  private createPlayer(): void {
+    this.player = this.physics.add.sprite(this.playerState.x, this.playerState.y, "player");
+    this.player.setCollideWorldBounds(true);
+    this.player.setDepth(this.player.y);
+    this.player.body?.setSize(24, 30);
+    this.player.body?.setOffset(12, 16);
+    this.playerBike = this.add.sprite(this.playerState.x, this.playerState.y + 10, "player-bike").setVisible(false);
+    this.physics.add.collider(this.player, this.obstacleGroup);
+    this.updatePlayerBikeVisual();
+  }
+
+  private createTrafficBikes(): void {
+    const routes: Array<Omit<TrafficBikeRuntime, "sprite"> & { x: number; y: number }> = [
+      { x: -70, y: 805, axis: "x", min: -90, max: WORLD_WIDTH + 90, fixed: 805, direction: 1, speed: 260 },
+      { x: WORLD_WIDTH + 70, y: 852, axis: "x", min: -90, max: WORLD_WIDTH + 90, fixed: 852, direction: -1, speed: 235 },
+      { x: 975, y: -70, axis: "y", min: -90, max: 1210, fixed: 975, direction: 1, speed: 215 }
+    ];
+
+    this.trafficBikes = routes.map((route) => {
+      const sprite = this.add.sprite(route.x, route.y, "traffic-bike").setDepth(route.y + 4);
+      if (route.axis === "x") {
+        sprite.setScale(route.direction < 0 ? -1 : 1, 1);
+      } else {
+        sprite.setAngle(route.direction > 0 ? 90 : -90);
+      }
+      return { ...route, sprite };
+    });
+  }
+
+  private createWantedOffenders(): void {
+    const route = [
+      new Phaser.Math.Vector2(1360, 805),
+      new Phaser.Math.Vector2(1060, 805),
+      new Phaser.Math.Vector2(975, 610),
+      new Phaser.Math.Vector2(1475, 430),
+      new Phaser.Math.Vector2(1768, 365),
+      new Phaser.Math.Vector2(1768, 805)
+    ];
+    const sprite = this.add.sprite(route[0].x, route[0].y, "npc-ari").setDepth(route[0].y + 4);
+    const bikeSprite = this.add.sprite(route[0].x, route[0].y + 10, "traffic-bike").setDepth(route[0].y + 3);
+    const sign = this.add
+      .text(route[0].x, route[0].y - 46, "WANTED\nRp 120", {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: "11px",
+        color: "#2b1d17",
+        align: "center",
+        backgroundColor: "#fff0bd",
+        padding: { x: 5, y: 3 }
+      })
+      .setOrigin(0.5)
+      .setDepth(UI_DEPTH - 20);
+
+    this.wantedOffenders.set("reckless-berawa-rider", {
+      id: "reckless-berawa-rider",
+      name: "Flagged Rider",
+      sprite,
+      bikeSprite,
+      sign,
+      cash: 120,
+      wantedLevel: 3,
+      route,
+      routeIndex: 1,
+      speed: 118
+    });
+  }
+
+  private createInput(): void {
+    if (!this.input.keyboard) {
+      return;
+    }
+
+    this.cursors = this.input.keyboard.createCursorKeys();
+    this.keys = this.input.keyboard.addKeys({
+      W: Phaser.Input.Keyboard.KeyCodes.W,
+      A: Phaser.Input.Keyboard.KeyCodes.A,
+      S: Phaser.Input.Keyboard.KeyCodes.S,
+      D: Phaser.Input.Keyboard.KeyCodes.D,
+      E: Phaser.Input.Keyboard.KeyCodes.E,
+      I: Phaser.Input.Keyboard.KeyCodes.I,
+      C: Phaser.Input.Keyboard.KeyCodes.C,
+      B: Phaser.Input.Keyboard.KeyCodes.B,
+      P: Phaser.Input.Keyboard.KeyCodes.P,
+      F2: Phaser.Input.Keyboard.KeyCodes.F2,
+      BACKTICK: Phaser.Input.Keyboard.KeyCodes.BACKTICK,
+      ESC: Phaser.Input.Keyboard.KeyCodes.ESC,
+      SAVE: Phaser.Input.Keyboard.KeyCodes.F5,
+      RESET: Phaser.Input.Keyboard.KeyCodes.F9
+    }) as Record<
+      "W" | "A" | "S" | "D" | "E" | "I" | "C" | "B" | "P" | "F2" | "BACKTICK" | "ESC" | "SAVE" | "RESET",
+      Phaser.Input.Keyboard.Key
+    >;
+
+    this.keys.E.on("down", () => this.handleAction());
+    this.keys.I.on("down", () => this.toggleInventory());
+    this.keys.C.on("down", () => this.toggleCommunityBoard());
+    this.keys.B.on("down", () => this.toggleBike());
+    this.keys.P.on("down", () => this.togglePhone());
+    this.keys.F2.on("down", () => this.toggleGodmodePanel());
+    this.keys.BACKTICK.on("down", () => this.toggleGodmodePanel());
+    this.keys.ESC.on("down", () => {
+      if (this.godmodePanel) {
+        this.closeGodmodePanel();
+      } else if (this.phone?.isOpen) {
+        this.phone.close();
+      } else {
+        this.closePanel();
+      }
+    });
+    this.keys.SAVE.on("down", (event: KeyboardEvent) => {
+      event.preventDefault();
+      this.saveGame();
+    });
+    this.keys.RESET.on("down", () => {
+      clearSave();
+      this.world = loadWorldState();
+      this.playerState = getLocalPlayer(this.world);
+      this.player.setPosition(this.playerState.x, this.playerState.y);
+      this.clearGroupLine();
+      this.updatePlayerBikeVisual();
+      this.showToast("Save cleared. New neighbor day started.");
+    });
+
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => this.handlePointerDown(pointer));
+    this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => this.handlePointerMove(pointer));
+    this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => this.handlePointerUp(pointer));
+    this.scale.on("resize", () => this.layoutForViewport());
+  }
+
+  private createHud(): void {
+    this.hudChrome = this.add.graphics().setScrollFactor(0).setDepth(UI_DEPTH);
+    this.timeText = this.add.text(20, 16, "", this.hudTextStyle(16)).setScrollFactor(0).setDepth(UI_DEPTH + 1);
+    this.moneyText = this.add.text(20, 42, "", this.hudTextStyle(16)).setScrollFactor(0).setDepth(UI_DEPTH + 1);
+    this.questText = this.add.text(20, 92, "", this.hudTextStyle(14)).setScrollFactor(0).setDepth(UI_DEPTH + 1);
+    this.promptText = this.add.text(20, 0, "", this.hudTextStyle(15)).setScrollFactor(0).setDepth(UI_DEPTH + 1);
+    this.toastText = this.add
+      .text(0, 0, "", {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: "16px",
+        color: "#fff8df",
+        align: "center",
+        backgroundColor: "rgba(21, 24, 29, 0.76)",
+        padding: { x: 12, y: 8 },
+        wordWrap: { width: 520 }
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(UI_DEPTH + 3)
+      .setAlpha(0);
+
+    this.nightOverlay = this.add.graphics().setScrollFactor(0).setDepth(900);
+    this.lanternGlow = this.add.graphics().setDepth(905);
+    this.createTouchControls();
+    this.layoutForViewport();
+  }
+
+  private createTouchControls(): void {
+    this.touchContainer = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 2);
+    this.joystickBase = this.add.circle(0, 0, TOUCH_JOYSTICK_RADIUS, 0x101820, 0.42).setStrokeStyle(2, 0xf4d58d, 0.55);
+    this.joystickKnob = this.add.circle(0, 0, 22, 0xf4d58d, 0.75).setStrokeStyle(2, 0x101820, 0.45);
+    this.touchContainer.add([this.joystickBase, this.joystickKnob]);
+
+    const actionButton = this.makeTouchButton("ACT", () => this.handleAction());
+    const bagButton = this.makeTouchButton("BAG", () => this.toggleInventory());
+    const communityButton = this.makeTouchButton("SOC", () => this.toggleCommunityBoard());
+    const bikeButton = this.makeTouchButton("BIKE", () => this.toggleBike());
+    const phoneButton = this.makeTouchButton("PHONE", () => this.togglePhone());
+    const saveButton = this.makeTouchButton("SAVE", () => this.saveGame());
+    actionButton.setName("action-button");
+    bagButton.setName("bag-button");
+    communityButton.setName("community-button");
+    bikeButton.setName("bike-button");
+    phoneButton.setName("phone-button");
+    saveButton.setName("save-button");
+    this.touchContainer.add([actionButton, bagButton, communityButton, bikeButton, phoneButton, saveButton]);
+    this.registerTouchHitZone("action-button", () => this.handleAction());
+    this.registerTouchHitZone("bag-button", () => this.toggleInventory());
+    this.registerTouchHitZone("community-button", () => this.toggleCommunityBoard());
+    this.registerTouchHitZone("bike-button", () => this.toggleBike());
+    this.registerTouchHitZone("phone-button", () => this.togglePhone());
+    this.registerTouchHitZone("save-button", () => this.saveGame());
+  }
+
+  private makeTouchButton(label: string, onClick: () => void): Phaser.GameObjects.Container {
+    const button = this.add.container(0, 0);
+    const bg = this.add.circle(0, 0, TOUCH_BUTTON_SIZE / 2, 0x101820, 0.62).setStrokeStyle(2, 0xf4d58d, 0.65);
+    const text = this.add
+      .text(0, 0, label, {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: label.length > 3 ? "12px" : "15px",
+        color: "#fff8df",
+        fontStyle: "700"
+      })
+      .setOrigin(0.5);
+    button.add([bg, text]);
+    button.setSize(TOUCH_BUTTON_SIZE, TOUCH_BUTTON_SIZE);
+    return button;
+  }
+
+  private registerTouchHitZone(name: string, onClick: () => void): void {
+    const zone = this.add.zone(0, 0, TOUCH_BUTTON_SIZE, TOUCH_BUTTON_SIZE).setName(`${name}-hit-zone`).setScrollFactor(0).setDepth(UI_DEPTH + 4);
+    zone.setInteractive(new Phaser.Geom.Rectangle(0, 0, TOUCH_BUTTON_SIZE, TOUCH_BUTTON_SIZE), Phaser.Geom.Rectangle.Contains);
+    if (zone.input) {
+      zone.input.cursor = "pointer";
+    }
+    zone.on("pointerdown", (pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event?: Phaser.Types.Input.EventData) => {
+      event?.stopPropagation();
+      pointer.event?.stopPropagation();
+      onClick();
+    });
+    this.touchHitZones.set(name, zone);
+  }
+
+  private updatePlayer(delta: number): void {
+    if (!this.player.body) {
+      return;
+    }
+
+    const movement = new Phaser.Math.Vector2(0, 0);
+    if (this.mode === "world") {
+      if (this.cursors.left.isDown || this.keys.A.isDown) movement.x -= 1;
+      if (this.cursors.right.isDown || this.keys.D.isDown) movement.x += 1;
+      if (this.cursors.up.isDown || this.keys.W.isDown) movement.y -= 1;
+      if (this.cursors.down.isDown || this.keys.S.isDown) movement.y += 1;
+      movement.add(this.joystickVector);
+    }
+
+    if (movement.lengthSq() > 0) {
+      movement.normalize();
+      const baseSpeed = this.playerState.onBike && !this.playerState.bikeStuck ? BIKE_SPEED : WALK_SPEED;
+      const speed = baseSpeed * this.movementSpeedMultiplier;
+      this.player.setVelocity(movement.x * speed, movement.y * speed);
+      this.playerState.direction = this.directionFromVector(movement);
+      this.player.setScale(this.playerState.direction === "left" ? -1 : 1, 1);
+    } else {
+      this.player.setVelocity(0, 0);
+    }
+
+    this.playerState.x = Math.round(this.player.x);
+    this.playerState.y = Math.round(this.player.y);
+    this.player.setDepth(this.player.y);
+    this.updatePlayerBikeVisual();
+    this.checkBikeTerrain();
+    this.checkPlayerBikeHarmToOthers();
+    this.updatePlayerWantedSign();
+
+    this.networkPushTimer += delta;
+    if (this.networkPushTimer > 180) {
+      this.networkPushTimer = 0;
+      this.network.pushLocalPlayer(this.playerState);
+    }
+  }
+
+  private updatePlayerBikeVisual(): void {
+    if (!this.playerBike) {
+      return;
+    }
+    const visible = this.playerState.onBike || this.playerState.bikeStuck;
+    this.playerBike.setVisible(visible);
+    this.playerBike.setPosition(this.player.x, this.player.y + 10);
+    this.playerBike.setDepth(this.player.y - 1);
+    this.playerBike.setAlpha(this.playerState.bikeStuck ? 0.62 : 1);
+    this.playerBike.setScale(this.playerState.direction === "left" ? -1 : 1, 1);
+  }
+
+  private updateTraffic(delta: number): void {
+    this.trafficHitCooldown = Math.max(0, this.trafficHitCooldown - delta);
+    this.bikeHarmCooldown = Math.max(0, this.bikeHarmCooldown - delta);
+    const seconds = delta / 1000;
+    for (const bike of this.trafficBikes) {
+      if (bike.axis === "x") {
+        bike.sprite.x += bike.direction * bike.speed * seconds;
+        bike.sprite.y = bike.fixed;
+        if (bike.direction > 0 && bike.sprite.x > bike.max) {
+          bike.sprite.x = bike.min;
+        } else if (bike.direction < 0 && bike.sprite.x < bike.min) {
+          bike.sprite.x = bike.max;
+        }
+        bike.sprite.setScale(bike.direction < 0 ? -1 : 1, 1);
+      } else {
+        bike.sprite.y += bike.direction * bike.speed * seconds;
+        bike.sprite.x = bike.fixed;
+        if (bike.direction > 0 && bike.sprite.y > bike.max) {
+          bike.sprite.y = bike.min;
+        } else if (bike.direction < 0 && bike.sprite.y < bike.min) {
+          bike.sprite.y = bike.max;
+        }
+        bike.sprite.setAngle(bike.direction > 0 ? 90 : -90);
+      }
+      bike.sprite.setDepth(bike.sprite.y + 3);
+
+      if (this.trafficHitCooldown <= 0 && Phaser.Math.Distance.Between(this.player.x, this.player.y, bike.sprite.x, bike.sprite.y) < 34) {
+        this.applyTrafficHit(bike);
+      }
+    }
+  }
+
+  private updateWantedOffenders(delta: number): void {
+    for (const offender of this.wantedOffenders.values()) {
+      if (offender.wantedLevel <= 0) {
+        offender.sign.setVisible(false);
+        offender.bikeSprite.setAlpha(0.45);
+        offender.sprite.setAlpha(0.6);
+        continue;
+      }
+
+      const target = offender.route[offender.routeIndex];
+      const reached = this.moveSpriteToward(offender.sprite, target.x, target.y, offender.speed, delta);
+      if (reached) {
+        offender.routeIndex = (offender.routeIndex + 1) % offender.route.length;
+      }
+      offender.bikeSprite.setPosition(offender.sprite.x, offender.sprite.y + 10);
+      offender.bikeSprite.setDepth(offender.sprite.y + 2);
+      offender.bikeSprite.setScale(offender.sprite.scaleX < 0 ? -1 : 1, 1);
+      offender.sprite.setDepth(offender.sprite.y + 3);
+      offender.sign
+        .setText(`WANTED\nRp ${Math.min(offender.cash, this.getOffenderReward(offender))}`)
+        .setPosition(offender.sprite.x, offender.sprite.y - 48)
+        .setDepth(offender.sprite.y + 5)
+        .setVisible(true);
+    }
+
+    this.updatePlayerWantedSign();
+  }
+
+  private moveSpriteToward(
+    sprite: Phaser.GameObjects.Sprite,
+    targetX: number,
+    targetY: number,
+    speed: number,
+    delta: number
+  ): boolean {
+    const dx = targetX - sprite.x;
+    const dy = targetY - sprite.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance <= 5) {
+      return true;
+    }
+    const step = Math.min(distance, (speed * delta) / 1000);
+    sprite.x += (dx / distance) * step;
+    sprite.y += (dy / distance) * step;
+    sprite.setScale(dx < -1 ? -1 : 1, 1);
+    return distance - step <= 5;
+  }
+
+  private applyTrafficHit(source: TrafficBikeRuntime): void {
+    this.trafficHitCooldown = TRAFFIC_HIT_COOLDOWN_MS;
+    const moneyLoss = Math.min(this.playerState.money, TRAFFIC_HIT_MONEY_LOSS);
+    this.playerState.safety = Phaser.Math.Clamp(this.playerState.safety - 12, 0, 100);
+    this.playerState.focus = Phaser.Math.Clamp(this.playerState.focus - 5, 0, 100);
+    this.playerState.money -= moneyLoss;
+    if (this.playerState.onBike) {
+      this.playerState.bikeCondition = Phaser.Math.Clamp(this.playerState.bikeCondition - 8, 0, 100);
+      if (this.playerState.bikeCondition <= 0) {
+        this.playerState.bikeStuck = true;
+        this.playerState.onBike = false;
+      }
+    }
+    this.applyTrafficKnockback(source);
+    this.cameras.main.shake(180, 0.006);
+    this.spawnHitSplash(this.player.x, this.player.y);
+    this.spawnFloatingText("Ouch!", this.player.x, this.player.y - 34, "#ffdfb3");
+    if (moneyLoss > 0) {
+      this.spawnCashBurst(this.player.x, this.player.y, moneyLoss);
+      this.spawnFloatingText(`-Rp ${moneyLoss}`, this.player.x + 20, this.player.y - 12, "#fff0bd");
+    }
+    saveWorldState(this.world);
+    this.showToast(`A passing scooter clipped you. Safety -12, Focus -5${moneyLoss > 0 ? `, Rp -${moneyLoss}` : ""}.`);
+  }
+
+  private applyTrafficKnockback(source: TrafficBikeRuntime): void {
+    const knockback = source.axis === "x"
+      ? new Phaser.Math.Vector2(source.direction, this.player.y <= source.fixed ? -0.7 : 0.7)
+      : new Phaser.Math.Vector2(this.player.x <= source.fixed ? -0.7 : 0.7, source.direction);
+    knockback.normalize();
+    const away = new Phaser.Math.Vector2(this.player.x - source.sprite.x, this.player.y - source.sprite.y);
+    if (away.lengthSq() > 16) {
+      away.normalize();
+      knockback.add(away.scale(0.45)).normalize();
+    }
+    const nextX = Phaser.Math.Clamp(this.player.x + knockback.x * TRAFFIC_KNOCKBACK_DISTANCE, 28, WORLD_WIDTH - 28);
+    const nextY = Phaser.Math.Clamp(this.player.y + knockback.y * TRAFFIC_KNOCKBACK_DISTANCE, 28, WORLD_HEIGHT - 28);
+    this.player.setVelocity(0, 0);
+    this.player.setPosition(nextX, nextY);
+    this.player.body?.updateFromGameObject();
+    this.playerState.x = Math.round(this.player.x);
+    this.playerState.y = Math.round(this.player.y);
+    this.updatePlayerBikeVisual();
+  }
+
+  private spawnHitSplash(x: number, y: number): void {
+    const colors = [0xe85d5a, 0xff8a5b, 0xffcf70];
+    for (let i = 0; i < 10; i += 1) {
+      const dot = this.add
+        .circle(x, y - 10, Phaser.Math.Between(3, 7), colors[i % colors.length], 0.82)
+        .setDepth(this.player.y + 12);
+      this.tweens.add({
+        targets: dot,
+        x: x + Phaser.Math.Between(-34, 34),
+        y: y + Phaser.Math.Between(-48, 20),
+        scale: 0.25,
+        alpha: 0,
+        duration: 420,
+        ease: "Cubic.easeOut",
+        onComplete: () => dot.destroy()
+      });
+    }
+  }
+
+  private spawnFloatingText(text: string, x: number, y: number, color: string): void {
+    const label = this.add
+      .text(x, y, text, {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: "15px",
+        color,
+        fontStyle: "700",
+        backgroundColor: "rgba(17, 24, 32, 0.62)",
+        padding: { x: 7, y: 3 }
+      })
+      .setOrigin(0.5)
+      .setDepth(UI_DEPTH - 8);
+    this.tweens.add({
+      targets: label,
+      y: y - 34,
+      alpha: 0,
+      duration: 900,
+      ease: "Cubic.easeOut",
+      onComplete: () => label.destroy()
+    });
+  }
+
+  private checkBikeTerrain(): void {
+    if (!this.playerState.onBike || this.playerState.bikeStuck) {
+      return;
+    }
+
+    const zone = BIKE_MUD_ZONES.find((candidate) => this.isPointInZone(this.player.x, this.player.y, candidate));
+    if (!zone) {
+      return;
+    }
+
+    this.playerState.bikeStuck = true;
+    this.playerState.onBike = false;
+    this.playerState.bikeCondition = Phaser.Math.Clamp(this.playerState.bikeCondition - 14, 0, 100);
+    saveWorldState(this.world);
+    this.showToast(`The bike bogged down in ${zone.label}. Bring ${REQUIRED_BIKE_HELPERS} group helpers and press E.`);
+  }
+
+  private checkPlayerBikeHarmToOthers(): void {
+    if (!this.playerState.onBike || this.playerState.bikeStuck || this.bikeHarmCooldown > 0) {
+      return;
+    }
+
+    for (const npc of Object.values(npcDefinitions)) {
+      const sprite = this.npcSprites.get(npc.id);
+      if (!sprite) {
+        continue;
+      }
+      if (Phaser.Math.Distance.Between(this.player.x, this.player.y, sprite.x, sprite.y) < 34) {
+        this.flagLocalPlayerForBikeHit(npc.name);
+        return;
+      }
+    }
+
+    for (const traveler of this.getGroupTravelers()) {
+      if (Phaser.Math.Distance.Between(this.player.x, this.player.y, traveler.sprite.x, traveler.sprite.y) < 34) {
+        this.flagLocalPlayerForBikeHit(traveler.name);
+        return;
+      }
+    }
+  }
+
+  private flagLocalPlayerForBikeHit(victimName: string): void {
+    this.bikeHarmCooldown = 2400;
+    this.playerState.flaggedByVictims += 1;
+    this.playerState.wantedLevel = Phaser.Math.Clamp(this.playerState.wantedLevel + 1, 0, MAX_PLAYER_WANTED_LEVEL);
+    const bountyIncrease = this.playerState.flaggedByVictims === 1 ? FIRST_FLAG_BOUNTY : REPEAT_FLAG_BOUNTY;
+    this.playerState.bounty = Math.min(MAX_PLAYER_BOUNTY, this.playerState.bounty + bountyIncrease);
+    this.dispatchIntent({ kind: "AdjustReputation", delta: -8, reason: `Flagged by ${victimName} for reckless riding` });
+    this.playerState.lastFlagReason = `Bike hit reported by ${victimName}`;
+    this.playerState.focus = Phaser.Math.Clamp(this.playerState.focus - 6, 0, 100);
+    saveWorldState(this.world);
+    this.updatePlayerWantedSign();
+    this.showToast(`${victimName} flagged you for reckless bike damage. Wanted level ${this.playerState.wantedLevel}.`);
+  }
+
+  private updatePlayerWantedSign(): void {
+    if (this.playerState.wantedLevel <= 0) {
+      this.playerWantedSign?.setVisible(false);
+      return;
+    }
+    if (!this.playerWantedSign) {
+      this.playerWantedSign = this.add
+        .text(0, 0, "", {
+          fontFamily: "Inter, Arial, sans-serif",
+          fontSize: "11px",
+          color: "#2b1d17",
+          align: "center",
+          backgroundColor: "#fff0bd",
+          padding: { x: 5, y: 3 }
+        })
+        .setOrigin(0.5);
+    }
+    this.playerWantedSign
+      .setText(`WANTED\nRp ${this.playerState.bounty}`)
+      .setPosition(this.player.x, this.player.y - 48)
+      .setDepth(this.player.y + 6)
+      .setVisible(true);
+  }
+
+  private isPointInZone(x: number, y: number, zone: MudZoneDefinition): boolean {
+    return x >= zone.x && x <= zone.x + zone.width && y >= zone.y && y <= zone.y + zone.height;
+  }
+
+  private updateNpcRoutines(delta: number): void {
+    for (const npc of Object.values(npcDefinitions)) {
+      const state = this.world.npcs[npc.id];
+      const sprite = this.npcSprites.get(npc.id);
+      const target = this.getRoutineStop(npc);
+      if (!sprite || !target) {
+        continue;
+      }
+
+      state.currentRoutineId = target.id;
+      const dx = target.x - sprite.x;
+      const dy = target.y - sprite.y;
+      const distance = Math.hypot(dx, dy);
+      if (distance > 2) {
+        const step = Math.min(distance, (42 * delta) / 1000);
+        sprite.x += (dx / distance) * step;
+        sprite.y += (dy / distance) * step;
+        sprite.setScale(dx < -1 ? -1 : 1, 1);
+        sprite.body?.updateFromGameObject();
+      }
+      state.x = Math.round(sprite.x);
+      state.y = Math.round(sprite.y);
+      sprite.setDepth(sprite.y);
+    }
+  }
+
+  private updatePickups(): void {
+    for (const pickup of pickupDefinitions) {
+      const sprite = this.pickupSprites.get(pickup.id);
+      if (!sprite) {
+        continue;
+      }
+      sprite.setVisible(this.isPickupAvailable(pickup));
+      sprite.setDepth(sprite.y);
+    }
+  }
+
+  private updateHud(delta: number): void {
+    this.playerState.reputation = this.world.reputation.score;
+    this.timeText.setText(formatClock(this.world));
+    const bikeLabel = this.getBikeStatusLabel();
+    const wantedLabel =
+      this.playerState.wantedLevel > 0 ? `Wanted ${this.playerState.wantedLevel} Rp ${this.playerState.bounty}` : "Clean";
+    this.moneyText.setText(
+      `Rp ${this.playerState.money}  Rep ${this.playerState.reputation}  Safety ${this.playerState.safety}  ${wantedLabel}\n${bikeLabel}`
+    );
+    this.questText.setText([...this.getTutorialLines(), ...getQuestTrackerLines(this.playerState)].join("\n"));
+    this.questText.setWordWrapWidth(Math.min(520, this.scale.width - 40));
+
+    const target = this.getNearestInteraction();
+    if (this.mode === "world" && this.playerState.bikeStuck) {
+      this.promptText.setText(`E / ACT: ask ${REQUIRED_BIKE_HELPERS} helpers to drag the bike out`);
+    } else if (this.mode === "world" && target) {
+      this.promptText.setText(`E / ACT: ${target.label}`);
+    } else if (this.mode === "world") {
+      this.promptText.setText("WASD/arrows move. B bike. P phone. I bag. C community. F5 save.");
+    } else if (this.mode === "phone") {
+      this.promptText.setText("ESC closes the phone.");
+    } else {
+      this.promptText.setText("ESC closes the current panel.");
+    }
+
+    if (this.toastTimer > 0) {
+      this.toastTimer -= delta;
+      this.toastText.setAlpha(Math.min(1, this.toastTimer / 250));
+    } else {
+      this.toastText.setAlpha(0);
+    }
+
+    this.redrawHudChrome();
+    this.publishDebugSnapshot(target);
+  }
+
+  private getBikeStatusLabel(): string {
+    if (!this.playerState.hasBike) {
+      return "On foot";
+    }
+    if (this.playerState.bikeStuck) {
+      return `Bike stuck ${this.playerState.bikeCondition}%`;
+    }
+    return `${this.playerState.onBike ? "Bike riding" : "Bike parked"} ${this.playerState.bikeCondition}%`;
+  }
+
+  private getTutorialLines(): string[] {
+    if (!this.playerState.hasBike) {
+      const remaining = Math.max(0, itemDefinitions[BIKE_RENTAL_ITEM_ID].buyPrice - this.playerState.money);
+      return [
+        remaining > 0
+          ? `Tutorial: earn Rp ${remaining} more, then rent a scooter near Canggu Station.`
+          : "Tutorial: rent a scooter at Bali Family Rental Scooter."
+      ];
+    }
+    if (this.playerState.bikeStuck) {
+      return [`Tutorial: need ${REQUIRED_BIKE_HELPERS} group helpers to drag the bike out.`];
+    }
+    if (this.playerState.joinedGroupIds.length === 0) {
+      return ["Tutorial: join an interest group, then try a walk line or bike line."];
+    }
+    return [];
+  }
+
+  private updateLighting(): void {
+    const phase = getTimePhase(this.world.clock.minuteOfDay);
+    const minute = this.world.clock.minuteOfDay;
+    let alpha = 0;
+    let color = 0x111a31;
+
+    if (phase === "night") {
+      alpha = minute < 360 ? 0.5 : 0.44;
+      color = 0x071126;
+    } else if (phase === "dawn") {
+      alpha = 0.16;
+      color = 0x6c4a7c;
+    } else if (phase === "dusk") {
+      alpha = 0.24;
+      color = 0x5c3452;
+    }
+
+    this.nightOverlay.clear();
+    this.nightOverlay.fillStyle(color, alpha);
+    this.nightOverlay.fillRect(0, 0, this.scale.width, this.scale.height);
+
+    this.lanternGlow.clear();
+    if (alpha > 0.1) {
+      const lanterns = [
+        [760, 709],
+        [1015, 719],
+        [1448, 404],
+        [1588, 429],
+        [660, 1184],
+        [1850, 429]
+      ];
+      for (const [x, y] of lanterns) {
+        this.lanternGlow.fillStyle(0xffcc66, phase === "night" ? 0.23 : 0.13);
+        this.lanternGlow.fillCircle(x, y, phase === "night" ? 84 : 56);
+        this.lanternGlow.fillStyle(0xffefad, 0.65);
+        this.lanternGlow.fillCircle(x, y, 8);
+      }
+    }
+  }
+
+  private handleAction(): void {
+    if (this.mode === "dialogue") {
+      this.closePanel();
+      return;
+    }
+
+    if (this.mode !== "world") {
+      return;
+    }
+
+    if (this.playerState.bikeStuck) {
+      this.tryFreeBike();
+      return;
+    }
+
+    const target = this.getNearestInteraction();
+    if (!target) {
+      this.showToast("No one is close enough to talk, trade, or join an activity with.");
+      return;
+    }
+
+    if (target.type === "npc") {
+      this.interactWithNpc(target.id);
+    } else if (target.type === "shop") {
+      this.openShop(target.id);
+    } else if (target.type === "activity") {
+      this.openActivity(target.id);
+    } else if (target.type === "offender") {
+      this.confrontWantedOffender(target.id);
+    } else {
+      this.collectPickup(target.id);
+    }
+  }
+
+  private toggleInventory(): void {
+    if (this.mode === "inventory") {
+      this.closePanel();
+      return;
+    }
+    if (this.mode !== "world") {
+      return;
+    }
+    this.openInventory();
+  }
+
+  private toggleCommunityBoard(): void {
+    if (this.mode === "community") {
+      this.closePanel();
+      return;
+    }
+    if (this.mode !== "world") {
+      return;
+    }
+    this.openCommunityBoard();
+  }
+
+  private togglePhone(): void {
+    if (this.phone?.isOpen) {
+      this.phone.close();
+      return;
+    }
+    if (this.mode !== "world") {
+      return;
+    }
+    this.mode = "phone";
+    this.phone?.open();
+  }
+
+  private toggleBike(): void {
+    if (this.mode !== "world") {
+      return;
+    }
+    if (!this.playerState.hasBike) {
+      this.showToast(`Rent a scooter first. You need Rp ${itemDefinitions[BIKE_RENTAL_ITEM_ID].buyPrice}.`);
+      return;
+    }
+    if (this.playerState.bikeStuck) {
+      this.showToast(`The bike is stuck. Bring ${REQUIRED_BIKE_HELPERS} group helpers and press E.`);
+      return;
+    }
+
+    this.playerState.onBike = !this.playerState.onBike;
+    if (this.playerState.onBike && this.playerState.tutorialStep === "rent_bike") {
+      this.playerState.tutorialStep = "join_group";
+    }
+    saveWorldState(this.world);
+    this.updatePlayerBikeVisual();
+    this.showToast(this.playerState.onBike ? "Bike mode on. Roads are fast; mud and beach sand are not." : "Bike parked. You are back on foot.");
+  }
+
+  private interactWithNpc(npcId: string): void {
+    const npc = npcDefinitions[npcId];
+    const state = this.world.npcs[npcId];
+    const routine = npc.routine.find((stop) => stop.id === state.currentRoutineId);
+    this.dispatchIntent({ kind: "RecordMemory", subjectType: "npc", subjectId: npcId, memory: "visited", detail: "Spoke in world." });
+
+    if (npcId === "ibu_sari") {
+      this.handleGroceryQuest(npc);
+      return;
+    }
+
+    if (npcId === "kadek") {
+      this.handleBerawaBakeryQuest(npc);
+      return;
+    }
+
+    this.openDialogue(
+      npc.name,
+      `${this.dialogueProvider.getLine(npcId, { memory: getRelationship(this.world, "npc", npcId) })}\n\nRight now ${npc.name} is ${routine?.label ?? "taking in the neighborhood"}.`
+    );
+  }
+
+  private handleGroceryQuest(npc: NpcDefinition): void {
+    const questId = "canggu_station_restock";
+    if (!isQuestActive(this.playerState, questId) && !isQuestComplete(this.playerState, questId)) {
+      startQuest(this.playerState, questId);
+      this.openDialogue(
+        npc.name,
+        "Perfect timing. The FINNS-side grocery rush is about to start, and the young coconuts are running low. Bring me two from the Berawa beach palms and I will pay properly."
+      );
+      saveWorldState(this.world);
+      return;
+    }
+
+    if (isQuestActive(this.playerState, questId)) {
+      if (getQuantity(this.playerState, "coconut") >= 2) {
+        removeItem(this.playerState, "coconut", 2);
+        const quest = completeQuest(this.playerState, questId);
+        this.dispatchIntent({
+          kind: "RecordMemory",
+          subjectType: "npc",
+          subjectId: npc.id,
+          memory: "completed_quest",
+          detail: quest?.title
+        });
+        this.dispatchIntent({ kind: "AwardReputationTag", tag: "helpful", reason: `Completed ${quest?.title ?? questId}` });
+        this.dispatchIntent({ kind: "AdjustReputation", delta: 6, reason: `Completed ${quest?.title ?? questId}` });
+        this.openDialogue(
+          npc.name,
+          `These are exactly right. Here is Rp ${quest?.rewardMoney ?? 0}, plus coffee for the road. The Berawa grocery crowd thanks you.`
+        );
+        saveWorldState(this.world);
+      } else {
+        this.openDialogue(
+          npc.name,
+          "The palms by Berawa Beach drop coconuts after the breeze picks up. Bring me two and we can restock before the traffic wave."
+        );
+      }
+      return;
+    }
+
+    this.openDialogue(npc.name, "You helped Canggu Station breathe today. Come by when you need groceries or coffee.");
+  }
+
+  private handleBerawaBakeryQuest(npc: NpcDefinition): void {
+    const questId = "berawa_bakery_run";
+    if (!isQuestActive(this.playerState, questId) && !isQuestComplete(this.playerState, questId)) {
+      startQuest(this.playerState, questId);
+      this.openDialogue(
+        npc.name,
+        "I promised to bring a croissant before the FINNS-side meetup. Could you buy one from BAKED. Berawa?"
+      );
+      saveWorldState(this.world);
+      return;
+    }
+
+    if (isQuestActive(this.playerState, questId)) {
+      if (getQuantity(this.playerState, "butter_croissant") >= 1) {
+        removeItem(this.playerState, "butter_croissant", 1);
+        const quest = completeQuest(this.playerState, questId);
+        this.dispatchIntent({
+          kind: "RecordMemory",
+          subjectType: "npc",
+          subjectId: npc.id,
+          memory: "completed_quest",
+          detail: quest?.title
+        });
+        this.dispatchIntent({ kind: "AwardReputationTag", tag: "reliable", reason: `Completed ${quest?.title ?? questId}` });
+        this.dispatchIntent({ kind: "AdjustReputation", delta: 5, reason: `Completed ${quest?.title ?? questId}` });
+        this.openDialogue(
+          npc.name,
+          `Perfect. Still flaky, still warm. Take Rp ${quest?.rewardMoney ?? 0} and a couple of stickers for the run.`
+        );
+        saveWorldState(this.world);
+      } else {
+        this.openDialogue(npc.name, "BAKED. Berawa is just off the main Berawa stretch. Bring me one Butter Croissant.");
+      }
+      return;
+    }
+
+    this.openDialogue(npc.name, "The FINNS-side meetup survived. You move through Berawa like you know the shortcuts.");
+  }
+
+  private openDialogue(title: string, body: string): void {
+    this.closePanel();
+    this.mode = "dialogue";
+    const { width, height } = this.scale;
+    const panelWidth = Math.min(760, width - 32);
+    const panelHeight = Math.min(190, height - 48);
+    const x = (width - panelWidth) / 2;
+    const y = height - panelHeight - 24;
+    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x111820, 0.94);
+    bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
+    bg.lineStyle(2, 0xf4d58d, 0.58);
+    bg.strokeRoundedRect(x, y, panelWidth, panelHeight, 8);
+    const titleText = this.add.text(x + 22, y + 18, title, this.panelTitleStyle());
+    const bodyText = this.add.text(x + 22, y + 54, body, {
+      ...this.panelBodyStyle(),
+      wordWrap: { width: panelWidth - 44 }
+    });
+    const closeText = this.add
+      .text(x + panelWidth - 22, y + panelHeight - 26, "E / ESC", this.panelHintStyle())
+      .setOrigin(1, 0.5);
+    container.add([bg, titleText, bodyText, closeText]);
+    this.panel = container;
+  }
+
+  private openShop(shopId: string): void {
+    this.mode = "shop";
+    this.dispatchIntent({ kind: "VisitVenue", venueId: shopId });
+    this.renderShopPanel(shopDefinitions[shopId]);
+  }
+
+  private renderShopPanel(shop: ShopDefinition): void {
+    this.closePanel(false);
+    this.mode = "shop";
+    const { width, height } = this.scale;
+    const panelWidth = Math.min(760, width - 28);
+    const panelHeight = Math.min(580, height - 44);
+    const x = (width - panelWidth) / 2;
+    const y = (height - panelHeight) / 2;
+    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x111820, 0.95);
+    bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
+    bg.lineStyle(2, 0xf4d58d, 0.52);
+    bg.strokeRoundedRect(x, y, panelWidth, panelHeight, 8);
+    container.add(bg);
+
+    container.add(this.add.text(x + 22, y + 18, shop.name, this.panelTitleStyle()));
+    container.add(
+      this.add.text(x + 22, y + 52, `${shop.greeting}\nMoney: Rp ${this.playerState.money}`, {
+        ...this.panelBodyStyle(),
+        wordWrap: { width: panelWidth - 44 }
+      })
+    );
+
+    let rowY = y + 118;
+    container.add(this.add.text(x + 22, rowY, "Buy", this.panelSectionStyle()));
+    rowY += 30;
+    for (const itemId of shop.sells) {
+      const item = itemDefinitions[itemId];
+      this.addPanelButton(container, x + 22, rowY, panelWidth - 44, 38, `${item.name}  -  Rp ${item.buyPrice}`, () => {
+        if (itemId === BIKE_RENTAL_ITEM_ID) {
+          this.buyBikeRental(shop);
+          return;
+        }
+        if (this.playerState.money < item.buyPrice) {
+          this.showToast("Not enough money.");
+          return;
+        }
+        this.playerState.money -= item.buyPrice;
+        addItem(this.playerState, itemId, 1);
+        this.dispatchIntent({
+          kind: "RecordMemory",
+          subjectType: "venue",
+          subjectId: shop.id,
+          memory: "bought_item",
+          detail: item.name
+        });
+        this.showToast(`Bought ${item.name}.`);
+        saveWorldState(this.world);
+        this.renderShopPanel(shop);
+      });
+      rowY += 44;
+    }
+
+    rowY += 12;
+    container.add(this.add.text(x + 22, rowY, "Sell", this.panelSectionStyle()));
+    rowY += 30;
+    for (const itemId of shop.buys) {
+      const item = itemDefinitions[itemId];
+      const owned = getQuantity(this.playerState, itemId);
+      this.addPanelButton(
+        container,
+        x + 22,
+        rowY,
+        panelWidth - 44,
+        38,
+        `${item.name} x${owned}  +  Rp ${item.sellPrice}`,
+        () => {
+          if (!removeItem(this.playerState, itemId, 1)) {
+            this.showToast(`You do not have ${item.name}.`);
+            return;
+          }
+          this.playerState.money += item.sellPrice;
+          this.showToast(`Sold ${item.name}.`);
+          saveWorldState(this.world);
+          this.renderShopPanel(shop);
+        },
+        owned > 0 ? 0x253a35 : 0x2d3036
+      );
+      rowY += 44;
+    }
+
+    this.addPanelButton(container, x + panelWidth - 160, y + panelHeight - 54, 138, 36, "Close", () => this.closePanel(), 0x4a3331);
+    this.panel = container;
+  }
+
+  private buyBikeRental(shop: ShopDefinition): void {
+    const rental = itemDefinitions[BIKE_RENTAL_ITEM_ID];
+    if (this.playerState.hasBike) {
+      this.showToast("You already have a rented bike today.");
+      return;
+    }
+    if (this.playerState.money < rental.buyPrice) {
+      this.showToast(`Not enough money. You need Rp ${rental.buyPrice}.`);
+      return;
+    }
+
+    this.playerState.money -= rental.buyPrice;
+    this.playerState.hasBike = true;
+    this.playerState.onBike = true;
+    this.playerState.bikeStuck = false;
+    this.playerState.bikeCondition = 100;
+    this.playerState.tutorialStep = "join_group";
+    if (getQuantity(this.playerState, SCOOTER_KEY_ITEM_ID) === 0) {
+      addItem(this.playerState, SCOOTER_KEY_ITEM_ID, 1);
+    }
+    this.dispatchIntent({
+      kind: "RecordMemory",
+      subjectType: "venue",
+      subjectId: shop.id,
+      memory: "bought_item",
+      detail: rental.name
+    });
+    saveWorldState(this.world);
+    this.updatePlayerBikeVisual();
+    this.showToast("Scooter rented. Berawa suddenly feels connected. Press B to park or ride.");
+    this.renderShopPanel(shop);
+  }
+
+  private openActivity(activityId: string): void {
+    const activity = activityDefinitions.find((candidate) => candidate.id === activityId);
+    if (!activity) {
+      return;
+    }
+    this.renderActivityPanel(activity);
+  }
+
+  private renderActivityPanel(activity: VenueActivityDefinition): void {
+    this.closePanel(false);
+    this.mode = "activity";
+    const { width, height } = this.scale;
+    const panelWidth = Math.min(760, width - 28);
+    const panelHeight = Math.min(520, height - 44);
+    const x = (width - panelWidth) / 2;
+    const y = (height - panelHeight) / 2;
+    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x111820, 0.96);
+    bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
+    bg.lineStyle(2, 0xf4d58d, 0.52);
+    bg.strokeRoundedRect(x, y, panelWidth, panelHeight, 8);
+    container.add(bg);
+
+    const group = activity.groupId ? interestGroupDefinitions[activity.groupId] : undefined;
+    const joined = group ? this.playerState.joinedGroupIds.includes(group.id) : false;
+    const matchingShop = Object.values(shopDefinitions).find((shop) => shop.name === activity.venueName);
+    const costLine = activity.moneyCost > 0 ? `Cost: Rp ${activity.moneyCost}` : "Cost: free";
+    const energyLine =
+      activity.socialEnergyDelta < 0
+        ? `Social energy: ${activity.socialEnergyDelta}`
+        : `Social energy: +${activity.socialEnergyDelta}`;
+    const redemptionLine = activity.isRedemption
+      ? `\nRepair: Rep +${activity.reputationReward ?? 0}  |  Wanted -${activity.wantedReduction ?? 0}  |  Bounty -Rp ${activity.bountyReduction ?? 0}`
+      : "";
+
+    container.add(this.add.text(x + 22, y + 18, activity.title, this.panelTitleStyle()));
+    container.add(
+      this.add.text(
+        x + 22,
+        y + 54,
+        `${activity.venueName}\n${activity.description}\n${activity.schedule}  |  ${activity.tags.join(" / ")}\n${costLine}  |  Focus ${activity.focusReward >= 0 ? "+" : ""}${activity.focusReward}  |  ${energyLine}  |  Links +${activity.connectionReward}${redemptionLine}`,
+        {
+          ...this.panelBodyStyle(),
+          wordWrap: { width: panelWidth - 44 }
+        }
+      )
+    );
+
+    if (group) {
+      container.add(this.add.text(x + 22, y + 174, "Interest Group", this.panelSectionStyle()));
+      container.add(
+        this.add.text(x + 22, y + 202, `${group.name}: ${group.hook}\nVibe: ${group.vibe}`, {
+          ...this.panelBodyStyle(),
+          wordWrap: { width: panelWidth - 44 }
+        })
+      );
+    }
+
+    const buttonY = y + panelHeight - 104;
+    this.addPanelButton(
+      container,
+      x + 22,
+      buttonY,
+      Math.min(220, panelWidth - 44),
+      38,
+      "Do Activity",
+      () => this.participateInActivity(activity),
+      0x253a35
+    );
+
+    if (group) {
+      this.addPanelButton(
+        container,
+        x + 252,
+        buttonY,
+        Math.min(220, panelWidth - 274),
+        38,
+        joined ? "Group Joined" : "Join Group",
+        () => this.joinInterestGroup(group.id, activity),
+        joined ? 0x2d3036 : 0x253a47
+      );
+    }
+
+    if (matchingShop) {
+      this.addPanelButton(
+        container,
+        x + 22,
+        y + panelHeight - 54,
+        Math.min(220, panelWidth - 44),
+        36,
+        "Venue Shop",
+        () => this.renderShopPanel(matchingShop),
+        0x394155
+      );
+    }
+
+    this.addPanelButton(container, x + panelWidth - 160, y + panelHeight - 54, 138, 36, "Close", () => this.closePanel(), 0x4a3331);
+    this.panel = container;
+  }
+
+  private participateInActivity(activity: VenueActivityDefinition): void {
+    if (this.playerState.money < activity.moneyCost) {
+      this.showToast("Not enough money for that plan.");
+      return;
+    }
+
+    if (activity.socialEnergyDelta < 0 && this.playerState.socialEnergy < Math.abs(activity.socialEnergyDelta)) {
+      this.showToast("Your social battery is too low. Try a calmer activity first.");
+      return;
+    }
+
+    this.playerState.money -= activity.moneyCost;
+    this.playerState.focus = Phaser.Math.Clamp(this.playerState.focus + activity.focusReward, 0, 100);
+    this.playerState.socialEnergy = Phaser.Math.Clamp(
+      this.playerState.socialEnergy + activity.socialEnergyDelta,
+      0,
+      100
+    );
+    this.playerState.connections += activity.connectionReward;
+    if (activity.reputationReward) {
+      this.dispatchIntent({
+        kind: "AdjustReputation",
+        delta: activity.reputationReward,
+        reason: activity.isRedemption ? `Redemption activity: ${activity.title}` : `Activity: ${activity.title}`
+      });
+    }
+    if (activity.isRedemption) {
+      this.dispatchIntent({ kind: "AwardReputationTag", tag: "community_contributor", reason: activity.title });
+    }
+    this.playerState.safety = Phaser.Math.Clamp(this.playerState.safety + (activity.safetyReward ?? 0), 0, 100);
+    if (activity.wantedReduction || activity.bountyReduction) {
+      this.playerState.wantedLevel = Math.max(0, this.playerState.wantedLevel - (activity.wantedReduction ?? 0));
+      this.playerState.bounty = Math.max(0, this.playerState.bounty - (activity.bountyReduction ?? 0));
+      if (this.playerState.wantedLevel === 0 || this.playerState.bounty === 0) {
+        this.playerState.wantedLevel = 0;
+        this.playerState.bounty = 0;
+        this.playerState.lastFlagReason = undefined;
+      }
+    }
+    for (const reward of activity.rewardItems) {
+      addItem(this.playerState, reward.itemId, reward.quantity);
+    }
+    if (activity.groupId && !this.playerState.joinedGroupIds.includes(activity.groupId)) {
+      this.playerState.joinedGroupIds.push(activity.groupId);
+      this.playerState.connections += 1;
+      this.startGroupTravel(activity.groupId, "walk", false);
+    }
+    saveWorldState(this.world);
+    const repairCopy = activity.isRedemption ? " Trust repaired." : "";
+    this.showToast(`You joined ${activity.title}. New links: ${this.playerState.connections}.${repairCopy}`);
+    this.renderActivityPanel(activity);
+  }
+
+  private joinInterestGroup(groupId: string, activity?: VenueActivityDefinition): void {
+    const group = interestGroupDefinitions[groupId];
+    if (!group) {
+      return;
+    }
+    if (!this.playerState.joinedGroupIds.includes(groupId)) {
+      this.playerState.joinedGroupIds.push(groupId);
+      this.playerState.connections += 1;
+      this.showToast(`Joined ${group.name}.`);
+      saveWorldState(this.world);
+    }
+    this.startGroupTravel(groupId, "walk", false);
+    if (activity) {
+      this.renderActivityPanel(activity);
+    } else {
+      this.openCommunityBoard();
+    }
+  }
+
+  private startGroupTravel(groupId: string, mode: GroupTravelMode, announce = true): void {
+    const group = interestGroupDefinitions[groupId];
+    if (!group) {
+      return;
+    }
+    if (!this.playerState.joinedGroupIds.includes(groupId)) {
+      this.playerState.joinedGroupIds.push(groupId);
+    }
+    if (mode === "bike") {
+      if (!this.playerState.hasBike) {
+        this.showToast("Bike lines require everyone to have a bike. Rent yours first.");
+        return;
+      }
+      if (this.playerState.bikeStuck) {
+        this.showToast("Free the stuck bike before joining a ride line.");
+        return;
+      }
+      const existingParty = this.getGroupTravelers();
+      if (existingParty.length > 0 && !existingParty.every((traveler) => traveler.hasBike)) {
+        this.showToast("Bike lines are blocked because someone in the party does not have a bike.");
+        return;
+      }
+      this.playerState.onBike = true;
+    }
+
+    this.clearGroupLine();
+    this.playerState.activeGroupId = groupId;
+    this.playerState.groupTravelMode = mode;
+    if (this.playerState.tutorialStep === "join_group") {
+      this.playerState.tutorialStep = "free_roam";
+    }
+    this.spawnGroupLine(groupId, mode);
+    this.syncGroupWorldState();
+    saveWorldState(this.world);
+    if (announce) {
+      this.showToast(`${group.name} formed a ${mode === "bike" ? "bike" : "walking"} line. Follow the leader.`);
+    }
+  }
+
+  private spawnGroupLine(groupId: string, mode: GroupTravelMode): void {
+    const startX = Phaser.Math.Clamp(this.player.x + 92, 80, WORLD_WIDTH - 80);
+    const startY = Phaser.Math.Clamp(this.player.y + 8, 80, WORLD_HEIGHT - 240);
+    const helperNames = ["Nina", "Gus", "Maya", "Leo"];
+    const helperSprites = ["npc-made", "npc-kadek", "npc-sari", "npc-ari"];
+
+    this.groupLeader = this.createGroupTraveler(`${groupId}-leader`, "Group lead", "npc-kadek", startX, startY, true, mode);
+    this.groupFollowers = helperNames.map((name, index) =>
+      this.createGroupTraveler(
+        `${groupId}-helper-${index + 1}`,
+        name,
+        helperSprites[index % helperSprites.length],
+        startX - (index + 1) * 38,
+        startY + (index % 2 === 0 ? 18 : -18),
+        true,
+        mode
+      )
+    );
+    this.groupRoute = this.getGroupRoute(groupId, startX, startY);
+    this.groupRouteIndex = 0;
+  }
+
+  private createGroupTraveler(
+    id: string,
+    name: string,
+    spriteKey: string,
+    x: number,
+    y: number,
+    hasBike: boolean,
+    mode: GroupTravelMode
+  ): GroupTravelerRuntime {
+    const bikeSprite = this.add.sprite(x, y + 10, "group-bike").setVisible(mode === "bike").setDepth(y - 1);
+    const sprite = this.add.sprite(x, y, spriteKey).setDepth(y);
+    return { id, name, hasBike, sprite, bikeSprite };
+  }
+
+  private getGroupRoute(groupId: string, startX: number, startY: number): Phaser.Math.Vector2[] {
+    const routes: Record<string, Array<[number, number]>> = {
+      berawa_sweat_social: [
+        [1768, 300],
+        [1475, 430],
+        [975, 817],
+        [610, 742]
+      ],
+      sunset_table: [
+        [975, 817],
+        [650, 1110],
+        [585, 1225],
+        [975, 817]
+      ],
+      berawa_deep_work: [
+        [975, 817],
+        [1475, 430],
+        [1768, 365],
+        [1510, 820]
+      ],
+      brunch_builders: [
+        [975, 817],
+        [1190, 610],
+        [1475, 430],
+        [610, 742]
+      ]
+    };
+    const route = routes[groupId] ?? [
+      [975, 817],
+      [1475, 430],
+      [1768, 365],
+      [1510, 820],
+      [610, 742]
+    ];
+    return [[startX, startY], ...route].map(([x, y]) => new Phaser.Math.Vector2(x, y));
+  }
+
+  private updateGroupLine(delta: number): void {
+    if (!this.groupLeader || this.groupRoute.length === 0) {
+      return;
+    }
+    const mode = this.playerState.groupTravelMode ?? "walk";
+    const speed = mode === "bike" ? GROUP_BIKE_SPEED : GROUP_WALK_SPEED;
+    const target = this.groupRoute[this.groupRouteIndex];
+    const reached = this.moveTravelerToward(this.groupLeader, target.x, target.y, speed, delta, 0);
+    if (reached) {
+      this.groupRouteIndex = (this.groupRouteIndex + 1) % this.groupRoute.length;
+    }
+
+    const travelers = this.getGroupTravelers();
+    const desiredGap = mode === "bike" ? 58 : 42;
+    for (let index = 1; index < travelers.length; index += 1) {
+      const ahead = travelers[index - 1].sprite;
+      this.moveTravelerToward(travelers[index], ahead.x, ahead.y, speed * 1.08, delta, desiredGap);
+    }
+
+    for (const traveler of travelers) {
+      this.updateGroupTravelerVisual(traveler, mode);
+    }
+    this.syncGroupWorldState();
+  }
+
+  private moveTravelerToward(
+    traveler: GroupTravelerRuntime,
+    targetX: number,
+    targetY: number,
+    speed: number,
+    delta: number,
+    stopDistance: number
+  ): boolean {
+    const dx = targetX - traveler.sprite.x;
+    const dy = targetY - traveler.sprite.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance <= Math.max(stopDistance, 5)) {
+      return true;
+    }
+    const step = Math.min(distance - stopDistance, (speed * delta) / 1000);
+    traveler.sprite.x += (dx / distance) * step;
+    traveler.sprite.y += (dy / distance) * step;
+    traveler.sprite.setScale(dx < -1 ? -1 : 1, 1);
+    return distance - step <= Math.max(stopDistance, 5);
+  }
+
+  private updateGroupTravelerVisual(traveler: GroupTravelerRuntime, mode: GroupTravelMode): void {
+    traveler.sprite.setDepth(traveler.sprite.y + 2);
+    traveler.bikeSprite.setVisible(mode === "bike");
+    traveler.bikeSprite.setPosition(traveler.sprite.x, traveler.sprite.y + 10);
+    traveler.bikeSprite.setDepth(traveler.sprite.y + 1);
+    traveler.bikeSprite.setScale(traveler.sprite.scaleX < 0 ? -1 : 1, 1);
+  }
+
+  private getGroupTravelers(): GroupTravelerRuntime[] {
+    return this.groupLeader ? [this.groupLeader, ...this.groupFollowers] : [];
+  }
+
+  private countGroupHelpers(): number {
+    return this.getGroupTravelers().length;
+  }
+
+  private tryFreeBike(): void {
+    const helpers = this.countGroupHelpers();
+    if (helpers < REQUIRED_BIKE_HELPERS) {
+      this.showToast(`Need ${REQUIRED_BIKE_HELPERS} group helpers to drag it out. You have ${helpers}. Join a group first.`);
+      return;
+    }
+
+    this.playerState.bikeStuck = false;
+    this.playerState.onBike = true;
+    this.playerState.bikeCondition = Phaser.Math.Clamp(this.playerState.bikeCondition + 8, 1, 100);
+    this.playerState.tutorialStep = "free_roam";
+    this.syncGroupWorldState("traveling");
+    saveWorldState(this.world);
+    this.updatePlayerBikeVisual();
+    this.showToast("The group hauled the bike out. Mud lesson learned.");
+  }
+
+  private syncGroupWorldState(status: "idle" | "traveling" | "stuck-recovery" = "traveling"): void {
+    if (!this.groupLeader || !this.playerState.activeGroupId || !this.playerState.groupTravelMode) {
+      return;
+    }
+    const stateId = `local-${this.playerState.activeGroupId}`;
+    this.world.groups[stateId] = {
+      id: stateId,
+      groupDefinitionId: this.playerState.activeGroupId,
+      leaderId: this.groupLeader.id,
+      memberIds: [this.playerState.id, ...this.getGroupTravelers().map((traveler) => traveler.id)],
+      travelMode: this.playerState.groupTravelMode,
+      status: this.playerState.bikeStuck ? "stuck-recovery" : status,
+      requiresBike: this.playerState.groupTravelMode === "bike",
+      x: Math.round(this.groupLeader.sprite.x),
+      y: Math.round(this.groupLeader.sprite.y)
+    };
+  }
+
+  private clearGroupLine(): void {
+    for (const traveler of this.getGroupTravelers()) {
+      traveler.sprite.destroy();
+      traveler.bikeSprite.destroy();
+    }
+    this.groupLeader = undefined;
+    this.groupFollowers = [];
+    this.groupRoute = [];
+    this.groupRouteIndex = 0;
+  }
+
+  private openCommunityBoard(): void {
+    this.closePanel(false);
+    this.mode = "community";
+    const { width, height } = this.scale;
+    const panelWidth = Math.min(820, width - 28);
+    const panelHeight = Math.min(660, height - 44);
+    const x = (width - panelWidth) / 2;
+    const y = (height - panelHeight) / 2;
+    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x111820, 0.96);
+    bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
+    bg.lineStyle(2, 0xf4d58d, 0.52);
+    bg.strokeRoundedRect(x, y, panelWidth, panelHeight, 8);
+    container.add(bg);
+
+    container.add(this.add.text(x + 22, y + 18, "Berawa Community Board", this.panelTitleStyle()));
+    container.add(
+      this.add.text(
+        x + 22,
+        y + 56,
+        `Links ${this.playerState.connections}  |  Rep ${this.playerState.reputation}  |  Wanted ${this.playerState.wantedLevel}  |  ${this.getBikeStatusLabel()}\nSeeded groups today. Later this can become a live event/group feed.`,
+        {
+          ...this.panelBodyStyle(),
+          wordWrap: { width: panelWidth - 44 }
+        }
+      )
+    );
+
+    let rowY = y + 122;
+    for (const group of Object.values(interestGroupDefinitions)) {
+      const joined = this.playerState.joinedGroupIds.includes(group.id);
+      const rowHeight = panelWidth < 520 ? 82 : 68;
+      const rowBg = this.add.graphics();
+      rowBg.fillStyle(joined ? 0x253a35 : 0x1d2832, 0.95);
+      rowBg.fillRoundedRect(x + 18, rowY, panelWidth - 36, rowHeight, 6);
+      rowBg.lineStyle(1, 0xf4d58d, joined ? 0.34 : 0.16);
+      rowBg.strokeRoundedRect(x + 18, rowY, panelWidth - 36, rowHeight, 6);
+      container.add(rowBg);
+      container.add(
+        this.add.text(x + 32, rowY + 10, `${joined ? "Joined: " : ""}${group.name} @ ${group.venueName}`, {
+          ...this.panelSectionStyle(),
+          wordWrap: { width: panelWidth - 190 }
+        })
+      );
+      container.add(
+        this.add.text(x + 32, rowY + 34, `${group.hook} (${group.tags.join(" / ")})`, {
+          ...this.panelHintStyle(),
+          wordWrap: { width: panelWidth - 190 }
+        })
+      );
+      this.addPanelButton(
+        container,
+        x + panelWidth - 146,
+        rowY + 16,
+        112,
+        34,
+        joined ? "Joined" : "Join",
+        () => this.joinInterestGroup(group.id),
+        joined ? 0x2d3036 : 0x253a47
+      );
+      rowY += rowHeight + 8;
+      if (rowY > y + panelHeight - 90) {
+        break;
+      }
+    }
+
+    const activeGroupId = this.playerState.activeGroupId ?? this.playerState.joinedGroupIds[0];
+    if (activeGroupId) {
+      const compactButtons = panelWidth < 560;
+      const actionY = compactButtons ? y + panelHeight - 94 : y + panelHeight - 54;
+      const actionWidth = compactButtons ? Math.max(112, (panelWidth - 58) / 2) : 132;
+      this.addPanelButton(
+        container,
+        x + 22,
+        actionY,
+        actionWidth,
+        36,
+        "Walk Line",
+        () => {
+          this.startGroupTravel(activeGroupId, "walk");
+          this.openCommunityBoard();
+        },
+        0x253a35
+      );
+      this.addPanelButton(
+        container,
+        x + 30 + actionWidth,
+        actionY,
+        actionWidth,
+        36,
+        "Bike Line",
+        () => {
+          this.startGroupTravel(activeGroupId, "bike");
+          this.openCommunityBoard();
+        },
+        0x253a47
+      );
+    }
+
+    this.addPanelButton(container, x + panelWidth - 160, y + panelHeight - 54, 138, 36, "Close", () => this.closePanel(), 0x4a3331);
+    this.panel = container;
+  }
+
+  private openInventory(): void {
+    this.closePanel(false);
+    this.mode = "inventory";
+    const { width, height } = this.scale;
+    const panelWidth = Math.min(700, width - 28);
+    const panelHeight = Math.min(560, height - 44);
+    const x = (width - panelWidth) / 2;
+    const y = (height - panelHeight) / 2;
+    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x111820, 0.95);
+    bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
+    bg.lineStyle(2, 0xf4d58d, 0.52);
+    bg.strokeRoundedRect(x, y, panelWidth, panelHeight, 8);
+    container.add(bg);
+    container.add(this.add.text(x + 22, y + 18, "Bag", this.panelTitleStyle()));
+    container.add(
+      this.add.text(
+        x + 22,
+        y + 56,
+        `Money: Rp ${this.playerState.money}  |  Focus ${this.playerState.focus}  |  Social ${this.playerState.socialEnergy}  |  Safety ${this.playerState.safety}\nRep ${this.playerState.reputation}  |  Wanted ${this.playerState.wantedLevel}  |  Bounty Rp ${this.playerState.bounty}  |  ${this.getBikeStatusLabel()}`,
+        {
+          ...this.panelBodyStyle(),
+          wordWrap: { width: panelWidth - 44 }
+        }
+      )
+    );
+
+    const inventoryLines = formatInventory(this.playerState.inventory)
+      .map((line) => `- ${line}`)
+      .join("\n");
+    container.add(
+      this.add.text(x + 22, y + 112, inventoryLines, {
+        ...this.panelBodyStyle(),
+        wordWrap: { width: panelWidth - 44 }
+      })
+    );
+
+    const questLines = [
+      ...this.playerState.activeQuestIds.map((questId) => `Active: ${questDefinitions[questId]?.title ?? questId}`),
+      ...this.playerState.completedQuestIds.map((questId) => `Done: ${questDefinitions[questId]?.title ?? questId}`)
+    ];
+    const joinedGroupLines = this.playerState.joinedGroupIds.map(
+      (groupId) => `Group: ${interestGroupDefinitions[groupId]?.name ?? groupId}`
+    );
+    container.add(this.add.text(x + 22, y + panelHeight - 172, "Quests & Groups", this.panelSectionStyle()));
+    container.add(
+      this.add.text(x + 22, y + panelHeight - 140, [...questLines, ...joinedGroupLines].length ? [...questLines, ...joinedGroupLines].join("\n") : "No quests or groups yet.", {
+        ...this.panelBodyStyle(),
+        wordWrap: { width: panelWidth - 44 }
+      })
+    );
+
+    this.addPanelButton(container, x + panelWidth - 306, y + panelHeight - 54, 138, 36, "Save", () => this.saveGame(), 0x253a35);
+    this.addPanelButton(container, x + panelWidth - 160, y + panelHeight - 54, 138, 36, "Close", () => this.closePanel(), 0x4a3331);
+    this.panel = container;
+  }
+
+  private closePanel(setWorldMode = true): void {
+    this.panel?.destroy(true);
+    this.panel = undefined;
+    if (setWorldMode) {
+      this.mode = "world";
+    }
+  }
+
+  private openFirstRunHint(): void {
+    if (this.world.questFlags.firstRunHintSeen) {
+      return;
+    }
+    this.world.questFlags.firstRunHintSeen = true;
+    saveWorldState(this.world);
+    this.openDialogue(
+      "Welcome to Berawa",
+      "WASD or arrows move. E interacts. P opens the phone. I opens the bag. B toggles your bike after rental. F5 saves locally. ESC closes panels."
+    );
+  }
+
+  private updateMapDiscovery(initial = false): void {
+    const discovery = this.world.mapDiscovery;
+    let changed = false;
+    const newVenueNames: string[] = [];
+
+    for (const area of berawaAreas) {
+      if (discovery.revealAll || Phaser.Math.Distance.Between(this.player.x, this.player.y, area.x, area.y) <= area.radius) {
+        changed = this.addDiscoveredId(discovery.discoveredAreaIds, area.id) || changed;
+      }
+    }
+
+    const venues = new Map(getAllVenues().map((venue) => [venue.id, venue.name]));
+    for (const node of venueMapNodes) {
+      if (discovery.revealAll || Phaser.Math.Distance.Between(this.player.x, this.player.y, node.x, node.y) <= node.radius) {
+        const wasAdded = this.addDiscoveredId(discovery.discoveredVenueIds, node.venueId);
+        changed = wasAdded || changed;
+        if (wasAdded) {
+          newVenueNames.push(venues.get(node.venueId) ?? node.venueId);
+        }
+      }
+    }
+
+    if (changed || initial) {
+      this.updateDiscoveryLabelVisibility();
+    }
+    if (changed) {
+      saveWorldState(this.world);
+      if (!initial && newVenueNames.length > 0 && this.discoveryToastCooldown <= 0) {
+        this.discoveryToastCooldown = 2600;
+        this.showToast(`Map updated: ${newVenueNames[0]} discovered.`);
+      }
+    }
+  }
+
+  private addDiscoveredId(ids: string[], id: string): boolean {
+    if (ids.includes(id)) {
+      return false;
+    }
+    ids.push(id);
+    return true;
+  }
+
+  private revealAllMapDiscovery(): void {
+    this.world.mapDiscovery.revealAll = true;
+    for (const area of berawaAreas) {
+      this.addDiscoveredId(this.world.mapDiscovery.discoveredAreaIds, area.id);
+    }
+    for (const venue of getAllVenues()) {
+      this.addDiscoveredId(this.world.mapDiscovery.discoveredVenueIds, venue.id);
+    }
+    this.updateDiscoveryLabelVisibility();
+    saveWorldState(this.world);
+  }
+
+  private updateDiscoveryLabelVisibility(): void {
+    const discovery = this.world.mapDiscovery;
+    for (const entry of this.discoveryLabels) {
+      const discovered =
+        discovery.revealAll ||
+        (entry.subjectType === "area"
+          ? discovery.discoveredAreaIds.includes(entry.id)
+          : discovery.discoveredVenueIds.includes(entry.id));
+      entry.label.setVisible(discovered);
+    }
+  }
+
+  private toggleGodmodePanel(): void {
+    if (!this.isDevBuild()) {
+      return;
+    }
+    if (this.godmodePanel) {
+      this.closeGodmodePanel();
+      return;
+    }
+    this.openGodmodePanel();
+  }
+
+  private openGodmodePanel(): void {
+    if (!this.isDevBuild()) {
+      return;
+    }
+    this.godmodePanel?.destroy(true);
+    this.godmodePanel = undefined;
+    this.closePanel(false);
+    this.phone?.close();
+    this.mode = "godmode";
+
+    const { width, height } = this.scale;
+    const panelWidth = Math.min(760, width - 28);
+    const panelHeight = Math.min(720, height - 44);
+    const x = (width - panelWidth) / 2;
+    const y = (height - panelHeight) / 2;
+    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 12);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x111820, 0.96);
+    bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
+    bg.lineStyle(2, 0x8fe3b4, 0.58);
+    bg.strokeRoundedRect(x, y, panelWidth, panelHeight, 8);
+    container.add(bg);
+
+    const ibuAffinity = getRelationship(this.world, "npc", "ibu_sari")?.affinity ?? 0;
+    const stats =
+      `Speed x${this.movementSpeedMultiplier}  |  Money Rp ${this.playerState.money}  |  Rep ${this.world.reputation.score}  |  Safety ${this.playerState.safety}\n` +
+      `${this.getBikeStatusLabel()}  |  Ibu Sari affinity ${ibuAffinity}  |  Map ${this.world.mapDiscovery.discoveredVenueIds.length} venues${this.world.mapDiscovery.revealAll ? " + reveal all" : ""}\n` +
+      "Development-only controls. This panel is omitted from production builds.";
+    container.add(this.add.text(x + 22, y + 18, "Godmode", this.panelTitleStyle()));
+    container.add(
+      this.add.text(x + 22, y + 56, stats, {
+        ...this.panelBodyStyle(),
+        wordWrap: { width: panelWidth - 44 }
+      })
+    );
+
+    const compact = panelWidth < 340;
+    const cols = compact ? 1 : 2;
+    const gap = 10;
+    const buttonWidth = compact ? panelWidth - 44 : (panelWidth - 44 - gap) / 2;
+    const buttonHeight = 36;
+    let buttonIndex = 0;
+    const addGodButton = (label: string, action: () => void, fill = 0x253a47): void => {
+      const col = buttonIndex % cols;
+      const row = Math.floor(buttonIndex / cols);
+      const bx = x + 22 + col * (buttonWidth + gap);
+      const by = y + 142 + row * (buttonHeight + 8);
+      this.addPanelButton(container, bx, by, buttonWidth, buttonHeight, label, () => {
+        action();
+        saveWorldState(this.world);
+        this.refreshGodmodePanel();
+      }, fill);
+      buttonIndex += 1;
+    };
+
+    addGodButton("Cycle Speed", () => {
+      this.movementSpeedMultiplier = this.movementSpeedMultiplier === 1 ? 2 : this.movementSpeedMultiplier === 2 ? 4 : 1;
+      this.showToast(`Dev speed x${this.movementSpeedMultiplier}.`);
+    });
+    addGodButton("+Rp 500", () => {
+      this.playerState.money += 500;
+      this.showToast("Dev money added.");
+    }, 0x253a35);
+    addGodButton("+Coconut", () => {
+      addItem(this.playerState, "coconut", 1);
+      this.showToast("Dev item added.");
+    });
+    addGodButton("+Croissant", () => {
+      addItem(this.playerState, "butter_croissant", 1);
+      this.showToast("Dev item added.");
+    });
+    addGodButton("+Ibu Relationship", () => this.devRecordMemory("npc", "ibu_sari", "helped", "Dev relationship adjustment."), 0x253a35);
+    addGodButton("+Rep 10", () => this.devAdjustReputation(10, "Dev reputation adjustment."), 0x253a35);
+    addGodButton("Helpful Tag", () => this.devAwardReputationTag("helpful", "Dev reputation tag adjustment."), 0x253a35);
+    addGodButton("+Safety 20", () => {
+      this.playerState.safety = Phaser.Math.Clamp(this.playerState.safety + 20, 0, 100);
+      this.showToast("Dev safety adjusted.");
+    });
+    addGodButton("Toggle Bike", () => {
+      this.playerState.hasBike = true;
+      this.playerState.onBike = !this.playerState.onBike;
+      if (getQuantity(this.playerState, SCOOTER_KEY_ITEM_ID) === 0) {
+        addItem(this.playerState, SCOOTER_KEY_ITEM_ID, 1);
+      }
+      this.updatePlayerBikeVisual();
+      this.showToast(this.playerState.onBike ? "Dev bike riding." : "Dev bike parked.");
+    });
+    addGodButton("Repair Bike", () => {
+      this.playerState.hasBike = true;
+      this.playerState.bikeCondition = 100;
+      this.playerState.bikeStuck = false;
+      this.updatePlayerBikeVisual();
+      this.showToast("Dev bike repaired.");
+    });
+    addGodButton("Time 08:00", () => this.devSetTime(8 * 60));
+    addGodButton("Time 18:00", () => this.devSetTime(18 * 60));
+    addGodButton("Reveal Map", () => {
+      this.revealAllMapDiscovery();
+      this.showToast("Dev map discovery revealed.");
+    }, 0x394155);
+    addGodButton("Quest Prep", () => {
+      if (!isQuestActive(this.playerState, "canggu_station_restock") && !isQuestComplete(this.playerState, "canggu_station_restock")) {
+        startQuest(this.playerState, "canggu_station_restock");
+      }
+      addItem(this.playerState, "coconut", 2);
+      this.showToast("Dev grocery quest prepped.");
+    }, 0x394155);
+    addGodButton("Teleport Canggu Station", () => this.devTeleport(610, 742), 0x394155);
+    addGodButton("Teleport FINNS", () => this.devTeleport(1768, 300), 0x394155);
+    addGodButton("Teleport Beach", () => this.devTeleport(350, 1225), 0x394155);
+    addGodButton("Clear Wanted", () => {
+      this.playerState.wantedLevel = 0;
+      this.playerState.bounty = 0;
+      this.playerState.flaggedByVictims = 0;
+      this.playerState.lastFlagReason = undefined;
+      this.updatePlayerWantedSign();
+      this.showToast("Dev wanted state cleared.");
+    }, 0x4a3331);
+
+    this.addPanelButton(container, x + panelWidth - 160, y + panelHeight - 54, 138, 36, "Close", () => this.closeGodmodePanel(), 0x4a3331);
+    this.godmodePanel = container;
+  }
+
+  private refreshGodmodePanel(): void {
+    if (this.godmodePanel) {
+      this.openGodmodePanel();
+    }
+  }
+
+  private closeGodmodePanel(): void {
+    this.godmodePanel?.destroy(true);
+    this.godmodePanel = undefined;
+    if (this.mode === "godmode") {
+      this.mode = "world";
+    }
+  }
+
+  private isDevBuild(): boolean {
+    return Boolean((import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV);
+  }
+
+  private devRecordMemory(subjectType: "npc" | "venue", subjectId: string, memory: MemoryType, detail: string): void {
+    this.dispatchIntent({ kind: "RecordMemory", subjectType, subjectId, memory, detail });
+    this.showToast("Dev relationship memory recorded.");
+  }
+
+  private devAdjustReputation(delta: number, reason: string): void {
+    this.dispatchIntent({ kind: "AdjustReputation", delta, reason });
+    this.showToast(`Dev reputation ${delta >= 0 ? "+" : ""}${delta}.`);
+  }
+
+  private devAwardReputationTag(tag: ReputationTag, reason: string): void {
+    this.dispatchIntent({ kind: "AwardReputationTag", tag, reason });
+    this.showToast(`Dev tag awarded: ${tag}.`);
+  }
+
+  private devSetTime(minuteOfDay: number): void {
+    this.world.clock.minuteOfDay = Phaser.Math.Clamp(minuteOfDay, 0, 1439);
+    this.updateLighting();
+    this.showToast(`Dev time set to ${formatClock(this.world)}.`);
+  }
+
+  private devTeleport(x: number, y: number): void {
+    this.player.setVelocity(0, 0);
+    this.player.setPosition(Phaser.Math.Clamp(x, 28, WORLD_WIDTH - 28), Phaser.Math.Clamp(y, 28, WORLD_HEIGHT - 28));
+    this.player.body?.updateFromGameObject();
+    this.playerState.x = Math.round(this.player.x);
+    this.playerState.y = Math.round(this.player.y);
+    this.updatePlayerBikeVisual();
+    this.updateMapDiscovery();
+    this.showToast("Dev teleport complete.");
+  }
+
+  private addPanelButton(
+    container: Phaser.GameObjects.Container,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    label: string,
+    onClick: () => void,
+    fill = 0x253a47
+  ): void {
+    const button = this.add.container(x, y);
+    const bg = this.add.graphics();
+    bg.fillStyle(fill, 1);
+    bg.fillRoundedRect(0, 0, width, height, 6);
+    bg.lineStyle(1, 0xf4d58d, 0.32);
+    bg.strokeRoundedRect(0, 0, width, height, 6);
+    const text = this.add
+      .text(14, height / 2, label, {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: "15px",
+        color: "#fff8df"
+      })
+      .setOrigin(0, 0.5);
+    text.setWordWrapWidth(width - 28);
+    button.add([bg, text]);
+    button.setSize(width, height);
+    container.add(button);
+
+    const hitZone = this.add.zone(x + width / 2, y + height / 2, width, height).setScrollFactor(0).setDepth(container.depth + 2);
+    hitZone.setInteractive(new Phaser.Geom.Rectangle(0, 0, width, height), Phaser.Geom.Rectangle.Contains);
+    if (hitZone.input) {
+      hitZone.input.cursor = "pointer";
+    }
+    hitZone.on("pointerover", () => bg.setAlpha(0.86));
+    hitZone.on("pointerout", () => bg.setAlpha(1));
+    hitZone.on("pointerdown", (pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event?: Phaser.Types.Input.EventData) => {
+      event?.stopPropagation();
+      pointer.event?.stopPropagation();
+      onClick();
+    });
+    container.once(Phaser.GameObjects.Events.DESTROY, () => hitZone.destroy());
+  }
+
+  private collectPickup(pickupId: string): void {
+    const pickup = pickupDefinitions.find((candidate) => candidate.id === pickupId);
+    if (!pickup || !this.isPickupAvailable(pickup)) {
+      return;
+    }
+
+    addItem(this.playerState, pickup.itemId, 1);
+    this.world.collectedPickups[pickup.id] = this.getAbsoluteMinute();
+    saveWorldState(this.world);
+    this.showToast(`Collected ${itemDefinitions[pickup.itemId].name}.`);
+  }
+
+  private confrontWantedOffender(offenderId: string): void {
+    const offender = this.wantedOffenders.get(offenderId);
+    if (!offender) {
+      return;
+    }
+    if (offender.wantedLevel <= 0) {
+      this.showToast("Only flagged wanted people can be confronted.");
+      return;
+    }
+
+    const reward = Math.min(offender.cash, this.getOffenderReward(offender));
+    offender.cash -= reward;
+    offender.wantedLevel = Math.max(0, offender.wantedLevel - 1);
+    this.playerState.money += reward;
+    this.dispatchIntent({ kind: "AdjustReputation", delta: 3, reason: "Citizen arrest of flagged rider" });
+    this.playerState.connections += offender.wantedLevel === 0 ? 1 : 0;
+    this.spawnCashBurst(offender.sprite.x, offender.sprite.y, reward);
+    saveWorldState(this.world);
+
+    if (offender.wantedLevel === 0) {
+      offender.sign.setVisible(false);
+      this.showToast(`Citizen arrest complete. Rp ${reward} recovered from the offender.`);
+    } else {
+      this.showToast(`Bounty hit: Rp ${reward} fell from the wanted rider. Wanted level now ${offender.wantedLevel}.`);
+    }
+  }
+
+  private getOffenderReward(offender: WantedOffenderRuntime): number {
+    return Math.min(MAX_BOUNTY_REWARD, 25 + offender.wantedLevel * 15);
+  }
+
+  private spawnCashBurst(x: number, y: number, amount: number): void {
+    const pieces = Math.max(3, Math.min(7, Math.ceil(amount / 20)));
+    for (let i = 0; i < pieces; i += 1) {
+      const coin = this.add
+        .text(x, y - 18, "Rp", {
+          fontFamily: "Inter, Arial, sans-serif",
+          fontSize: "12px",
+          color: "#fff0bd",
+          backgroundColor: "rgba(37, 58, 53, 0.82)",
+          padding: { x: 4, y: 2 }
+        })
+        .setOrigin(0.5)
+        .setDepth(UI_DEPTH - 10);
+      this.tweens.add({
+        targets: coin,
+        x: x + Phaser.Math.Between(-42, 42),
+        y: y + Phaser.Math.Between(8, 46),
+        alpha: 0,
+        duration: 850,
+        ease: "Cubic.easeOut",
+        onComplete: () => coin.destroy()
+      });
+    }
+  }
+
+  private getNearestInteraction(): InteractionTarget | undefined {
+    const candidates: InteractionTarget[] = [];
+    const px = this.player.x;
+    const py = this.player.y;
+
+    for (const npc of Object.values(npcDefinitions)) {
+      const sprite = this.npcSprites.get(npc.id);
+      if (!sprite) continue;
+      const distance = Phaser.Math.Distance.Between(px, py, sprite.x, sprite.y);
+      if (distance <= 82) {
+        candidates.push({ type: "npc", id: npc.id, label: `Talk to ${npc.name}`, distance });
+      }
+    }
+
+    for (const shop of Object.values(shopDefinitions)) {
+      const distance = Phaser.Math.Distance.Between(px, py, shop.x, shop.y);
+      if (distance <= shop.radius) {
+        candidates.push({ type: "shop", id: shop.id, label: `Enter ${shop.name}`, distance });
+      }
+    }
+
+    for (const activity of activityDefinitions) {
+      const distance = Phaser.Math.Distance.Between(px, py, activity.x, activity.y);
+      if (distance <= activity.radius) {
+        candidates.push({ type: "activity", id: activity.id, label: activity.title, distance });
+      }
+    }
+
+    for (const offender of this.wantedOffenders.values()) {
+      if (offender.wantedLevel <= 0) {
+        continue;
+      }
+      const distance = Phaser.Math.Distance.Between(px, py, offender.sprite.x, offender.sprite.y);
+      if (distance <= 78) {
+        candidates.push({
+          type: "offender",
+          id: offender.id,
+          label: `Citizen arrest ${offender.name} for Rp ${Math.min(offender.cash, this.getOffenderReward(offender))}`,
+          distance
+        });
+      }
+    }
+
+    for (const pickup of pickupDefinitions) {
+      if (!this.isPickupAvailable(pickup)) continue;
+      const distance = Phaser.Math.Distance.Between(px, py, pickup.x, pickup.y);
+      if (distance <= 64) {
+        candidates.push({ type: "pickup", id: pickup.id, label: `Pick up ${pickup.label}`, distance });
+      }
+    }
+
+    const priority = (target: InteractionTarget): number => {
+      if (target.type === "npc") return 0;
+      if (target.type === "offender") return 1;
+      if (target.type === "activity") return 2;
+      if (target.type === "shop") return 3;
+      return 4;
+    };
+
+    return candidates.sort((a, b) => priority(a) - priority(b) || a.distance - b.distance)[0];
+  }
+
+  private getRoutineStop(npc: NpcDefinition) {
+    const minute = this.world.clock.minuteOfDay;
+    return (
+      npc.routine.find((stop) => minute >= stop.startMinute && minute < stop.endMinute) ??
+      npc.routine[0]
+    );
+  }
+
+  private isPickupAvailable(pickup: PickupDefinition): boolean {
+    const lastCollected = this.world.collectedPickups[pickup.id];
+    if (!lastCollected) {
+      return true;
+    }
+    return this.getAbsoluteMinute() - lastCollected >= pickup.respawnMinutes;
+  }
+
+  private getAbsoluteMinute(): number {
+    return Math.floor(this.world.clock.day * 1440 + this.world.clock.minuteOfDay);
+  }
+
+  private saveGame(): void {
+    saveWorldState(this.world);
+    this.showToast("Game saved locally.");
+  }
+
+  private dispatchIntent(intent: GameIntent): IntentResult {
+    this.network.pushIntent(intent);
+    const result = this.dispatcher.dispatch(intent, this.world, this.getAbsoluteMinute());
+    this.playerState.reputation = this.world.reputation.score;
+    return result;
+  }
+
+  private handlePointerDown(pointer: Phaser.Input.Pointer): void {
+    if (this.mode !== "world") {
+      return;
+    }
+
+    const width = this.scale.width;
+    const height = this.scale.height;
+    const inJoystickArea = pointer.x < Math.min(260, width * 0.42) && pointer.y > height - 245;
+    if (!inJoystickArea) {
+      return;
+    }
+
+    this.joystickPointerId = pointer.id;
+    this.joystickOrigin.set(pointer.x, pointer.y);
+    this.joystickBase.setPosition(pointer.x, pointer.y);
+    this.joystickKnob.setPosition(pointer.x, pointer.y);
+    this.joystickVector.set(0, 0);
+  }
+
+  private handlePointerMove(pointer: Phaser.Input.Pointer): void {
+    if (this.joystickPointerId !== pointer.id) {
+      return;
+    }
+
+    const dx = pointer.x - this.joystickOrigin.x;
+    const dy = pointer.y - this.joystickOrigin.y;
+    const distance = Math.min(TOUCH_JOYSTICK_RADIUS, Math.hypot(dx, dy));
+    const angle = Math.atan2(dy, dx);
+    const knobX = this.joystickOrigin.x + Math.cos(angle) * distance;
+    const knobY = this.joystickOrigin.y + Math.sin(angle) * distance;
+    this.joystickKnob.setPosition(knobX, knobY);
+    this.joystickVector.set(Math.cos(angle) * (distance / TOUCH_JOYSTICK_RADIUS), Math.sin(angle) * (distance / TOUCH_JOYSTICK_RADIUS));
+  }
+
+  private handlePointerUp(pointer: Phaser.Input.Pointer): void {
+    if (this.joystickPointerId !== pointer.id) {
+      return;
+    }
+    this.joystickPointerId = undefined;
+    this.joystickVector.set(0, 0);
+    this.layoutTouchControls();
+  }
+
+  private directionFromVector(vector: Phaser.Math.Vector2): Direction {
+    if (Math.abs(vector.x) > Math.abs(vector.y)) {
+      return vector.x < 0 ? "left" : "right";
+    }
+    return vector.y < 0 ? "up" : "down";
+  }
+
+  private layoutForViewport(): void {
+    const { width, height } = this.scale;
+    this.cameras.main.setZoom(width < 720 ? 0.86 : 1);
+    this.promptText.setPosition(20, height - 36);
+    this.toastText.setPosition(width / 2, Math.max(92, height * 0.17));
+    this.layoutTouchControls();
+    this.redrawHudChrome();
+  }
+
+  private layoutTouchControls(): void {
+    if (!this.touchContainer) {
+      return;
+    }
+    const { width, height } = this.scale;
+    const showTouch = width < 900 || this.sys.game.device.input.touch;
+    this.touchContainer.setVisible(showTouch);
+    for (const zone of this.touchHitZones.values()) {
+      zone.setVisible(showTouch);
+      if (zone.input) {
+        zone.input.enabled = showTouch;
+      }
+    }
+
+    const baseX = 96;
+    const baseY = height - 96;
+    if (this.joystickPointerId === undefined) {
+      this.joystickBase.setPosition(baseX, baseY);
+      this.joystickKnob.setPosition(baseX, baseY);
+      this.joystickOrigin.set(baseX, baseY);
+    }
+
+    const action = this.touchContainer.getByName("action-button") as Phaser.GameObjects.Container | null;
+    const bag = this.touchContainer.getByName("bag-button") as Phaser.GameObjects.Container | null;
+    const community = this.touchContainer.getByName("community-button") as Phaser.GameObjects.Container | null;
+    const bike = this.touchContainer.getByName("bike-button") as Phaser.GameObjects.Container | null;
+    const phone = this.touchContainer.getByName("phone-button") as Phaser.GameObjects.Container | null;
+    const save = this.touchContainer.getByName("save-button") as Phaser.GameObjects.Container | null;
+    action?.setPosition(width - 86, height - 92);
+    bag?.setPosition(width - 166, height - 88);
+    community?.setPosition(width - 166, height - 168);
+    bike?.setPosition(width - 86, height - 172);
+    phone?.setPosition(width - 166, height - 248);
+    save?.setPosition(width - 86, height - 252);
+    this.touchHitZones.get("action-button")?.setPosition(width - 86, height - 92);
+    this.touchHitZones.get("bag-button")?.setPosition(width - 166, height - 88);
+    this.touchHitZones.get("community-button")?.setPosition(width - 166, height - 168);
+    this.touchHitZones.get("bike-button")?.setPosition(width - 86, height - 172);
+    this.touchHitZones.get("phone-button")?.setPosition(width - 166, height - 248);
+    this.touchHitZones.get("save-button")?.setPosition(width - 86, height - 252);
+  }
+
+  private redrawHudChrome(): void {
+    const { width, height } = this.scale;
+    this.hudChrome.clear();
+    this.hudChrome.fillStyle(0x101820, 0.62);
+    this.hudChrome.fillRoundedRect(12, 10, Math.min(620, width - 24), 148, 8);
+    this.hudChrome.fillRoundedRect(12, height - 48, Math.min(620, width - 24), 38, 8);
+    this.hudChrome.lineStyle(1, 0xf4d58d, 0.25);
+    this.hudChrome.strokeRoundedRect(12, 10, Math.min(620, width - 24), 148, 8);
+    this.hudChrome.strokeRoundedRect(12, height - 48, Math.min(620, width - 24), 38, 8);
+  }
+
+  private showToast(message: string): void {
+    this.toastText?.setText(message);
+    this.toastTimer = 2600;
+  }
+
+  private publishDebugSnapshot(target?: InteractionTarget): void {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const snapshot: BaliLifeDebugSnapshot = {
+      schemaVersion: this.world.schemaVersion,
+      mode: this.mode,
+      player: {
+        x: Math.round(this.player.x),
+        y: Math.round(this.player.y),
+        direction: this.playerState.direction,
+        hasBike: this.playerState.hasBike,
+        onBike: this.playerState.onBike,
+        bikeStuck: this.playerState.bikeStuck,
+        bikeCondition: this.playerState.bikeCondition,
+        safety: this.playerState.safety
+      },
+      money: this.playerState.money,
+      focus: this.playerState.focus,
+      socialEnergy: this.playerState.socialEnergy,
+      connections: this.playerState.connections,
+      reputation: this.playerState.reputation,
+      wantedLevel: this.playerState.wantedLevel,
+      bounty: this.playerState.bounty,
+      reputationTags: [...this.world.reputation.tags],
+      lifestyleTags: [...this.world.profile.lifestyleTags],
+      portal: `${this.world.portal.current}:${this.world.portal.multiplayerStatus}`,
+      relationshipCount: this.world.relationships.length,
+      inventory: formatInventory(this.playerState.inventory),
+      activeQuestIds: [...this.playerState.activeQuestIds],
+      completedQuestIds: [...this.playerState.completedQuestIds],
+      joinedGroupIds: [...this.playerState.joinedGroupIds],
+      prompt: this.promptText.text,
+      time: formatClock(this.world),
+      timePhase: getTimePhase(this.world.clock.minuteOfDay),
+      activeGroupId: this.playerState.activeGroupId,
+      groupTravelMode: this.playerState.groupTravelMode,
+      groupHelpers: this.countGroupHelpers(),
+      touchControlsVisible: this.touchContainer.visible,
+      nearestInteraction: target?.label,
+      movementSpeedMultiplier: this.movementSpeedMultiplier,
+      discoveredAreaIds: [...this.world.mapDiscovery.discoveredAreaIds],
+      discoveredVenueIds: [...this.world.mapDiscovery.discoveredVenueIds],
+      revealAllMap: this.world.mapDiscovery.revealAll,
+      trafficHitCooldown: Math.round(this.trafficHitCooldown),
+      npcRoutines: Object.fromEntries(
+        Object.entries(this.world.npcs).map(([id, state]) => [id, state.currentRoutineId])
+      ),
+      updatedAt: Date.now()
+    };
+
+    window.__BALI_LIFE_DEBUG__ = snapshot;
+
+    let debugNode = document.getElementById("bali-life-debug");
+    if (!debugNode) {
+      debugNode = document.createElement("pre");
+      debugNode.id = "bali-life-debug";
+      debugNode.setAttribute("data-testid", "bali-life-debug");
+      debugNode.hidden = true;
+      document.body.appendChild(debugNode);
+    }
+    debugNode.textContent = JSON.stringify(snapshot);
+  }
+
+  private mapLabelStyle(): Phaser.Types.GameObjects.Text.TextStyle {
+    return {
+      fontFamily: "Inter, Arial, sans-serif",
+      fontSize: "14px",
+      color: "#fff8df",
+      fontStyle: "700"
+    };
+  }
+
+  private signStyle(): Phaser.Types.GameObjects.Text.TextStyle {
+    return {
+      fontFamily: "Inter, Arial, sans-serif",
+      fontSize: "13px",
+      color: "#fff8df",
+      fontStyle: "700",
+      align: "center"
+    };
+  }
+
+  private hudTextStyle(size: number): Phaser.Types.GameObjects.Text.TextStyle {
+    return {
+      fontFamily: "Inter, Arial, sans-serif",
+      fontSize: `${size}px`,
+      color: "#fff8df",
+      lineSpacing: 4
+    };
+  }
+
+  private panelTitleStyle(): Phaser.Types.GameObjects.Text.TextStyle {
+    return {
+      fontFamily: "Inter, Arial, sans-serif",
+      fontSize: "24px",
+      color: "#fff0bd",
+      fontStyle: "700"
+    };
+  }
+
+  private panelSectionStyle(): Phaser.Types.GameObjects.Text.TextStyle {
+    return {
+      fontFamily: "Inter, Arial, sans-serif",
+      fontSize: "15px",
+      color: "#f4d58d",
+      fontStyle: "700"
+    };
+  }
+
+  private panelBodyStyle(): Phaser.Types.GameObjects.Text.TextStyle {
+    return {
+      fontFamily: "Inter, Arial, sans-serif",
+      fontSize: "15px",
+      color: "#fff8df",
+      lineSpacing: 5
+    };
+  }
+
+  private panelHintStyle(): Phaser.Types.GameObjects.Text.TextStyle {
+    return {
+      fontFamily: "Inter, Arial, sans-serif",
+      fontSize: "13px",
+      color: "#d7c59b"
+    };
+  }
+}

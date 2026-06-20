@@ -1,0 +1,406 @@
+import Phaser from "phaser";
+import { lifestyleTagSuggestions } from "../../data/lifestyleTags";
+import { npcDefinitions } from "../../data/npcs";
+import { questDefinitions } from "../../data/quests";
+import { gameEventDefinitions } from "../../data/events";
+import { getActiveEvents, getUpcomingEvents, formatEventTime } from "../../systems/events/EventScheduler";
+import type { IntentDispatcher } from "../../systems/intents/IntentDispatcher";
+import { setLifestyleTags } from "../../systems/profile/ProfileState";
+import { getAllVenues, getPriorityVenueCandidates, getVisibleVenues } from "../../systems/venues/VenueRegistry";
+import { getOfflineActivities } from "../../systems/offline/OfflineActivityRegistry";
+import type { GameEvent, RelationshipMemory, Venue, WorldState } from "../../types";
+
+const PHONE_DEPTH = 1500;
+const TABS = ["Map", "Contacts", "Quests", "Calendar", "Profile", "Events", "Venues", "Community"] as const;
+type PhoneTab = (typeof TABS)[number];
+
+interface PhoneShellOptions {
+  scene: Phaser.Scene;
+  getWorld: () => WorldState;
+  dispatcher: IntentDispatcher;
+  getNow: () => number;
+  save: () => void;
+  toast: (message: string) => void;
+  onClose: () => void;
+}
+
+export class PhoneShell {
+  private container?: Phaser.GameObjects.Container;
+  private activeTab: PhoneTab = "Map";
+
+  constructor(private readonly options: PhoneShellOptions) {}
+
+  get isOpen(): boolean {
+    return Boolean(this.container);
+  }
+
+  toggle(): void {
+    if (this.isOpen) {
+      this.close();
+      return;
+    }
+    this.open();
+  }
+
+  open(tab: PhoneTab = this.activeTab): void {
+    this.activeTab = tab;
+    this.render();
+  }
+
+  close(): void {
+    this.container?.destroy(true);
+    this.container = undefined;
+    this.options.onClose();
+  }
+
+  refresh(): void {
+    if (this.isOpen) {
+      this.render();
+    }
+  }
+
+  private render(): void {
+    this.container?.destroy(true);
+    const { scene } = this.options;
+    const { width, height } = scene.scale;
+    const panelWidth = Math.min(860, width - 24);
+    const panelHeight = Math.min(690, height - 24);
+    const x = (width - panelWidth) / 2;
+    const y = (height - panelHeight) / 2;
+    const container = scene.add.container(0, 0).setScrollFactor(0).setDepth(PHONE_DEPTH);
+    const bg = scene.add.graphics();
+    bg.fillStyle(0x101820, 0.97);
+    bg.fillRoundedRect(x, y, panelWidth, panelHeight, 10);
+    bg.lineStyle(2, 0xf4d58d, 0.58);
+    bg.strokeRoundedRect(x, y, panelWidth, panelHeight, 10);
+    container.add(bg);
+
+    this.renderPortalHeader(container, x, y, panelWidth);
+    this.renderTabs(container, x, y + 74, panelWidth);
+    this.renderActiveTab(container, x, y + 148, panelWidth, panelHeight - 198);
+    this.addButton(container, x + panelWidth - 116, y + panelHeight - 42, 92, 30, "Close", () => this.close(), 0x4a3331);
+    this.container = container;
+  }
+
+  private renderPortalHeader(container: Phaser.GameObjects.Container, x: number, y: number, panelWidth: number): void {
+    const world = this.options.getWorld();
+    container.add(this.options.scene.add.text(x + 18, y + 16, "Bali Life Phone", this.titleStyle()));
+    container.add(
+      this.options.scene.add.text(
+        x + 18,
+        y + 46,
+        `Portal: ${world.portal.current === "single" ? "Single Player" : "Multiplayer"}  |  Multiplayer ${world.portal.multiplayerStatus}`,
+        this.bodyStyle(13)
+      )
+    );
+    this.addButton(container, x + panelWidth - 278, y + 18, 112, 30, "Single", () => this.dispatchAndRefresh({ kind: "SwitchPortal", mode: "single" }), 0x253a35);
+    this.addButton(container, x + panelWidth - 158, y + 18, 134, 30, "Multiplayer Locked", () => this.dispatchAndRefresh({ kind: "SwitchPortal", mode: "multiplayer" }), 0x2d3036);
+  }
+
+  private renderTabs(container: Phaser.GameObjects.Container, x: number, y: number, panelWidth: number): void {
+    const gap = 6;
+    const columns = panelWidth < 560 ? 4 : 8;
+    const tabWidth = (panelWidth - 36 - gap * (columns - 1)) / columns;
+    TABS.forEach((tab, index) => {
+      const row = Math.floor(index / columns);
+      const column = index % columns;
+      const tabX = x + 18 + column * (tabWidth + gap);
+      const tabY = y + row * 34;
+      this.addButton(
+        container,
+        tabX,
+        tabY,
+        tabWidth,
+        28,
+        tab,
+        () => this.open(tab),
+        tab === this.activeTab ? 0x35533f : 0x253040
+      );
+    });
+  }
+
+  private renderActiveTab(
+    container: Phaser.GameObjects.Container,
+    x: number,
+    y: number,
+    panelWidth: number,
+    contentHeight: number
+  ): void {
+    const bodyX = x + 22;
+    const bodyY = y;
+    const bodyWidth = panelWidth - 44;
+    const title = this.options.scene.add.text(bodyX, bodyY, this.activeTab, this.sectionStyle());
+    container.add(title);
+    const textY = bodyY + 30;
+    if (this.activeTab === "Map") {
+      this.renderTextList(container, bodyX, textY, bodyWidth, this.mapLines());
+    } else if (this.activeTab === "Contacts") {
+      this.renderTextList(container, bodyX, textY, bodyWidth, this.contactLines());
+    } else if (this.activeTab === "Quests") {
+      this.renderTextList(container, bodyX, textY, bodyWidth, this.questLines());
+    } else if (this.activeTab === "Calendar") {
+      this.renderTextList(container, bodyX, textY, bodyWidth, this.calendarLines());
+    } else if (this.activeTab === "Profile") {
+      this.renderProfile(container, bodyX, textY, bodyWidth, contentHeight - 32);
+    } else if (this.activeTab === "Events") {
+      this.renderEvents(container, bodyX, textY, bodyWidth);
+    } else if (this.activeTab === "Venues") {
+      this.renderVenues(container, bodyX, textY, bodyWidth);
+    } else {
+      this.renderTextList(container, bodyX, textY, bodyWidth, this.communityLines());
+    }
+  }
+
+  private mapLines(): string[] {
+    const world = this.options.getWorld();
+    const visibleVenues = getVisibleVenues(world.mapDiscovery);
+    const hiddenCount = getAllVenues().length - visibleVenues.length;
+    return [
+      "Known Areas",
+      ...(world.mapDiscovery.revealAll || world.mapDiscovery.discoveredAreaIds.length
+        ? world.mapDiscovery.revealAll
+          ? ["- Jl. Nelayan", "- Jl. Pantai Berawa", "- Jl. Tegal Sari", "- FINNS / Canggu Club Area", "- Berawa Beach direction"]
+          : world.mapDiscovery.discoveredAreaIds.map((id) => `- ${id.replace(/_/g, " ")}`)
+        : ["- Main roads visible. Explore to reveal names and venues."]),
+      "",
+      "Discovered Venues",
+      ...(visibleVenues.length
+        ? visibleVenues.map((venue) => `- ${venue.name} (${venue.implementationStatus})`)
+        : ["- None yet. Walk or ride closer to venues."]),
+      hiddenCount > 0 ? `${hiddenCount} venue details still hidden.` : "All seeded venue details revealed."
+    ];
+  }
+
+  private contactLines(): string[] {
+    const world = this.options.getWorld();
+    const npcRelationships = world.relationships.filter((memory) => memory.subjectType === "npc");
+    if (npcRelationships.length === 0) {
+      return ["No relationship memories yet. Talk, help, buy, or finish quests to build memory."];
+    }
+    return npcRelationships.map((memory) => {
+      const npc = npcDefinitions[memory.subjectId];
+      return `${npc?.name ?? memory.subjectId}: affinity ${memory.affinity}, memories ${memory.memories.length}`;
+    });
+  }
+
+  private questLines(): string[] {
+    const player = this.options.getWorld().players[this.options.getWorld().localPlayerId];
+    const active = player.activeQuestIds.map((id) => `Active: ${questDefinitions[id]?.title ?? id}`);
+    const complete = player.completedQuestIds.map((id) => `Done: ${questDefinitions[id]?.title ?? id}`);
+    return [...active, ...complete].length ? [...active, ...complete] : ["No active quests. Talk to Ibu Sari or Kadek."];
+  }
+
+  private calendarLines(): string[] {
+    const world = this.options.getWorld();
+    const active = getActiveEvents(world.clock, world.portal).map((event) => `Now: ${event.title} (${formatEventTime(event)})`);
+    const upcoming = getUpcomingEvents(world.clock, world.portal).map((event) => `Soon: ${event.title} (${formatEventTime(event)})${event.requiresMultiplayer ? " - multiplayer locked" : ""}`);
+    return [...active, ...upcoming].length ? [...active, ...upcoming] : ["No events in the next window."];
+  }
+
+  private renderProfile(
+    container: Phaser.GameObjects.Container,
+    x: number,
+    y: number,
+    width: number,
+    _height: number
+  ): void {
+    const world = this.options.getWorld();
+    const profile = world.profile;
+    const reputation = world.reputation;
+    this.renderTextList(container, x, y, width, [
+      `${profile.displayName} @ ${profile.homeArea}`,
+      `Avatar: ${profile.avatar.body}, ${profile.avatar.hair}, ${profile.avatar.outfit}${profile.avatar.accessory ? `, ${profile.avatar.accessory}` : ""}`,
+      `Bio: ${profile.bio}`,
+      `Lifestyle tags: ${profile.lifestyleTags.length ? profile.lifestyleTags.join(", ") : "none"}`,
+      `Reputation score: ${reputation.score}`,
+      `Visible reputation tags: ${reputation.tags.length ? reputation.tags.join(", ") : "none yet"}`,
+      "Tap tags below to edit local profile tags."
+    ]);
+
+    let tagX = x;
+    let tagY = y + 174;
+    for (const tag of lifestyleTagSuggestions) {
+      const active = profile.lifestyleTags.includes(tag);
+      const labelWidth = Math.max(74, Math.min(116, tag.length * 8 + 26));
+      if (tagX + labelWidth > x + width) {
+        tagX = x;
+        tagY += 34;
+      }
+      this.addButton(container, tagX, tagY, labelWidth, 28, active ? `* ${tag}` : tag, () => {
+        const next = active
+          ? profile.lifestyleTags.filter((candidate) => candidate !== tag)
+          : [...profile.lifestyleTags, tag];
+        setLifestyleTags(profile, next);
+        this.options.save();
+        this.open("Profile");
+      }, active ? 0x35533f : 0x253040);
+      tagX += labelWidth + 6;
+    }
+  }
+
+  private renderEvents(container: Phaser.GameObjects.Container, x: number, y: number, width: number): void {
+    let rowY = y;
+    for (const event of gameEventDefinitions) {
+      const locked = event.requiresMultiplayer && this.options.getWorld().portal.multiplayerStatus === "locked";
+      this.renderTextList(container, x, rowY, width - 150, [
+        `${event.title} (${formatEventTime(event)})`,
+        `${event.type}${locked ? " - multiplayer locked" : ""}`
+      ]);
+      this.addButton(
+        container,
+        x + width - 136,
+        rowY + 2,
+        116,
+        30,
+        locked ? "Locked" : "Attend",
+        () => this.dispatchAndRefresh({ kind: "AttendEvent", eventId: event.id }),
+        locked ? 0x2d3036 : 0x253a35
+      );
+      rowY += 58;
+      if (rowY > y + 350) break;
+    }
+  }
+
+  private renderVenues(container: Phaser.GameObjects.Container, x: number, y: number, width: number): void {
+    let rowY = y;
+    const venues = getVisibleVenues(this.options.getWorld().mapDiscovery);
+    for (const venue of venues) {
+      this.renderVenueRow(container, venue, x, rowY, width);
+      rowY += 64;
+      if (rowY > y + 385) break;
+    }
+    if (venues.length === 0) {
+      this.renderTextList(container, x, y, width, ["No discovered venue details yet. Explore Berawa to reveal them."]);
+    }
+  }
+
+  private renderVenueRow(container: Phaser.GameObjects.Container, venue: Venue, x: number, y: number, width: number): void {
+    const ratingCopy =
+      venue.rating && venue.reviewCount
+        ? `Rating ${venue.rating} (${venue.reviewCount} reviews)`
+        : `Rating data ${venue.verificationStatus.replace(/_/g, " ")}`;
+    this.renderTextList(container, x, y, width - 132, [
+      `${venue.name} (${venue.venueCategory}, ${venue.implementationStatus})`,
+      `${ratingCopy}. ${venue.description}`
+    ]);
+    this.addButton(
+      container,
+      x + width - 118,
+      y + 2,
+      98,
+      30,
+      "Visit",
+      () => this.dispatchAndRefresh({ kind: "VisitVenue", venueId: venue.id }),
+      0x253a35
+    );
+  }
+
+  private communityLines(): string[] {
+    const world = this.options.getWorld();
+    const offline = getOfflineActivities().map(
+      (activity) => `- ${activity.onlinePreview} [${activity.status}${activity.requiresMultiplayer ? ", multiplayer locked" : ""}]`
+    );
+    return [
+      `Reputation score: ${world.reputation.score}`,
+      `Visible tags: ${world.reputation.tags.length ? world.reputation.tags.join(", ") : "none yet"}`,
+      "Community Council - coming soon. No live moderation in this slice.",
+      `Priority venue candidates: ${getPriorityVenueCandidates().length} seeded, all manual/needs verification.`,
+      "",
+      "Simulated Offline Activity Previews",
+      ...offline
+    ];
+  }
+
+  private renderTextList(
+    container: Phaser.GameObjects.Container,
+    x: number,
+    y: number,
+    width: number,
+    lines: string[]
+  ): Phaser.GameObjects.Text {
+    const text = this.options.scene.add.text(x, y, lines.join("\n"), {
+      ...this.bodyStyle(14),
+      wordWrap: { width }
+    });
+    container.add(text);
+    return text;
+  }
+
+  private dispatchAndRefresh(intent: Parameters<IntentDispatcher["dispatch"]>[0]): void {
+    const result = this.options.dispatcher.dispatch(intent, this.options.getWorld(), this.options.getNow());
+    this.options.toast(result.message);
+    this.options.save();
+    this.refresh();
+  }
+
+  private addButton(
+    container: Phaser.GameObjects.Container,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    label: string,
+    onClick: () => void,
+    fill = 0x253a47
+  ): void {
+    const scene = this.options.scene;
+    const button = scene.add.container(x, y);
+    const bg = scene.add.graphics();
+    bg.fillStyle(fill, 1);
+    bg.fillRoundedRect(0, 0, width, height, 6);
+    bg.lineStyle(1, 0xf4d58d, 0.28);
+    bg.strokeRoundedRect(0, 0, width, height, 6);
+    const text = scene.add
+      .text(8, height / 2, label, {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: "12px",
+        color: "#fff8df"
+      })
+      .setOrigin(0, 0.5);
+    text.setWordWrapWidth(width - 12);
+    button.add([bg, text]);
+    button.setSize(width, height);
+    container.add(button);
+
+    const hitZone = scene.add.zone(x + width / 2, y + height / 2, width, height).setScrollFactor(0).setDepth(PHONE_DEPTH + 1);
+    hitZone.setInteractive(new Phaser.Geom.Rectangle(0, 0, width, height), Phaser.Geom.Rectangle.Contains);
+    if (hitZone.input) {
+      hitZone.input.cursor = "pointer";
+    }
+    hitZone.on("pointerover", () => bg.setAlpha(0.86));
+    hitZone.on("pointerout", () => bg.setAlpha(1));
+    hitZone.on("pointerdown", (pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event?: Phaser.Types.Input.EventData) => {
+      event?.stopPropagation();
+      pointer.event?.stopPropagation();
+      onClick();
+    });
+    container.once(Phaser.GameObjects.Events.DESTROY, () => hitZone.destroy());
+  }
+
+  private titleStyle(): Phaser.Types.GameObjects.Text.TextStyle {
+    return {
+      fontFamily: "Inter, Arial, sans-serif",
+      fontSize: "22px",
+      color: "#fff0bd",
+      fontStyle: "700"
+    };
+  }
+
+  private sectionStyle(): Phaser.Types.GameObjects.Text.TextStyle {
+    return {
+      fontFamily: "Inter, Arial, sans-serif",
+      fontSize: "17px",
+      color: "#f4d58d",
+      fontStyle: "700"
+    };
+  }
+
+  private bodyStyle(size: number): Phaser.Types.GameObjects.Text.TextStyle {
+    return {
+      fontFamily: "Inter, Arial, sans-serif",
+      fontSize: `${size}px`,
+      color: "#fff8df",
+      lineSpacing: 4
+    };
+  }
+}
