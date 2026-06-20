@@ -13,11 +13,15 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
+- Current branch for OSM map work: `feat/osm-map`.
 
 ## What Was Added Recently
 
 - Git is now initialized locally. Baseline and every sprint phase are committed.
-- Berawa layout is data-driven in `src/data/berawaLayout.ts`, north-up, with Jl. Nelayan held north, Jl. Tegal Sari east, and Berawa Beach deliberately compressed toward the lower-left / southwest.
+- Berawa layout is now generated from OpenStreetMap data by `scripts/generateLayoutFromOSM.ts`; runtime consumes static generated data from `src/data/berawaLayout.ts`.
+- OSM/Nominatim/Overpass caches are committed under `data/osm/`, including the required raw Overpass extract at `data/osm/berawa.overpass.json`.
+- The generated map is north-up with a uniform projection into the existing `2400 x 1700` world. Orientation sanity in the report confirms beach lower/SW, Nelayan north, and Tegal Sari east of the beach side.
+- Map data attribution is present in README and the Phone Community tab: `Map data © OpenStreetMap contributors`.
 - Map discovery hides area and venue detail until explored, with dev reveal-all support.
 - Scooter/bike systems include rental, slow walking vs faster riding, stuck-bike state, group-helper requirement, capped traffic-hit consequences, hit feedback, and local-life redemption hooks. This stays environmental/community consequence, not combat.
 - `WorldState.reputation` is now the canonical standing source: score, wanted level, bounty, victim flags, visible positive tags, hidden trust flags, redemption state, and history. Duplicate flat standing fields were removed from `PlayerEntityState`.
@@ -29,6 +33,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - `GameScene` now delegates keyboard/joystick input to `InputController`, proximity resolution to `InteractionController`, and mobile/right-side HUD controls to `HudController`.
 - NPC relationship memory now derives affinity tiers (`stranger`, `acquaintance`, `friendly`, `regular`, `trusted`). `ScriptedDialogueProvider` varies authored lines by tier and references memories. Contacts shows tier and known memories.
 - Cooking/crafting is scaffolded only: `src/data/recipes.ts`, `src/systems/crafting/CraftingSystem.ts`, and one result item. No player-facing cooking UI/minigame yet.
+- Shops, NPC routine stops, pickups, and player spawn now derive from generated venue nodes via `src/data/layoutLookup.ts` so they move with regenerated venue coordinates.
 
 ## Important Files
 
@@ -41,6 +46,8 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Controllers: `src/systems/input/InputController.ts`, `src/systems/interaction/InteractionController.ts`, `src/ui/hud/HudController.ts`
 - Phone UI: `src/ui/phone/PhoneShell.ts`
 - Berawa layout data: `src/data/berawaLayout.ts`
+- OSM generator: `scripts/generateLayoutFromOSM.ts`
+- OSM cache/report: `data/osm/berawa.overpass.json`, `data/osm/berawa.anchors.json`, `data/osm/berawa.layout-report.json`
 - Berawa coordinate plan: `docs/BERAWA_MAP_PLAN.md`
 - Decisions log: `DECISIONS.md`
 
@@ -55,10 +62,19 @@ Copy/paste this into a new AI session to bring it up to speed.
 - `c1ad154` - `chore: scaffold crafting data model (deferred)`
 - `ba543b7` - `docs: update handoff state after consolidate sprint`
 - `795e952` - `fix: harden save migration and touch HUD controls`
+- `68679b2` - `feat: generate Berawa road layout from OpenStreetMap data`
+- `749bbfb` - `feat: load OSM-generated Berawa layout in game`
+- `ca73198` - `chore: align discovery/fog with OSM layout`
+- `1219cf0` - `docs: OSM attribution and regenerated map plan`
 
 ## Current Verification
 
 - `npm run build` passed after every phase above and after the final verification fixes.
+- `npm run generate:layout` runs from the committed cache and rewrites `src/data/berawaLayout.ts`.
+- Cache-only generator rerun is deterministic; SHA-256 hashes for `src/data/berawaLayout.ts` and `data/osm/berawa.layout-report.json` matched before/after rerun.
+- OSM report currently shows 1,476 road paths, 7,081 shared OSM road nodes, 7,278 road segments, and 875 POIs in the cached extract.
+- Curated venue matching: 7 matched via anchor/OSM POI, 4 use honest fallback placement (`baked_berawa`, `bali_family_rental_scooter`, `finns_recreation_club`, `mowies_berawa`).
+- Runtime source check found OSM/Nominatim/Overpass URLs and `fetch` only in `scripts/generateLayoutFromOSM.ts`, not game runtime code.
 - Source grep confirms no code path reads removed flat `playerState.reputation`, `playerState.wantedLevel`, `playerState.bounty`, `playerState.flaggedByVictims`, or `playerState.lastFlagReason` fields.
 - v1/v2 save migration maps old standing fields into schema v3 `WorldState.reputation` and strips legacy flat standing keys from the hydrated local player.
 - Quest code compiles and both starter quests complete through `QuestRegistry` in browser automation.
@@ -68,11 +84,15 @@ Copy/paste this into a new AI session to bring it up to speed.
 - The in-app browser connector still fails in this environment with `codex/sandbox-state-meta: missing field sandboxPolicy`, so runtime verification used local headless Chrome DevTools fallback against `http://127.0.0.1:5173/`.
 - Final fallback browser verification passed:
   - Map loads with no runtime exceptions.
+  - OSM-generated spawn lands in the generated cafe/FINNS cluster.
   - `P` opens Phone and `ESC` closes it.
   - All six HUD buttons respond to mouse automation: `PHONE`, `BAG`, `SOC`, `SAVE`, `BIKE`, `ACT`.
   - All six HUD buttons respond to mobile touch emulation after the touch HUD fix: `PHONE`, `BAG`, `SOC`, `SAVE`, `BIKE`, `ACT`.
   - Raw v1 save migrates to schema v3, preserves money, moves legacy standing into `WorldState.reputation`, and removes flat standing keys from the player.
   - Ibu Sari and Kadek starter quests complete via `QuestRegistry`, award reputation tags/score, and record relationship memories.
+  - Milk & Madu shop opens at the generated venue position.
+  - Initial discovery includes cafe/FINNS cluster and excludes beach until approached.
+  - No runtime HTTP requests to OSM/Nominatim/Overpass were observed; no external HTTP requests were observed.
   - F2 opens development godmode.
   - Only console error was a harmless missing-resource 404, likely favicon.
 
@@ -82,6 +102,8 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Phone UI is functional but still a shell; it is not a polished production phone app.
 - Godmode is simple and development-only.
 - Map discovery is a foundation, not a full minimap.
+- The road network is real OSM geometry, but decorative buildings/collision rectangles are still from the older hand-authored art pass and need a later alignment pass.
+- Four curated venues use generated-area fallback placement because the current Nominatim/OSM cache did not find exact POIs. See `data/osm/berawa.layout-report.json`.
 - Venue rating/review fields are data-only. There is no Google Places API, scraping, live verification, or live venue ranking.
 - Multiplayer is intentionally locked and inert.
 - Venue commerce/check-in/booking/delivery fields are placeholders only.
@@ -96,7 +118,7 @@ Copy/paste this into a new AI session to bring it up to speed.
    - Trigger traffic-bike collision and judge knockback/shake/splash timing.
    - Click all six HUD buttons with the real Mac trackpad/mouse.
    - Try the mobile HUD on an actual phone, especially tall screens.
-   - Drive around and judge whether the north-up Berawa compression feels recognizable.
+   - Drive around and judge whether the OSM road network reads as recognizably Berawa.
    - Open Phone > Venues > Details and inspect discovery filtering plus associated NPCs/items/quests visually.
    - Build NPC affinity through memory and confirm Contacts/dialogue feel readable.
 
@@ -105,7 +127,8 @@ Copy/paste this into a new AI session to bring it up to speed.
    - Add focused tests around `QuestRegistry`, `Persistence`, `InteractionController`, and `ReputationState`.
 
 3. Continue Berawa credibility:
-   - Align building art more closely to `berawaLayout.ts` nodes.
+   - Align building art and collision rectangles more closely to `berawaLayout.ts` nodes.
+   - Replace old hardcoded traffic lanes with generated road-following paths.
    - Curate a small verified venue file before adding more real-world-name candidates.
    - Add a compact map UI only after discovery state is stable.
 
@@ -149,5 +172,6 @@ Test notes:
 - Do not add backend/auth/database.
 - Do not add AI/LLM calls.
 - Do not claim real venue integrations, coupons, bookings, payments, delivery, or check-ins.
+- Do not add runtime map network calls; OSM services are generator-only.
 - Do not turn this into a combat RPG.
 - Do not refactor all old gameplay flows into intents yet.
