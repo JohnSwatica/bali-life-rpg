@@ -1,12 +1,20 @@
 import type { ShopDefinition } from "../types";
+import { getVenuePoint } from "./layoutLookup";
+
+const cangguStation = getVenuePoint("canggu_station", { x: 610, y: 742 });
+const milkMadu = getVenuePoint("milk_madu_berawa", { x: 1190, y: 610 });
+const baked = getVenuePoint("baked_berawa", { x: 675, y: 465 });
+const bungalowLiving = getVenuePoint("bungalow_living", { x: 1510, y: 820 });
+const satuSatu = getVenuePoint("satu_satu_coffee", { x: 1768, y: 365 });
+const scooterRental = getVenuePoint("bali_family_rental_scooter", { x: 820, y: 735 });
 
 export const shopDefinitions: Record<string, ShopDefinition> = {
   canggu_station: {
     id: "canggu_station",
     name: "Canggu Station",
     keeperNpcId: "ibu_sari",
-    x: 610,
-    y: 742,
+    x: cangguStation.x,
+    y: cangguStation.y,
     radius: 100,
     sells: ["pantry_bag", "coconut", "nasi_bungkus", "kopi_bali", "padel_wristband"],
     buys: ["coconut", "frangipani"],
@@ -16,8 +24,8 @@ export const shopDefinitions: Record<string, ShopDefinition> = {
     id: "milk_madu_berawa",
     name: "Milk & Madu Berawa",
     keeperNpcId: "made",
-    x: 1190,
-    y: 610,
+    x: milkMadu.x,
+    y: milkMadu.y,
     radius: 95,
     sells: ["brunch_slice", "kopi_bali", "coconut"],
     buys: ["frangipani", "coconut"],
@@ -26,8 +34,8 @@ export const shopDefinitions: Record<string, ShopDefinition> = {
   baked_berawa: {
     id: "baked_berawa",
     name: "BAKED. Berawa",
-    x: 675,
-    y: 465,
+    x: baked.x,
+    y: baked.y,
     radius: 96,
     sells: ["butter_croissant", "coffee_beans", "kopi_bali"],
     buys: ["frangipani"],
@@ -36,8 +44,8 @@ export const shopDefinitions: Record<string, ShopDefinition> = {
   bungalow_living: {
     id: "bungalow_living",
     name: "Bungalow Living Bali",
-    x: 1510,
-    y: 820,
+    x: bungalowLiving.x,
+    y: bungalowLiving.y,
     radius: 105,
     sells: ["home_cushion", "woven_sarong", "beach_tote"],
     buys: ["frangipani", "coconut"],
@@ -46,8 +54,8 @@ export const shopDefinitions: Record<string, ShopDefinition> = {
   satu_satu_coffee: {
     id: "satu_satu_coffee",
     name: "Satu-Satu Coffee Company",
-    x: 1768,
-    y: 365,
+    x: satuSatu.x,
+    y: satuSatu.y,
     radius: 120,
     sells: ["coffee_beans", "kopi_bali", "butter_croissant"],
     buys: ["frangipani", "pantry_bag"],
@@ -56,8 +64,8 @@ export const shopDefinitions: Record<string, ShopDefinition> = {
   bali_family_rental_scooter: {
     id: "bali_family_rental_scooter",
     name: "Bali Family Rental Scooter",
-    x: 820,
-    y: 735,
+    x: scooterRental.x,
+    y: scooterRental.y,
     radius: 92,
     sells: ["scooter_rental"],
     buys: [],
