@@ -1,51 +1,116 @@
 # Berawa Map Plan
 
-This is a compressed playable Berawa slice, not a 1:1 survey map. North is up, with Jl. Nelayan held near the northern edge and Jl. Tegal Sari to the east. The real coast sits west / southwest of this slice; the game deliberately compresses "down and left" into the playable direction toward Berawa Beach. The current goal is geographic credibility and readable play, not exact GIS accuracy.
+This playable Berawa slice is now generated from OpenStreetMap data, not hand-invented road coordinates. It is still compressed into the existing `2400 x 1700` world so the current Phaser camera, saves, movement, shops, NPCs, and discovery systems remain stable.
 
-## Coordinate Model
+Map data © OpenStreetMap contributors.
 
-- World size remains `2400 x 1700`.
-- `y` decreases northward and increases southward.
-- Lower-left / southwest is the playable beachward direction. Any old shorthand that says "south toward beach" should be read as this compression, not literal geography.
-- Roads are data-driven in `src/data/berawaLayout.ts`.
-- Road paths, area discovery radii, and venue map nodes should be edited there before adding more drawing code to `GameScene`.
+## Source Data
 
-## Current Anchors
+- Generator: `scripts/generateLayoutFromOSM.ts`
+- Generated runtime layout: `src/data/berawaLayout.ts`
+- Cached geocoded anchors: `data/osm/berawa.anchors.json`
+- Cached Overpass extract: `data/osm/berawa.overpass.json`
+- Generation report: `data/osm/berawa.layout-report.json`
 
-- `Jl. Pantai Berawa`: north-south spine that bends south-west toward Berawa Beach.
-- `Jl. Nelayan`: west-east northern connector.
-- `Jl. Tegal Sari`: eastern north-south/diagonal connector.
-- `FINNS / Club Lane`: branch toward the FINNS/Canggu Club/Recreation Club area.
-- `Berawa Cafe Lane`: compressed cafe/market lane tying Canggu Station, Milk & Madu, and Bungalow Living into the gameplay loop.
-- `Berawa Beach Access`: southwest route toward sand, beach pickups, surf/sunset activities.
-- `Soft Shortcut`: deliberately risky lane near the mud zone.
+The game never calls OSM, Nominatim, or Overpass at runtime. `npm run build` reads only committed source files.
+
+## Current Bbox
+
+The generator resolves real anchors through Nominatim, verifies them against the seed bbox, pads the resolved extent, and then queries Overpass once. The current generated bbox is:
+
+```text
+south = -8.669993906
+west  = 115.131881408
+north = -8.640953394
+east  = 115.156409792
+```
+
+Seed/fallback bbox if geocoding is incomplete:
+
+```text
+south = -8.685
+west  = 115.125
+north = -8.655
+east  = 115.145
+```
+
+## Projection
+
+The projection is local equirectangular with uniform scale, so road angles are preserved:
+
+- `x` increases eastward.
+- `y` increases southward after the projection flip.
+- North is up.
+- The beach/ocean side lands toward the lower-left / southwest.
+- Jl. Nelayan sits north of the beach side.
+- Jl. Tegal Sari / inland anchors sit east / northeast relative to the beach edge.
+
+The generator keeps the existing world size:
+
+```text
+WORLD = { w: 2400, h: 1700 }
+pad = 80
+```
+
+## Runtime Shape
+
+`src/data/berawaLayout.ts` still exports the shapes the game already consumes:
+
+- `berawaRoads`
+- `berawaAreas`
+- `venueMapNodes`
+
+Internally, the generator keys road vertices by OSM node id before emitting path data. That means OSM ways that share a node project to the same game coordinate, so real junctions connect rather than drifting apart.
+
+Curated venue content in `src/data/venues.ts` remains authoritative for names, descriptions, NPC links, items, quests, and quality fields. The generator only supplies map positions. If a curated venue cannot be matched to a geocoded anchor or named OSM POI, it is placed near its generated area and listed in `data/osm/berawa.layout-report.json`.
 
 ## Discovery Rules
 
-- The road network can remain visually readable.
-- Area and venue labels are hidden until discovered, unless dev reveal-all is enabled.
-- `WorldState.mapDiscovery` stores discovered area IDs, discovered venue IDs, and the reveal-all flag.
-- The Phone Map and Venue tabs should read from discovery state rather than listing everything by default.
+- Roads render immediately so navigation is readable.
+- Area and venue names remain hidden until discovered, unless dev reveal-all is enabled.
+- `WorldState.mapDiscovery` persists discovered area IDs, discovered venue IDs, and reveal-all state.
+- Starting discovery is tuned around the cafe/FINNS cluster; the beach is not revealed until the player approaches it.
 
-## Venue Quality Data
+## How To Regenerate
 
-Venue quality fields exist for later curation:
+Use the committed cache for normal deterministic regeneration:
 
-- `ratingSource`
-- `rating`
-- `reviewCount`
-- `lastVerifiedAt`
-- `verificationStatus`
-- `isPriorityVenue`
-- `venueCategory`
-- `mapVisibility`
-- `discoveryState`
+```bash
+npm run generate:layout
+```
 
-The helper threshold is `rating >= 4.5 && reviewCount >= 300`. No Google Places API, scraping, or live accuracy claim exists yet. Current candidate venues are manually seeded or marked as needing verification.
+The command rewrites `src/data/berawaLayout.ts` and `data/osm/berawa.layout-report.json`. A cache-only rerun should be deterministic.
+
+Only refresh from OSM services intentionally:
+
+```bash
+npm run generate:layout -- --refresh
+```
+
+`--refresh` refreshes both Nominatim anchor results and the Overpass extract. For narrower refreshes:
+
+```bash
+npm run generate:layout -- --refresh-geocode
+npm run generate:layout -- --refresh-osm
+```
+
+## Adding A Future Neighborhood
+
+Do not build another neighborhood in this sprint. The generator is already shaped so a future Uluwatu/Ubud/etc. pass can add a new config with:
+
+- a neighborhood id
+- anchor queries
+- seed/fallback bbox
+- area specs
+- cache paths
+- output path
+- the same `{ w, h }` world target or a deliberate new one
+
+The runtime should keep consuming generated data catalogs rather than hand-placing roads.
 
 ## Next Map Pass
 
-- Move building drawings closer to their layout nodes as roads continue to settle.
-- Add lane names/signposts only where the player discovers or approaches them.
-- Add a compact phone map view after the discovery model is proven in the world/Phone lists.
-- Curate a small verified Berawa venue list through an admin file or future Places integration.
+- Move decorative buildings/collision art closer to generated venue nodes.
+- Replace old hardcoded traffic lanes with road-following paths.
+- Curate fallback venue placements that were not found by Nominatim/OSM POIs.
+- Add a compact phone map only after discovery state remains stable on the OSM layout.

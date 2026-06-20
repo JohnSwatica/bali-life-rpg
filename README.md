@@ -30,7 +30,7 @@ http://127.0.0.1:5173/
 
 ## Current Vertical Slice
 
-- Top-down neighborhood map: compressed Jl. Pantai Berawa / FINNS-area streets, Berawa Beach edge, cafe/grocery/homeware stops, villas, shortcut lanes, scooters, palms, umbrellas, and lanterns.
+- Top-down neighborhood map: OSM-sourced Berawa road geometry projected into a compressed Jl. Pantai Berawa / FINNS-area slice with Berawa Beach edge, cafe/grocery/homeware stops, scooters, palms, umbrellas, and lanterns.
 - Player movement with keyboard and touch controls.
 - NPCs with daily routines:
   - Ibu Sari: Canggu Station grocer and restock quest giver.
@@ -57,19 +57,35 @@ http://127.0.0.1:5173/
 
 The current venue set is grounded in map-findable Berawa/FINNS-area places: FINNS Recreation Club, Canggu Station, Milk & Madu Berawa, BAKED. Berawa, Bungalow Living Bali, and Satu-Satu Coffee Company. The game compresses distances and uses fictional NPCs/items for playability.
 
+Map data © OpenStreetMap contributors. The generated layout is derived offline from cached OpenStreetMap/Nominatim/Overpass data in `data/osm/`; the game does not make map network calls at runtime.
+
+To regenerate the local layout from the committed cache:
+
+```bash
+npm run generate:layout
+```
+
+To intentionally refresh source data from OSM services on a dev machine:
+
+```bash
+npm run generate:layout -- --refresh
+```
+
 ## Project Structure
 
 ```text
 src/
-  data/          Static game content: map, items, NPCs, quests, shops.
+  data/          Static game content: map, generated layout, items, NPCs, quests, shops.
   scenes/        Phaser scenes and presentation/gameplay orchestration.
   systems/       State, inventory, quests, persistence, networking adapter.
   styles/        Browser canvas shell styles.
+scripts/         Offline tooling such as the OSM layout generator.
+data/osm/        Committed OSM/Nominatim/Overpass cache and generation report.
 ```
 
 The most important foundation is that world state, player entity state, persistence, and the network adapter are separate from rendering. Phaser owns the current local presentation, but the data shape is already moving toward a client/server model.
 
-Runtime saves use `schemaVersion: 2` and migrate valid v1 saves in place. Static catalogs such as venues, events, and simulated offline activities live in `src/data` and are not persisted.
+Runtime saves use `schemaVersion: 3` and migrate valid v1/v2 saves in place. Static catalogs such as venues, events, generated map layout, and simulated offline activities live in `src/data` and are not persisted.
 
 ## Build
 

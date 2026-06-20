@@ -381,6 +381,7 @@ export class PhoneShell {
       `Visible tags: ${world.reputation.tags.length ? world.reputation.tags.join(", ") : "none yet"}`,
       "Community Council - coming soon. No live moderation in this slice.",
       `Priority venue candidates: ${getPriorityVenueCandidates().length} seeded, all manual/needs verification.`,
+      "Map data © OpenStreetMap contributors. Cached offline for this slice.",
       "",
       "Simulated Offline Activity Previews",
       ...offline
