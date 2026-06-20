@@ -16,78 +16,19 @@ Copy/paste this into a new AI session to bring it up to speed.
 
 ## What Was Added Recently
 
-- Berawa/FINNS grounding:
-  - Map labels, shops, NPC flavor, quests, and docs now focus on Berawa near FINNS rather than a generic Bali neighborhood.
-  - Venue anchors include FINNS Recreation Club area, Canggu Station, Milk & Madu Berawa, BAKED. Berawa, Bungalow Living Bali, Satu-Satu Coffee Company, Bali Family Rental Scooter, and Berawa Beach.
-  - The road network is now data-driven from `src/data/berawaLayout.ts` and points north-up from Jl. Nelayan through Jl. Pantai Berawa toward Jl. Tegal Sari and Berawa Beach.
-  - Area/venue labels now reveal through map discovery instead of showing the full named map immediately.
-
-- Daily expat/digital-nomad loop:
-  - Added social/community activities around cafes, gym/club routines, brunch, sunset, home-base settling, and repair/redemption activities.
-  - Added interest groups intended to become real-world event/interest group seams later.
-
-- Scooter/bike and group-travel foundation:
-  - Player has `hasBike`, `onBike`, `bikeStuck`, `bikeCondition`, `safety`, and tutorial mobility state.
-  - Walking is intentionally slow; renting a scooter opens the map up.
-  - Added scooter rental item/shop seam and bike toggle.
-  - Added local group line simulation with leader/followers and walk/bike modes.
-  - Bike line requires the party to have bikes.
-  - Mud/sand zones can strand the bike; freeing it requires 5 group helpers.
-  - Added traffic-bike hazards and negative consequences for getting clipped.
-  - Traffic hits now knock the player back, shake the camera, show a stylized hit splash, drop a capped amount of money, and use a short cooldown to avoid repeated chain hits.
-
-- Bounty/reputation guardrail foundation:
-  - Added wanted/bounty fields on player entity during the paused work.
-  - Added a capped bad-behavior consequence model so accidental bad behavior does not become a quit moment.
-  - Added local-life redemption activity hooks such as beach cleanup, morning lane sweep, and scooter safety reset.
-  - Important design framing: this is not a combat RPG. Enforcement should read as community consequence/citizen-arrest style only for already-flagged offenders, not general combat.
-
-- Portal and Phone foundation:
-  - Added portal state: Single Player active, Multiplayer visible but locked.
-  - Added Phone UI shell opened with `P`, closed with `ESC`, and mobile `PHONE` button.
-  - Phone tabs: Map, Contacts, Quests, Calendar, Profile, Events, Venues, Community.
-
-- First-class data catalogs:
-  - `src/data/venues.ts`
-  - `src/data/events.ts`
-  - `src/data/offlineActivities.ts`
-  - `src/data/lifestyleTags.ts`
-
-- New service modules:
-  - `src/systems/portal/PortalState.ts`
-  - `src/systems/venues/VenueRegistry.ts`
-  - `src/systems/events/EventScheduler.ts`
-  - `src/systems/reputation/ReputationState.ts`
-  - `src/systems/relationships/RelationshipMemory.ts`
-  - `src/systems/offline/OfflineActivityRegistry.ts`
-  - `src/systems/intents/IntentDispatcher.ts`
-  - `src/systems/profile/ProfileState.ts`
-  - `src/systems/dialogue/DialogueProvider.ts`
-  - `src/ui/phone/PhoneShell.ts`
-
-- Shared identity bridge:
-  - `PlayerProfile` now carries local `lifestyleTags`.
-  - `remoteAccountId` is always `null` for now and reserved for a future shared account with the companion co-living/social app.
-
-- Trust-compatible reputation:
-  - Added `ReputationState` with numeric score, visible positive tags, hidden red/green flags, redemption hook, and append-only history.
-  - Hidden flags must not be shown in UI in this slice.
-
-- Intent-dispatch seam:
-  - New systems mutate through `IntentDispatcher`.
-  - Existing movement, inventory, shop, quest, and save flows were intentionally not refactored into intents.
-  - Existing flows only call thin post-action hooks where needed, such as recording venue visits or awarding reputation after quest completion.
-
-- Save migration:
-  - Runtime payload now has `schemaVersion: 2`.
-  - Save key remains the original `bali-life-rpg.berawa-finns.save.v1`.
-  - Valid v1 saves without `schemaVersion` migrate in place.
-  - Static catalogs are not saved; they load fresh from `src/data`.
-
-- Docs/state:
-  - Added `STATE.md` as this handoff doc.
-  - Added `DECISIONS.md`.
-  - Updated `README.md`, `docs/DESIGN_NOTES.md`, `docs/MULTIPLAYER_ROADMAP.md`, and `docs/ROADMAP.md`.
+- Git is now initialized locally. Baseline and every sprint phase are committed.
+- Berawa layout is data-driven in `src/data/berawaLayout.ts`, north-up, with Jl. Nelayan held north, Jl. Tegal Sari east, and Berawa Beach deliberately compressed toward the lower-left / southwest.
+- Map discovery hides area and venue detail until explored, with dev reveal-all support.
+- Scooter/bike systems include rental, slow walking vs faster riding, stuck-bike state, group-helper requirement, capped traffic-hit consequences, hit feedback, and local-life redemption hooks. This stays environmental/community consequence, not combat.
+- `WorldState.reputation` is now the canonical standing source: score, wanted level, bounty, victim flags, visible positive tags, hidden trust flags, redemption state, and history. Duplicate flat standing fields were removed from `PlayerEntityState`.
+- Save payloads now use `schemaVersion: 3` at the original key `bali-life-rpg.berawa-finns.save.v1`. Raw v1 saves and v2 saves migrate in place, including old flat standing fields into `ReputationState`.
+- Phone UI has eight tabs: Map, Contacts, Quests, Calendar, Profile, Events, Venues, Community. Venues now have selectable detail pages with category, hours, discovery state, quality fields, associated NPCs/items/quests, and honest placeholder commerce/check-in status.
+- `PlayerProfile.lifestyleTags` remains the local cross-app identity bridge; `remoteAccountId` stays `null`.
+- New systems use `IntentDispatcher` where already introduced. Existing movement/shop/inventory/save flows remain direct.
+- Starter quest branching moved into `src/systems/quests/QuestRegistry.ts` with objective handler shapes for `collect`, `deliver`, `visit`, `buy`, and `talk`.
+- `GameScene` now delegates keyboard/joystick input to `InputController`, proximity resolution to `InteractionController`, and mobile/right-side HUD controls to `HudController`.
+- NPC relationship memory now derives affinity tiers (`stranger`, `acquaintance`, `friendly`, `regular`, `trusted`). `ScriptedDialogueProvider` varies authored lines by tier and references memories. Contacts shows tier and known memories.
+- Cooking/crafting is scaffolded only: `src/data/recipes.ts`, `src/systems/crafting/CraftingSystem.ts`, and one result item. No player-facing cooking UI/minigame yet.
 
 ## Important Files
 
@@ -96,110 +37,109 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Save/load/migration: `src/systems/Persistence.ts`
 - Network stub: `src/systems/NetworkAdapter.ts`
 - Main scene and old gameplay wiring: `src/scenes/GameScene.ts`
+- Quest registry: `src/systems/quests/QuestRegistry.ts`
+- Controllers: `src/systems/input/InputController.ts`, `src/systems/interaction/InteractionController.ts`, `src/ui/hud/HudController.ts`
 - Phone UI: `src/ui/phone/PhoneShell.ts`
 - Berawa layout data: `src/data/berawaLayout.ts`
 - Berawa coordinate plan: `docs/BERAWA_MAP_PLAN.md`
 - Decisions log: `DECISIONS.md`
 
+## Phase Commits
+
+- `3dc6eaf` - `chore: baseline before consolidate+alive sprint`
+- `12544ba` - `refactor: unify reputation under canonical ReputationState`
+- `c704051` - `refactor: extract quest handlers and core controllers from GameScene`
+- `bdc49d0` - `feat: phone venue detail pages`
+- `58a707b` - `feat: tiered NPC relationships and affinity-aware dialogue`
+- `b21a846` - `chore: reconcile Berawa map orientation in layout data`
+- `c1ad154` - `chore: scaffold crafting data model (deferred)`
+
 ## Current Verification
 
-- `npm run build` passes.
-- Dev server has been started successfully at `http://127.0.0.1:5173/`.
-- Browser runtime was checked with a local headless Chrome DevTools fallback because the in-app browser connector still fails with a sandbox metadata issue in this environment.
-- Verified:
-  - Latest `npm run build` passes after adding the polish sprint code.
-  - v1 save without `schemaVersion` migrates to schema v2 and preserves player money.
-  - First-run hint appears once and closes with `ESC`.
-  - Keyboard movement works.
-  - Phone opens with `P` and closes with `ESC`.
-  - All six right-side buttons respond to mouse clicks in browser automation: `PHONE`, `BAG`, `SOC`, `SAVE`, `BIKE`, `ACT`.
-  - Right-side buttons respond under mobile touch emulation using rendered button coordinates.
-  - F2 opens development godmode; godmode buttons changed speed, money, inventory, relationship memory, reputation, bike state, time/map reveal, and teleport state.
-  - Mouse `ACT` near Canggu Station now starts Ibu Sari's quest, confirming NPC priority wins over the overlapping shop.
-  - Fog/discovery persists to localStorage and reloads.
-  - Traffic-bike collision knocks the player diagonally out of the lane, drops capped money, lowers safety/focus, starts cooldown, and did not repeat-hit after cooldown in the focused check.
-  - No game runtime exceptions were observed. Chrome logged a harmless missing-resource 404, likely favicon.
-  - `GameScene` compiles with first-run hint, dev godmode, map discovery, venue quality fields, north-up road data, and improved traffic-hit feedback.
-- Still worth checking manually by feel:
-  - Visual timing of the short red splash and screen shake during live play.
-  - Fine-tuning the mobile button layout across real phones, because Phaser's scaled height can differ from browser CSS height.
+- `npm run build` passed after every phase above.
+- Source grep confirms no code path reads removed flat `playerState.reputation`, `playerState.wantedLevel`, `playerState.bounty`, `playerState.flaggedByVictims`, or `playerState.lastFlagReason` fields.
+- v1/v2 save migration code maps old standing fields into schema v3 `WorldState.reputation`.
+- Quest code compiles through `QuestRegistry`.
+- Phone venue details compile and read from `VenueRegistry` plus discovery state.
+- Contacts tab compiles with relationship affinity tiers and memory summaries.
+- Crafting scaffold compiles without adding persisted state.
+- Earlier browser runtime checks used local headless Chrome DevTools fallback because the in-app browser connector failed with a sandbox metadata issue. Re-run browser checks before PR once a remote exists.
+
+Previously verified in browser during the polish sprint:
+
+- First-run hint appears once and closes with `ESC`.
+- Keyboard movement works.
+- Phone opens with `P` and closes with `ESC`.
+- All six right-side buttons respond to mouse automation and mobile touch emulation: `PHONE`, `BAG`, `SOC`, `SAVE`, `BIKE`, `ACT`.
+- F2 opens development godmode and its controls mutate speed, money, inventory, relationship memory, reputation, bike, time/map reveal, and teleport state.
+- Mouse `ACT` near Canggu Station starts Ibu Sari's quest, confirming NPC priority wins over the overlapping shop.
+- Fog/discovery persists to localStorage and reloads.
+- Traffic-bike collision knocks the player out of the lane, drops capped money, lowers safety/focus, starts cooldown, and avoids repeat-hit chaining.
 
 ## Known Caveats
 
-- `GameScene.ts` is still large. New systems were added as services, but older movement/shop/quest/UI logic remains in the scene.
-- The Phone UI is a shell, not a polished production phone app. It is enough to prove tabs, data binding, profile tags, venue/event lists, and locked multiplayer portal.
-- Godmode is intentionally simple and only for development builds.
-- Map discovery is a foundation: Phone tabs and world labels respect discovery state, but there is not yet a full interactive minimap.
-- Venue rating/review fields are data-only. Current candidate venues are manually seeded or marked as needing verification; there is no Google Places integration.
+- `GameScene.ts` is still large. Rendering and broader simulation remain there for a later behavior-preserving split.
+- Phone UI is functional but still a shell; it is not a polished production phone app.
+- Godmode is simple and development-only.
+- Map discovery is a foundation, not a full minimap.
+- Venue rating/review fields are data-only. There is no Google Places API, scraping, live verification, or live venue ranking.
 - Multiplayer is intentionally locked and inert.
 - Venue commerce/check-in/booking/delivery fields are placeholders only.
 - Offline activities are explicitly `simulated`.
-- Reputation has both older flat player fields from paused work and the newer `WorldState.reputation` shape. The newer `ReputationState` is the long-term source of truth; flat fields are compatibility/gameplay display glue for now.
-- The repo is not currently a git repository. There is no `.git` folder and no remote, so no PR could be opened from this workspace.
+- Crafting is data/system scaffold only; it is not exposed in Phone, shops, NPC interactions, or godmode.
+- The repo has local commits but no configured remote, so a GitHub PR cannot be opened from this workspace until a remote/repo is provided.
+- Still worth checking manually by feel: traffic-hit shake/splash timing, real Mac trackpad/mouse clicks on all six buttons, real-phone touch layout, and whether the map reads as Berawa when driving around.
 
 ## Next Move
 
-1. Manually verify the current polish sprint in the browser:
-   - Mouse-click all six right-side buttons.
-   - Repeat with mobile/touch simulation.
-   - Trigger a traffic-bike collision and confirm knockback/shake/splash/money loss/cooldown.
-   - Open godmode with F2/backtick and test speed, money, inventory, reputation/relationship, bike, time, teleport, and reveal-map controls.
-   - Discover at least one venue, save/reload, and confirm discovery persists.
-   - Confirm Canggu Station/Ibu Sari interaction priority now favors the NPC when both overlap.
+1. Re-run browser/manual verification for the new refactor:
+   - Complete both starter quests after the QuestRegistry migration.
+   - Open Phone > Venues > Details and confirm discovery filtering plus associated NPCs/items/quests.
+   - Build NPC affinity through memory and confirm Contacts/dialogue reflect the tier.
+   - Confirm all six HUD buttons still work with mouse and mobile touch.
+   - Confirm Canggu Station/Ibu Sari priority still favors the NPC.
 
-2. Tighten Phone UI:
-   - Make tab buttons more robust on mobile.
-   - Add selected venue detail state instead of list-only venue rows.
-   - Add a text-input or simple modal for lifestyle tags if richer editing is needed.
+2. Continue decomposition carefully:
+   - Extract world/render drawing only if behavior can stay identical.
+   - Add focused tests around `QuestRegistry`, `Persistence`, `InteractionController`, and `ReputationState`.
 
-3. Continue Berawa credibility pass:
+3. Continue Berawa credibility:
    - Align building art more closely to `berawaLayout.ts` nodes.
    - Curate a small verified venue file before adding more real-world-name candidates.
    - Add a compact map UI only after discovery state is stable.
 
-4. Consolidate reputation:
-   - Keep `WorldState.reputation` as the source of truth.
-   - Decide whether to remove or mirror flat `PlayerEntityState.reputation/wantedLevel/bounty` fields.
-   - Keep bad-behavior systems non-combat and capped.
+4. Expose crafting later:
+   - Add a small Phone/Home/godmode action for `CraftingSystem`.
+   - Keep it a routine/social system, not a combat or heavy minigame.
 
-5. Add tests:
-   - Persistence v1 to v2 migration.
-   - Event scheduler active/upcoming windows.
-   - Intent dispatcher reputation/memory mutations.
-   - Profile lifestyle tag normalization.
-
-6. Initialize git when ready:
-   - `git init`
-   - commit the current foundation.
-   - add remote.
-   - open PR with the summary below.
+5. Add a remote and open PR when repository access exists.
 
 ## PR-Ready Summary
 
 Title:
 
 ```text
-Add social RPG foundation systems and phone portal
+Consolidate reputation and bring Berawa slice alive
 ```
 
 Summary:
 
 ```text
-- Add locked single/multiplayer portal state and Phone UI shell with 8 tabs.
-- Add first-class venue, event, offline-activity, profile, relationship-memory, reputation, dialogue, and intent-dispatch foundations.
-- Add local PlayerProfile lifestyleTags as the future shared identity bridge.
-- Add trust-compatible ReputationState with visible tags, hidden flags, redemption hook, and history.
-- Add schemaVersion 2 save payload migration while preserving the original localStorage key.
-- Keep existing movement, shop, inventory, quest, and save flows direct; only new systems use IntentDispatcher.
-- Update STATE.md, DECISIONS.md, README, and docs.
+- Initialize local git and checkpoint the pre-sprint baseline.
+- Unify standing data under canonical WorldState.reputation with schema v3 migration from legacy flat player fields.
+- Move starter quest branching into QuestRegistry and extract InputController, InteractionController, and HudController from GameScene.
+- Add Phone venue detail pages, tiered NPC relationship dialogue, and Contacts memory summaries.
+- Reconcile Berawa beach direction as a documented southwest gameplay compression.
+- Scaffold cooking/crafting data and helper system without exposing a full UI/minigame yet.
+- Update STATE.md and DECISIONS.md.
 ```
 
 Test notes:
 
 ```text
-- npm run build
-- Local Chrome DevTools runtime check at http://127.0.0.1:5173/
-- Verified map load, no app console errors after migration fix, keyboard movement, Phone open/close, mobile touch visibility, v1 migration, and shop interaction.
+- npm run build after every phase
+- Source checks for removed flat reputation reads
+- Browser/manual verification should be re-run before PR once a remote exists
 ```
 
 ## Do Not Do Next
