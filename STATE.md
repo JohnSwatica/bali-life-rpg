@@ -53,28 +53,28 @@ Copy/paste this into a new AI session to bring it up to speed.
 - `58a707b` - `feat: tiered NPC relationships and affinity-aware dialogue`
 - `b21a846` - `chore: reconcile Berawa map orientation in layout data`
 - `c1ad154` - `chore: scaffold crafting data model (deferred)`
+- `ba543b7` - `docs: update handoff state after consolidate sprint`
+- `795e952` - `fix: harden save migration and touch HUD controls`
 
 ## Current Verification
 
-- `npm run build` passed after every phase above.
+- `npm run build` passed after every phase above and after the final verification fixes.
 - Source grep confirms no code path reads removed flat `playerState.reputation`, `playerState.wantedLevel`, `playerState.bounty`, `playerState.flaggedByVictims`, or `playerState.lastFlagReason` fields.
-- v1/v2 save migration code maps old standing fields into schema v3 `WorldState.reputation`.
-- Quest code compiles through `QuestRegistry`.
+- v1/v2 save migration maps old standing fields into schema v3 `WorldState.reputation` and strips legacy flat standing keys from the hydrated local player.
+- Quest code compiles and both starter quests complete through `QuestRegistry` in browser automation.
 - Phone venue details compile and read from `VenueRegistry` plus discovery state.
 - Contacts tab compiles with relationship affinity tiers and memory summaries.
 - Crafting scaffold compiles without adding persisted state.
-- Earlier browser runtime checks used local headless Chrome DevTools fallback because the in-app browser connector failed with a sandbox metadata issue. Re-run browser checks before PR once a remote exists.
-
-Previously verified in browser during the polish sprint:
-
-- First-run hint appears once and closes with `ESC`.
-- Keyboard movement works.
-- Phone opens with `P` and closes with `ESC`.
-- All six right-side buttons respond to mouse automation and mobile touch emulation: `PHONE`, `BAG`, `SOC`, `SAVE`, `BIKE`, `ACT`.
-- F2 opens development godmode and its controls mutate speed, money, inventory, relationship memory, reputation, bike, time/map reveal, and teleport state.
-- Mouse `ACT` near Canggu Station starts Ibu Sari's quest, confirming NPC priority wins over the overlapping shop.
-- Fog/discovery persists to localStorage and reloads.
-- Traffic-bike collision knocks the player out of the lane, drops capped money, lowers safety/focus, starts cooldown, and avoids repeat-hit chaining.
+- The in-app browser connector still fails in this environment with `codex/sandbox-state-meta: missing field sandboxPolicy`, so runtime verification used local headless Chrome DevTools fallback against `http://127.0.0.1:5173/`.
+- Final fallback browser verification passed:
+  - Map loads with no runtime exceptions.
+  - `P` opens Phone and `ESC` closes it.
+  - All six HUD buttons respond to mouse automation: `PHONE`, `BAG`, `SOC`, `SAVE`, `BIKE`, `ACT`.
+  - All six HUD buttons respond to mobile touch emulation after the touch HUD fix: `PHONE`, `BAG`, `SOC`, `SAVE`, `BIKE`, `ACT`.
+  - Raw v1 save migrates to schema v3, preserves money, moves legacy standing into `WorldState.reputation`, and removes flat standing keys from the player.
+  - Ibu Sari and Kadek starter quests complete via `QuestRegistry`, award reputation tags/score, and record relationship memories.
+  - F2 opens development godmode.
+  - Only console error was a harmless missing-resource 404, likely favicon.
 
 ## Known Caveats
 
@@ -92,12 +92,13 @@ Previously verified in browser during the polish sprint:
 
 ## Next Move
 
-1. Re-run browser/manual verification for the new refactor:
-   - Complete both starter quests after the QuestRegistry migration.
-   - Open Phone > Venues > Details and confirm discovery filtering plus associated NPCs/items/quests.
-   - Build NPC affinity through memory and confirm Contacts/dialogue reflect the tier.
-   - Confirm all six HUD buttons still work with mouse and mobile touch.
-   - Confirm Canggu Station/Ibu Sari priority still favors the NPC.
+1. Do a human play-feel pass:
+   - Trigger traffic-bike collision and judge knockback/shake/splash timing.
+   - Click all six HUD buttons with the real Mac trackpad/mouse.
+   - Try the mobile HUD on an actual phone, especially tall screens.
+   - Drive around and judge whether the north-up Berawa compression feels recognizable.
+   - Open Phone > Venues > Details and inspect discovery filtering plus associated NPCs/items/quests visually.
+   - Build NPC affinity through memory and confirm Contacts/dialogue feel readable.
 
 2. Continue decomposition carefully:
    - Extract world/render drawing only if behavior can stay identical.
@@ -139,7 +140,7 @@ Test notes:
 ```text
 - npm run build after every phase
 - Source checks for removed flat reputation reads
-- Browser/manual verification should be re-run before PR once a remote exists
+- Local headless Chrome DevTools fallback verified map load, keyboard phone controls, mouse/touch HUD controls, v1 to v3 migration, both starter quests, reputation/memory rewards, and godmode
 ```
 
 ## Do Not Do Next
