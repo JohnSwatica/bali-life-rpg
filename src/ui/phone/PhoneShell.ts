@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { itemDefinitions } from "../../data/items";
 import { lifestyleTagSuggestions } from "../../data/lifestyleTags";
 import { npcDefinitions } from "../../data/npcs";
 import { questDefinitions } from "../../data/quests";
@@ -27,6 +28,7 @@ interface PhoneShellOptions {
 export class PhoneShell {
   private container?: Phaser.GameObjects.Container;
   private activeTab: PhoneTab = "Map";
+  private selectedVenueId?: string;
 
   constructor(private readonly options: PhoneShellOptions) {}
 
@@ -264,6 +266,15 @@ export class PhoneShell {
   private renderVenues(container: Phaser.GameObjects.Container, x: number, y: number, width: number): void {
     let rowY = y;
     const venues = getVisibleVenues(this.options.getWorld().mapDiscovery);
+    const selectedVenue = venues.find((venue) => venue.id === this.selectedVenueId);
+    if (this.selectedVenueId && selectedVenue) {
+      this.renderVenueDetail(container, selectedVenue, x, y, width);
+      return;
+    }
+    if (this.selectedVenueId && !selectedVenue) {
+      this.selectedVenueId = undefined;
+    }
+
     for (const venue of venues) {
       this.renderVenueRow(container, venue, x, rowY, width);
       rowY += 64;
@@ -289,10 +300,69 @@ export class PhoneShell {
       y + 2,
       98,
       30,
-      "Visit",
-      () => this.dispatchAndRefresh({ kind: "VisitVenue", venueId: venue.id }),
+      "Details",
+      () => {
+        this.selectedVenueId = venue.id;
+        this.open("Venues");
+      },
       0x253a35
     );
+  }
+
+  private renderVenueDetail(container: Phaser.GameObjects.Container, venue: Venue, x: number, y: number, width: number): void {
+    this.addButton(
+      container,
+      x,
+      y,
+      90,
+      30,
+      "Back",
+      () => {
+        this.selectedVenueId = undefined;
+        this.open("Venues");
+      },
+      0x394155
+    );
+
+    const npcNames = venue.npcIds.map((id) => npcDefinitions[id]?.name ?? id);
+    const itemNames = venue.itemIds.map((id) => itemDefinitions[id]?.name ?? id);
+    const questTitles = venue.questIds.map((id) => questDefinitions[id]?.title ?? id);
+    const quality = venue.rating && venue.reviewCount
+      ? `Rating ${venue.rating} / ${venue.reviewCount} reviews (${venue.ratingSource}, ${venue.verificationStatus})`
+      : `Rating/review data: ${venue.verificationStatus.replace(/_/g, " ")} (${venue.ratingSource})`;
+    const verified = venue.lastVerifiedAt ? `Last verified: ${venue.lastVerifiedAt}` : "Last verified: not verified in this local slice";
+
+    this.renderTextList(container, x, y + 44, width, [
+      venue.name,
+      `Category: ${venue.venueCategory}  |  Type: ${venue.type}  |  Status: ${venue.implementationStatus}`,
+      `Hours: ${this.formatOpenHours(venue)}`,
+      `Discovery: ${venue.discoveryState}  |  Map visibility: ${venue.mapVisibility}`,
+      quality,
+      verified,
+      "",
+      venue.description,
+      "",
+      `NPCs: ${npcNames.length ? npcNames.join(", ") : "none assigned yet"}`,
+      `Items: ${itemNames.length ? itemNames.join(", ") : "none assigned yet"}`,
+      `Related quests: ${questTitles.length ? questTitles.join(", ") : "none yet"}`,
+      "",
+      "Commerce/check-in/booking/delivery seams are placeholders only; no live integration in this slice."
+    ]);
+  }
+
+  private formatOpenHours(venue: Venue): string {
+    const entries = Object.entries(venue.openHours);
+    if (entries.length === 0) {
+      return "unknown";
+    }
+    return entries
+      .map(([day, hours]) => {
+        if (hours === "closed") {
+          return `${day}: closed`;
+        }
+        return `${day}: ${hours.open}:00-${hours.close}:00`;
+      })
+      .join(" / ");
   }
 
   private communityLines(): string[] {
