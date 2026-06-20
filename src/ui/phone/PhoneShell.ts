@@ -9,6 +9,7 @@ import type { IntentDispatcher } from "../../systems/intents/IntentDispatcher";
 import { setLifestyleTags } from "../../systems/profile/ProfileState";
 import { getAllVenues, getPriorityVenueCandidates, getVisibleVenues } from "../../systems/venues/VenueRegistry";
 import { getOfflineActivities } from "../../systems/offline/OfflineActivityRegistry";
+import { getAffinityTier, summarizeRelationshipMemories } from "../../systems/relationships/RelationshipMemory";
 import type { GameEvent, RelationshipMemory, Venue, WorldState } from "../../types";
 
 const PHONE_DEPTH = 1500;
@@ -179,9 +180,14 @@ export class PhoneShell {
     if (npcRelationships.length === 0) {
       return ["No relationship memories yet. Talk, help, buy, or finish quests to build memory."];
     }
-    return npcRelationships.map((memory) => {
+    return npcRelationships.flatMap((memory) => {
       const npc = npcDefinitions[memory.subjectId];
-      return `${npc?.name ?? memory.subjectId}: affinity ${memory.affinity}, memories ${memory.memories.length}`;
+      const tier = getAffinityTier(memory);
+      const memories = summarizeRelationshipMemories(memory, 2);
+      return [
+        `${npc?.name ?? memory.subjectId}: ${tier} (affinity ${memory.affinity})`,
+        memories.length ? `  Known: ${memories.join(" / ")}` : "  Known: no specific memories yet"
+      ];
     });
   }
 

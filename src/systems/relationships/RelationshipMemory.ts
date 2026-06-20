@@ -1,5 +1,7 @@
 import type { MemoryType, RelationshipMemory, WorldState } from "../../types";
 
+export type AffinityTier = "stranger" | "acquaintance" | "friendly" | "regular" | "trusted";
+
 export function getRelationship(
   world: WorldState,
   subjectType: "npc" | "venue",
@@ -32,6 +34,42 @@ export function recordRelationshipMemory(
   relationship.lastInteractionAt = at;
   relationship.affinity += affinityForMemory(memory);
   return relationship;
+}
+
+export function getAffinityTier(memory: RelationshipMemory | undefined): AffinityTier {
+  if (!memory) {
+    return "stranger";
+  }
+
+  let tier: AffinityTier = "stranger";
+  if (memory.affinity >= 30) {
+    tier = "trusted";
+  } else if (memory.affinity >= 18) {
+    tier = "regular";
+  } else if (memory.affinity >= 8) {
+    tier = "friendly";
+  } else if (memory.affinity > 0) {
+    tier = "acquaintance";
+  }
+
+  const completedQuest = memory.memories.some((event) => event.type === "completed_quest" || event.type === "helped");
+  if (completedQuest && (tier === "stranger" || tier === "acquaintance")) {
+    return "friendly";
+  }
+  if (memory.memories.length >= 6 && tier !== "trusted") {
+    return "regular";
+  }
+  return tier;
+}
+
+export function summarizeRelationshipMemories(memory: RelationshipMemory | undefined, limit = 3): string[] {
+  if (!memory) {
+    return [];
+  }
+  return memory.memories
+    .slice(-limit)
+    .reverse()
+    .map((event) => `${event.type.replace(/_/g, " ")}${event.detail ? `: ${event.detail}` : ""}`);
 }
 
 function affinityForMemory(memory: MemoryType): number {
