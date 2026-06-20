@@ -18,10 +18,6 @@ export function createInitialPlayerState(): PlayerEntityState {
     focus: 35,
     socialEnergy: 70,
     connections: 0,
-    reputation: 60,
-    wantedLevel: 0,
-    bounty: 0,
-    flaggedByVictims: 0,
     hasBike: false,
     onBike: false,
     bikeStuck: false,
@@ -56,7 +52,7 @@ export function createInitialWorldState(): WorldState {
   );
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     version: 1,
     neighborhoodId: "berawa-finns-club",
     clock: {

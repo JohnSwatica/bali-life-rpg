@@ -13,6 +13,14 @@ import { ScriptedDialogueProvider, type DialogueProvider } from "../systems/dial
 import { IntentDispatcher, type IntentResult } from "../systems/intents/IntentDispatcher";
 import { getRelationship } from "../systems/relationships/RelationshipMemory";
 import {
+  clearWantedStanding,
+  getBounty,
+  getReputationScore,
+  getWantedLevel,
+  recordRecklessDamageFlag,
+  reduceWantedStanding
+} from "../systems/reputation/ReputationState";
+import {
   advanceClock,
   formatClock,
   getLocalPlayer,
@@ -1147,20 +1155,21 @@ export class GameScene extends Phaser.Scene {
 
   private flagLocalPlayerForBikeHit(victimName: string): void {
     this.bikeHarmCooldown = 2400;
-    this.playerState.flaggedByVictims += 1;
-    this.playerState.wantedLevel = Phaser.Math.Clamp(this.playerState.wantedLevel + 1, 0, MAX_PLAYER_WANTED_LEVEL);
-    const bountyIncrease = this.playerState.flaggedByVictims === 1 ? FIRST_FLAG_BOUNTY : REPEAT_FLAG_BOUNTY;
-    this.playerState.bounty = Math.min(MAX_PLAYER_BOUNTY, this.playerState.bounty + bountyIncrease);
+    const standing = recordRecklessDamageFlag(this.world.reputation, victimName, this.getAbsoluteMinute(), {
+      maxWantedLevel: MAX_PLAYER_WANTED_LEVEL,
+      maxBounty: MAX_PLAYER_BOUNTY,
+      firstFlagBounty: FIRST_FLAG_BOUNTY,
+      repeatFlagBounty: REPEAT_FLAG_BOUNTY
+    });
     this.dispatchIntent({ kind: "AdjustReputation", delta: -8, reason: `Flagged by ${victimName} for reckless riding` });
-    this.playerState.lastFlagReason = `Bike hit reported by ${victimName}`;
     this.playerState.focus = Phaser.Math.Clamp(this.playerState.focus - 6, 0, 100);
     saveWorldState(this.world);
     this.updatePlayerWantedSign();
-    this.showToast(`${victimName} flagged you for reckless bike damage. Wanted level ${this.playerState.wantedLevel}.`);
+    this.showToast(`${victimName} flagged you for reckless bike damage. Wanted level ${standing.wantedLevel}.`);
   }
 
   private updatePlayerWantedSign(): void {
-    if (this.playerState.wantedLevel <= 0) {
+    if (getWantedLevel(this.world.reputation) <= 0) {
       this.playerWantedSign?.setVisible(false);
       return;
     }
@@ -1177,7 +1186,7 @@ export class GameScene extends Phaser.Scene {
         .setOrigin(0.5);
     }
     this.playerWantedSign
-      .setText(`WANTED\nRp ${this.playerState.bounty}`)
+      .setText(`WANTED\nRp ${getBounty(this.world.reputation)}`)
       .setPosition(this.player.x, this.player.y - 48)
       .setDepth(this.player.y + 6)
       .setVisible(true);
@@ -1225,13 +1234,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateHud(delta: number): void {
-    this.playerState.reputation = this.world.reputation.score;
     this.timeText.setText(formatClock(this.world));
     const bikeLabel = this.getBikeStatusLabel();
+    const wantedLevel = getWantedLevel(this.world.reputation);
+    const bounty = getBounty(this.world.reputation);
     const wantedLabel =
-      this.playerState.wantedLevel > 0 ? `Wanted ${this.playerState.wantedLevel} Rp ${this.playerState.bounty}` : "Clean";
+      wantedLevel > 0 ? `Wanted ${wantedLevel} Rp ${bounty}` : "Clean";
     this.moneyText.setText(
-      `Rp ${this.playerState.money}  Rep ${this.playerState.reputation}  Safety ${this.playerState.safety}  ${wantedLabel}\n${bikeLabel}`
+      `Rp ${this.playerState.money}  Rep ${getReputationScore(this.world.reputation)}  Safety ${this.playerState.safety}  ${wantedLabel}\n${bikeLabel}`
     );
     this.questText.setText([...this.getTutorialLines(), ...getQuestTrackerLines(this.playerState)].join("\n"));
     this.questText.setWordWrapWidth(Math.min(520, this.scale.width - 40));
@@ -1804,13 +1814,13 @@ export class GameScene extends Phaser.Scene {
     }
     this.playerState.safety = Phaser.Math.Clamp(this.playerState.safety + (activity.safetyReward ?? 0), 0, 100);
     if (activity.wantedReduction || activity.bountyReduction) {
-      this.playerState.wantedLevel = Math.max(0, this.playerState.wantedLevel - (activity.wantedReduction ?? 0));
-      this.playerState.bounty = Math.max(0, this.playerState.bounty - (activity.bountyReduction ?? 0));
-      if (this.playerState.wantedLevel === 0 || this.playerState.bounty === 0) {
-        this.playerState.wantedLevel = 0;
-        this.playerState.bounty = 0;
-        this.playerState.lastFlagReason = undefined;
-      }
+      reduceWantedStanding(
+        this.world.reputation,
+        activity.wantedReduction ?? 0,
+        activity.bountyReduction ?? 0,
+        `Redemption activity: ${activity.title}`,
+        this.getAbsoluteMinute()
+      );
     }
     for (const reward of activity.rewardItems) {
       addItem(this.playerState, reward.itemId, reward.quantity);
@@ -2086,7 +2096,7 @@ export class GameScene extends Phaser.Scene {
       this.add.text(
         x + 22,
         y + 56,
-        `Links ${this.playerState.connections}  |  Rep ${this.playerState.reputation}  |  Wanted ${this.playerState.wantedLevel}  |  ${this.getBikeStatusLabel()}\nSeeded groups today. Later this can become a live event/group feed.`,
+        `Links ${this.playerState.connections}  |  Rep ${getReputationScore(this.world.reputation)}  |  Wanted ${getWantedLevel(this.world.reputation)}  |  ${this.getBikeStatusLabel()}\nSeeded groups today. Later this can become a live event/group feed.`,
         {
           ...this.panelBodyStyle(),
           wordWrap: { width: panelWidth - 44 }
@@ -2189,7 +2199,7 @@ export class GameScene extends Phaser.Scene {
       this.add.text(
         x + 22,
         y + 56,
-        `Money: Rp ${this.playerState.money}  |  Focus ${this.playerState.focus}  |  Social ${this.playerState.socialEnergy}  |  Safety ${this.playerState.safety}\nRep ${this.playerState.reputation}  |  Wanted ${this.playerState.wantedLevel}  |  Bounty Rp ${this.playerState.bounty}  |  ${this.getBikeStatusLabel()}`,
+        `Money: Rp ${this.playerState.money}  |  Focus ${this.playerState.focus}  |  Social ${this.playerState.socialEnergy}  |  Safety ${this.playerState.safety}\nRep ${getReputationScore(this.world.reputation)}  |  Wanted ${getWantedLevel(this.world.reputation)}  |  Bounty Rp ${getBounty(this.world.reputation)}  |  ${this.getBikeStatusLabel()}`,
         {
           ...this.panelBodyStyle(),
           wordWrap: { width: panelWidth - 44 }
@@ -2349,7 +2359,7 @@ export class GameScene extends Phaser.Scene {
 
     const ibuAffinity = getRelationship(this.world, "npc", "ibu_sari")?.affinity ?? 0;
     const stats =
-      `Speed x${this.movementSpeedMultiplier}  |  Money Rp ${this.playerState.money}  |  Rep ${this.world.reputation.score}  |  Safety ${this.playerState.safety}\n` +
+      `Speed x${this.movementSpeedMultiplier}  |  Money Rp ${this.playerState.money}  |  Rep ${getReputationScore(this.world.reputation)}  |  Safety ${this.playerState.safety}\n` +
       `${this.getBikeStatusLabel()}  |  Ibu Sari affinity ${ibuAffinity}  |  Map ${this.world.mapDiscovery.discoveredVenueIds.length} venues${this.world.mapDiscovery.revealAll ? " + reveal all" : ""}\n` +
       "Development-only controls. This panel is omitted from production builds.";
     container.add(this.add.text(x + 22, y + 18, "Godmode", this.panelTitleStyle()));
@@ -2435,10 +2445,7 @@ export class GameScene extends Phaser.Scene {
     addGodButton("Teleport FINNS", () => this.devTeleport(1768, 300), 0x394155);
     addGodButton("Teleport Beach", () => this.devTeleport(350, 1225), 0x394155);
     addGodButton("Clear Wanted", () => {
-      this.playerState.wantedLevel = 0;
-      this.playerState.bounty = 0;
-      this.playerState.flaggedByVictims = 0;
-      this.playerState.lastFlagReason = undefined;
+      clearWantedStanding(this.world.reputation, "Dev wanted state cleared.", this.getAbsoluteMinute());
       this.updatePlayerWantedSign();
       this.showToast("Dev wanted state cleared.");
     }, 0x4a3331);
@@ -2697,9 +2704,7 @@ export class GameScene extends Phaser.Scene {
 
   private dispatchIntent(intent: GameIntent): IntentResult {
     this.network.pushIntent(intent);
-    const result = this.dispatcher.dispatch(intent, this.world, this.getAbsoluteMinute());
-    this.playerState.reputation = this.world.reputation.score;
-    return result;
+    return this.dispatcher.dispatch(intent, this.world, this.getAbsoluteMinute());
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
@@ -2841,9 +2846,9 @@ export class GameScene extends Phaser.Scene {
       focus: this.playerState.focus,
       socialEnergy: this.playerState.socialEnergy,
       connections: this.playerState.connections,
-      reputation: this.playerState.reputation,
-      wantedLevel: this.playerState.wantedLevel,
-      bounty: this.playerState.bounty,
+      reputation: getReputationScore(this.world.reputation),
+      wantedLevel: getWantedLevel(this.world.reputation),
+      bounty: getBounty(this.world.reputation),
       reputationTags: [...this.world.reputation.tags],
       lifestyleTags: [...this.world.profile.lifestyleTags],
       portal: `${this.world.portal.current}:${this.world.portal.multiplayerStatus}`,

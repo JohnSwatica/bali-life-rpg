@@ -27,3 +27,7 @@ The road network can be visible immediately, but area and venue labels are revea
 ## 2026-06-20 - Venue Quality Threshold Is Data-Only
 
 Venue rating/review fields and the `rating >= 4.5 && reviewCount >= 300` helper exist for future curation. No Google Places API, scraping, live verification, or production venue ranking is implemented in this slice.
+
+## 2026-06-20 - Canonical Reputation State
+
+`WorldState.reputation` is now the canonical home for standing data: score, positive tags, hidden trust flags, redemption hook, wanted level, bounty, victim flag count, and the last flag reason. Flat reputation/wanted/bounty fields were removed from `PlayerEntityState`; legacy v1/v2 saves migrate those values into `ReputationState` under schema v3.

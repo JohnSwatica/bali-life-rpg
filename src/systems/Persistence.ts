@@ -2,9 +2,9 @@ import { createInitialPlayerState, createInitialWorldState, LOCAL_PLAYER_ID } fr
 import { createDefaultPortalState } from "./portal/PortalState";
 import { createDefaultPlayerProfile } from "./profile/ProfileState";
 import { createDefaultReputationState } from "./reputation/ReputationState";
-import type { PlayerEntityState, WorldState } from "../types";
+import type { PlayerEntityState, ReputationState, WorldState } from "../types";
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 const SAVE_KEY = "bali-life-rpg.berawa-finns.save.v1";
 const PAUSED_V2_KEY = "bali-life-rpg.berawa-finns.save.v2";
 
@@ -25,7 +25,7 @@ export function loadWorldState(): WorldState {
       return createInitialWorldState();
     }
     const migrated = migrateWorldState(parsed);
-    if (!parsed.schemaVersion || loaded.key !== SAVE_KEY) {
+    if (!parsed.schemaVersion || parsed.schemaVersion < CURRENT_SCHEMA_VERSION || loaded.key !== SAVE_KEY) {
       saveWorldState(migrated);
     }
     return migrated;
@@ -60,7 +60,7 @@ function migrateWorldState(raw: Partial<WorldState> & Record<string, unknown>): 
     npcs: { ...fresh.npcs, ...(raw.npcs ?? {}) },
     groups: raw.groups ?? {},
     profile: raw.profile ?? createDefaultPlayerProfile(),
-    reputation: raw.reputation ?? createDefaultReputationState(extractLegacyReputation(raw)),
+    reputation: migrateReputationState(raw),
     relationships: raw.relationships ?? [],
     portal: raw.portal ?? createDefaultPortalState(),
     runtimeEvents: raw.runtimeEvents ?? { attendedEventIds: [] },
@@ -70,20 +70,16 @@ function migrateWorldState(raw: Partial<WorldState> & Record<string, unknown>): 
   } satisfies WorldState;
 
   const player = world.players[world.localPlayerId] ?? world.players[LOCAL_PLAYER_ID] ?? createInitialPlayerState();
-  world.players[world.localPlayerId] = hydratePlayerState(player, world.reputation.score);
+  world.players[world.localPlayerId] = hydratePlayerState(player);
   world.profile.displayName = world.profile.displayName || world.players[world.localPlayerId].displayName;
   world.profile.remoteAccountId = null;
-  world.reputation.hiddenFlags = world.reputation.hiddenFlags ?? [];
-  world.reputation.tags = world.reputation.tags ?? [];
-  world.reputation.history = world.reputation.history ?? [];
-  world.reputation.redemption = world.reputation.redemption ?? { active: false, challengeId: null };
   world.mapDiscovery.discoveredAreaIds = world.mapDiscovery.discoveredAreaIds ?? [];
   world.mapDiscovery.discoveredVenueIds = world.mapDiscovery.discoveredVenueIds ?? [];
   world.mapDiscovery.revealAll = world.mapDiscovery.revealAll ?? false;
   return world;
 }
 
-function hydratePlayerState(player: Partial<PlayerEntityState>, fallbackReputation: number): PlayerEntityState {
+function hydratePlayerState(player: Partial<PlayerEntityState>): PlayerEntityState {
   const fresh = createInitialPlayerState();
   return {
     ...fresh,
@@ -92,10 +88,6 @@ function hydratePlayerState(player: Partial<PlayerEntityState>, fallbackReputati
     focus: player.focus ?? fresh.focus,
     socialEnergy: player.socialEnergy ?? fresh.socialEnergy,
     connections: player.connections ?? fresh.connections,
-    reputation: player.reputation ?? fallbackReputation,
-    wantedLevel: player.wantedLevel ?? 0,
-    bounty: player.bounty ?? 0,
-    flaggedByVictims: player.flaggedByVictims ?? 0,
     hasBike: player.hasBike ?? false,
     onBike: player.onBike ?? false,
     bikeStuck: player.bikeStuck ?? false,
@@ -109,8 +101,47 @@ function hydratePlayerState(player: Partial<PlayerEntityState>, fallbackReputati
   };
 }
 
-function extractLegacyReputation(raw: Partial<WorldState> & Record<string, unknown>): number {
+type LegacyPlayerState = Partial<PlayerEntityState> & {
+  reputation?: number;
+  wantedLevel?: number;
+  bounty?: number;
+  flaggedByVictims?: number;
+  lastFlagReason?: string;
+};
+
+function migrateReputationState(raw: Partial<WorldState> & Record<string, unknown>): ReputationState {
+  const legacy = extractLegacyStanding(raw);
+  const existing = raw.reputation as Partial<ReputationState> | undefined;
+  return {
+    ...createDefaultReputationState(legacy.score),
+    ...existing,
+    score: existing?.score ?? legacy.score,
+    wantedLevel: existing?.wantedLevel ?? legacy.wantedLevel,
+    bounty: existing?.bounty ?? legacy.bounty,
+    flaggedByVictims: existing?.flaggedByVictims ?? legacy.flaggedByVictims,
+    lastFlagReason: existing?.lastFlagReason ?? legacy.lastFlagReason,
+    tags: existing?.tags ?? [],
+    hiddenFlags: existing?.hiddenFlags ?? [],
+    redemption: existing?.redemption ?? { active: false, challengeId: null },
+    history: existing?.history ?? []
+  };
+}
+
+function extractLegacyStanding(raw: Partial<WorldState> & Record<string, unknown>): {
+  score: number;
+  wantedLevel: number;
+  bounty: number;
+  flaggedByVictims: number;
+  lastFlagReason?: string;
+} {
   const localId = typeof raw.localPlayerId === "string" ? raw.localPlayerId : LOCAL_PLAYER_ID;
-  const players = raw.players as Record<string, Partial<PlayerEntityState>> | undefined;
-  return players?.[localId]?.reputation ?? 60;
+  const players = raw.players as Record<string, LegacyPlayerState> | undefined;
+  const player = players?.[localId];
+  return {
+    score: player?.reputation ?? 60,
+    wantedLevel: player?.wantedLevel ?? 0,
+    bounty: player?.bounty ?? 0,
+    flaggedByVictims: player?.flaggedByVictims ?? 0,
+    lastFlagReason: player?.lastFlagReason
+  };
 }

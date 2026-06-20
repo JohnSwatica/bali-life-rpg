@@ -147,6 +147,10 @@ export interface ReputationEvent {
 
 export interface ReputationState {
   score: number;
+  wantedLevel: number;
+  bounty: number;
+  flaggedByVictims: number;
+  lastFlagReason?: string;
   tags: ReputationTag[];
   hiddenFlags: TrustFlag[];
   redemption: { active: boolean; challengeId: string | null };
@@ -233,11 +237,6 @@ export interface PlayerEntityState {
   focus: number;
   socialEnergy: number;
   connections: number;
-  reputation: number;
-  wantedLevel: number;
-  bounty: number;
-  flaggedByVictims: number;
-  lastFlagReason?: string;
   hasBike: boolean;
   onBike: boolean;
   bikeStuck: boolean;
@@ -279,7 +278,7 @@ export interface GroupEntityState {
 }
 
 export interface WorldState {
-  schemaVersion: 2;
+  schemaVersion: 3;
   version: 1;
   neighborhoodId: "berawa-finns-club";
   clock: WorldClockState;
