@@ -83,3 +83,23 @@ Road legibility is now a render concern, not a data rewrite: primary, secondary,
 Water boundaries now derive from generated OSM beach, coastline, and water features through `src/systems/map/WaterBoundary.ts`. The runtime nudges the player out of rendered sea/waterway areas and shows a short toast, while beach polygons stay walkable. This replaces the old rectangular `ocean-block` collision strip without introducing brittle physics polygons that could trap the player on jagged coastline geometry.
 
 This remains a local, data-driven runtime behavior. There are no runtime map network calls, no new coordinates, and no edits to the curated venue catalog or generated layout data.
+
+## 2026-06-21 - Pokémon-Scale Player Units
+
+Real OSM-derived positions remain authoritative, but rendered sizes are now stylized in player-units through `src/systems/map/PlayerUnitScale.ts`. Roads, buildings, and camera zoom are tuned as Pokémon-style readability ratios instead of literal metres: fat walkable corridors, chunky shopfronts, and a closer camera. This keeps the geography credible while making the game playable from a top-down life-sim view.
+
+The current scale table uses a `24 x 30` player footprint, main roads at `3.0` units, secondary roads at `1.8`, lanes at `1.35`, normal venue buildings at `3.0 x 2.4`, and landmarks at `6.0 x 4.2` or larger beach-specific variants. The world coordinate space stays `2400 x 1700`; venue coordinates and generated data are untouched.
+
+## 2026-06-21 - Rendered Road Skeleton, Richer Placement Graph
+
+Road legibility is now separated from venue placement. `RoadPresentation.ts` renders a decluttered 113-road main/secondary/lane skeleton so the bird's-eye view reads as streets rather than OSM micro-clutter. Venue building placement can still snap against a richer 839-road non-footpath/local graph, so dense shop clusters line up with local streets without drawing every driveway or path.
+
+This is presentation-only. No OSM coordinates, curated venue records, generated layout data, shops, NPCs, quests, discovery saves, or commerce placeholders were changed.
+
+## 2026-06-21 - Minimap As Orientation Aid
+
+The game now has a lightweight top-left minimap on the UI layer. It reuses the same decluttered road skeleton, water/beach features, camera viewport, player heading, and discovered venue dots. It respects `WorldState.mapDiscovery` and dev reveal-all, but it is intentionally not a full interactive map engine.
+
+## 2026-06-21 - Road-Following Traffic
+
+Ambient scooter traffic now follows real generated road polylines instead of three hardcoded straight lanes. Traffic routes are selected from the presented main/secondary skeleton, can turn at shared OSM nodes when available, and respawn at route edges. Existing traffic-hit consequences remain capped environmental feedback, not combat: knockback, screen shake, stylized splash, capped money loss, and cooldown.

@@ -78,6 +78,10 @@ The current coordinate summary is 41 rendered venues: 23 OSM POI matches, 0 Nomi
 
 Runtime rendering is intentionally simple: one blocky building per `shouldRender` curated venue, plus baked roads, OSM beach/coastline/water features, and low-cost greenery. The old hand-placed building/market/decor layer and dense road-marker layer are no longer called.
 
+Presentation scale is intentionally stylized. Real positions stay OSM/curated-coordinate driven, while roads, buildings, and camera zoom are sized from `src/systems/map/PlayerUnitScale.ts` in player-units so the top-down view reads more like a Pokémon-scale life sim than a literal metre map. `src/systems/map/RoadPresentation.ts` renders a decluttered road skeleton for readability while venue buildings snap against a richer local road graph for believable shopfront placement.
+
+The game now includes a lightweight top-left minimap using the same road skeleton, discovered venue dots, water/beach edge, camera viewport, and player heading. Ambient traffic scooters follow eligible real road polylines, can turn at shared generated nodes, and respawn at route edges.
+
 The current expanded Overpass cache contributes 934 road paths and 12 terrain features: 5 beach polygons, 4 coastline paths, and 3 water shapes. Beach/coastline rendering is still stylized, but its shape now follows OSM data rather than a fixed rectangular band.
 
 `src/systems/map/WaterBoundary.ts` derives a soft runtime boundary from those same generated terrain features. Rendered sea/waterway areas nudge the player back with a short toast; beach polygons remain walkable. This replaces the old broad `ocean-block` rectangle in `src/data/map.ts` while avoiding brittle physics polygons along the jagged OSM coastline.
@@ -129,6 +133,6 @@ The runtime should keep consuming generated data catalogs rather than hand-placi
 ## Next Map Pass
 
 - Manually verify or correct the flagged estimate/fallback coordinates in `data/osm/berawa.curated-coords.json`.
-- Replace old hardcoded traffic lanes with road-following paths.
+- Tune the Pokémon-scale table, camera zoom, minimap size, and road-following traffic density/speeds by phone and trackpad play-feel.
 - Play-feel test and tune the coastline soft-boundary nudge distance/message if it feels too abrupt.
-- Add a compact phone map only after discovery state remains stable on the OSM layout.
+- Add a richer phone map only after the lightweight minimap and discovery state remain stable on the OSM layout.

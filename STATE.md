@@ -13,7 +13,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
-- Current branch for coastline water-boundary work: `feat/coastline-water-boundary`, branched from `fix/walkable-presentation`.
+- Current branch for Pokémon-scale/minimap/traffic work: `feat/pokemon-scale-minimap`, branched from `feat/coastline-water-boundary`.
 
 ## What Was Added Recently
 
@@ -23,11 +23,14 @@ Copy/paste this into a new AI session to bring it up to speed.
 - The generated bbox is now framed to the curated venue cloud and filters the larger OSM cache to 934 road paths.
 - Runtime map art now renders baked roads, OSM beach/coastline/water features, greenery, and one simple blocky building per rendered curated venue through `curatedVenueNodes`. The old hand-placed market/building/decor layer and dense road-point marker layer are no longer called.
 - The generated layout exports `berawaMapFeatures`: currently 5 beach polygons, 4 coastline paths, and 3 water shapes.
-- Walkable map presentation pass is complete without changing venue coordinates, `src/data/curatedVenues.ts`, `src/data/berawaLayout.ts`, or `data/osm/berawa.curated-coords.json`.
-- Venue buildings now use player-anchored presentation sizes from `src/systems/map/VenuePresentation.ts`: normal `1.55 x 1.3`, wide `1.8 x 1.4`, quest-critical `2.1 x 1.5`, landmark `5.0 x 3.0`, beach landmark `4.6 x 2.2`, beach marker `2.4 x 1.25` against a `24 x 30` player footprint.
-- Venue buildings are presentation-snapped beside their nearest road segment, with fronts facing the road, then de-overlapped by sliding along road tangents. The current automated layout check reports 40 non-beach placements, 0 overlaps, and max tangent slide about 62.4 px under a 120 px cap.
-- Camera zoom is now `1.34` on desktop/tablet-width viewports and `1.22` on narrow mobile viewports.
-- Roads render with explicit class widths: primary `52`, secondary `26`, lane `12`; venue labels now show only near the player and are stack-limited.
+- Pokémon-scale map presentation is complete without changing venue coordinates, `src/data/curatedVenues.ts`, `src/data/berawaLayout.ts`, or `data/osm/berawa.curated-coords.json`.
+- `src/systems/map/PlayerUnitScale.ts` is now the single player-unit scale table. Current player unit is a `24 x 30` footprint. Roads: main `3.0` units, secondary `1.8`, lane `1.35`. Buildings: normal `3.0 x 2.4`, wide `3.4 x 2.6`, quest-critical `3.8 x 2.8`, landmark `6.0 x 4.2`, beach landmark `6.2 x 3.4`, beach marker `4.0 x 2.3`.
+- Venue buildings are presentation-snapped beside their nearest road segment, with fronts facing the road, then de-overlapped by SAT-aware sliding along road tangents. The current automated layout check reports 40 non-beach placements, 0 overlaps, and max tangent slide about 284.7 px under a 600 px cap.
+- Camera zoom is now `1.62` on desktop/tablet-width viewports and `1.42` on narrow mobile viewports.
+- Roads render with explicit player-unit class widths: main `90`, secondary `54`, lane `41`; venue labels show only near the player and are stack-limited.
+- `src/systems/map/RoadPresentation.ts` separates rendered roads from placement roads. Runtime renders a decluttered 113-road skeleton while venue buildings can still snap to 839 non-footpath/local road segments for believable shopfront placement.
+- A top-left minimap now renders on the UI layer with the simplified road skeleton, water/beach edge, camera viewport, player heading, and discovered venue dots. It respects `WorldState.mapDiscovery.revealAll` and discovered venue IDs.
+- Traffic bikes now spawn on the road skeleton and follow real road polylines instead of three hardcoded straight lanes. Current traffic graph has 23 eligible main/secondary routes and 9 shared-node junctions; scooters can turn at junctions and respawn at route edges. Existing capped traffic-hit feedback remains intact.
 - Coastline-aware soft water boundary feedback is now in `src/systems/map/WaterBoundary.ts`. It uses generated OSM beach/coastline/water features to nudge the player out of rendered sea/waterway areas with a toast, while leaving beach polygons walkable. The old broad rectangular `ocean-block` collision strip was removed.
 - Static map geometry is generated once into a texture; camera zoom is tuned closer, and dynamic NPC/pickup/traffic/group/wanted sprites are culled off-camera.
 - OSM/Nominatim/Overpass caches are committed under `data/osm/`, including the required raw Overpass extract at `data/osm/berawa.overpass.json`.
@@ -91,6 +94,10 @@ Copy/paste this into a new AI session to bring it up to speed.
 - `a610964` - `feat: zoomed-in walkable camera`
 - `2ea3bda` - `chore: road width-by-class and label declutter`
 - `a285c9b` - `feat: add coastline-aware water boundary feedback`
+- `6226928` - `feat: pokemon-standard player-unit scale`
+- `98111e9` - `feat: road hierarchy and declutter for readability`
+- `d7bd624` - `feat: top-left orientation minimap`
+- `d38275a` - `feat: road-following traffic paths`
 
 ## Current Verification
 
@@ -107,6 +114,11 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Water-boundary geometry spot checks passed: a southwest sea sample resolves back to shore, a visible beach polygon sample stays walkable, an inland road sample is untouched, and the corrected shoreline point is stable on the next check.
 - Final water-boundary build passed with `npm run build`.
 - In-app browser smoke loaded `http://127.0.0.1:5173/?verify=water-boundary`, found the Phaser canvas, reported no console errors, and verified `P` opens Phone while `ESC` returns to world.
+- Final Pokémon-scale/minimap/traffic build passed with `npm run build`.
+- Presentation geometry check after the Pokémon-scale pass reports 113 rendered road paths, 839 venue-snap road paths, 40 non-beach building placements, and 0 building overlaps.
+- Traffic graph check reports 23 eligible traffic routes and 9 shared-node junctions from the rendered road skeleton.
+- Dev server was restarted and is serving `http://127.0.0.1:5173/`.
+- In-app browser smoke after the minimap phase loaded the Phaser canvas at `http://127.0.0.1:5173/` with no captured console errors. During traffic verification, the in-app browser retained one stale pre-restart error log from an old Vite module timestamp; the restarted dev server serves the current `GameScene.ts` with the traffic helper present. Screenshot capture in the in-app browser timed out, so live traffic feel remains human-verification pending.
 - Source grep confirms no code path reads removed flat `playerState.reputation`, `playerState.wantedLevel`, `playerState.bounty`, `playerState.flaggedByVictims`, or `playerState.lastFlagReason` fields.
 - v1/v2 save migration maps old standing fields into schema v3 `WorldState.reputation` and strips legacy flat standing keys from the hydrated local player.
 - Quest code compiles and both starter quests complete through `QuestRegistry` in browser automation.
@@ -133,7 +145,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - `GameScene.ts` is still large. Rendering and broader simulation remain there for a later behavior-preserving split.
 - Phone UI is functional but still a shell; it is not a polished production phone app.
 - Godmode is simple and development-only.
-- Map discovery is a foundation, not a full minimap.
+- Map discovery now has a compact minimap, but it is still a lightweight orientation aid rather than a full interactive map.
 - The road network, coastline/beach/water features, and curated building layer now follow OSM/generated coordinates. Building presentation is road-snapped and de-overlapped. Water boundaries are soft feedback, not full physics collision; a human should still judge the coastline feel in live play.
 - Eighteen curated coordinates still need manual review because they resolved via flagged estimate/fallback rather than OSM/Nominatim. See `data/osm/berawa.curated-coords.json`.
 - Venue rating/review fields are data-only. There is no Google Places API, scraping, live verification, or live venue ranking.
@@ -150,7 +162,7 @@ Copy/paste this into a new AI session to bring it up to speed.
    - Trigger traffic-bike collision and judge knockback/shake/splash timing.
    - Click all six HUD buttons with the real Mac trackpad/mouse.
    - Try the mobile HUD on an actual phone, especially tall screens.
-   - Drive around and judge whether the OSM road network plus road-snapped curated venue buildings read as recognizably Berawa and walkable at the new zoom.
+   - Drive around and judge whether the OSM road network, chunky scale, minimap, and road-following traffic read as recognizably Berawa and walkable at the new zoom.
    - Walk into the rendered surf/water edges and judge whether the soft boundary nudge feels natural.
    - Open Phone > Venues > Details and inspect discovery filtering plus associated NPCs/items/quests visually.
    - Build NPC affinity through memory and confirm Contacts/dialogue feel readable.
@@ -161,8 +173,8 @@ Copy/paste this into a new AI session to bring it up to speed.
 
 3. Continue Berawa credibility:
    - Manually verify the flagged coordinates in `data/osm/berawa.curated-coords.json`, especially estimate/fallback entries.
-   - If the new presentation feels too tight/loose on a real phone, tune only `BUILDING_SCALE_MULTIPLES`, `MAX_ROADSIDE_TANGENT_SLIDE`, and the two camera zoom values before changing map data.
-   - Replace old hardcoded traffic lanes with generated road-following paths.
+   - If the new presentation feels too tight/loose on a real phone, tune only `POKEMON_SCALE`, `MAX_ROADSIDE_TANGENT_SLIDE`, traffic density/speeds, and the two camera zoom values before changing map data.
+   - Tune road-following traffic density, speeds, and junction-turn frequency by feel on real play sessions.
    - Curate a small verified venue file before adding more real-world-name candidates.
    - Add a compact map UI only after discovery state is stable.
 
@@ -177,18 +189,17 @@ Copy/paste this into a new AI session to bring it up to speed.
 Title:
 
 ```text
-Walkable Berawa map presentation and coastline boundary pass
+Pokémon-scale Berawa map, minimap, and road-following traffic
 ```
 
 Summary:
 
 ```text
-- Add a player-anchored venue presentation helper for tunable building footprints.
-- Snap rendered venue buildings beside their nearest road segment without changing source coordinates.
-- De-overlap dense venue clusters by sliding along road tangents with a capped displacement.
-- Tune camera zoom to 1.34 desktop / 1.22 mobile and render roads with clearer class widths.
-- Declutter venue labels so discovered names appear near the player instead of stacking globally.
-- Add generated-feature-based soft water boundaries for rendered sea/waterway areas and remove the old rectangular ocean blocker.
+- Add a shared player-unit scale table for Pokémon-style roads, buildings, and camera zoom.
+- Render a decluttered real-road skeleton while preserving richer local-road snapping for venue buildings.
+- Add a top-left minimap with discovered venue dots, water/beach edge, player heading, and camera viewport.
+- Replace hardcoded straight traffic lanes with scooters that follow real road polylines, turn at shared nodes, and respawn at route edges.
+- Keep venue coordinates, curated data, generated layout data, save shape, discovery, shops, quests, phone, godmode, and traffic-hit consequences intact.
 - Update STATE.md and DECISIONS.md.
 ```
 
@@ -196,10 +207,10 @@ Test notes:
 
 ```text
 - npm run build after every phase
-- Presentation geometry check: 40 non-beach buildings, 0 overlaps, max tangent slide ~62.4 px
+- Presentation geometry check: 113 rendered roads, 839 venue-snap roads, 40 non-beach buildings, 0 overlaps
+- Traffic graph check: 23 eligible traffic routes, 9 shared-node junctions
 - Diff check: no venue coordinate/catalog/generated data files changed
-- Browser smoke verified canvas load, no console errors, and phone P/ESC flow
-- Water-boundary geometry spot checks verified sea correction, beach pass-through, inland pass-through, and stable corrected shore point
+- Browser smoke verified canvas load after minimap; traffic browser check hit a stale pre-restart log and screenshot timeout, so live traffic feel remains human-verification pending
 ```
 
 ## Do Not Do Next
