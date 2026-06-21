@@ -379,13 +379,6 @@ export class GameScene extends Phaser.Scene {
         this.drawDashedPath(g, road.points, 34, 58);
       }
     }
-
-    g.fillStyle(0xbcb18b, 0.22);
-    for (const road of berawaRoads.filter((candidate) => candidate.importance !== "lane")) {
-      for (const point of road.points) {
-        g.fillRoundedRect(point.x - 20, point.y - 12, 40, 24, 8);
-      }
-    }
   }
 
   private strokeRoadPath(g: Phaser.GameObjects.Graphics, points: Array<{ x: number; y: number }>): void {
