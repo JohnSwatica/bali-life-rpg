@@ -19,6 +19,8 @@ export interface VenuePresentationPlacement extends VenueFootprint {
   y: number;
   tangent: MapPoint;
   outwardNormal: MapPoint;
+  slideTangent: MapPoint;
+  roadOutwardNormal: MapPoint;
   tangentSlide: number;
   snappedToRoad: boolean;
   roadId: string | null;
@@ -98,8 +100,10 @@ function placeVenueBesideRoad(node: CuratedVenueMapNode, roads: RoadPathDefiniti
     sourceY: node.y,
     x: Math.round(nearest.closest.x + outwardNormal.x * offset),
     y: Math.round(nearest.closest.y + outwardNormal.y * offset),
-    tangent: nearest.tangent,
-    outwardNormal,
+    tangent: { x: 1, y: 0 },
+    outwardNormal: { x: 0, y: 1 },
+    slideTangent: nearest.tangent,
+    roadOutwardNormal: outwardNormal,
     tangentSlide: 0,
     snappedToRoad: true,
     roadId: nearest.roadId,
@@ -126,6 +130,8 @@ function createUnsnappedPlacement(node: CuratedVenueMapNode, footprint: VenueFoo
     y: node.y,
     tangent: { x: 1, y: 0 },
     outwardNormal: { x: 0, y: 1 },
+    slideTangent: { x: 1, y: 0 },
+    roadOutwardNormal: { x: 0, y: 1 },
     tangentSlide: 0,
     snappedToRoad: false,
     roadId: null,
@@ -180,7 +186,7 @@ function packRoadsideRows(placements: VenuePresentationPlacement[]): void {
     if (!placement.snappedToRoad || !placement.roadId || placement.node.category === "beach") {
       continue;
     }
-    const normalKey = `${Math.round(placement.outwardNormal.x * 5)}:${Math.round(placement.outwardNormal.y * 5)}`;
+    const normalKey = `${Math.round(placement.roadOutwardNormal.x * 5)}:${Math.round(placement.roadOutwardNormal.y * 5)}`;
     const key = `${placement.roadId}:${normalKey}`;
     const group = groups.get(key) ?? [];
     group.push(placement);
@@ -191,7 +197,7 @@ function packRoadsideRows(placements: VenuePresentationPlacement[]): void {
     if (group.length < 2) {
       continue;
     }
-    const referenceTangent = group[0].tangent;
+    const referenceTangent = group[0].slideTangent;
     for (let pass = 0; pass < 8; pass += 1) {
       let changed = false;
       group.sort((a, b) => dot(a, referenceTangent) - dot(b, referenceTangent));
@@ -201,7 +207,7 @@ function packRoadsideRows(placements: VenuePresentationPlacement[]): void {
         const current = group[index];
         const previousScalar = dot(previous, referenceTangent);
         const currentScalar = dot(current, referenceTangent);
-        const normalDistance = Math.abs(dot({ x: current.x - previous.x, y: current.y - previous.y }, previous.outwardNormal));
+        const normalDistance = Math.abs(dot({ x: current.x - previous.x, y: current.y - previous.y }, previous.roadOutwardNormal));
         const normalLimit = (previous.height + current.height) / 2 + ROADSIDE_BUILDING_GAP;
         if (normalDistance >= normalLimit) {
           continue;
@@ -246,7 +252,7 @@ function slidePlacementAwayFrom(
     x: placement.x - other.x,
     y: placement.y - other.y
   };
-  const direction = dot(delta, placement.tangent) >= 0 ? 1 : -1;
+  const direction = dot(delta, placement.slideTangent) >= 0 ? 1 : -1;
   return applySignedTangentSlide(placement, direction * Math.min(remaining, requestedDistance)) > 0;
 }
 
@@ -258,8 +264,8 @@ function separatePlacementsAlongAxis(
   const centerDelta = { x: b.x - a.x, y: b.y - a.y };
   const direction = dot(centerDelta, overlap.axis) >= 0 ? 1 : -1;
   const requiredProjection = Math.min(120, Math.max(12, overlap.depth + ROADSIDE_BUILDING_GAP));
-  const aPower = a.snappedToRoad ? Math.abs(dot(a.tangent, overlap.axis)) : 0;
-  const bPower = b.snappedToRoad ? Math.abs(dot(b.tangent, overlap.axis)) : 0;
+  const aPower = a.snappedToRoad ? Math.abs(dot(a.slideTangent, overlap.axis)) : 0;
+  const bPower = b.snappedToRoad ? Math.abs(dot(b.slideTangent, overlap.axis)) : 0;
   const totalPower = aPower + bPower;
 
   if (totalPower < 0.12) {
@@ -297,7 +303,7 @@ function slidePlacementProjection(
     return 0;
   }
 
-  const tangentProjection = dot(placement.tangent, axis);
+  const tangentProjection = dot(placement.slideTangent, axis);
   if (Math.abs(tangentProjection) < 0.08) {
     return 0;
   }
@@ -312,7 +318,7 @@ function slideAlongReferenceTangent(
   referenceTangent: MapPoint,
   signedDistance: number
 ): number {
-  const direction = dot(referenceTangent, placement.tangent) >= 0 ? 1 : -1;
+  const direction = dot(referenceTangent, placement.slideTangent) >= 0 ? 1 : -1;
   return applySignedTangentSlide(placement, signedDistance * direction);
 }
 
@@ -323,8 +329,8 @@ function applySignedTangentSlide(placement: VenuePresentationPlacement, signedDi
   }
 
   const distance = Math.sign(signedDistance) * Math.min(remaining, Math.abs(signedDistance));
-  placement.x += placement.tangent.x * distance;
-  placement.y += placement.tangent.y * distance;
+  placement.x += placement.slideTangent.x * distance;
+  placement.y += placement.slideTangent.y * distance;
   placement.tangentSlide += distance;
   return Math.abs(distance);
 }
