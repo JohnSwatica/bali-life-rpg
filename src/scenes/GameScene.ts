@@ -213,6 +213,9 @@ const PLAYER_BODY_WIDTH = Math.min(48, PLAYER_UNIT.width);
 const PLAYER_BODY_HEIGHT = Math.min(48, PLAYER_UNIT.height);
 const PLAYER_BODY_OFFSET_X = Math.max(0, (48 - PLAYER_BODY_WIDTH) / 2);
 const PLAYER_BODY_OFFSET_Y = Math.max(0, 48 - PLAYER_BODY_HEIGHT - 2);
+const CHARACTER_SPRITE_SCALE = 0.84;
+const PLAYER_BIKE_SPRITE_SCALE = 0.82;
+const TRAFFIC_BIKE_SPRITE_SCALE = 0.88;
 const MAX_STATIC_MAP_BAKE_SCALE = 2.5;
 const FALLBACK_MAX_TEXTURE_SIZE = 4096;
 const TRAFFIC_ROUTES: TrafficRouteDefinition[] = PRESENTED_BERAWA_ROADS
@@ -1021,6 +1024,7 @@ export class GameScene extends Phaser.Scene {
     for (const npc of Object.values(npcDefinitions)) {
       const state = this.world.npcs[npc.id];
       const sprite = this.physics.add.sprite(state.x, state.y, npc.spriteKey).setDepth(state.y).setImmovable(true);
+      this.setSpriteFacing(sprite, false, CHARACTER_SPRITE_SCALE);
       sprite.body?.setSize(PLAYER_BODY_WIDTH, PLAYER_BODY_HEIGHT);
       sprite.body?.setOffset(PLAYER_BODY_OFFSET_X, PLAYER_BODY_OFFSET_Y);
       this.npcSprites.set(npc.id, sprite);
@@ -1029,6 +1033,7 @@ export class GameScene extends Phaser.Scene {
 
   private createPlayer(): void {
     this.player = this.physics.add.sprite(this.playerState.x, this.playerState.y, "player");
+    this.setSpriteFacing(this.player, this.playerState.direction === "left", CHARACTER_SPRITE_SCALE);
     this.player.setCollideWorldBounds(true);
     this.player.setDepth(this.player.y);
     this.player.body?.setSize(PLAYER_BODY_WIDTH, PLAYER_BODY_HEIGHT);
@@ -1106,7 +1111,9 @@ export class GameScene extends Phaser.Scene {
       worldVector(1768, 805)
     ];
     const sprite = this.add.sprite(route[0].x, route[0].y, "npc-ari").setDepth(route[0].y + 4);
-    const bikeSprite = this.add.sprite(route[0].x, route[0].y + 10, "traffic-bike").setDepth(route[0].y + 3);
+    const bikeSprite = this.add.sprite(route[0].x, route[0].y + scaleDistance(10), "traffic-bike").setDepth(route[0].y + 3);
+    this.setSpriteFacing(sprite, false, CHARACTER_SPRITE_SCALE);
+    bikeSprite.setScale(TRAFFIC_BIKE_SPRITE_SCALE, TRAFFIC_BIKE_SPRITE_SCALE);
     const sign = this.add
       .text(route[0].x, route[0].y - scaleDistance(46), "WANTED\nRp 120", {
         fontFamily: "Inter, Arial, sans-serif",
@@ -1234,7 +1241,7 @@ export class GameScene extends Phaser.Scene {
       const speed = baseSpeed * this.movementSpeedMultiplier;
       this.player.setVelocity(movement.x * speed, movement.y * speed);
       this.playerState.direction = this.directionFromVector(movement);
-      this.player.setScale(this.playerState.direction === "left" ? -1 : 1, 1);
+      this.setSpriteFacing(this.player, this.playerState.direction === "left", CHARACTER_SPRITE_SCALE);
     } else {
       this.player.setVelocity(0, 0);
     }
@@ -1265,7 +1272,7 @@ export class GameScene extends Phaser.Scene {
     this.playerBike.setPosition(this.player.x, this.player.y + scaleDistance(10));
     this.playerBike.setDepth(this.player.y - 1);
     this.playerBike.setAlpha(this.playerState.bikeStuck ? 0.62 : 1);
-    this.playerBike.setScale(this.playerState.direction === "left" ? -1 : 1, 1);
+    this.setSpriteFacing(this.playerBike, this.playerState.direction === "left", PLAYER_BIKE_SPRITE_SCALE);
   }
 
   private updateTraffic(delta: number): void {
@@ -1388,7 +1395,7 @@ export class GameScene extends Phaser.Scene {
     if (bike.velocity.lengthSq() <= 0.01) {
       return;
     }
-    bike.sprite.setScale(1, 1);
+    bike.sprite.setScale(TRAFFIC_BIKE_SPRITE_SCALE, TRAFFIC_BIKE_SPRITE_SCALE);
     bike.sprite.setAngle(Phaser.Math.RadToDeg(Math.atan2(bike.velocity.y, bike.velocity.x)));
   }
 
@@ -1408,11 +1415,11 @@ export class GameScene extends Phaser.Scene {
       }
       offender.bikeSprite.setPosition(offender.sprite.x, offender.sprite.y + scaleDistance(10));
       offender.bikeSprite.setDepth(offender.sprite.y + 2);
-      offender.bikeSprite.setScale(offender.sprite.scaleX < 0 ? -1 : 1, 1);
+      this.setSpriteFacing(offender.bikeSprite, offender.sprite.scaleX < 0, TRAFFIC_BIKE_SPRITE_SCALE);
       offender.sprite.setDepth(offender.sprite.y + 3);
       offender.sign
         .setText(`WANTED\nRp ${Math.min(offender.cash, this.getOffenderReward(offender))}`)
-      .setPosition(offender.sprite.x, offender.sprite.y - scaleDistance(48))
+        .setPosition(offender.sprite.x, offender.sprite.y - scaleDistance(48))
         .setDepth(offender.sprite.y + 5)
         .setVisible(true);
     }
@@ -1436,7 +1443,7 @@ export class GameScene extends Phaser.Scene {
     const step = Math.min(distance, (speed * delta) / 1000);
     sprite.x += (dx / distance) * step;
     sprite.y += (dy / distance) * step;
-    sprite.setScale(dx < -1 ? -1 : 1, 1);
+    this.setSpriteFacing(sprite, dx < -1, CHARACTER_SPRITE_SCALE);
     return distance - step <= scaleDistance(5);
   }
 
@@ -1652,7 +1659,7 @@ export class GameScene extends Phaser.Scene {
         const step = Math.min(distance, (scaleDistance(42) * delta) / 1000);
         sprite.x += (dx / distance) * step;
         sprite.y += (dy / distance) * step;
-        sprite.setScale(dx < -1 ? -1 : 1, 1);
+        this.setSpriteFacing(sprite, dx < -1, CHARACTER_SPRITE_SCALE);
         sprite.body?.updateFromGameObject();
       }
       state.x = Math.round(sprite.x);
@@ -2317,6 +2324,8 @@ export class GameScene extends Phaser.Scene {
   ): GroupTravelerRuntime {
     const bikeSprite = this.add.sprite(x, y + scaleDistance(10), "group-bike").setVisible(mode === "bike").setDepth(y - 1);
     const sprite = this.add.sprite(x, y, spriteKey).setDepth(y);
+    this.setSpriteFacing(sprite, false, CHARACTER_SPRITE_SCALE);
+    this.setSpriteFacing(bikeSprite, false, PLAYER_BIKE_SPRITE_SCALE);
     return { id, name, hasBike, sprite, bikeSprite };
   }
 
@@ -2400,7 +2409,7 @@ export class GameScene extends Phaser.Scene {
     const step = Math.min(distance - stopDistance, (speed * delta) / 1000);
     traveler.sprite.x += (dx / distance) * step;
     traveler.sprite.y += (dy / distance) * step;
-    traveler.sprite.setScale(dx < -1 ? -1 : 1, 1);
+    this.setSpriteFacing(traveler.sprite, dx < -1, CHARACTER_SPRITE_SCALE);
     return distance - step <= arrivalDistance;
   }
 
@@ -2409,7 +2418,7 @@ export class GameScene extends Phaser.Scene {
     traveler.bikeSprite.setVisible(mode === "bike");
     traveler.bikeSprite.setPosition(traveler.sprite.x, traveler.sprite.y + scaleDistance(10));
     traveler.bikeSprite.setDepth(traveler.sprite.y + 1);
-    traveler.bikeSprite.setScale(traveler.sprite.scaleX < 0 ? -1 : 1, 1);
+    this.setSpriteFacing(traveler.bikeSprite, traveler.sprite.scaleX < 0, PLAYER_BIKE_SPRITE_SCALE);
   }
 
   private getGroupTravelers(): GroupTravelerRuntime[] {
@@ -3269,6 +3278,10 @@ export class GameScene extends Phaser.Scene {
       return vector.x < 0 ? "left" : "right";
     }
     return vector.y < 0 ? "up" : "down";
+  }
+
+  private setSpriteFacing(sprite: Phaser.GameObjects.Components.Transform, facingLeft: boolean, scale: number): void {
+    sprite.setScale(facingLeft ? -scale : scale, scale);
   }
 
   private layoutForViewport(): void {

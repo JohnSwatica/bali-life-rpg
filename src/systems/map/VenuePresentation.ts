@@ -172,12 +172,76 @@ function resolveRoadsideOverlaps(placements: VenuePresentationPlacement[]): Venu
       break;
     }
   }
+  resolveResidualAxisOverlaps(resolved);
 
   return resolved.map((placement) => ({
     ...placement,
     x: Math.round(placement.x),
     y: Math.round(placement.y)
   }));
+}
+
+function resolveResidualAxisOverlaps(placements: VenuePresentationPlacement[]): void {
+  for (let pass = 0; pass < 96; pass += 1) {
+    let changed = false;
+    for (let aIndex = 0; aIndex < placements.length; aIndex += 1) {
+      for (let bIndex = aIndex + 1; bIndex < placements.length; bIndex += 1) {
+        const a = placements[aIndex];
+        const b = placements[bIndex];
+        if (a.node.category === "beach" || b.node.category === "beach") {
+          continue;
+        }
+
+        const overlap = getAxisAlignedOverlap(a, b);
+        if (!overlap.overlaps) {
+          continue;
+        }
+
+        const axis = overlap.xDepth <= overlap.yDepth ? { x: 1, y: 0 } : { x: 0, y: 1 };
+        const direction = (b.x - a.x) * axis.x + (b.y - a.y) * axis.y >= 0 ? 1 : -1;
+        const distance = (Math.min(overlap.xDepth, overlap.yDepth) + ROADSIDE_BUILDING_GAP) / 2;
+        a.x -= axis.x * direction * distance;
+        a.y -= axis.y * direction * distance;
+        b.x += axis.x * direction * distance;
+        b.y += axis.y * direction * distance;
+        changed = true;
+      }
+    }
+
+    if (!changed) {
+      break;
+    }
+  }
+}
+
+function getAxisAlignedOverlap(
+  a: VenuePresentationPlacement,
+  b: VenuePresentationPlacement
+): { overlaps: boolean; xDepth: number; yDepth: number } {
+  const aBounds = getAxisAlignedBounds(a);
+  const bBounds = getAxisAlignedBounds(b);
+  const xDepth = Math.min(aBounds.maxX, bBounds.maxX) - Math.max(aBounds.minX, bBounds.minX);
+  const yDepth = Math.min(aBounds.maxY, bBounds.maxY) - Math.max(aBounds.minY, bBounds.minY);
+  return {
+    overlaps: xDepth > 0 && yDepth > 0,
+    xDepth,
+    yDepth
+  };
+}
+
+function getAxisAlignedBounds(placement: VenuePresentationPlacement): {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+} {
+  const corners = getVenuePlacementCorners(placement);
+  return {
+    minX: Math.min(...corners.map((point) => point.x)),
+    maxX: Math.max(...corners.map((point) => point.x)),
+    minY: Math.min(...corners.map((point) => point.y)),
+    maxY: Math.max(...corners.map((point) => point.y))
+  };
 }
 
 function packRoadsideRows(placements: VenuePresentationPlacement[]): void {
@@ -370,8 +434,8 @@ function getOrientedOverlap(
     }
 
     const movementPower =
-      (a.snappedToRoad ? Math.abs(dot(a.tangent, axis)) : 0) +
-      (b.snappedToRoad ? Math.abs(dot(b.tangent, axis)) : 0);
+      (a.snappedToRoad ? Math.abs(dot(a.slideTangent, axis)) : 0) +
+      (b.snappedToRoad ? Math.abs(dot(b.slideTangent, axis)) : 0);
     const cost = depth / Math.max(0.12, movementPower);
     if (cost < bestCost) {
       bestCost = cost;
