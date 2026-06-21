@@ -21,7 +21,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Berawa layout is now generated from OpenStreetMap data plus `src/data/curatedVenues.ts` by `scripts/generateLayoutFromOSM.ts`; runtime consumes static generated data from `src/data/berawaLayout.ts`.
 - Curated coordinate resolution is cached at `data/osm/berawa.curated-coords.json`: 41 rendered venues, 23 OSM POI matches, 0 Nominatim matches, 15 flagged estimates, and 3 flagged fallbacks. The estimate/fallback list is the manual-check shortlist, not live truth.
 - The generated bbox is now framed to the curated venue cloud and filters the larger OSM cache to 923 road paths.
-- Runtime map art now renders baked roads, beach/ocean, greenery, and one simple blocky building per rendered curated venue through `curatedVenueNodes`. The old hand-placed market/building/decor layer is no longer called.
+- Runtime map art now renders baked roads, beach/ocean, greenery, and one simple blocky building per rendered curated venue through `curatedVenueNodes`. The old hand-placed market/building/decor layer and dense road-point marker layer are no longer called.
 - Static map geometry is generated once into a texture; camera zoom is tuned closer, and dynamic NPC/pickup/traffic/group/wanted sprites are culled off-camera.
 - OSM/Nominatim/Overpass caches are committed under `data/osm/`, including the required raw Overpass extract at `data/osm/berawa.overpass.json`.
 - The generated map is north-up with a uniform projection into the existing `2400 x 1700` world. Orientation sanity in the report confirms beach lower/SW, Nelayan north, and Tegal Sari east of the beach side.
@@ -75,6 +75,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - `b787716` - `feat: frame map bbox to curated venues and reproject`
 - `f2c11a1` - `feat: render curated venues as simple buildings at real positions`
 - `6b054bb` - `perf: bake static map and tune camera scale`
+- `ac4dc1f` - `fix: remove dense road marker layer`
 
 ## Current Verification
 
