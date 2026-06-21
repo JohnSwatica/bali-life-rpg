@@ -459,12 +459,12 @@
       "needsManualCheck": true
     },
     "finns_recreation_club": {
-      "lat": -8.6793591,
-      "lng": 115.1285214,
+      "lat": -8.6613591,
+      "lng": 115.1401214,
       "source": "fallback",
       "name": "FINNS Recreation Club",
       "gameVenueId": "finns_recreation_club",
-      "areaId": "beach",
+      "areaId": "finns_area",
       "shouldRender": true,
       "questCritical": true,
       "sourceName": "deterministic street/area fallback",
@@ -484,8 +484,8 @@
       "needsManualCheck": false
     },
     "baked_berawa": {
-      "lat": -8.6678566,
-      "lng": 115.1357986,
+      "lat": -8.6628566,
+      "lng": 115.1405986,
       "source": "fallback",
       "name": "BAKED. Berawa",
       "gameVenueId": "baked_berawa",
@@ -522,8 +522,8 @@
       "needsManualCheck": false
     },
     "bali_family_rental_scooter": {
-      "lat": -8.6679763,
-      "lng": 115.1359469,
+      "lat": -8.6629763,
+      "lng": 115.1407469,
       "source": "fallback",
       "name": "Bali Family Rental Scooter",
       "gameVenueId": "bali_family_rental_scooter",

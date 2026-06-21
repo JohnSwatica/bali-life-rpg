@@ -258,10 +258,14 @@ async function main() {
   await mkdir(CONFIG.cacheDir, { recursive: true });
   const anchorCache = await loadOrFetchGeocode(CONFIG, refreshGeocode);
   const anchors = resolveAnchors(CONFIG, anchorCache);
-  const bbox = chooseBBox(CONFIG.fallbackBbox, anchors);
-  const overpass = await loadOrFetchOverpass(CONFIG, bbox, refreshOsm);
+  const anchorBbox = chooseBBox(CONFIG.fallbackBbox, anchors);
+  let overpass = await loadOrFetchOverpass(CONFIG, anchorBbox, refreshOsm);
   const curatedGeocodeCache = await loadOrFetchCuratedGeocode(CONFIG, curatedVenues, overpass, refreshGeocode);
   const resolvedCuratedVenues = resolveCuratedVenueCoordinates(CONFIG, curatedVenues, overpass, curatedGeocodeCache);
+  const bbox = chooseCuratedBBox(CONFIG.fallbackBbox, resolvedCuratedVenues);
+  if (refreshOsm) {
+    overpass = await loadOrFetchOverpass(CONFIG, bbox, true);
+  }
   const projector = makeProjector(bbox, CONFIG.world, CONFIG.pad);
   const generated = generateLayout(CONFIG, bbox, projector, overpass, anchors, resolvedCuratedVenues);
 
@@ -424,6 +428,35 @@ function chooseBBox(fallback: BBox, anchors: AnchorPoint[]): BBox {
   return plausible ? padded : fallback;
 }
 
+function chooseCuratedBBox(fallback: BBox, venues: ResolvedCuratedVenue[]): BBox {
+  const points = venues
+    .filter((venue) => Number.isFinite(venue.lat) && Number.isFinite(venue.lng))
+    .map((venue) => ({ lat: venue.lat, lng: venue.lng }));
+  if (points.length < 12) {
+    return fallback;
+  }
+  const raw = points.reduce(
+    (bbox, point) => ({
+      south: Math.min(bbox.south, point.lat),
+      west: Math.min(bbox.west, point.lng),
+      north: Math.max(bbox.north, point.lat),
+      east: Math.max(bbox.east, point.lng)
+    }),
+    { south: Number.POSITIVE_INFINITY, west: Number.POSITIVE_INFINITY, north: Number.NEGATIVE_INFINITY, east: Number.NEGATIVE_INFINITY }
+  );
+  const padded = padBBox(raw, 0.15);
+  const fallbackCenterLat = (fallback.south + fallback.north) / 2;
+  const fallbackCenterLon = (fallback.west + fallback.east) / 2;
+  const centerLat = (padded.south + padded.north) / 2;
+  const centerLon = (padded.west + padded.east) / 2;
+  const plausible =
+    padded.north > padded.south &&
+    padded.east > padded.west &&
+    Math.abs(centerLat - fallbackCenterLat) < 0.06 &&
+    Math.abs(centerLon - fallbackCenterLon) < 0.06;
+  return plausible ? padded : fallback;
+}
+
 function resolveCuratedVenueCoordinates(
   config: NeighborhoodConfig,
   venues: CuratedVenue[],
@@ -577,7 +610,8 @@ function generateLayout(
   anchors: AnchorPoint[],
   resolvedCuratedVenues: ResolvedCuratedVenue[]
 ) {
-  const highways = overpass.elements.filter(isRoadWay);
+  const layoutBbox = padBBox(bbox, 0.03);
+  const highways = overpass.elements.filter(isRoadWay).filter((way) => wayIntersectsBBox(way, layoutBbox));
   const nodeRefCounts = countWayNodeRefs(highways);
   const roadNodes = new Map<number, RoadNode>();
   const roadSegments: RoadSegment[] = [];
@@ -619,7 +653,7 @@ function generateLayout(
   }
 
   roads.sort(compareRoads);
-  const pois = overpass.elements.filter(isPoiNode);
+  const pois = overpass.elements.filter(isPoiNode).filter((poi) => latLngInBBox(poi.lat ?? 0, poi.lon ?? 0, layoutBbox));
   const anchorById = new Map(anchors.map((anchor) => [anchor.id, anchor]));
   const roadCentroids = buildRoadCentroids(highways, project);
   const areas = buildAreas(config, anchorById, roadCentroids, project);
@@ -861,6 +895,14 @@ function isRoadWay(element: OverpassElement): boolean {
   return element.type === "way" && Boolean(element.tags?.highway) && Array.isArray(element.geometry);
 }
 
+function wayIntersectsBBox(way: OverpassElement, bbox: BBox): boolean {
+  return Boolean(way.geometry?.some((coord) => latLngInBBox(coord.lat, coord.lon, bbox)));
+}
+
+function latLngInBBox(lat: number, lng: number, bbox: BBox): boolean {
+  return lat >= bbox.south && lat <= bbox.north && lng >= bbox.west && lng <= bbox.east;
+}
+
 function isPoiNode(element: OverpassElement): boolean {
   return element.type === "node" && typeof element.lat === "number" && typeof element.lon === "number" && Boolean(element.tags?.name);
 }
@@ -936,7 +978,10 @@ function areaIdForCuratedVenue(venue: CuratedVenue): string {
   if (venue.category === "beach" || idAndName.includes("beach")) {
     return "beach";
   }
-  if (venue.category === "beach_club" || idAndName.includes("finns") || idAndName.includes("atlas")) {
+  if (idAndName.includes("recreation club") || idAndName.includes("canggu club")) {
+    return "finns_area";
+  }
+  if (venue.category === "beach_club" || idAndName.includes("finns beach") || idAndName.includes("atlas")) {
     return "beach";
   }
   if (street.includes("tegal sari")) {
@@ -952,22 +997,22 @@ function areaIdForCuratedVenue(venue: CuratedVenue): string {
 }
 
 function fallbackLatLngForVenue(config: NeighborhoodConfig, venue: CuratedVenue, roadCentroids: Map<string, LatLng>): LatLng {
-  const roadPoint = venue.street ? roadCentroids.get(normalizeName(venue.street)) : undefined;
+  const roadPoint = venue.source === "game_anchor" ? undefined : venue.street ? roadCentroids.get(normalizeName(venue.street)) : undefined;
   const areaPoint = areaLatLngFallback(config, areaIdForCuratedVenue(venue));
   const base = roadPoint ?? areaPoint;
   return offsetLatLng(base, venue.id);
 }
 
 function areaLatLngFallback(config: NeighborhoodConfig, areaId: string): LatLng {
-  const bbox = config.fallbackBbox;
   const points: Record<string, LatLng> = {
-    beach: { lat: bbox.south + (bbox.north - bbox.south) * 0.18, lng: bbox.west + (bbox.east - bbox.west) * 0.18 },
-    finns_area: { lat: bbox.south + (bbox.north - bbox.south) * 0.32, lng: bbox.west + (bbox.east - bbox.west) * 0.4 },
-    pantai_berawa: { lat: bbox.south + (bbox.north - bbox.south) * 0.58, lng: bbox.west + (bbox.east - bbox.west) * 0.55 },
-    cafe_cluster: { lat: bbox.south + (bbox.north - bbox.south) * 0.68, lng: bbox.west + (bbox.east - bbox.west) * 0.72 },
-    nelayan: { lat: bbox.south + (bbox.north - bbox.south) * 0.82, lng: bbox.west + (bbox.east - bbox.west) * 0.42 },
-    tegal_sari: { lat: bbox.south + (bbox.north - bbox.south) * 0.52, lng: bbox.west + (bbox.east - bbox.west) * 0.82 }
+    beach: { lat: -8.6669, lng: 115.1326 },
+    finns_area: { lat: -8.6616, lng: 115.1402 },
+    pantai_berawa: { lat: -8.6626, lng: 115.1408 },
+    cafe_cluster: { lat: -8.6607, lng: 115.1422 },
+    nelayan: { lat: -8.6567, lng: 115.1354 },
+    tegal_sari: { lat: -8.6605, lng: 115.1454 }
   };
+  const bbox = config.fallbackBbox;
   return points[areaId] ?? {
     lat: (bbox.south + bbox.north) / 2,
     lng: (bbox.west + bbox.east) / 2
