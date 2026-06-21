@@ -13,7 +13,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
-- Current branch for walkable presentation work: `fix/walkable-presentation`, branched from `feat/curated-locality-map`.
+- Current branch for coastline water-boundary work: `feat/coastline-water-boundary`, branched from `fix/walkable-presentation`.
 
 ## What Was Added Recently
 
@@ -28,6 +28,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Venue buildings are presentation-snapped beside their nearest road segment, with fronts facing the road, then de-overlapped by sliding along road tangents. The current automated layout check reports 40 non-beach placements, 0 overlaps, and max tangent slide about 62.4 px under a 120 px cap.
 - Camera zoom is now `1.34` on desktop/tablet-width viewports and `1.22` on narrow mobile viewports.
 - Roads render with explicit class widths: primary `52`, secondary `26`, lane `12`; venue labels now show only near the player and are stack-limited.
+- Coastline-aware soft water boundary feedback is now in `src/systems/map/WaterBoundary.ts`. It uses generated OSM beach/coastline/water features to nudge the player out of rendered sea/waterway areas with a toast, while leaving beach polygons walkable. The old broad rectangular `ocean-block` collision strip was removed.
 - Static map geometry is generated once into a texture; camera zoom is tuned closer, and dynamic NPC/pickup/traffic/group/wanted sprites are culled off-camera.
 - OSM/Nominatim/Overpass caches are committed under `data/osm/`, including the required raw Overpass extract at `data/osm/berawa.overpass.json`.
 - The generated map is north-up with a uniform projection into the existing `2400 x 1700` world. Orientation sanity in the report confirms beach lower/SW, Nelayan north, and Tegal Sari east of the beach side.
@@ -56,6 +57,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Controllers: `src/systems/input/InputController.ts`, `src/systems/interaction/InteractionController.ts`, `src/ui/hud/HudController.ts`
 - Phone UI: `src/ui/phone/PhoneShell.ts`
 - Berawa layout data: `src/data/berawaLayout.ts`
+- Map presentation/boundaries: `src/systems/map/VenuePresentation.ts`, `src/systems/map/WaterBoundary.ts`
 - OSM generator: `scripts/generateLayoutFromOSM.ts`
 - OSM cache/report: `data/osm/berawa.overpass.json`, `data/osm/berawa.anchors.json`, `data/osm/berawa.curated-coords.json`, `data/osm/berawa.curated-geocode.json`, `data/osm/berawa.layout-report.json`
 - Curated venue catalog: `src/data/curatedVenues.ts`
@@ -88,6 +90,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - `a805c55` - `feat: de-overlap roadside venues along the street`
 - `a610964` - `feat: zoomed-in walkable camera`
 - `2ea3bda` - `chore: road width-by-class and label declutter`
+- `a285c9b` - `feat: add coastline-aware water boundary feedback`
 
 ## Current Verification
 
@@ -101,6 +104,9 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Automated venue presentation check reports 0 overlaps among 40 non-beach venue buildings; presentation-only source pins are preserved as `sourceX/sourceY`.
 - Final walkable presentation build passed with `npm run build`.
 - In-app browser smoke loaded `http://127.0.0.1:5173/?verify=walkable-presentation`, found the Phaser canvas, reported no console errors, and verified `P` opens Phone while `ESC` returns to world.
+- Water-boundary geometry spot checks passed: a southwest sea sample resolves back to shore, a visible beach polygon sample stays walkable, an inland road sample is untouched, and the corrected shoreline point is stable on the next check.
+- Final water-boundary build passed with `npm run build`.
+- In-app browser smoke loaded `http://127.0.0.1:5173/?verify=water-boundary`, found the Phaser canvas, reported no console errors, and verified `P` opens Phone while `ESC` returns to world.
 - Source grep confirms no code path reads removed flat `playerState.reputation`, `playerState.wantedLevel`, `playerState.bounty`, `playerState.flaggedByVictims`, or `playerState.lastFlagReason` fields.
 - v1/v2 save migration maps old standing fields into schema v3 `WorldState.reputation` and strips legacy flat standing keys from the hydrated local player.
 - Quest code compiles and both starter quests complete through `QuestRegistry` in browser automation.
@@ -128,7 +134,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Phone UI is functional but still a shell; it is not a polished production phone app.
 - Godmode is simple and development-only.
 - Map discovery is a foundation, not a full minimap.
-- The road network, coastline/beach/water features, and curated building layer now follow OSM/generated coordinates. Building presentation is road-snapped and de-overlapped, but collision remains conservative rather than coastline-aware.
+- The road network, coastline/beach/water features, and curated building layer now follow OSM/generated coordinates. Building presentation is road-snapped and de-overlapped. Water boundaries are soft feedback, not full physics collision; a human should still judge the coastline feel in live play.
 - Eighteen curated coordinates still need manual review because they resolved via flagged estimate/fallback rather than OSM/Nominatim. See `data/osm/berawa.curated-coords.json`.
 - Venue rating/review fields are data-only. There is no Google Places API, scraping, live verification, or live venue ranking.
 - Multiplayer is intentionally locked and inert.
@@ -145,6 +151,7 @@ Copy/paste this into a new AI session to bring it up to speed.
    - Click all six HUD buttons with the real Mac trackpad/mouse.
    - Try the mobile HUD on an actual phone, especially tall screens.
    - Drive around and judge whether the OSM road network plus road-snapped curated venue buildings read as recognizably Berawa and walkable at the new zoom.
+   - Walk into the rendered surf/water edges and judge whether the soft boundary nudge feels natural.
    - Open Phone > Venues > Details and inspect discovery filtering plus associated NPCs/items/quests visually.
    - Build NPC affinity through memory and confirm Contacts/dialogue feel readable.
 
@@ -154,7 +161,6 @@ Copy/paste this into a new AI session to bring it up to speed.
 
 3. Continue Berawa credibility:
    - Manually verify the flagged coordinates in `data/osm/berawa.curated-coords.json`, especially estimate/fallback entries.
-   - Add coastline-aware water collision or soft boundary feedback.
    - If the new presentation feels too tight/loose on a real phone, tune only `BUILDING_SCALE_MULTIPLES`, `MAX_ROADSIDE_TANGENT_SLIDE`, and the two camera zoom values before changing map data.
    - Replace old hardcoded traffic lanes with generated road-following paths.
    - Curate a small verified venue file before adding more real-world-name candidates.
@@ -171,7 +177,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 Title:
 
 ```text
-Walkable Berawa map presentation pass
+Walkable Berawa map presentation and coastline boundary pass
 ```
 
 Summary:
@@ -182,6 +188,7 @@ Summary:
 - De-overlap dense venue clusters by sliding along road tangents with a capped displacement.
 - Tune camera zoom to 1.34 desktop / 1.22 mobile and render roads with clearer class widths.
 - Declutter venue labels so discovered names appear near the player instead of stacking globally.
+- Add generated-feature-based soft water boundaries for rendered sea/waterway areas and remove the old rectangular ocean blocker.
 - Update STATE.md and DECISIONS.md.
 ```
 
@@ -192,6 +199,7 @@ Test notes:
 - Presentation geometry check: 40 non-beach buildings, 0 overlaps, max tangent slide ~62.4 px
 - Diff check: no venue coordinate/catalog/generated data files changed
 - Browser smoke verified canvas load, no console errors, and phone P/ESC flow
+- Water-boundary geometry spot checks verified sea correction, beach pass-through, inland pass-through, and stable corrected shore point
 ```
 
 ## Do Not Do Next

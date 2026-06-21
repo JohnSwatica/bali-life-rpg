@@ -77,3 +77,9 @@ The offline Overpass extract now includes bounded POI ways/relations plus specif
 The Berawa venue coordinates and curated venue data remain untouched. Runtime presentation now derives a separate venue building layout from the generated coordinates: player-anchored building footprints, roadside snapping to the nearest road segment, road-facing fronts, tangent-only de-overlap with a capped slide, and closer camera framing. This keeps geography/source pins stable while making the map read as a walkable street-level slice.
 
 Road legibility is now a render concern, not a data rewrite: primary, secondary, and lane roads receive explicit visual widths at draw time. Venue label visibility is also presentation-only: discovered labels appear near the player and are stack-limited so dense cafe clusters read as nearby shopfronts instead of a pile of text.
+
+## 2026-06-21 - Coastline-Aware Water Boundaries Are Soft Feedback
+
+Water boundaries now derive from generated OSM beach, coastline, and water features through `src/systems/map/WaterBoundary.ts`. The runtime nudges the player out of rendered sea/waterway areas and shows a short toast, while beach polygons stay walkable. This replaces the old rectangular `ocean-block` collision strip without introducing brittle physics polygons that could trap the player on jagged coastline geometry.
+
+This remains a local, data-driven runtime behavior. There are no runtime map network calls, no new coordinates, and no edits to the curated venue catalog or generated layout data.
