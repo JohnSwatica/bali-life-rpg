@@ -284,6 +284,7 @@ export class GameScene extends Phaser.Scene {
     this.updatePickups();
     this.updateHud(delta);
     this.updateLighting();
+    this.updateDynamicObjectCulling();
   }
 
   destroy(): void {
@@ -292,9 +293,20 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawNeighborhood(): void {
-    const g = this.add.graphics();
-    g.setDepth(-100);
+    const textureKey = "berawa-static-map";
+    if (this.textures.exists(textureKey)) {
+      this.textures.remove(textureKey);
+    }
 
+    const g = this.add.graphics().setVisible(false);
+    this.drawStaticNeighborhood(g);
+    g.generateTexture(textureKey, WORLD_WIDTH, WORLD_HEIGHT);
+    g.destroy();
+    this.add.image(0, 0, textureKey).setOrigin(0).setDepth(-100);
+    this.addAreaLabels();
+  }
+
+  private drawStaticNeighborhood(g: Phaser.GameObjects.Graphics): void {
     g.fillStyle(0x4f8f5d, 1);
     g.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
@@ -310,7 +322,6 @@ export class GameScene extends Phaser.Scene {
     this.drawBeach(g);
     this.drawRoads(g);
     this.drawCuratedVenueBuildings(g);
-    this.addAreaLabels();
   }
 
   private drawBeach(g: Phaser.GameObjects.Graphics): void {
@@ -1243,6 +1254,38 @@ export class GameScene extends Phaser.Scene {
       }
       sprite.setVisible(this.isPickupAvailable(pickup));
       sprite.setDepth(sprite.y);
+    }
+  }
+
+  private updateDynamicObjectCulling(): void {
+    const view = this.cameras.main.worldView;
+    const margin = 220;
+    const visibleBounds = new Phaser.Geom.Rectangle(view.x - margin, view.y - margin, view.width + margin * 2, view.height + margin * 2);
+    const within = (object: { x: number; y: number }): boolean => Phaser.Geom.Rectangle.Contains(visibleBounds, object.x, object.y);
+
+    for (const sprite of this.npcSprites.values()) {
+      sprite.setVisible(within(sprite));
+    }
+
+    for (const sprite of this.pickupSprites.values()) {
+      sprite.setVisible(sprite.visible && within(sprite));
+    }
+
+    for (const bike of this.trafficBikes) {
+      bike.sprite.setVisible(within(bike.sprite));
+    }
+
+    for (const traveler of this.getGroupTravelers()) {
+      const travelerVisible = within(traveler.sprite);
+      traveler.sprite.setVisible(travelerVisible);
+      traveler.bikeSprite.setVisible(traveler.bikeSprite.visible && travelerVisible);
+    }
+
+    for (const offender of this.wantedOffenders.values()) {
+      const offenderVisible = within(offender.sprite);
+      offender.sprite.setVisible(offenderVisible && offender.wantedLevel > 0);
+      offender.bikeSprite.setVisible(offenderVisible && offender.wantedLevel > 0);
+      offender.sign.setVisible(offender.sign.visible && offenderVisible);
     }
   }
 
@@ -2603,7 +2646,7 @@ export class GameScene extends Phaser.Scene {
 
   private layoutForViewport(): void {
     const { width, height } = this.scale;
-    this.cameras.main.setZoom(width < 720 ? 0.86 : 1);
+    this.cameras.main.setZoom(width < 720 ? 0.96 : 1.16);
     this.promptText.setPosition(20, height - 36);
     this.toastText.setPosition(width / 2, Math.max(92, height * 0.17));
     this.hudController.layoutTouchControls();
