@@ -1,10 +1,11 @@
 import type { RoadPathDefinition } from "../../data/berawaLayout";
+import { scaleDistance } from "./WorldScale";
 
 export type RoadVisualClass = "main" | "secondary" | "lane";
 
 export const PLAYER_UNIT = {
-  width: 24,
-  height: 30
+  width: scaleDistance(24),
+  height: scaleDistance(30)
 } as const;
 
 export const POKEMON_SCALE = {

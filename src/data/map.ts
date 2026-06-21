@@ -1,8 +1,9 @@
 import type { PickupDefinition, RectDefinition } from "../types";
 import { offsetVenuePoint } from "./layoutLookup";
+import { BASE_WORLD_HEIGHT, BASE_WORLD_WIDTH, scaleDistance } from "../systems/map/WorldScale";
 
-export const WORLD_WIDTH = 2400;
-export const WORLD_HEIGHT = 1700;
+export const WORLD_WIDTH = scaleDistance(BASE_WORLD_WIDTH);
+export const WORLD_HEIGHT = scaleDistance(BASE_WORLD_HEIGHT);
 
 export const collisionRects: RectDefinition[] = [
 ];

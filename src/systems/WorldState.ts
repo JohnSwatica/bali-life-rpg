@@ -52,7 +52,7 @@ export function createInitialWorldState(): WorldState {
   );
 
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     version: 1,
     neighborhoodId: "berawa-finns-club",
     clock: {

@@ -1,3 +1,5 @@
+import { scaleDistance } from "./WorldScale";
+
 export interface MapPoint {
   x: number;
   y: number;
@@ -27,7 +29,7 @@ interface WorldSize {
   height: number;
 }
 
-const DEFAULT_EDGE_BUFFER = 30;
+const DEFAULT_EDGE_BUFFER = scaleDistance(30);
 
 export function createWaterBoundaryGuard(features: MapFeatureLike[], world: WorldSize): WaterBoundaryGuard {
   const coastline = features

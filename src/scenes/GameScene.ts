@@ -7,7 +7,7 @@ import {
   venueMapNodes,
   type CuratedVenueMapNode,
   type MapFeatureDefinition
-} from "../data/berawaLayout";
+} from "../data/scaledBerawaLayout";
 import { activityDefinitions, interestGroupDefinitions } from "../data/community";
 import { itemDefinitions } from "../data/items";
 import { collisionRects, pickupDefinitions, WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
@@ -21,8 +21,9 @@ import { ScriptedDialogueProvider, type DialogueProvider } from "../systems/dial
 import { InteractionController, type InteractionTarget } from "../systems/interaction/InteractionController";
 import { InputController, type GameKeyMap } from "../systems/input/InputController";
 import { IntentDispatcher, type IntentResult } from "../systems/intents/IntentDispatcher";
-import { POKEMON_SCALE } from "../systems/map/PlayerUnitScale";
+import { PLAYER_UNIT, POKEMON_SCALE } from "../systems/map/PlayerUnitScale";
 import { getPresentedRoads, getVenueSnapRoads } from "../systems/map/RoadPresentation";
+import { scaleDistance, scalePoint } from "../systems/map/WorldScale";
 import {
   computeVenuePresentationLayout,
   getVenueFootprint,
@@ -182,10 +183,10 @@ interface MinimapLayout {
   scale: number;
 }
 
-const WALK_SPEED = 78;
-const BIKE_SPEED = 345;
-const GROUP_WALK_SPEED = 92;
-const GROUP_BIKE_SPEED = 255;
+const WALK_SPEED = scaleDistance(78);
+const BIKE_SPEED = scaleDistance(345);
+const GROUP_WALK_SPEED = scaleDistance(92);
+const GROUP_BIKE_SPEED = scaleDistance(255);
 const BIKE_RENTAL_ITEM_ID = "scooter_rental";
 const SCOOTER_KEY_ITEM_ID = "scooter_key";
 const REQUIRED_BIKE_HELPERS = 5;
@@ -196,10 +197,10 @@ const FIRST_FLAG_BOUNTY = 20;
 const REPEAT_FLAG_BOUNTY = 35;
 const TRAFFIC_HIT_COOLDOWN_MS = 2200;
 const TRAFFIC_HIT_MONEY_LOSS = 10;
-const TRAFFIC_KNOCKBACK_DISTANCE = 76;
+const TRAFFIC_KNOCKBACK_DISTANCE = scaleDistance(76);
 const WATER_BOUNDARY_TOAST_COOLDOWN_MS = 1800;
-const VENUE_LABEL_NEAR_RADIUS = 210;
-const VENUE_LABEL_STACK_DISTANCE = 92;
+const VENUE_LABEL_NEAR_RADIUS = scaleDistance(210);
+const VENUE_LABEL_STACK_DISTANCE = scaleDistance(92);
 const MAX_VISIBLE_VENUE_LABELS = 5;
 const MINIMAP_MAX_WIDTH = 280;
 const MINIMAP_MIN_WIDTH = 104;
@@ -207,7 +208,11 @@ const MINIMAP_PADDING = 7;
 const PRESENTED_BERAWA_ROADS = getPresentedRoads(berawaRoads);
 const VENUE_SNAP_ROADS = getVenueSnapRoads(berawaRoads);
 const TRAFFIC_BIKE_COUNT = 8;
-const TRAFFIC_ROUTE_MIN_LENGTH = 230;
+const TRAFFIC_ROUTE_MIN_LENGTH = scaleDistance(230);
+const PLAYER_BODY_WIDTH = Math.min(48, PLAYER_UNIT.width);
+const PLAYER_BODY_HEIGHT = Math.min(48, PLAYER_UNIT.height);
+const PLAYER_BODY_OFFSET_X = Math.max(0, (48 - PLAYER_BODY_WIDTH) / 2);
+const PLAYER_BODY_OFFSET_Y = Math.max(0, 48 - PLAYER_BODY_HEIGHT - 2);
 const MAX_STATIC_MAP_BAKE_SCALE = 2.5;
 const FALLBACK_MAX_TEXTURE_SIZE = 4096;
 const TRAFFIC_ROUTES: TrafficRouteDefinition[] = PRESENTED_BERAWA_ROADS
@@ -222,21 +227,29 @@ const BIKE_MUD_ZONES: MudZoneDefinition[] = [
   {
     id: "berawa-shortcut-mud",
     label: "the soft Berawa shortcut mud",
-    x: 1910,
-    y: 700,
-    width: 260,
-    height: 80
+    ...scaleRectDefinition(1910, 700, 260, 80)
   },
   {
     id: "beach-soft-sand",
     label: "the deep beach sand",
-    x: 0,
-    y: 1320,
-    width: 2400,
-    height: 170
+    ...scaleRectDefinition(0, 1320, 2400, 170)
   }
 ];
 const UI_DEPTH = 1200;
+
+function scaleRectDefinition(x: number, y: number, width: number, height: number): Omit<MudZoneDefinition, "id" | "label"> {
+  return {
+    x: scaleDistance(x),
+    y: scaleDistance(y),
+    width: scaleDistance(width),
+    height: scaleDistance(height)
+  };
+}
+
+function worldVector(x: number, y: number): Phaser.Math.Vector2 {
+  const point = scalePoint({ x, y });
+  return new Phaser.Math.Vector2(point.x, point.y);
+}
 
 function buildTrafficJunctionIndex(routes: TrafficRouteDefinition[]): Map<string, TrafficJunctionOption[]> {
   const junctions = new Map<string, TrafficJunctionOption[]>();
@@ -428,12 +441,13 @@ export class GameScene extends Phaser.Scene {
     g.fillStyle(0x66a36a, 1);
     g.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
-    for (let y = 0; y < 1230; y += 48) {
-      for (let x = 0; x < WORLD_WIDTH; x += 48) {
-        const tint = (x / 48 + y / 48) % 3 === 0 ? 0x79b779 : 0x4e8f5a;
+    const vegetationStep = scaleDistance(48);
+    for (let y = 0; y < scaleDistance(1230); y += vegetationStep) {
+      for (let x = 0; x < WORLD_WIDTH; x += vegetationStep) {
+        const tint = (x / vegetationStep + y / vegetationStep) % 3 === 0 ? 0x79b779 : 0x4e8f5a;
         g.fillStyle(tint, 0.09);
-        g.fillCircle(x + 12, y + 18, 2);
-        g.fillCircle(x + 35, y + 38, 1.4);
+        g.fillCircle(x + scaleDistance(12), y + scaleDistance(18), scaleDistance(2));
+        g.fillCircle(x + scaleDistance(35), y + scaleDistance(38), Math.max(1, scaleDistance(1.4)));
       }
     }
 
@@ -452,34 +466,34 @@ export class GameScene extends Phaser.Scene {
 
   private drawFallbackBeach(g: Phaser.GameObjects.Graphics): void {
     g.fillStyle(0xd9b875, 1);
-    g.fillRect(0, 1160, WORLD_WIDTH, 360);
+    g.fillRect(0, scaleDistance(1160), WORLD_WIDTH, scaleDistance(360));
     g.fillStyle(0xcda561, 0.55);
-    for (let x = 20; x < WORLD_WIDTH; x += 80) {
-      g.fillCircle(x, 1245 + ((x / 40) % 5) * 18, 3);
-      g.fillCircle(x + 28, 1370 + ((x / 50) % 4) * 14, 2);
+    for (let x = scaleDistance(20); x < WORLD_WIDTH; x += scaleDistance(80)) {
+      g.fillCircle(x, scaleDistance(1245) + ((x / scaleDistance(40)) % 5) * scaleDistance(18), scaleDistance(3));
+      g.fillCircle(x + scaleDistance(28), scaleDistance(1370) + ((x / scaleDistance(50)) % 4) * scaleDistance(14), scaleDistance(2));
     }
 
     g.fillStyle(0x18708b, 1);
-    g.fillRect(0, 1505, WORLD_WIDTH, 195);
+    g.fillRect(0, scaleDistance(1505), WORLD_WIDTH, scaleDistance(195));
     g.fillStyle(0x43c3c5, 0.75);
-    for (let y = 1530; y < WORLD_HEIGHT; y += 44) {
-      for (let x = 0; x < WORLD_WIDTH; x += 180) {
-        g.lineStyle(3, 0x9ee6df, 0.6);
+    for (let y = scaleDistance(1530); y < WORLD_HEIGHT; y += scaleDistance(44)) {
+      for (let x = 0; x < WORLD_WIDTH; x += scaleDistance(180)) {
+        g.lineStyle(scaleDistance(3), 0x9ee6df, 0.6);
         g.beginPath();
         g.moveTo(x, y);
         for (let step = 1; step <= 12; step += 1) {
           const progress = step / 12;
-          g.lineTo(x + progress * 160, y + Math.sin(progress * Math.PI * 2) * 14);
+          g.lineTo(x + progress * scaleDistance(160), y + Math.sin(progress * Math.PI * 2) * scaleDistance(14));
         }
         g.strokePath();
       }
     }
 
-    g.lineStyle(3, 0xf4dfaa, 0.64);
+    g.lineStyle(scaleDistance(3), 0xf4dfaa, 0.64);
     g.beginPath();
-    g.moveTo(0, 1175);
-    for (let x = 0; x <= WORLD_WIDTH; x += 120) {
-      g.lineTo(x, 1190 + Math.sin(x / 190) * 28);
+    g.moveTo(0, scaleDistance(1175));
+    for (let x = 0; x <= WORLD_WIDTH; x += scaleDistance(120)) {
+      g.lineTo(x, scaleDistance(1190) + Math.sin(x / scaleDistance(190)) * scaleDistance(28));
     }
     g.strokePath();
   }
@@ -502,13 +516,13 @@ export class GameScene extends Phaser.Scene {
       g.closePath();
       g.fillPath();
 
-      g.lineStyle(4, 0x9ee6df, 0.72);
+      g.lineStyle(scaleDistance(4), 0x9ee6df, 0.72);
       this.strokeRoadPath(g, coastline);
       for (let index = 0; index < coastline.length; index += 5) {
         const point = coastline[index];
-        g.lineStyle(2, 0x9ee6df, 0.38);
+        g.lineStyle(scaleDistance(2), 0x9ee6df, 0.38);
         g.beginPath();
-        g.arc(point.x - 18, point.y + 16, 18, Phaser.Math.DegToRad(205), Phaser.Math.DegToRad(335));
+        g.arc(point.x - scaleDistance(18), point.y + scaleDistance(16), scaleDistance(18), Phaser.Math.DegToRad(205), Phaser.Math.DegToRad(335));
         g.strokePath();
       }
     }
@@ -521,7 +535,7 @@ export class GameScene extends Phaser.Scene {
       this.fillMapFeature(g, feature, 0xd9b875, 0.96, 0xf4dfaa, 0.54);
       g.fillStyle(0xcda561, 0.38);
       for (const point of feature.points.filter((_, index) => index % 4 === 0)) {
-        g.fillCircle(point.x, point.y, 3);
+        g.fillCircle(point.x, point.y, scaleDistance(3));
       }
     }
   }
@@ -545,13 +559,13 @@ export class GameScene extends Phaser.Scene {
     }
     g.closePath();
     g.fillPath();
-    g.lineStyle(2, stroke, strokeAlpha);
+    g.lineStyle(scaleDistance(2), stroke, strokeAlpha);
     this.strokeRoadPath(g, feature.points);
   }
 
   private drawRoads(g: Phaser.GameObjects.Graphics): void {
     for (const entry of PRESENTED_BERAWA_ROADS) {
-      const shoulderWidth = entry.width + (entry.visualClass === "lane" ? 8 : 16);
+      const shoulderWidth = entry.width + scaleDistance(entry.visualClass === "lane" ? 8 : 16);
       g.lineStyle(shoulderWidth, 0x8d8c73, entry.visualClass === "lane" ? 0.38 : 0.5);
       this.strokeRoadPath(g, entry.road.points);
     }
@@ -560,15 +574,15 @@ export class GameScene extends Phaser.Scene {
       const roadColor = entry.visualClass === "lane" ? 0xcac4aa : entry.visualClass === "secondary" ? 0xded0b0 : 0xf0dfb9;
       g.lineStyle(entry.width, roadColor, 1);
       this.strokeRoadPath(g, entry.road.points);
-      g.lineStyle(2, 0x8b8068, 0.36);
+      g.lineStyle(scaleDistance(2), 0x8b8068, 0.36);
       this.strokeRoadPath(g, entry.road.points);
 
       if (entry.visualClass === "main") {
-        g.lineStyle(4, 0xfff7d3, 0.74);
-        this.drawDashedPath(g, entry.road.points, 54, 62);
+        g.lineStyle(scaleDistance(4), 0xfff7d3, 0.74);
+        this.drawDashedPath(g, entry.road.points, scaleDistance(54), scaleDistance(62));
       } else if (entry.visualClass === "secondary") {
-        g.lineStyle(3, 0xfff0bd, 0.34);
-        this.drawDashedPath(g, entry.road.points, 34, 58);
+        g.lineStyle(scaleDistance(3), 0xfff0bd, 0.34);
+        this.drawDashedPath(g, entry.road.points, scaleDistance(34), scaleDistance(58));
       }
     }
   }
@@ -626,30 +640,30 @@ export class GameScene extends Phaser.Scene {
     const corner = node.isLandmark ? 10 : 6;
 
     g.fillStyle(0x1b1713, 0.11);
-    this.fillPlacedRect(g, placement, 4, 5, size.width, size.height, 0x1b1713, 0.11);
+    this.fillPlacedRect(g, placement, scaleDistance(4), scaleDistance(5), size.width, size.height, 0x1b1713, 0.11);
     g.fillStyle(palette.wall, 1);
     this.fillPlacedRect(g, placement, 0, 0, size.width, size.height, palette.wall, 1);
     g.fillStyle(palette.roof, 1);
-    this.fillPlacedRect(g, placement, 0, -size.height * 0.34, size.width + 10, Math.max(18, size.height * 0.34), palette.roof, 1);
+    this.fillPlacedRect(g, placement, 0, -size.height * 0.34, size.width + scaleDistance(10), Math.max(scaleDistance(18), size.height * 0.34), palette.roof, 1);
 
     g.fillStyle(0x2b2a26, 0.56);
-    this.fillPlacedRect(g, placement, 0, -size.height / 2 + 9, 14, 18, 0x2b2a26, 0.56);
+    this.fillPlacedRect(g, placement, 0, -size.height / 2 + scaleDistance(9), scaleDistance(14), scaleDistance(18), 0x2b2a26, 0.56);
     g.fillStyle(0xf7e7ad, 0.85);
-    this.fillPlacedRect(g, placement, -size.width * 0.26, size.height * 0.08, 12, 10, 0xf7e7ad, 0.85);
-    this.fillPlacedRect(g, placement, size.width * 0.26, size.height * 0.08, 12, 10, 0xf7e7ad, 0.85);
+    this.fillPlacedRect(g, placement, -size.width * 0.26, size.height * 0.08, scaleDistance(12), scaleDistance(10), 0xf7e7ad, 0.85);
+    this.fillPlacedRect(g, placement, size.width * 0.26, size.height * 0.08, scaleDistance(12), scaleDistance(10), 0xf7e7ad, 0.85);
 
     if (node.isLandmark) {
-      g.lineStyle(3, 0xf6d67a, 0.82);
-      this.strokePlacedRect(g, placement, 0, -2, size.width + 8, size.height + 12);
+      g.lineStyle(scaleDistance(3), 0xf6d67a, 0.82);
+      this.strokePlacedRect(g, placement, 0, -scaleDistance(2), size.width + scaleDistance(8), size.height + scaleDistance(12));
     } else if (node.questCritical) {
-      g.lineStyle(2, 0xf7f1d2, 0.58);
-      this.strokePlacedRect(g, placement, 0, -2, size.width + 4, size.height + 10);
+      g.lineStyle(scaleDistance(2), 0xf7f1d2, 0.58);
+      this.strokePlacedRect(g, placement, 0, -scaleDistance(2), size.width + scaleDistance(4), size.height + scaleDistance(10));
     }
 
     if (node.coordinateSource === "estimate" || node.coordinateSource === "fallback") {
       g.fillStyle(node.coordinateSource === "estimate" ? 0xf0b35f : 0xb8b4a1, 0.92);
-      const marker = this.localToWorld(placement, size.width / 2 - 7, -size.height / 2 + 7);
-      g.fillCircle(marker.x, marker.y, 4);
+      const marker = this.localToWorld(placement, size.width / 2 - scaleDistance(7), -size.height / 2 + scaleDistance(7));
+      g.fillCircle(marker.x, marker.y, scaleDistance(4));
     }
   }
 
@@ -723,14 +737,14 @@ export class GameScene extends Phaser.Scene {
     const x = node.x - width / 2;
     const y = node.y - height / 2;
     g.fillStyle(0x111b22, 0.18);
-    g.fillEllipse(node.x, node.y + height / 2, width + 18, 18);
+    g.fillEllipse(node.x, node.y + height / 2, width + scaleDistance(18), scaleDistance(18));
     g.fillStyle(0xc79652, 1);
-    g.fillRoundedRect(x, y, width, height, 7);
+    g.fillRoundedRect(x, y, width, height, scaleDistance(7));
     g.fillStyle(0x3f88c5, 1);
-    g.fillRoundedRect(x - 6, y - 13, width + 12, 24, 8);
+    g.fillRoundedRect(x - scaleDistance(6), y - scaleDistance(13), width + scaleDistance(12), scaleDistance(24), scaleDistance(8));
     g.fillStyle(0xf7f1d2, 0.9);
-    g.fillCircle(node.x - width * 0.2, y + height * 0.58, 5);
-    g.fillCircle(node.x + width * 0.2, y + height * 0.58, 5);
+    g.fillCircle(node.x - width * 0.2, y + height * 0.58, scaleDistance(5));
+    g.fillCircle(node.x + width * 0.2, y + height * 0.58, scaleDistance(5));
   }
 
   private venuePalette(category: string): { wall: number; roof: number } {
@@ -1007,7 +1021,8 @@ export class GameScene extends Phaser.Scene {
     for (const npc of Object.values(npcDefinitions)) {
       const state = this.world.npcs[npc.id];
       const sprite = this.physics.add.sprite(state.x, state.y, npc.spriteKey).setDepth(state.y).setImmovable(true);
-      sprite.body?.setSize(24, 30);
+      sprite.body?.setSize(PLAYER_BODY_WIDTH, PLAYER_BODY_HEIGHT);
+      sprite.body?.setOffset(PLAYER_BODY_OFFSET_X, PLAYER_BODY_OFFSET_Y);
       this.npcSprites.set(npc.id, sprite);
     }
   }
@@ -1016,9 +1031,9 @@ export class GameScene extends Phaser.Scene {
     this.player = this.physics.add.sprite(this.playerState.x, this.playerState.y, "player");
     this.player.setCollideWorldBounds(true);
     this.player.setDepth(this.player.y);
-    this.player.body?.setSize(24, 30);
-    this.player.body?.setOffset(12, 16);
-    this.playerBike = this.add.sprite(this.playerState.x, this.playerState.y + 10, "player-bike").setVisible(false);
+    this.player.body?.setSize(PLAYER_BODY_WIDTH, PLAYER_BODY_HEIGHT);
+    this.player.body?.setOffset(PLAYER_BODY_OFFSET_X, PLAYER_BODY_OFFSET_Y);
+    this.playerBike = this.add.sprite(this.playerState.x, this.playerState.y + scaleDistance(10), "player-bike").setVisible(false);
     this.physics.add.collider(this.player, this.obstacleGroup);
     this.updatePlayerBikeVisual();
   }
@@ -1036,7 +1051,7 @@ export class GameScene extends Phaser.Scene {
         route: TRAFFIC_ROUTES[0],
         targetIndex: 1,
         direction: 1,
-        speed: 150,
+        speed: scaleDistance(150),
         velocity: new Phaser.Math.Vector2(1, 0),
         seed: index
       };
@@ -1057,7 +1072,7 @@ export class GameScene extends Phaser.Scene {
     bike.route = route;
     bike.direction = resolvedDirection;
     bike.targetIndex = targetIndex === startIndex ? Phaser.Math.Clamp(startIndex + resolvedDirection, 0, route.points.length - 1) : targetIndex;
-    bike.speed = 135 + ((seed * 23) % 70);
+    bike.speed = scaleDistance(135 + ((seed * 23) % 70));
     bike.seed = seed;
     const start = route.points[startIndex];
     bike.sprite.setPosition(start.x, start.y);
@@ -1083,17 +1098,17 @@ export class GameScene extends Phaser.Scene {
 
   private createWantedOffenders(): void {
     const route = [
-      new Phaser.Math.Vector2(1360, 805),
-      new Phaser.Math.Vector2(1060, 805),
-      new Phaser.Math.Vector2(975, 610),
-      new Phaser.Math.Vector2(1475, 430),
-      new Phaser.Math.Vector2(1768, 365),
-      new Phaser.Math.Vector2(1768, 805)
+      worldVector(1360, 805),
+      worldVector(1060, 805),
+      worldVector(975, 610),
+      worldVector(1475, 430),
+      worldVector(1768, 365),
+      worldVector(1768, 805)
     ];
     const sprite = this.add.sprite(route[0].x, route[0].y, "npc-ari").setDepth(route[0].y + 4);
     const bikeSprite = this.add.sprite(route[0].x, route[0].y + 10, "traffic-bike").setDepth(route[0].y + 3);
     const sign = this.add
-      .text(route[0].x, route[0].y - 46, "WANTED\nRp 120", {
+      .text(route[0].x, route[0].y - scaleDistance(46), "WANTED\nRp 120", {
         fontFamily: "Inter, Arial, sans-serif",
         fontSize: "11px",
         color: "#2b1d17",
@@ -1114,7 +1129,7 @@ export class GameScene extends Phaser.Scene {
       wantedLevel: 3,
       route,
       routeIndex: 1,
-      speed: 118
+      speed: scaleDistance(118)
     });
   }
 
@@ -1247,7 +1262,7 @@ export class GameScene extends Phaser.Scene {
     }
     const visible = this.playerState.onBike || this.playerState.bikeStuck;
     this.playerBike.setVisible(visible);
-    this.playerBike.setPosition(this.player.x, this.player.y + 10);
+    this.playerBike.setPosition(this.player.x, this.player.y + scaleDistance(10));
     this.playerBike.setDepth(this.player.y - 1);
     this.playerBike.setAlpha(this.playerState.bikeStuck ? 0.62 : 1);
     this.playerBike.setScale(this.playerState.direction === "left" ? -1 : 1, 1);
@@ -1260,7 +1275,7 @@ export class GameScene extends Phaser.Scene {
       this.moveTrafficBikeAlongRoad(bike, (bike.speed * delta) / 1000);
       bike.sprite.setDepth(bike.sprite.y + 3);
 
-      if (this.trafficHitCooldown <= 0 && Phaser.Math.Distance.Between(this.player.x, this.player.y, bike.sprite.x, bike.sprite.y) < 34) {
+      if (this.trafficHitCooldown <= 0 && Phaser.Math.Distance.Between(this.player.x, this.player.y, bike.sprite.x, bike.sprite.y) < scaleDistance(34)) {
         this.applyTrafficHit(bike);
       }
     }
@@ -1391,13 +1406,13 @@ export class GameScene extends Phaser.Scene {
       if (reached) {
         offender.routeIndex = (offender.routeIndex + 1) % offender.route.length;
       }
-      offender.bikeSprite.setPosition(offender.sprite.x, offender.sprite.y + 10);
+      offender.bikeSprite.setPosition(offender.sprite.x, offender.sprite.y + scaleDistance(10));
       offender.bikeSprite.setDepth(offender.sprite.y + 2);
       offender.bikeSprite.setScale(offender.sprite.scaleX < 0 ? -1 : 1, 1);
       offender.sprite.setDepth(offender.sprite.y + 3);
       offender.sign
         .setText(`WANTED\nRp ${Math.min(offender.cash, this.getOffenderReward(offender))}`)
-        .setPosition(offender.sprite.x, offender.sprite.y - 48)
+      .setPosition(offender.sprite.x, offender.sprite.y - scaleDistance(48))
         .setDepth(offender.sprite.y + 5)
         .setVisible(true);
     }
@@ -1415,14 +1430,14 @@ export class GameScene extends Phaser.Scene {
     const dx = targetX - sprite.x;
     const dy = targetY - sprite.y;
     const distance = Math.hypot(dx, dy);
-    if (distance <= 5) {
+    if (distance <= scaleDistance(5)) {
       return true;
     }
     const step = Math.min(distance, (speed * delta) / 1000);
     sprite.x += (dx / distance) * step;
     sprite.y += (dy / distance) * step;
     sprite.setScale(dx < -1 ? -1 : 1, 1);
-    return distance - step <= 5;
+    return distance - step <= scaleDistance(5);
   }
 
   private applyTrafficHit(source: TrafficBikeRuntime): void {
@@ -1441,10 +1456,10 @@ export class GameScene extends Phaser.Scene {
     this.applyTrafficKnockback(source);
     this.cameras.main.shake(180, 0.006);
     this.spawnHitSplash(this.player.x, this.player.y);
-    this.spawnFloatingText("Ouch!", this.player.x, this.player.y - 34, "#ffdfb3");
+    this.spawnFloatingText("Ouch!", this.player.x, this.player.y - scaleDistance(34), "#ffdfb3");
     if (moneyLoss > 0) {
       this.spawnCashBurst(this.player.x, this.player.y, moneyLoss);
-      this.spawnFloatingText(`-Rp ${moneyLoss}`, this.player.x + 20, this.player.y - 12, "#fff0bd");
+      this.spawnFloatingText(`-Rp ${moneyLoss}`, this.player.x + scaleDistance(20), this.player.y - scaleDistance(12), "#fff0bd");
     }
     saveWorldState(this.world);
     this.showToast(`A passing scooter clipped you. Safety -12, Focus -5${moneyLoss > 0 ? `, Rp -${moneyLoss}` : ""}.`);
@@ -1459,8 +1474,9 @@ export class GameScene extends Phaser.Scene {
       away.normalize();
       knockback.add(away.scale(0.45)).normalize();
     }
-    const nextX = Phaser.Math.Clamp(this.player.x + knockback.x * TRAFFIC_KNOCKBACK_DISTANCE, 28, WORLD_WIDTH - 28);
-    const nextY = Phaser.Math.Clamp(this.player.y + knockback.y * TRAFFIC_KNOCKBACK_DISTANCE, 28, WORLD_HEIGHT - 28);
+    const edgeMargin = scaleDistance(28);
+    const nextX = Phaser.Math.Clamp(this.player.x + knockback.x * TRAFFIC_KNOCKBACK_DISTANCE, edgeMargin, WORLD_WIDTH - edgeMargin);
+    const nextY = Phaser.Math.Clamp(this.player.y + knockback.y * TRAFFIC_KNOCKBACK_DISTANCE, edgeMargin, WORLD_HEIGHT - edgeMargin);
     this.player.setVelocity(0, 0);
     this.player.setPosition(nextX, nextY);
     this.player.body?.updateFromGameObject();
@@ -1473,12 +1489,12 @@ export class GameScene extends Phaser.Scene {
     const colors = [0xe85d5a, 0xff8a5b, 0xffcf70];
     for (let i = 0; i < 10; i += 1) {
       const dot = this.add
-        .circle(x, y - 10, Phaser.Math.Between(3, 7), colors[i % colors.length], 0.82)
+        .circle(x, y - scaleDistance(10), Phaser.Math.Between(scaleDistance(3), scaleDistance(7)), colors[i % colors.length], 0.82)
         .setDepth(this.player.y + 12);
       this.tweens.add({
         targets: dot,
-        x: x + Phaser.Math.Between(-34, 34),
-        y: y + Phaser.Math.Between(-48, 20),
+        x: x + Phaser.Math.Between(-scaleDistance(34), scaleDistance(34)),
+        y: y + Phaser.Math.Between(-scaleDistance(48), scaleDistance(20)),
         scale: 0.25,
         alpha: 0,
         duration: 420,
@@ -1502,7 +1518,7 @@ export class GameScene extends Phaser.Scene {
       .setDepth(UI_DEPTH - 8);
     this.tweens.add({
       targets: label,
-      y: y - 34,
+      y: y - scaleDistance(34),
       alpha: 0,
       duration: 900,
       ease: "Cubic.easeOut",
@@ -1538,8 +1554,8 @@ export class GameScene extends Phaser.Scene {
 
     this.player.setVelocity(0, 0);
     this.player.setPosition(
-      Phaser.Math.Clamp(correction.x, 24, WORLD_WIDTH - 24),
-      Phaser.Math.Clamp(correction.y, 24, WORLD_HEIGHT - 24)
+      Phaser.Math.Clamp(correction.x, scaleDistance(24), WORLD_WIDTH - scaleDistance(24)),
+      Phaser.Math.Clamp(correction.y, scaleDistance(24), WORLD_HEIGHT - scaleDistance(24))
     );
     this.player.body?.updateFromGameObject();
     if (this.waterBoundaryToastCooldown <= 0) {
@@ -1562,14 +1578,14 @@ export class GameScene extends Phaser.Scene {
       if (!sprite) {
         continue;
       }
-      if (Phaser.Math.Distance.Between(this.player.x, this.player.y, sprite.x, sprite.y) < 34) {
+      if (Phaser.Math.Distance.Between(this.player.x, this.player.y, sprite.x, sprite.y) < scaleDistance(34)) {
         this.flagLocalPlayerForBikeHit(npc.name);
         return;
       }
     }
 
     for (const traveler of this.getGroupTravelers()) {
-      if (Phaser.Math.Distance.Between(this.player.x, this.player.y, traveler.sprite.x, traveler.sprite.y) < 34) {
+      if (Phaser.Math.Distance.Between(this.player.x, this.player.y, traveler.sprite.x, traveler.sprite.y) < scaleDistance(34)) {
         this.flagLocalPlayerForBikeHit(traveler.name);
         return;
       }
@@ -1633,7 +1649,7 @@ export class GameScene extends Phaser.Scene {
       const dy = target.y - sprite.y;
       const distance = Math.hypot(dx, dy);
       if (distance > 2) {
-        const step = Math.min(distance, (42 * delta) / 1000);
+        const step = Math.min(distance, (scaleDistance(42) * delta) / 1000);
         sprite.x += (dx / distance) * step;
         sprite.y += (dy / distance) * step;
         sprite.setScale(dx < -1 ? -1 : 1, 1);
@@ -1658,7 +1674,7 @@ export class GameScene extends Phaser.Scene {
 
   private updateDynamicObjectCulling(): void {
     const view = this.cameras.main.worldView;
-    const margin = 220;
+    const margin = scaleDistance(220);
     const visibleBounds = new Phaser.Geom.Rectangle(view.x - margin, view.y - margin, view.width + margin * 2, view.height + margin * 2);
     const within = (object: { x: number; y: number }): boolean => Phaser.Geom.Rectangle.Contains(visibleBounds, object.x, object.y);
 
@@ -1786,10 +1802,11 @@ export class GameScene extends Phaser.Scene {
         [1850, 429]
       ];
       for (const [x, y] of lanterns) {
+        const point = scalePoint({ x, y });
         this.lanternGlow.fillStyle(0xffcc66, phase === "night" ? 0.23 : 0.13);
-        this.lanternGlow.fillCircle(x, y, phase === "night" ? 84 : 56);
+        this.lanternGlow.fillCircle(point.x, point.y, scaleDistance(phase === "night" ? 84 : 56));
         this.lanternGlow.fillStyle(0xffefad, 0.65);
-        this.lanternGlow.fillCircle(x, y, 8);
+        this.lanternGlow.fillCircle(point.x, point.y, scaleDistance(8));
       }
     }
   }
@@ -2268,8 +2285,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private spawnGroupLine(groupId: string, mode: GroupTravelMode): void {
-    const startX = Phaser.Math.Clamp(this.player.x + 92, 80, WORLD_WIDTH - 80);
-    const startY = Phaser.Math.Clamp(this.player.y + 8, 80, WORLD_HEIGHT - 240);
+    const startX = Phaser.Math.Clamp(this.player.x + scaleDistance(92), scaleDistance(80), WORLD_WIDTH - scaleDistance(80));
+    const startY = Phaser.Math.Clamp(this.player.y + scaleDistance(8), scaleDistance(80), WORLD_HEIGHT - scaleDistance(240));
     const helperNames = ["Nina", "Gus", "Maya", "Leo"];
     const helperSprites = ["npc-made", "npc-kadek", "npc-sari", "npc-ari"];
 
@@ -2279,8 +2296,8 @@ export class GameScene extends Phaser.Scene {
         `${groupId}-helper-${index + 1}`,
         name,
         helperSprites[index % helperSprites.length],
-        startX - (index + 1) * 38,
-        startY + (index % 2 === 0 ? 18 : -18),
+        startX - (index + 1) * scaleDistance(38),
+        startY + (index % 2 === 0 ? scaleDistance(18) : -scaleDistance(18)),
         true,
         mode
       )
@@ -2298,7 +2315,7 @@ export class GameScene extends Phaser.Scene {
     hasBike: boolean,
     mode: GroupTravelMode
   ): GroupTravelerRuntime {
-    const bikeSprite = this.add.sprite(x, y + 10, "group-bike").setVisible(mode === "bike").setDepth(y - 1);
+    const bikeSprite = this.add.sprite(x, y + scaleDistance(10), "group-bike").setVisible(mode === "bike").setDepth(y - 1);
     const sprite = this.add.sprite(x, y, spriteKey).setDepth(y);
     return { id, name, hasBike, sprite, bikeSprite };
   }
@@ -2337,7 +2354,7 @@ export class GameScene extends Phaser.Scene {
       [1510, 820],
       [610, 742]
     ];
-    return [[startX, startY], ...route].map(([x, y]) => new Phaser.Math.Vector2(x, y));
+    return [new Phaser.Math.Vector2(startX, startY), ...route.map(([x, y]) => worldVector(x, y))];
   }
 
   private updateGroupLine(delta: number): void {
@@ -2353,7 +2370,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     const travelers = this.getGroupTravelers();
-    const desiredGap = mode === "bike" ? 58 : 42;
+    const desiredGap = scaleDistance(mode === "bike" ? 58 : 42);
     for (let index = 1; index < travelers.length; index += 1) {
       const ahead = travelers[index - 1].sprite;
       this.moveTravelerToward(travelers[index], ahead.x, ahead.y, speed * 1.08, delta, desiredGap);
@@ -2376,20 +2393,21 @@ export class GameScene extends Phaser.Scene {
     const dx = targetX - traveler.sprite.x;
     const dy = targetY - traveler.sprite.y;
     const distance = Math.hypot(dx, dy);
-    if (distance <= Math.max(stopDistance, 5)) {
+    const arrivalDistance = Math.max(stopDistance, scaleDistance(5));
+    if (distance <= arrivalDistance) {
       return true;
     }
     const step = Math.min(distance - stopDistance, (speed * delta) / 1000);
     traveler.sprite.x += (dx / distance) * step;
     traveler.sprite.y += (dy / distance) * step;
     traveler.sprite.setScale(dx < -1 ? -1 : 1, 1);
-    return distance - step <= Math.max(stopDistance, 5);
+    return distance - step <= arrivalDistance;
   }
 
   private updateGroupTravelerVisual(traveler: GroupTravelerRuntime, mode: GroupTravelMode): void {
     traveler.sprite.setDepth(traveler.sprite.y + 2);
     traveler.bikeSprite.setVisible(mode === "bike");
-    traveler.bikeSprite.setPosition(traveler.sprite.x, traveler.sprite.y + 10);
+    traveler.bikeSprite.setPosition(traveler.sprite.x, traveler.sprite.y + scaleDistance(10));
     traveler.bikeSprite.setDepth(traveler.sprite.y + 1);
     traveler.bikeSprite.setScale(traveler.sprite.scaleX < 0 ? -1 : 1, 1);
   }
@@ -3020,9 +3038,9 @@ export class GameScene extends Phaser.Scene {
       addItem(this.playerState, "coconut", 2);
       this.showToast("Dev grocery quest prepped.");
     }, 0x394155);
-    addGodButton("Teleport Canggu Station", () => this.devTeleport(610, 742), 0x394155);
-    addGodButton("Teleport FINNS", () => this.devTeleport(1768, 300), 0x394155);
-    addGodButton("Teleport Beach", () => this.devTeleport(350, 1225), 0x394155);
+    addGodButton("Teleport Canggu Station", () => this.devTeleportToBasePoint(610, 742), 0x394155);
+    addGodButton("Teleport FINNS", () => this.devTeleportToBasePoint(1768, 300), 0x394155);
+    addGodButton("Teleport Beach", () => this.devTeleportToBasePoint(350, 1225), 0x394155);
     addGodButton("Clear Wanted", () => {
       clearWantedStanding(this.world.reputation, "Dev wanted state cleared.", this.getAbsoluteMinute());
       this.updatePlayerWantedSign();
@@ -3072,9 +3090,15 @@ export class GameScene extends Phaser.Scene {
     this.showToast(`Dev time set to ${formatClock(this.world)}.`);
   }
 
+  private devTeleportToBasePoint(x: number, y: number): void {
+    const point = scalePoint({ x, y });
+    this.devTeleport(point.x, point.y);
+  }
+
   private devTeleport(x: number, y: number): void {
+    const edgeMargin = scaleDistance(28);
     this.player.setVelocity(0, 0);
-    this.player.setPosition(Phaser.Math.Clamp(x, 28, WORLD_WIDTH - 28), Phaser.Math.Clamp(y, 28, WORLD_HEIGHT - 28));
+    this.player.setPosition(Phaser.Math.Clamp(x, edgeMargin, WORLD_WIDTH - edgeMargin), Phaser.Math.Clamp(y, edgeMargin, WORLD_HEIGHT - edgeMargin));
     this.player.body?.updateFromGameObject();
     this.playerState.x = Math.round(this.player.x);
     this.playerState.y = Math.round(this.player.y);

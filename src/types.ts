@@ -278,7 +278,7 @@ export interface GroupEntityState {
 }
 
 export interface WorldState {
-  schemaVersion: 3;
+  schemaVersion: number;
   version: 1;
   neighborhoodId: "berawa-finns-club";
   clock: WorldClockState;

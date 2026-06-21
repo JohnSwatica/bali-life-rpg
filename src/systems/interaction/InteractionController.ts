@@ -3,7 +3,12 @@ import { activityDefinitions } from "../../data/community";
 import { npcDefinitions } from "../../data/npcs";
 import { pickupDefinitions } from "../../data/map";
 import { shopDefinitions } from "../../data/shops";
+import { scaleDistance } from "../map/WorldScale";
 import type { PickupDefinition } from "../../types";
+
+const NPC_INTERACTION_RADIUS = scaleDistance(82);
+const OFFENDER_INTERACTION_RADIUS = scaleDistance(78);
+const PICKUP_INTERACTION_RADIUS = scaleDistance(64);
 
 export type InteractionTarget =
   | { type: "npc"; id: string; label: string; distance: number }
@@ -47,7 +52,7 @@ export class InteractionController {
       const sprite = this.options.getNpcSprite(npc.id);
       if (!sprite) continue;
       const distance = Phaser.Math.Distance.Between(px, py, sprite.x, sprite.y);
-      if (distance <= 82) {
+      if (distance <= NPC_INTERACTION_RADIUS) {
         candidates.push({ type: "npc", id: npc.id, label: `Talk to ${npc.name}`, distance });
       }
     }
@@ -71,7 +76,7 @@ export class InteractionController {
         continue;
       }
       const distance = Phaser.Math.Distance.Between(px, py, offender.sprite.x, offender.sprite.y);
-      if (distance <= 78) {
+      if (distance <= OFFENDER_INTERACTION_RADIUS) {
         candidates.push({
           type: "offender",
           id: offender.id,
@@ -84,7 +89,7 @@ export class InteractionController {
     for (const pickup of pickupDefinitions) {
       if (!this.options.isPickupAvailable(pickup)) continue;
       const distance = Phaser.Math.Distance.Between(px, py, pickup.x, pickup.y);
-      if (distance <= 64) {
+      if (distance <= PICKUP_INTERACTION_RADIUS) {
         candidates.push({ type: "pickup", id: pickup.id, label: `Pick up ${pickup.label}`, distance });
       }
     }

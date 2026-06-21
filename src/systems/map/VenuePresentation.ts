@@ -263,7 +263,7 @@ function separatePlacementsAlongAxis(
 ): number {
   const centerDelta = { x: b.x - a.x, y: b.y - a.y };
   const direction = dot(centerDelta, overlap.axis) >= 0 ? 1 : -1;
-  const requiredProjection = Math.min(120, Math.max(12, overlap.depth + ROADSIDE_BUILDING_GAP));
+  const requiredProjection = Math.min(playerUnits(4), Math.max(playerUnits(0.4), overlap.depth + ROADSIDE_BUILDING_GAP));
   const aPower = a.snappedToRoad ? Math.abs(dot(a.slideTangent, overlap.axis)) : 0;
   const bPower = b.snappedToRoad ? Math.abs(dot(b.slideTangent, overlap.axis)) : 0;
   const totalPower = aPower + bPower;

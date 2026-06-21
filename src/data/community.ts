@@ -1,4 +1,9 @@
 import type { InterestGroupDefinition, VenueActivityDefinition } from "../types";
+import { scaleDistance, scalePoint } from "../systems/map/WorldScale";
+
+function activityPoint(x: number, y: number): { x: number; y: number } {
+  return scalePoint({ x, y });
+}
 
 export const interestGroupDefinitions: Record<string, InterestGroupDefinition> = {
   berawa_deep_work: {
@@ -70,9 +75,8 @@ export const activityDefinitions: VenueActivityDefinition[] = [
   {
     id: "satu_satu_focus",
     venueName: "Satu-Satu Coffee Company",
-    x: 1768,
-    y: 365,
-    radius: 130,
+    ...activityPoint(1768, 365),
+    radius: scaleDistance(130),
     title: "Two-Hour Deep Work Table",
     description: "Claim a quiet table, order coffee, and exchange one useful contact before opening the laptop.",
     schedule: "08:00-11:00",
@@ -87,9 +91,8 @@ export const activityDefinitions: VenueActivityDefinition[] = [
   {
     id: "milk_madu_brunch_build",
     venueName: "Milk & Madu Berawa",
-    x: 1190,
-    y: 610,
-    radius: 115,
+    ...activityPoint(1190, 610),
+    radius: scaleDistance(115),
     title: "Brunch & Build Notes",
     description: "Share what you are building, hear two blunt-but-kind suggestions, and leave with a next step.",
     schedule: "10:30-13:00",
@@ -104,9 +107,8 @@ export const activityDefinitions: VenueActivityDefinition[] = [
   {
     id: "baked_warmup",
     venueName: "BAKED. Berawa",
-    x: 675,
-    y: 465,
-    radius: 105,
+    ...activityPoint(675, 465),
+    radius: scaleDistance(105),
     title: "Pastry Warmup Chat",
     description: "A ten-minute table conversation: where are you working from today, and what are you avoiding?",
     schedule: "07:30-09:30",
@@ -121,9 +123,8 @@ export const activityDefinitions: VenueActivityDefinition[] = [
   {
     id: "finns_sweat_social",
     venueName: "FINNS Club Area",
-    x: 1768,
-    y: 300,
-    radius: 150,
+    ...activityPoint(1768, 300),
+    radius: scaleDistance(150),
     title: "Sweat Social Check-In",
     description: "Join a gym-class/padel-style circuit, then cool down with the people who also showed up half-awake.",
     schedule: "06:30-09:00 / 17:00-19:00",
@@ -138,9 +139,8 @@ export const activityDefinitions: VenueActivityDefinition[] = [
   {
     id: "beachclub_sunset_table",
     venueName: "FINNS / Atlas Beach Club Stretch",
-    x: 585,
-    y: 1225,
-    radius: 145,
+    ...activityPoint(585, 1225),
+    radius: scaleDistance(145),
     title: "Sunset Table",
     description: "Meet near the beach club glow, make one sincere intro, and decide whether tonight is loud or early.",
     schedule: "17:30-20:00",
@@ -155,9 +155,8 @@ export const activityDefinitions: VenueActivityDefinition[] = [
   {
     id: "bungalow_home_base",
     venueName: "Bungalow Living Bali",
-    x: 1510,
-    y: 820,
-    radius: 120,
+    ...activityPoint(1510, 820),
+    radius: scaleDistance(120),
     title: "Home Base Moodboard",
     description: "Swap villa setup tips, quiet-lane recommendations, and the small rituals that make Berawa feel livable.",
     schedule: "14:00-16:30",
@@ -172,9 +171,8 @@ export const activityDefinitions: VenueActivityDefinition[] = [
   {
     id: "berawa_beach_cleanup",
     venueName: "Berawa Beach",
-    x: 350,
-    y: 1245,
-    radius: 150,
+    ...activityPoint(350, 1245),
+    radius: scaleDistance(150),
     title: "Berawa Beach Cleanup",
     description: "Fill a bag along the sand line, greet the regulars, and leave the beach a little better than you found it.",
     schedule: "07:00-09:00 / 16:30-18:00",
@@ -194,9 +192,8 @@ export const activityDefinitions: VenueActivityDefinition[] = [
   {
     id: "banjar_morning_sweep",
     venueName: "Berawa Villa Lane",
-    x: 365,
-    y: 520,
-    radius: 135,
+    ...activityPoint(365, 520),
+    radius: scaleDistance(135),
     title: "Morning Lane Sweep",
     description: "Help the neighborhood sweep leaves, move bins, and make space around small offerings before traffic builds.",
     schedule: "06:30-08:30",
@@ -216,9 +213,8 @@ export const activityDefinitions: VenueActivityDefinition[] = [
   {
     id: "scooter_safety_reset",
     venueName: "Bali Family Rental Scooter",
-    x: 820,
-    y: 735,
-    radius: 105,
+    ...activityPoint(820, 735),
+    radius: scaleDistance(105),
     title: "Scooter Safety Reset",
     description: "Check the brakes, talk through narrow-lane etiquette, and reset your pace before riding again.",
     schedule: "Anytime before sunset",

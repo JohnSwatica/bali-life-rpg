@@ -1,5 +1,6 @@
 import type { RoadPathDefinition } from "../../data/berawaLayout";
 import { type RoadVisualClass, getRoadVisualClass, roadWidthForClass } from "./PlayerUnitScale";
+import { scaleDistance } from "./WorldScale";
 
 const MAIN_ROAD_NAMES = [
   "jalan pantai berawa",
@@ -63,18 +64,18 @@ export function roadLength(road: Pick<RoadPathDefinition, "points">): number {
 function shouldRenderRoad(road: RoadPathDefinition, visualClass: RoadVisualClass, length: number): boolean {
   const normalizedName = normalizeRoadName(road.name);
   if (visualClass === "main") {
-    return length >= 14;
+    return length >= scaleDistance(14);
   }
   if (isMicroRoadName(normalizedName)) {
     return false;
   }
   if (normalizedName.startsWith("gang ")) {
-    return length >= 135;
+    return length >= scaleDistance(135);
   }
   if (GENERIC_LANE_NAMES.has(normalizedName)) {
-    return length >= 115;
+    return length >= scaleDistance(115);
   }
-  return length >= (visualClass === "secondary" ? 62 : 105);
+  return length >= scaleDistance(visualClass === "secondary" ? 62 : 105);
 }
 
 function isMicroRoadName(normalizedName: string): boolean {

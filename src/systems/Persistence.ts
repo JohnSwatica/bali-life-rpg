@@ -2,9 +2,10 @@ import { createInitialPlayerState, createInitialWorldState, LOCAL_PLAYER_ID } fr
 import { createDefaultPortalState } from "./portal/PortalState";
 import { createDefaultPlayerProfile } from "./profile/ProfileState";
 import { createDefaultReputationState } from "./reputation/ReputationState";
-import type { PlayerEntityState, ReputationState, WorldState } from "../types";
+import { scaleDistance } from "./map/WorldScale";
+import type { GroupEntityState, NpcEntityState, PlayerEntityState, ReputationState, WorldState } from "../types";
 
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 const SAVE_KEY = "bali-life-rpg.berawa-finns.save.v1";
 const PAUSED_V2_KEY = "bali-life-rpg.berawa-finns.save.v2";
 
@@ -50,6 +51,7 @@ function readRawSave(): { raw: string | null; key: string } {
 
 function migrateWorldState(raw: Partial<WorldState> & Record<string, unknown>): WorldState {
   const fresh = createInitialWorldState();
+  const rawSchemaVersion = typeof raw.schemaVersion === "number" ? raw.schemaVersion : 1;
   const world = {
     ...fresh,
     ...raw,
@@ -71,12 +73,45 @@ function migrateWorldState(raw: Partial<WorldState> & Record<string, unknown>): 
 
   const player = world.players[world.localPlayerId] ?? world.players[LOCAL_PLAYER_ID] ?? createInitialPlayerState();
   world.players[world.localPlayerId] = hydratePlayerState(player);
+  if (rawSchemaVersion < 4) {
+    scaleLegacyRuntimePositions(world, raw);
+  }
   world.profile.displayName = world.profile.displayName || world.players[world.localPlayerId].displayName;
   world.profile.remoteAccountId = null;
   world.mapDiscovery.discoveredAreaIds = world.mapDiscovery.discoveredAreaIds ?? [];
   world.mapDiscovery.discoveredVenueIds = world.mapDiscovery.discoveredVenueIds ?? [];
   world.mapDiscovery.revealAll = world.mapDiscovery.revealAll ?? false;
   return world;
+}
+
+function scaleLegacyRuntimePositions(world: WorldState, raw: Partial<WorldState> & Record<string, unknown>): void {
+  const rawPlayers = raw.players as Record<string, Partial<PlayerEntityState>> | undefined;
+  for (const [id, player] of Object.entries(rawPlayers ?? {})) {
+    if (world.players[id] && hasPoint(player)) {
+      world.players[id].x = scaleDistance(player.x);
+      world.players[id].y = scaleDistance(player.y);
+    }
+  }
+
+  const rawNpcs = raw.npcs as Record<string, Partial<NpcEntityState>> | undefined;
+  for (const [id, npc] of Object.entries(rawNpcs ?? {})) {
+    if (world.npcs[id] && hasPoint(npc)) {
+      world.npcs[id].x = scaleDistance(npc.x);
+      world.npcs[id].y = scaleDistance(npc.y);
+    }
+  }
+
+  const rawGroups = raw.groups as Record<string, Partial<GroupEntityState>> | undefined;
+  for (const [id, group] of Object.entries(rawGroups ?? {})) {
+    if (world.groups[id] && hasPoint(group)) {
+      world.groups[id].x = scaleDistance(group.x);
+      world.groups[id].y = scaleDistance(group.y);
+    }
+  }
+}
+
+function hasPoint(value: { x?: unknown; y?: unknown }): value is { x: number; y: number } {
+  return typeof value.x === "number" && typeof value.y === "number";
 }
 
 function hydratePlayerState(player: Partial<PlayerEntityState>): PlayerEntityState {
