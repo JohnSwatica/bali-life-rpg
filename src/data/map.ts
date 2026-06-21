@@ -5,7 +5,6 @@ export const WORLD_WIDTH = 2400;
 export const WORLD_HEIGHT = 1700;
 
 export const collisionRects: RectDefinition[] = [
-  { id: "ocean-block", x: 0, y: 1505, width: 2400, height: 195 }
 ];
 
 export const pickupDefinitions: PickupDefinition[] = [

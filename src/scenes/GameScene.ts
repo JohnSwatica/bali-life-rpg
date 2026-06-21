@@ -27,6 +27,11 @@ import {
   type MapPoint,
   type VenuePresentationPlacement
 } from "../systems/map/VenuePresentation";
+import {
+  createWaterBoundaryGuard,
+  resolveWaterBoundaryPosition,
+  type WaterBoundaryGuard
+} from "../systems/map/WaterBoundary";
 import { getRelationship } from "../systems/relationships/RelationshipMemory";
 import {
   clearWantedStanding,
@@ -169,6 +174,7 @@ const REPEAT_FLAG_BOUNTY = 35;
 const TRAFFIC_HIT_COOLDOWN_MS = 2200;
 const TRAFFIC_HIT_MONEY_LOSS = 10;
 const TRAFFIC_KNOCKBACK_DISTANCE = 76;
+const WATER_BOUNDARY_TOAST_COOLDOWN_MS = 1800;
 const VENUE_LABEL_NEAR_RADIUS = 210;
 const VENUE_LABEL_STACK_DISTANCE = 92;
 const MAX_VISIBLE_VENUE_LABELS = 5;
@@ -237,6 +243,11 @@ export class GameScene extends Phaser.Scene {
   private nightOverlay!: Phaser.GameObjects.Graphics;
   private lanternGlow!: Phaser.GameObjects.Graphics;
   private discoveryToastCooldown = 0;
+  private waterBoundaryToastCooldown = 0;
+  private waterBoundaryGuard: WaterBoundaryGuard = createWaterBoundaryGuard(berawaMapFeatures, {
+    width: WORLD_WIDTH,
+    height: WORLD_HEIGHT
+  });
 
   constructor() {
     super("GameScene");
@@ -286,6 +297,7 @@ export class GameScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     advanceClock(this.world, delta);
     this.discoveryToastCooldown = Math.max(0, this.discoveryToastCooldown - delta);
+    this.waterBoundaryToastCooldown = Math.max(0, this.waterBoundaryToastCooldown - delta);
     this.autosaveTimer += delta;
     if (this.autosaveTimer > 15000) {
       this.autosaveTimer = 0;
@@ -1093,6 +1105,8 @@ export class GameScene extends Phaser.Scene {
       this.player.setVelocity(0, 0);
     }
 
+    this.enforceWaterBoundary();
+
     this.playerState.x = Math.round(this.player.x);
     this.playerState.y = Math.round(this.player.y);
     this.player.setDepth(this.player.y);
@@ -1301,6 +1315,31 @@ export class GameScene extends Phaser.Scene {
     this.playerState.bikeCondition = Phaser.Math.Clamp(this.playerState.bikeCondition - 14, 0, 100);
     saveWorldState(this.world);
     this.showToast(`The bike bogged down in ${zone.label}. Bring ${REQUIRED_BIKE_HELPERS} group helpers and press E.`);
+  }
+
+  private enforceWaterBoundary(): void {
+    const correction = resolveWaterBoundaryPosition(this.waterBoundaryGuard, {
+      x: this.player.x,
+      y: this.player.y
+    });
+    if (!correction) {
+      return;
+    }
+
+    this.player.setVelocity(0, 0);
+    this.player.setPosition(
+      Phaser.Math.Clamp(correction.x, 24, WORLD_WIDTH - 24),
+      Phaser.Math.Clamp(correction.y, 24, WORLD_HEIGHT - 24)
+    );
+    this.player.body?.updateFromGameObject();
+    if (this.waterBoundaryToastCooldown <= 0) {
+      this.waterBoundaryToastCooldown = WATER_BOUNDARY_TOAST_COOLDOWN_MS;
+      this.showToast(
+        correction.reason === "sea"
+          ? "The surf is for swimming later. Stay on the sand, road, or beach path."
+          : "That waterway is not passable yet. Find a road or path around it."
+      );
+    }
   }
 
   private checkPlayerBikeHarmToOthers(): void {
