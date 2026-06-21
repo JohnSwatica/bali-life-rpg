@@ -2777,7 +2777,7 @@ export class GameScene extends Phaser.Scene {
 
   private layoutForViewport(): void {
     const { width, height } = this.scale;
-    this.cameras.main.setZoom(width < 720 ? 0.96 : 1.16);
+    this.cameras.main.setZoom(width < 720 ? 1.22 : 1.34);
     this.promptText.setPosition(20, height - 36);
     this.toastText.setPosition(width / 2, Math.max(92, height * 0.17));
     this.hudController.layoutTouchControls();
