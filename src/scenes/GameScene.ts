@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { berawaAreas, berawaRoads, venueMapNodes } from "../data/berawaLayout";
+import { berawaAreas, berawaRoads, curatedVenueNodes, venueMapNodes, type CuratedVenueMapNode } from "../data/berawaLayout";
 import { activityDefinitions, interestGroupDefinitions } from "../data/community";
 import { itemDefinitions } from "../data/items";
 import { collisionRects, pickupDefinitions, WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
@@ -309,9 +309,7 @@ export class GameScene extends Phaser.Scene {
 
     this.drawBeach(g);
     this.drawRoads(g);
-    this.drawMarket(g);
-    this.drawBuildings(g);
-    this.drawDecorations(g);
+    this.drawCuratedVenueBuildings(g);
     this.addAreaLabels();
   }
 
@@ -340,11 +338,13 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    g.fillStyle(0x6d4f3a, 1);
-    g.fillRoundedRect(295, 1230, 310, 36, 12);
-    g.fillStyle(0x8b6b4e, 1);
-    g.fillRect(330, 1262, 18, 115);
-    g.fillRect(535, 1262, 18, 110);
+    g.lineStyle(3, 0xf4dfaa, 0.64);
+    g.beginPath();
+    g.moveTo(0, 1175);
+    for (let x = 0; x <= WORLD_WIDTH; x += 120) {
+      g.lineTo(x, 1190 + Math.sin(x / 190) * 28);
+    }
+    g.strokePath();
   }
 
   private drawRoads(g: Phaser.GameObjects.Graphics): void {
@@ -411,6 +411,94 @@ export class GameScene extends Phaser.Scene {
         g.lineBetween(start.x + ux * walked, start.y + uy * walked, start.x + ux * dashEnd, start.y + uy * dashEnd);
       }
     }
+  }
+
+  private drawCuratedVenueBuildings(g: Phaser.GameObjects.Graphics): void {
+    for (const node of curatedVenueNodes) {
+      if (node.category === "beach") {
+        this.drawBeachVenueMarker(g, node);
+      } else {
+        this.drawCuratedVenueBuilding(g, node);
+      }
+    }
+  }
+
+  private drawCuratedVenueBuilding(g: Phaser.GameObjects.Graphics, node: CuratedVenueMapNode): void {
+    const size = this.venueBuildingSize(node);
+    const x = node.x - size.width / 2;
+    const y = node.y - size.height / 2;
+    const palette = this.venuePalette(node.category);
+    const corner = node.isLandmark ? 10 : 6;
+
+    g.fillStyle(0x1b1713, 0.22);
+    g.fillRoundedRect(x + 7, y + 10, size.width, size.height, corner);
+    g.fillStyle(palette.wall, 1);
+    g.fillRoundedRect(x, y, size.width, size.height, corner);
+    g.fillStyle(palette.roof, 1);
+    g.fillRoundedRect(x - 5, y - 11, size.width + 10, Math.max(18, size.height * 0.34), corner);
+
+    g.fillStyle(0x2b2a26, 0.72);
+    g.fillRoundedRect(node.x - 7, y + size.height - 18, 14, 18, 4);
+    g.fillStyle(0xf7e7ad, 0.85);
+    g.fillRoundedRect(x + size.width * 0.18, y + size.height * 0.42, 12, 10, 3);
+    g.fillRoundedRect(x + size.width * 0.68, y + size.height * 0.42, 12, 10, 3);
+
+    if (node.isLandmark) {
+      g.lineStyle(3, 0xf6d67a, 0.82);
+      g.strokeRoundedRect(x - 4, y - 15, size.width + 8, size.height + 19, corner + 2);
+    } else if (node.questCritical) {
+      g.lineStyle(2, 0xf7f1d2, 0.58);
+      g.strokeRoundedRect(x - 2, y - 13, size.width + 4, size.height + 15, corner + 1);
+    }
+
+    if (node.coordinateSource === "estimate" || node.coordinateSource === "fallback") {
+      g.fillStyle(node.coordinateSource === "estimate" ? 0xf0b35f : 0xb8b4a1, 0.92);
+      g.fillCircle(x + size.width - 7, y + 7, 4);
+    }
+  }
+
+  private drawBeachVenueMarker(g: Phaser.GameObjects.Graphics, node: CuratedVenueMapNode): void {
+    const width = node.isLandmark ? 82 : 58;
+    const height = node.isLandmark ? 44 : 34;
+    const x = node.x - width / 2;
+    const y = node.y - height / 2;
+    g.fillStyle(0x111b22, 0.18);
+    g.fillEllipse(node.x, node.y + height / 2, width + 18, 18);
+    g.fillStyle(0xc79652, 1);
+    g.fillRoundedRect(x, y, width, height, 7);
+    g.fillStyle(0x3f88c5, 1);
+    g.fillRoundedRect(x - 6, y - 13, width + 12, 24, 8);
+    g.fillStyle(0xf7f1d2, 0.9);
+    g.fillCircle(node.x - width * 0.2, y + height * 0.58, 5);
+    g.fillCircle(node.x + width * 0.2, y + height * 0.58, 5);
+  }
+
+  private venueBuildingSize(node: CuratedVenueMapNode): { width: number; height: number } {
+    if (node.isLandmark) {
+      return node.category === "beach_club" ? { width: 118, height: 76 } : { width: 94, height: 64 };
+    }
+    if (node.questCritical) {
+      return { width: 68, height: 48 };
+    }
+    if (node.category === "coworking" || node.category === "grocery") {
+      return { width: 60, height: 44 };
+    }
+    return { width: 48, height: 36 };
+  }
+
+  private venuePalette(category: string): { wall: number; roof: number } {
+    const palettes: Record<string, { wall: number; roof: number }> = {
+      cafe: { wall: 0xe7c983, roof: 0x7b5b3a },
+      coffee: { wall: 0xb98f65, roof: 0x4a3327 },
+      restaurant: { wall: 0x7fb9b6, roof: 0x2f5f68 },
+      bar: { wall: 0x8a6d9f, roof: 0x3a2f57 },
+      beach_club: { wall: 0xe5a55d, roof: 0xb64e3e },
+      bakery: { wall: 0xf1d99d, roof: 0x9b6f45 },
+      grocery: { wall: 0xa9c978, roof: 0x456a3d },
+      coworking: { wall: 0x91b7dd, roof: 0x375f85 },
+      shop: { wall: 0xd2b2d8, roof: 0x744b79 }
+    };
+    return palettes[category] ?? { wall: 0xc7b08a, roof: 0x5a4a3c };
   }
 
   private drawMarket(g: Phaser.GameObjects.Graphics): void {
@@ -627,6 +715,9 @@ export class GameScene extends Phaser.Scene {
     }
 
     const venues = new Map(getAllVenues().map((venue) => [venue.id, venue.name]));
+    for (const node of curatedVenueNodes) {
+      venues.set(node.venueId, node.name);
+    }
     for (const node of venueMapNodes) {
       const label = this.add
         .text(node.x, node.y - 58, venues.get(node.venueId) ?? node.venueId, {
@@ -2108,6 +2199,9 @@ export class GameScene extends Phaser.Scene {
     }
 
     const venues = new Map(getAllVenues().map((venue) => [venue.id, venue.name]));
+    for (const node of curatedVenueNodes) {
+      venues.set(node.venueId, node.name);
+    }
     for (const node of venueMapNodes) {
       if (discovery.revealAll || Phaser.Math.Distance.Between(this.player.x, this.player.y, node.x, node.y) <= node.radius) {
         const wasAdded = this.addDiscoveredId(discovery.discoveredVenueIds, node.venueId);
@@ -2143,8 +2237,8 @@ export class GameScene extends Phaser.Scene {
     for (const area of berawaAreas) {
       this.addDiscoveredId(this.world.mapDiscovery.discoveredAreaIds, area.id);
     }
-    for (const venue of getAllVenues()) {
-      this.addDiscoveredId(this.world.mapDiscovery.discoveredVenueIds, venue.id);
+    for (const node of venueMapNodes) {
+      this.addDiscoveredId(this.world.mapDiscovery.discoveredVenueIds, node.venueId);
     }
     this.updateDiscoveryLabelVisibility();
     saveWorldState(this.world);

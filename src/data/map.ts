@@ -5,16 +5,6 @@ export const WORLD_WIDTH = 2400;
 export const WORLD_HEIGHT = 1700;
 
 export const collisionRects: RectDefinition[] = [
-  { id: "canggu-station-building", x: 480, y: 560, width: 260, height: 150 },
-  { id: "home-row-1", x: 235, y: 345, width: 250, height: 150 },
-  { id: "baked-berawa-building", x: 560, y: 300, width: 230, height: 145 },
-  { id: "milk-madu-roof", x: 1060, y: 450, width: 260, height: 95 },
-  { id: "bungalow-living-building", x: 1410, y: 665, width: 280, height: 140 },
-  { id: "finns-main", x: 1600, y: 165, width: 340, height: 160 },
-  { id: "finns-wall-left", x: 1510, y: 160, width: 52, height: 300 },
-  { id: "finns-wall-right", x: 1980, y: 160, width: 52, height: 300 },
-  { id: "cliff-rocks-1", x: 780, y: 1260, width: 120, height: 90 },
-  { id: "cliff-rocks-2", x: 1110, y: 1315, width: 145, height: 75 },
   { id: "ocean-block", x: 0, y: 1505, width: 2400, height: 195 }
 ];
 
