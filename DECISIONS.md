@@ -103,3 +103,25 @@ The game now has a lightweight top-left minimap on the UI layer. It reuses the s
 ## 2026-06-21 - Road-Following Traffic
 
 Ambient scooter traffic now follows real generated road polylines instead of three hardcoded straight lanes. Traffic routes are selected from the presented main/secondary skeleton, can turn at shared OSM nodes when available, and respawn at route edges. Existing traffic-hit consequences remain capped environmental feedback, not combat: knockback, screen shake, stylized splash, capped money loss, and cooldown.
+
+## 2026-06-21 - Crisp Device-Resolution Rendering
+
+The Phaser canvas is now sized from the actual viewport and rendered with device-pixel-ratio zoom and antialiasing. The baked static map texture accounts for DPR, camera zoom, and renderer texture limits so the close walkable view does not upscale a visibly blurry low-resolution map. The map is still baked once for performance rather than redrawing the full road/building layer every frame.
+
+## 2026-06-21 - Scaled Runtime Layout, Source Coordinates Untouched
+
+Generated OSM/source coordinates remain in `src/data/berawaLayout.ts` and are not edited for presentation. Runtime imports `src/data/scaledBerawaLayout.ts`, which applies `WORLD_SCALE = 1.6` from `src/systems/map/WorldScale.ts` to roads, terrain features, areas, venue nodes, NPC/shop/pickup lookup fallbacks, discovery radii, interaction radii, traffic speeds, and other world-space distances. The playable runtime world is now `3840 x 2720`, but the generated source world remains `2400 x 1700`.
+
+Because saved x/y positions are runtime state, save schema is bumped to v4. Valid v1/v2/v3 saves migrate forward without discarding data; pre-v4 player, NPC, and group positions are scaled into the enlarged world while existing money, inventory, quests, reputation, relationships, discovery, and profile state are preserved.
+
+## 2026-06-21 - High-Contrast Ground And Axis-Aligned Buildings
+
+Road readability is a presentation priority. Roads now render as lighter, higher-contrast walkable surfaces against calmer greenery and lighter building shadows. Venue buildings keep their road-snapped positions but render axis-aligned rather than freely rotated to arbitrary street angles, so dense Berawa clusters read as clean shopfronts instead of scattered parallelograms.
+
+Road-tangent de-overlap remains the first placement strategy. A final residual axis-aligned spacing pass handles dense cross-street cases where tangent-only movement cannot clear overlaps. This is presentation-only: each placement preserves `sourceX/sourceY`, and curated/generated coordinates stay untouched.
+
+## 2026-06-21 - Final Readable-Ground Scale Values
+
+The current presentation constants are documented for future tuning: `WORLD_SCALE = 1.6`; player unit `34 x 43`; avatar scale `0.84`; player/group bike scale `0.82`; traffic bike scale `0.88`; road widths main/secondary/lane `155 / 95 / 69` px; camera zoom desktop/mobile `1.86 / 1.52`.
+
+Building multiples are normal `4.2 x 3.6`, wide `4.6 x 3.8`, quest-critical `5.0 x 4.0`, landmark `8.8 x 7.2`, beach landmark `9.2 x 5.8`, and beach marker `5.0 x 3.8`. These are deliberately stylized Pokémon-like proportions, not literal metres.

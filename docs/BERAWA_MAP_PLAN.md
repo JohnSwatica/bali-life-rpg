@@ -1,6 +1,6 @@
 # Berawa Map Plan
 
-This playable Berawa slice is now generated from OpenStreetMap data plus a curated Berawa venue catalog, not hand-invented road coordinates. It is still compressed into the existing `2400 x 1700` world so the current Phaser camera, saves, movement, shops, NPCs, and discovery systems remain stable.
+This playable Berawa slice is now generated from OpenStreetMap data plus a curated Berawa venue catalog, not hand-invented road coordinates. The generated source layout remains compressed into a `2400 x 1700` coordinate space, while runtime presentation scales that layout through `src/data/scaledBerawaLayout.ts` so the playable map has more breathing room without editing source pins.
 
 Map data © OpenStreetMap contributors.
 
@@ -48,12 +48,21 @@ The projection is local equirectangular with uniform scale, so road angles are p
 - Jl. Nelayan sits north of the beach side.
 - Jl. Tegal Sari / inland anchors sit east / northeast relative to the beach edge.
 
-The generator keeps the existing world size:
+The generator keeps the source world size:
 
 ```text
 WORLD = { w: 2400, h: 1700 }
 pad = 80
 ```
+
+Runtime presentation currently applies:
+
+```text
+WORLD_SCALE = 1.6
+runtime world = 3840 x 2720
+```
+
+Pre-v4 saved runtime positions are migrated into this enlarged world during save load. Source OSM/curated coordinates, `src/data/berawaLayout.ts`, `src/data/curatedVenues.ts`, and `data/osm/berawa.curated-coords.json` stay untouched by presentation scaling.
 
 ## Runtime Shape
 
@@ -79,6 +88,17 @@ The current coordinate summary is 41 rendered venues: 23 OSM POI matches, 0 Nomi
 Runtime rendering is intentionally simple: one blocky building per `shouldRender` curated venue, plus baked roads, OSM beach/coastline/water features, and low-cost greenery. The old hand-placed building/market/decor layer and dense road-marker layer are no longer called.
 
 Presentation scale is intentionally stylized. Real positions stay OSM/curated-coordinate driven, while roads, buildings, and camera zoom are sized from `src/systems/map/PlayerUnitScale.ts` in player-units so the top-down view reads more like a Pokémon-scale life sim than a literal metre map. `src/systems/map/RoadPresentation.ts` renders a decluttered road skeleton for readability while venue buildings snap against a richer local road graph for believable shopfront placement.
+
+Current presentation constants:
+
+- `WORLD_SCALE = 1.6`
+- player unit `34 x 43`
+- avatar scale `0.84`; player/group bike `0.82`; traffic bike `0.88`
+- road widths: main `155`, secondary `95`, lane `69`
+- camera zoom: desktop `1.86`, mobile `1.52`
+- building multiples: normal `4.2 x 3.6`, wide `4.6 x 3.8`, quest-critical `5.0 x 4.0`, landmark `8.8 x 7.2`, beach landmark `9.2 x 5.8`, beach marker `5.0 x 3.8`
+
+Venue buildings are road-snapped but rendered axis-aligned for readability. Dense clusters de-overlap first along road tangents, then use a final small axis-aligned presentation spacing pass if tangent movement cannot clear a cross-street overlap. This keeps source positions reviewable while making individual buildings tappable/readable.
 
 The game now includes a lightweight top-left minimap using the same road skeleton, discovered venue dots, water/beach edge, camera viewport, and player heading. Ambient traffic scooters follow eligible real road polylines, can turn at shared generated nodes, and respawn at route edges.
 
