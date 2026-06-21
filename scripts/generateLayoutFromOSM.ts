@@ -88,6 +88,7 @@ interface OverpassElement {
   id: number;
   lat?: number;
   lon?: number;
+  center?: { lat: number; lon: number };
   nodes?: number[];
   geometry?: Array<{ lat: number; lon: number }>;
   tags?: Record<string, string>;
@@ -156,6 +157,14 @@ interface GeneratedCuratedVenueNode extends GeneratedVenueNode {
   isLandmark: boolean;
   questCritical: boolean;
   coordinateSource: CuratedCoordinateSource;
+}
+
+interface GeneratedMapFeature {
+  id: string;
+  kind: "beach" | "coastline" | "water";
+  name: string;
+  closed: boolean;
+  points: Point[];
 }
 
 interface MatchedVenue {
@@ -318,7 +327,7 @@ async function loadOrFetchCuratedGeocode(
 ): Promise<CuratedGeocodeCacheEntry[]> {
   const cached = !refresh && (await exists(config.curatedGeocodeCachePath)) ? await readJson<CuratedGeocodeCacheEntry[]>(config.curatedGeocodeCachePath) : [];
   const entriesById = new Map(cached.map((entry) => [entry.id, entry]));
-  const poiIndex = buildPoiNameIndex(overpass.elements.filter(isPoiNode));
+  const poiIndex = buildPoiNameIndex(overpass.elements.filter(isPoiElement));
   let changed = false;
 
   for (const venue of venues) {
@@ -371,12 +380,14 @@ function overpassQuery(bbox: BBox): string {
   return `[out:json][timeout:90];
 (
   way["highway"](${b});
-  node["amenity"~"^(cafe|restaurant|bar|pub|nightclub|fast_food|food_court)$"](${b});
-  node["shop"](${b});
-  node["leisure"](${b});
-  node["tourism"](${b});
+  nwr["amenity"~"^(cafe|restaurant|bar|pub|nightclub|fast_food|food_court)$"](${b});
+  nwr["shop"](${b});
+  nwr["leisure"](${b});
+  nwr["tourism"](${b});
+  way["natural"~"^(beach|coastline|water|sand)$"](${b});
+  way["landuse"~"^(beach|sand)$"](${b});
 );
-out geom;`;
+out body geom;`;
 }
 
 function resolveAnchors(config: NeighborhoodConfig, cache: AnchorCacheEntry[]): AnchorPoint[] {
@@ -463,7 +474,7 @@ function resolveCuratedVenueCoordinates(
   overpass: OverpassResponse,
   geocodeCache: CuratedGeocodeCacheEntry[]
 ): ResolvedCuratedVenue[] {
-  const poiIndex = buildPoiNameIndex(overpass.elements.filter(isPoiNode));
+  const poiIndex = buildPoiNameIndex(overpass.elements.filter(isPoiElement));
   const geocodeById = new Map(geocodeCache.map((entry) => [entry.id, entry]));
   const roadCentroids = buildRoadLatLngCentroids(overpass.elements.filter(isRoadWay));
 
@@ -482,13 +493,14 @@ function resolveCuratedVenueCoordinates(
       category: venue.category
     };
 
-    if (osmMatch?.poi.lat != null && osmMatch.poi.lon != null) {
+    const osmCoord = osmMatch ? elementLatLng(osmMatch.poi) : undefined;
+    if (osmCoord) {
       return {
         ...base,
-        lat: roundCoord(osmMatch.poi.lat),
-        lng: roundCoord(osmMatch.poi.lon),
+        lat: roundCoord(osmCoord.lat),
+        lng: roundCoord(osmCoord.lng),
         source: "osm" as const,
-        sourceName: `OSM node ${osmMatch.poi.id}`,
+        sourceName: `OSM ${osmMatch.poi.type} ${osmMatch.poi.id}`,
         matchedName: osmMatch.sourceName,
         needsManualCheck: false
       };
@@ -653,7 +665,11 @@ function generateLayout(
   }
 
   roads.sort(compareRoads);
-  const pois = overpass.elements.filter(isPoiNode).filter((poi) => latLngInBBox(poi.lat ?? 0, poi.lon ?? 0, layoutBbox));
+  const pois = overpass.elements.filter(isPoiElement).filter((poi) => {
+    const coord = elementLatLng(poi);
+    return coord ? latLngInBBox(coord.lat, coord.lng, layoutBbox) : false;
+  });
+  const mapFeatures = buildMapFeatures(overpass.elements, layoutBbox, project);
   const anchorById = new Map(anchors.map((anchor) => [anchor.id, anchor]));
   const roadCentroids = buildRoadCentroids(highways, project);
   const areas = buildAreas(config, anchorById, roadCentroids, project);
@@ -670,6 +686,7 @@ function generateLayout(
     roadSegmentCount: roadSegments.length,
     roadPathCount: roads.length,
     osmPoiCount: pois.length,
+    mapFeatureCount: mapFeatures.length,
     orientation: orientationReport(anchorById, roadCentroids, project),
     curatedCoordinates: renderCuratedCoordinateFile(resolvedCuratedVenues).summary,
     venues: {
@@ -688,7 +705,7 @@ function generateLayout(
     }
   };
 
-  return { roads, areas, venueNodes: venues.nodes, curatedVenueNodes: venues.curatedNodes, report };
+  return { roads, areas, venueNodes: venues.nodes, curatedVenueNodes: venues.curatedNodes, mapFeatures, report };
 }
 
 function buildAreas(
@@ -791,12 +808,13 @@ function buildVenueNodes(
     if (!match) {
       const poiMatch = findPoiMatch(poiIndex, [venue.name, venue.realWorldRef?.mapName ?? venue.name]);
       const poi = poiMatch?.poi;
-      if (poi?.lat && poi.lon) {
+      const poiCoord = poi ? elementLatLng(poi) : undefined;
+      if (poi && poiCoord) {
         match = {
           venueId,
           source: "osm_poi",
           sourceName: poi.tags?.name ?? poiMatch.sourceName,
-          point: project(poi.lat, poi.lon),
+          point: project(poiCoord.lat, poiCoord.lng),
           areaId: preferredArea
         };
       }
@@ -827,6 +845,24 @@ function buildVenueNodes(
   nodes.sort((a, b) => a.venueId.localeCompare(b.venueId));
   curatedNodes.sort((a, b) => a.curatedVenueId.localeCompare(b.curatedVenueId));
   return { nodes, curatedNodes, matches };
+}
+
+function buildMapFeatures(elements: OverpassElement[], bbox: BBox, project: (lat: number, lon: number) => Point): GeneratedMapFeature[] {
+  return elements
+    .filter(isMapFeatureWay)
+    .filter((way) => wayIntersectsBBox(way, bbox))
+    .map((way): GeneratedMapFeature => {
+      const points = (way.geometry ?? []).map((coord) => project(coord.lat, coord.lon));
+      return {
+        id: `osm_${way.type}_${way.id}`,
+        kind: mapFeatureKind(way),
+        name: way.tags?.name ?? formatHighwayName(mapFeatureKind(way)),
+        closed: points.length > 2 && points[0].x === points[points.length - 1].x && points[0].y === points[points.length - 1].y,
+        points
+      };
+    })
+    .filter((feature) => feature.points.length >= 2)
+    .sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }
 
 function firstAreaForVenue(config: NeighborhoodConfig, venueId: string): string {
@@ -895,6 +931,25 @@ function isRoadWay(element: OverpassElement): boolean {
   return element.type === "way" && Boolean(element.tags?.highway) && Array.isArray(element.geometry);
 }
 
+function isMapFeatureWay(element: OverpassElement): boolean {
+  if (element.type !== "way" || !Array.isArray(element.geometry) || element.geometry.length < 2) {
+    return false;
+  }
+  const natural = element.tags?.natural;
+  const landuse = element.tags?.landuse;
+  return natural === "beach" || natural === "coastline" || natural === "water" || natural === "sand" || landuse === "beach" || landuse === "sand";
+}
+
+function mapFeatureKind(element: OverpassElement): GeneratedMapFeature["kind"] {
+  if (element.tags?.natural === "coastline") {
+    return "coastline";
+  }
+  if (element.tags?.natural === "water") {
+    return "water";
+  }
+  return "beach";
+}
+
 function wayIntersectsBBox(way: OverpassElement, bbox: BBox): boolean {
   return Boolean(way.geometry?.some((coord) => latLngInBBox(coord.lat, coord.lon, bbox)));
 }
@@ -903,8 +958,28 @@ function latLngInBBox(lat: number, lng: number, bbox: BBox): boolean {
   return lat >= bbox.south && lat <= bbox.north && lng >= bbox.west && lng <= bbox.east;
 }
 
-function isPoiNode(element: OverpassElement): boolean {
-  return element.type === "node" && typeof element.lat === "number" && typeof element.lon === "number" && Boolean(element.tags?.name);
+function isPoiElement(element: OverpassElement): boolean {
+  return Boolean(
+    element.tags?.name &&
+      elementLatLng(element) &&
+      (element.tags.amenity || element.tags.shop || element.tags.leisure || element.tags.tourism)
+  );
+}
+
+function elementLatLng(element: OverpassElement): LatLng | null {
+  if (typeof element.lat === "number" && typeof element.lon === "number") {
+    return { lat: element.lat, lng: element.lon };
+  }
+  if (element.center && typeof element.center.lat === "number" && typeof element.center.lon === "number") {
+    return { lat: element.center.lat, lng: element.center.lon };
+  }
+  if (element.geometry?.length) {
+    return {
+      lat: element.geometry.reduce((sum, coord) => sum + coord.lat, 0) / element.geometry.length,
+      lng: element.geometry.reduce((sum, coord) => sum + coord.lon, 0) / element.geometry.length
+    };
+  }
+  return null;
 }
 
 function countWayNodeRefs(ways: OverpassElement[]): Map<number, number> {
@@ -1152,6 +1227,7 @@ function renderBerawaLayout(generated: {
   areas: GeneratedArea[];
   venueNodes: GeneratedVenueNode[];
   curatedVenueNodes: GeneratedCuratedVenueNode[];
+  mapFeatures: GeneratedMapFeature[];
   report: unknown;
 }): string {
   return `/* AUTO-GENERATED by scripts/generateLayoutFromOSM.ts. Do not hand-edit coordinates.
@@ -1192,6 +1268,14 @@ export interface CuratedVenueMapNode extends VenueMapNode {
   coordinateSource: string;
 }
 
+export interface MapFeatureDefinition {
+  id: string;
+  kind: "beach" | "coastline" | "water";
+  name: string;
+  closed: boolean;
+  points: Array<{ x: number; y: number }>;
+}
+
 export const osmLayoutMetadata = ${toTs(generated.report)} as const;
 
 export const berawaRoads: RoadPathDefinition[] = ${toTs(generated.roads)};
@@ -1201,6 +1285,8 @@ export const berawaAreas: MapAreaDefinition[] = ${toTs(generated.areas)};
 export const venueMapNodes: VenueMapNode[] = ${toTs(generated.venueNodes)};
 
 export const curatedVenueNodes: CuratedVenueMapNode[] = ${toTs(generated.curatedVenueNodes)};
+
+export const berawaMapFeatures: MapFeatureDefinition[] = ${toTs(generated.mapFeatures)};
 `;
 }
 

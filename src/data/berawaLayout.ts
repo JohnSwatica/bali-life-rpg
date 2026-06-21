@@ -36,6 +36,14 @@ export interface CuratedVenueMapNode extends VenueMapNode {
   coordinateSource: string;
 }
 
+export interface MapFeatureDefinition {
+  id: string;
+  kind: "beach" | "coastline" | "water";
+  name: string;
+  closed: boolean;
+  points: Array<{ x: number; y: number }>;
+}
+
 export const osmLayoutMetadata = {
   generatedAt: "deterministic-from-cache",
   source: "OpenStreetMap via Nominatim and Overpass caches",
@@ -50,11 +58,12 @@ export const osmLayoutMetadata = {
     h: 1700
   },
   pad: 80,
-  roadWayCount: 923,
-  roadNodeCount: 4417,
-  roadSegmentCount: 4562,
-  roadPathCount: 923,
-  osmPoiCount: 618,
+  roadWayCount: 934,
+  roadNodeCount: 4346,
+  roadSegmentCount: 4501,
+  roadPathCount: 934,
+  osmPoiCount: 788,
+  mapFeatureCount: 12,
   orientation: {
     beach: {
       x: 1189,
@@ -479,38 +488,6 @@ export const osmLayoutMetadata = {
 } as const;
 
 export const berawaRoads: RoadPathDefinition[] = [
-  {
-    id: "osm_way_1225464517",
-    name: "Footway",
-    width: 18,
-    importance: "lane",
-    points: [
-      {
-        x: 1178,
-        y: 22
-      },
-      {
-        x: 1152,
-        y: 44
-      }
-    ]
-  },
-  {
-    id: "osm_way_1225464518",
-    name: "Footway",
-    width: 18,
-    importance: "lane",
-    points: [
-      {
-        x: 1152,
-        y: 44
-      },
-      {
-        x: 1130,
-        y: 63
-      }
-    ]
-  },
   {
     id: "osm_way_1225464519",
     name: "Footway",
@@ -1020,66 +997,162 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_1226726029",
+    id: "osm_way_1225464554",
     name: "Footway",
     width: 18,
     importance: "lane",
     points: [
       {
-        x: 1168,
-        y: 25
+        x: 630,
+        y: 522
       },
       {
-        x: 1154,
-        y: 38
+        x: 632,
+        y: 547
       }
     ]
   },
   {
-    id: "osm_way_1226726030",
+    id: "osm_way_1225464555",
     name: "Footway",
     width: 18,
     importance: "lane",
     points: [
       {
-        x: 1154,
-        y: 38
+        x: 632,
+        y: 547
       },
       {
-        x: 1141,
-        y: 48
+        x: 632,
+        y: 568
       }
     ]
   },
   {
-    id: "osm_way_1226726031",
+    id: "osm_way_1225464556",
     name: "Footway",
     width: 18,
     importance: "lane",
     points: [
       {
-        x: 1141,
-        y: 48
+        x: 632,
+        y: 568
       },
       {
-        x: 1125,
-        y: 62
+        x: 624,
+        y: 588
       }
     ]
   },
   {
-    id: "osm_way_1226726032",
+    id: "osm_way_1225464557",
     name: "Footway",
     width: 18,
     importance: "lane",
     points: [
       {
-        x: 1125,
-        y: 62
+        x: 624,
+        y: 588
       },
       {
-        x: 1111,
-        y: 74
+        x: 616,
+        y: 607
+      }
+    ]
+  },
+  {
+    id: "osm_way_1225464558",
+    name: "Footway",
+    width: 18,
+    importance: "lane",
+    points: [
+      {
+        x: 616,
+        y: 607
+      },
+      {
+        x: 608,
+        y: 622
+      }
+    ]
+  },
+  {
+    id: "osm_way_1225464559",
+    name: "Footway",
+    width: 18,
+    importance: "lane",
+    points: [
+      {
+        x: 608,
+        y: 622
+      },
+      {
+        x: 604,
+        y: 640
+      }
+    ]
+  },
+  {
+    id: "osm_way_1225464560",
+    name: "Footway",
+    width: 18,
+    importance: "lane",
+    points: [
+      {
+        x: 604,
+        y: 640
+      },
+      {
+        x: 582,
+        y: 712
+      }
+    ]
+  },
+  {
+    id: "osm_way_1225464561",
+    name: "Footway",
+    width: 18,
+    importance: "lane",
+    points: [
+      {
+        x: 582,
+        y: 712
+      },
+      {
+        x: 568,
+        y: 758
+      }
+    ]
+  },
+  {
+    id: "osm_way_1225464562",
+    name: "Footway",
+    width: 18,
+    importance: "lane",
+    points: [
+      {
+        x: 568,
+        y: 758
+      },
+      {
+        x: 553,
+        y: 800
+      }
+    ]
+  },
+  {
+    id: "osm_way_1225464563",
+    name: "Footway",
+    width: 18,
+    importance: "lane",
+    points: [
+      {
+        x: 553,
+        y: 800
+      },
+      {
+        x: 546,
+        y: 821
       }
     ]
   },
@@ -1136,22 +1209,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 1034,
         y: 139
-      }
-    ]
-  },
-  {
-    id: "osm_way_1228186687",
-    name: "Footway",
-    width: 18,
-    importance: "lane",
-    points: [
-      {
-        x: 1030,
-        y: 79
-      },
-      {
-        x: 1011,
-        y: 65
       }
     ]
   },
@@ -1412,6 +1469,22 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_1230632216",
+    name: "Footway",
+    width: 18,
+    importance: "lane",
+    points: [
+      {
+        x: 556,
+        y: 376
+      },
+      {
+        x: 437,
+        y: 314
+      }
+    ]
+  },
+  {
     id: "osm_way_1282352894",
     name: "Footway",
     width: 18,
@@ -1424,42 +1497,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 1666,
         y: 115
-      }
-    ]
-  },
-  {
-    id: "osm_way_1450332393",
-    name: "Footway",
-    width: 18,
-    importance: "lane",
-    points: [
-      {
-        x: 1964,
-        y: 404
-      },
-      {
-        x: 1941,
-        y: 392
-      }
-    ]
-  },
-  {
-    id: "osm_way_1450332394",
-    name: "Footway",
-    width: 18,
-    importance: "lane",
-    points: [
-      {
-        x: 1917,
-        y: 410
-      },
-      {
-        x: 1923,
-        y: 388
-      },
-      {
-        x: 1941,
-        y: 392
       }
     ]
   },
@@ -2068,6 +2105,22 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_704732494",
+    name: "Steps",
+    width: 18,
+    importance: "lane",
+    points: [
+      {
+        x: 525,
+        y: 841
+      },
+      {
+        x: 528,
+        y: 839
+      }
+    ]
+  },
+  {
     id: "osm_way_762677978",
     name: "Steps",
     width: 18,
@@ -2224,26 +2277,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 655,
         y: 165
-      }
-    ]
-  },
-  {
-    id: "osm_way_576559446",
-    name: "Gang 7",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1929,
-        y: 1278
-      },
-      {
-        x: 1983,
-        y: 1296
-      },
-      {
-        x: 2032,
-        y: 1329
       }
     ]
   },
@@ -2432,6 +2465,22 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_583628924",
+    name: "Gang Asmara",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 571,
+        y: 120
+      },
+      {
+        x: 615,
+        y: 163
+      }
+    ]
+  },
+  {
     id: "osm_way_282887306",
     name: "Gang Bamboo",
     width: 32,
@@ -2576,22 +2625,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_592231492",
-    name: "Gang Burung",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1869,
-        y: 36
-      },
-      {
-        x: 1917,
-        y: 76
-      }
-    ]
-  },
-  {
     id: "osm_way_576559300",
     name: "Gang Cahaya",
     width: 32,
@@ -2652,6 +2685,22 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 1575,
         y: 777
+      }
+    ]
+  },
+  {
+    id: "osm_way_260611602",
+    name: "Gang Daksina",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 1677,
+        y: 1581
+      },
+      {
+        x: 1698,
+        y: 1681
       }
     ]
   },
@@ -2740,30 +2789,34 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_592231525",
-    name: "Gang Gatot Kaca",
+    id: "osm_way_1265730366",
+    name: "Gang Hoki",
     width: 32,
     importance: "secondary",
     points: [
       {
-        x: 1914,
-        y: 218
+        x: 580,
+        y: 103
       },
       {
-        x: 1916,
-        y: 218
+        x: 577,
+        y: 101
+      }
+    ]
+  },
+  {
+    id: "osm_way_1265730367",
+    name: "Gang Hoki",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 586,
+        y: 105
       },
       {
-        x: 1935,
-        y: 192
-      },
-      {
-        x: 1949,
-        y: 221
-      },
-      {
-        x: 1990,
-        y: 219
+        x: 580,
+        y: 103
       }
     ]
   },
@@ -2784,34 +2837,18 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_592231535",
-    name: "Gang II",
+    id: "osm_way_583628973",
+    name: "Gang Hoki",
     width: 32,
     importance: "secondary",
     points: [
       {
-        x: 1717,
-        y: 71
+        x: 613,
+        y: 126
       },
       {
-        x: 1652,
-        y: 13
-      }
-    ]
-  },
-  {
-    id: "osm_way_592231536",
-    name: "Gang III",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1734,
-        y: 54
-      },
-      {
-        x: 1661,
-        y: -8
+        x: 586,
+        y: 105
       }
     ]
   },
@@ -3618,16 +3655,12 @@ export const berawaRoads: RoadPathDefinition[] = [
         y: 622
       },
       {
-        x: 1948,
-        y: 589
+        x: 1946,
+        y: 588
       },
       {
         x: 1917,
         y: 581
-      },
-      {
-        x: 1914,
-        y: 582
       },
       {
         x: 1902,
@@ -3684,22 +3717,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 1099,
         y: 1058
-      }
-    ]
-  },
-  {
-    id: "osm_way_576559453",
-    name: "Gang Onga",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 2139,
-        y: 963
-      },
-      {
-        x: 1939,
-        y: 907
       }
     ]
   },
@@ -3784,30 +3801,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 1392,
         y: 314
-      }
-    ]
-  },
-  {
-    id: "osm_way_576559323",
-    name: "Gang Pulau Karimata",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 2005,
-        y: 1063
-      },
-      {
-        x: 1965,
-        y: 1055
-      },
-      {
-        x: 1955,
-        y: 1053
-      },
-      {
-        x: 1928,
-        y: 1047
       }
     ]
   },
@@ -3908,10 +3901,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 1888,
         y: 139
-      },
-      {
-        x: 1923,
-        y: 94
       },
       {
         x: 1929,
@@ -4526,10 +4515,6 @@ export const berawaRoads: RoadPathDefinition[] = [
         y: 673
       },
       {
-        x: 1923,
-        y: 690
-      },
-      {
         x: 1906,
         y: 697
       },
@@ -4624,22 +4609,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_592231542",
-    name: "Jalan Krisna IX",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1653,
-        y: 35
-      },
-      {
-        x: 1620,
-        y: 64
-      }
-    ]
-  },
-  {
     id: "osm_way_592231540",
     name: "Jalan Krisna V",
     width: 32,
@@ -4672,58 +4641,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_592231543",
-    name: "Jalan Krisna XI",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1640,
-        y: 22
-      },
-      {
-        x: 1610,
-        y: 52
-      }
-    ]
-  },
-  {
-    id: "osm_way_592231541",
-    name: "Jalan Krisna XII",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1663,
-        y: 47
-      },
-      {
-        x: 1628,
-        y: 74
-      }
-    ]
-  },
-  {
-    id: "osm_way_996854932",
-    name: "Jalan Krisna XII",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1599,
-        y: 37
-      },
-      {
-        x: 1643,
-        y: 8
-      },
-      {
-        x: 1652,
-        y: 13
-      }
-    ]
-  },
-  {
     id: "osm_way_116564832",
     name: "Jalan Linkar Nelewan",
     width: 32,
@@ -4734,8 +4651,84 @@ export const berawaRoads: RoadPathDefinition[] = [
         y: 639
       },
       {
+        x: 604,
+        y: 640
+      },
+      {
+        x: 691,
+        y: 694
+      },
+      {
         x: 700,
         y: 707
+      }
+    ]
+  },
+  {
+    id: "osm_way_260664610",
+    name: "Jalan Munduk Catu",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 433,
+        y: 618
+      },
+      {
+        x: 468,
+        y: 558
+      },
+      {
+        x: 491,
+        y: 518
+      },
+      {
+        x: 500,
+        y: 504
+      },
+      {
+        x: 507,
+        y: 495
+      },
+      {
+        x: 510,
+        y: 492
+      },
+      {
+        x: 516,
+        y: 484
+      },
+      {
+        x: 524,
+        y: 475
+      },
+      {
+        x: 527,
+        y: 473
+      },
+      {
+        x: 530,
+        y: 468
+      },
+      {
+        x: 537,
+        y: 460
+      },
+      {
+        x: 542,
+        y: 453
+      },
+      {
+        x: 548,
+        y: 446
+      },
+      {
+        x: 571,
+        y: 407
+      },
+      {
+        x: 585,
+        y: 391
       }
     ]
   },
@@ -4948,6 +4941,30 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_1004345449",
+    name: "Jalan Pantai Batu Bolong",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 545,
+        y: 820
+      },
+      {
+        x: 539,
+        y: 829
+      },
+      {
+        x: 534,
+        y: 834
+      },
+      {
+        x: 528,
+        y: 839
+      }
+    ]
+  },
+  {
     id: "osm_way_583628957",
     name: "Jalan Pantai Batu Bolong",
     width: 32,
@@ -5034,12 +5051,20 @@ export const berawaRoads: RoadPathDefinition[] = [
         y: 546
       },
       {
+        x: 631,
+        y: 557
+      },
+      {
         x: 630,
         y: 567
       },
       {
         x: 622,
         y: 587
+      },
+      {
+        x: 618,
+        y: 596
       },
       {
         x: 614,
@@ -5050,32 +5075,40 @@ export const berawaRoads: RoadPathDefinition[] = [
         y: 622
       },
       {
+        x: 607,
+        y: 623
+      },
+      {
         x: 603,
         y: 639
+      },
+      {
+        x: 598,
+        y: 651
+      },
+      {
+        x: 589,
+        y: 679
+      },
+      {
+        x: 581,
+        y: 712
+      },
+      {
+        x: 570,
+        y: 748
       },
       {
         x: 567,
         y: 757
       },
       {
-        x: 545,
-        y: 820
-      }
-    ]
-  },
-  {
-    id: "osm_way_1010105224",
-    name: "Jalan Pantai Berawa",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1893,
-        y: 13
+        x: 551,
+        y: 800
       },
       {
-        x: 1925,
-        y: 40
+        x: 545,
+        y: 820
       }
     ]
   },
@@ -5120,34 +5153,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 1143,
         y: 1371
-      }
-    ]
-  },
-  {
-    id: "osm_way_592231571",
-    name: "Jalan Perumahan Canggu Pertiwi",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1597,
-        y: 31
-      },
-      {
-        x: 1577,
-        y: 23
-      },
-      {
-        x: 1523,
-        y: 40
-      },
-      {
-        x: 1491,
-        y: 47
-      },
-      {
-        x: 1482,
-        y: 48
       }
     ]
   },
@@ -5356,30 +5361,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_592223058",
-    name: "Jalan Subak Canggu",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1176,
-        y: 22
-      },
-      {
-        x: 1178,
-        y: 22
-      },
-      {
-        x: 1244,
-        y: 43
-      },
-      {
-        x: 1264,
-        y: 51
-      }
-    ]
-  },
-  {
     id: "osm_way_1473799299",
     name: "Jalan Subak Sari II",
     width: 32,
@@ -5432,6 +5413,18 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 561,
         y: 378
+      },
+      {
+        x: 606,
+        y: 315
+      },
+      {
+        x: 621,
+        y: 299
+      },
+      {
+        x: 629,
+        y: 291
       },
       {
         x: 637,
@@ -5642,10 +5635,6 @@ export const berawaRoads: RoadPathDefinition[] = [
         y: 488
       },
       {
-        x: 1950,
-        y: 494
-      },
-      {
         x: 1990,
         y: 502
       },
@@ -5690,12 +5679,8 @@ export const berawaRoads: RoadPathDefinition[] = [
         y: 1513
       },
       {
-        x: 1968,
-        y: 1502
-      },
-      {
-        x: 2075,
-        y: 1404
+        x: 2063,
+        y: 1414
       },
       {
         x: 2235,
@@ -5718,16 +5703,8 @@ export const berawaRoads: RoadPathDefinition[] = [
         y: 85
       },
       {
-        x: 1717,
-        y: 71
-      },
-      {
-        x: 1734,
-        y: 54
-      },
-      {
-        x: 1748,
-        y: 38
+        x: 1740,
+        y: 48
       },
       {
         x: 1787,
@@ -6028,78 +6005,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_1435024744",
-    name: "Living Street",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1965,
-        y: 1055
-      },
-      {
-        x: 1955,
-        y: 1089
-      }
-    ]
-  },
-  {
-    id: "osm_way_1450332386",
-    name: "Living Street",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1950,
-        y: 494
-      },
-      {
-        x: 1962,
-        y: 461
-      },
-      {
-        x: 1972,
-        y: 434
-      }
-    ]
-  },
-  {
-    id: "osm_way_1450332389",
-    name: "Living Street",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1967,
-        y: 332
-      },
-      {
-        x: 1941,
-        y: 392
-      }
-    ]
-  },
-  {
-    id: "osm_way_1450332390",
-    name: "Living Street",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1955,
-        y: 426
-      },
-      {
-        x: 1944,
-        y: 454
-      },
-      {
-        x: 1930,
-        y: 488
-      }
-    ]
-  },
-  {
     id: "osm_way_1450332391",
     name: "Living Street",
     width: 32,
@@ -6116,22 +6021,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 1911,
         y: 482
-      }
-    ]
-  },
-  {
-    id: "osm_way_1450332392",
-    name: "Living Street",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1944,
-        y: 454
-      },
-      {
-        x: 1962,
-        y: 461
       }
     ]
   },
@@ -6228,6 +6117,22 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 875,
         y: 202
+      }
+    ]
+  },
+  {
+    id: "osm_way_1506460068",
+    name: "Living Street",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 467,
+        y: 243
+      },
+      {
+        x: 507,
+        y: 263
       }
     ]
   },
@@ -6456,6 +6361,22 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_583666515",
+    name: "Living Street",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 491,
+        y: 518
+      },
+      {
+        x: 406,
+        y: 482
+      }
+    ]
+  },
+  {
     id: "osm_way_583666568",
     name: "Living Street",
     width: 32,
@@ -6580,26 +6501,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_592026014",
-    name: "Living Street",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1955,
-        y: 426
-      },
-      {
-        x: 1972,
-        y: 434
-      },
-      {
-        x: 2003,
-        y: 447
-      }
-    ]
-  },
-  {
     id: "osm_way_592210812",
     name: "Living Street",
     width: 32,
@@ -6644,82 +6545,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 1326,
         y: 498
-      }
-    ]
-  },
-  {
-    id: "osm_way_592223050",
-    name: "Living Street",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1156,
-        y: 39
-      },
-      {
-        x: 1154,
-        y: 38
-      },
-      {
-        x: 1098,
-        y: 13
-      }
-    ]
-  },
-  {
-    id: "osm_way_592223059",
-    name: "Living Street",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1151,
-        y: 43
-      },
-      {
-        x: 1152,
-        y: 44
-      },
-      {
-        x: 1218,
-        y: 70
-      }
-    ]
-  },
-  {
-    id: "osm_way_592225698",
-    name: "Living Street",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1113,
-        y: 75
-      },
-      {
-        x: 1111,
-        y: 74
-      },
-      {
-        x: 1018,
-        y: 29
-      }
-    ]
-  },
-  {
-    id: "osm_way_592231489",
-    name: "Living Street",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1930,
-        y: 57
-      },
-      {
-        x: 1885,
-        y: 21
       }
     ]
   },
@@ -6852,62 +6677,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_714375172",
-    name: "Living Street",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1037,
-        y: 4
-      },
-      {
-        x: 1125,
-        y: 62
-      },
-      {
-        x: 1127,
-        y: 63
-      }
-    ]
-  },
-  {
-    id: "osm_way_714375175",
-    name: "Living Street",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1218,
-        y: 70
-      },
-      {
-        x: 1231,
-        y: 75
-      }
-    ]
-  },
-  {
-    id: "osm_way_714375176",
-    name: "Living Street",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1989,
-        y: 340
-      },
-      {
-        x: 1964,
-        y: 404
-      },
-      {
-        x: 1955,
-        y: 426
-      }
-    ]
-  },
-  {
     id: "osm_way_714412832",
     name: "Living Street",
     width: 32,
@@ -6920,22 +6689,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 765,
         y: 381
-      }
-    ]
-  },
-  {
-    id: "osm_way_716287951",
-    name: "Living Street",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1941,
-        y: 1083
-      },
-      {
-        x: 1955,
-        y: 1053
       }
     ]
   },
@@ -7112,22 +6865,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 1807,
         y: 1245
-      }
-    ]
-  },
-  {
-    id: "osm_way_996804117",
-    name: "Living Street",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1244,
-        y: 43
-      },
-      {
-        x: 1256,
-        y: -14
       }
     ]
   },
@@ -7312,6 +7049,22 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_1004344574",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 567,
+        y: 478
+      },
+      {
+        x: 537,
+        y: 460
+      }
+    ]
+  },
+  {
     id: "osm_way_1005167848",
     name: "Residential",
     width: 32,
@@ -7328,22 +7081,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 826,
         y: 664
-      }
-    ]
-  },
-  {
-    id: "osm_way_1005230766",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1943,
-        y: 1411
-      },
-      {
-        x: 1937,
-        y: 1424
       }
     ]
   },
@@ -7650,10 +7387,6 @@ export const berawaRoads: RoadPathDefinition[] = [
         y: 86
       },
       {
-        x: 1785,
-        y: 54
-      },
-      {
         x: 1772,
         y: 45
       }
@@ -7820,26 +7553,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_1081798461",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1598,
-        y: 26
-      },
-      {
-        x: 1597,
-        y: 31
-      },
-      {
-        x: 1596,
-        y: 39
-      }
-    ]
-  },
-  {
     id: "osm_way_1122419178",
     name: "Residential",
     width: 32,
@@ -7948,22 +7661,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 753,
         y: 251
-      }
-    ]
-  },
-  {
-    id: "osm_way_1123671244",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 684,
-        y: -5
-      },
-      {
-        x: 704,
-        y: 36
       }
     ]
   },
@@ -8544,22 +8241,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_1469469408",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1917,
-        y: 581
-      },
-      {
-        x: 1926,
-        y: 549
-      }
-    ]
-  },
-  {
     id: "osm_way_147118490",
     name: "Residential",
     width: 32,
@@ -8576,18 +8257,38 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_1493225508",
+    id: "osm_way_1493216835",
     name: "Residential",
     width: 32,
     importance: "secondary",
     points: [
       {
-        x: 1748,
-        y: 38
+        x: 589,
+        y: 814
       },
       {
-        x: 1671,
-        y: -23
+        x: 590,
+        y: 814
+      }
+    ]
+  },
+  {
+    id: "osm_way_1493216836",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 545,
+        y: 820
+      },
+      {
+        x: 546,
+        y: 821
+      },
+      {
+        x: 579,
+        y: 835
       }
     ]
   },
@@ -8784,70 +8485,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_1493238002",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1936,
-        y: 1406
-      },
-      {
-        x: 1915,
-        y: 1429
-      }
-    ]
-  },
-  {
-    id: "osm_way_1493238003",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1943,
-        y: 1411
-      },
-      {
-        x: 1936,
-        y: 1406
-      }
-    ]
-  },
-  {
-    id: "osm_way_1493238004",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1958,
-        y: 1395
-      },
-      {
-        x: 1943,
-        y: 1411
-      }
-    ]
-  },
-  {
-    id: "osm_way_1493238005",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1951,
-        y: 1385
-      },
-      {
-        x: 1958,
-        y: 1395
-      }
-    ]
-  },
-  {
     id: "osm_way_1493238018",
     name: "Residential",
     width: 32,
@@ -8944,26 +8581,18 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_1503334571",
+    id: "osm_way_1504280515",
     name: "Residential",
     width: 32,
     importance: "secondary",
     points: [
       {
-        x: 2009,
-        y: 285
+        x: 513,
+        y: 199
       },
       {
-        x: 1995,
-        y: 293
-      },
-      {
-        x: 1984,
-        y: 322
-      },
-      {
-        x: 1928,
-        y: 300
+        x: 546,
+        y: 226
       }
     ]
   },
@@ -9224,30 +8853,38 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_459013395",
+    id: "osm_way_402099889",
     name: "Residential",
     width: 32,
     importance: "secondary",
     points: [
       {
-        x: 1527,
-        y: 65
+        x: 439,
+        y: 412
       },
       {
-        x: 1579,
-        y: 35
+        x: 537,
+        y: 460
+      }
+    ]
+  },
+  {
+    id: "osm_way_443932577",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 1576,
+        y: 1586
       },
       {
-        x: 1595,
-        y: 39
+        x: 1570,
+        y: 1590
       },
       {
-        x: 1596,
-        y: 39
-      },
-      {
-        x: 1599,
-        y: 37
+        x: 1475,
+        y: 1580
       }
     ]
   },
@@ -9352,10 +8989,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 1620,
         y: 64
-      },
-      {
-        x: 1628,
-        y: 74
       },
       {
         x: 1631,
@@ -9736,22 +9369,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_576559326",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1974,
-        y: 1312
-      },
-      {
-        x: 1950,
-        y: 1300
-      }
-    ]
-  },
-  {
     id: "osm_way_576559333",
     name: "Residential",
     width: 32,
@@ -9892,22 +9509,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_576559365",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1956,
-        y: 1513
-      },
-      {
-        x: 1962,
-        y: 1546
-      }
-    ]
-  },
-  {
     id: "osm_way_576559368",
     name: "Residential",
     width: 32,
@@ -10000,54 +9601,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 1030,
         y: 991
-      }
-    ]
-  },
-  {
-    id: "osm_way_576559422",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1929,
-        y: 1329
-      },
-      {
-        x: 1918,
-        y: 1353
-      }
-    ]
-  },
-  {
-    id: "osm_way_576559429",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 2005,
-        y: 1258
-      },
-      {
-        x: 1917,
-        y: 1228
-      }
-    ]
-  },
-  {
-    id: "osm_way_576559444",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1981,
-        y: 1357
-      },
-      {
-        x: 1951,
-        y: 1385
       }
     ]
   },
@@ -10440,6 +9993,38 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_576934141",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 551,
+        y: 800
+      },
+      {
+        x: 431,
+        y: 738
+      }
+    ]
+  },
+  {
+    id: "osm_way_576934143",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 570,
+        y: 748
+      },
+      {
+        x: 557,
+        y: 745
+      }
+    ]
+  },
+  {
     id: "osm_way_576934147",
     name: "Residential",
     width: 32,
@@ -10600,6 +10185,22 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 1297,
         y: 862
+      }
+    ]
+  },
+  {
+    id: "osm_way_583628883",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 565,
+        y: 138
+      },
+      {
+        x: 522,
+        y: 110
       }
     ]
   },
@@ -10804,6 +10405,78 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_583628943",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 495,
+        y: 189
+      },
+      {
+        x: 490,
+        y: 181
+      }
+    ]
+  },
+  {
+    id: "osm_way_583628944",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 490,
+        y: 181
+      },
+      {
+        x: 492,
+        y: 163
+      },
+      {
+        x: 480,
+        y: 154
+      }
+    ]
+  },
+  {
+    id: "osm_way_583628945",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 520,
+        y: 211
+      },
+      {
+        x: 512,
+        y: 213
+      },
+      {
+        x: 508,
+        y: 201
+      }
+    ]
+  },
+  {
+    id: "osm_way_583628946",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 567,
+        y: 140
+      },
+      {
+        x: 565,
+        y: 138
+      }
+    ]
+  },
+  {
     id: "osm_way_583628956",
     name: "Residential",
     width: 32,
@@ -10856,22 +10529,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_583628964",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 655,
-        y: 28
-      },
-      {
-        x: 696,
-        y: 65
-      }
-    ]
-  },
-  {
     id: "osm_way_583628974",
     name: "Residential",
     width: 32,
@@ -10884,22 +10541,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 620,
         y: 94
-      }
-    ]
-  },
-  {
-    id: "osm_way_583628975",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 639,
-        y: 45
-      },
-      {
-        x: 653,
-        y: 69
       }
     ]
   },
@@ -10984,22 +10625,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_583628992",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 797,
-        y: -60
-      },
-      {
-        x: 872,
-        y: 35
-      }
-    ]
-  },
-  {
     id: "osm_way_583629005",
     name: "Residential",
     width: 32,
@@ -11032,6 +10657,26 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 752,
         y: 369
+      }
+    ]
+  },
+  {
+    id: "osm_way_583666465",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 549,
+        y: 386
+      },
+      {
+        x: 556,
+        y: 376
+      },
+      {
+        x: 557,
+        y: 375
       }
     ]
   },
@@ -11102,6 +10747,10 @@ export const berawaRoads: RoadPathDefinition[] = [
         y: 546
       },
       {
+        x: 632,
+        y: 547
+      },
+      {
         x: 671,
         y: 570
       }
@@ -11128,11 +10777,31 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_583666492",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 507,
+        y: 495
+      },
+      {
+        x: 434,
+        y: 461
+      }
+    ]
+  },
+  {
     id: "osm_way_583666503",
     name: "Residential",
     width: 32,
     importance: "secondary",
     points: [
+      {
+        x: 608,
+        y: 622
+      },
       {
         x: 608,
         y: 622
@@ -11160,6 +10829,54 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 666,
         y: 380
+      }
+    ]
+  },
+  {
+    id: "osm_way_583666508",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 621,
+        y: 299
+      },
+      {
+        x: 569,
+        y: 272
+      }
+    ]
+  },
+  {
+    id: "osm_way_583666512",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 530,
+        y: 468
+      },
+      {
+        x: 471,
+        y: 438
+      }
+    ]
+  },
+  {
+    id: "osm_way_583666514",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 516,
+        y: 484
+      },
+      {
+        x: 439,
+        y: 450
       }
     ]
   },
@@ -11212,6 +10929,58 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_583666523",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 598,
+        y: 651
+      },
+      {
+        x: 534,
+        y: 617
+      }
+    ]
+  },
+  {
+    id: "osm_way_583666525",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 502,
+        y: 594
+      },
+      {
+        x: 468,
+        y: 558
+      }
+    ]
+  },
+  {
+    id: "osm_way_583666530",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 603,
+        y: 639
+      },
+      {
+        x: 577,
+        y: 627
+      },
+      {
+        x: 579,
+        y: 618
+      }
+    ]
+  },
+  {
     id: "osm_way_583666548",
     name: "Residential",
     width: 32,
@@ -11220,6 +10989,10 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 630,
         y: 567
+      },
+      {
+        x: 632,
+        y: 568
       },
       {
         x: 680,
@@ -11240,6 +11013,54 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 959,
         y: 509
+      }
+    ]
+  },
+  {
+    id: "osm_way_583666555",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 571,
+        y: 407
+      },
+      {
+        x: 612,
+        y: 430
+      }
+    ]
+  },
+  {
+    id: "osm_way_583666557",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 527,
+        y: 473
+      },
+      {
+        x: 566,
+        y: 495
+      }
+    ]
+  },
+  {
+    id: "osm_way_583666559",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 550,
+        y: 520
+      },
+      {
+        x: 510,
+        y: 492
       }
     ]
   },
@@ -11380,6 +11201,22 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_583666585",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 618,
+        y: 596
+      },
+      {
+        x: 571,
+        y: 574
+      }
+    ]
+  },
+  {
     id: "osm_way_583666587",
     name: "Residential",
     width: 32,
@@ -11388,6 +11225,10 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 622,
         y: 587
+      },
+      {
+        x: 624,
+        y: 588
       },
       {
         x: 681,
@@ -11416,6 +11257,22 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_583666591",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 607,
+        y: 623
+      },
+      {
+        x: 576,
+        y: 610
+      }
+    ]
+  },
+  {
     id: "osm_way_583666593",
     name: "Residential",
     width: 32,
@@ -11426,8 +11283,28 @@ export const berawaRoads: RoadPathDefinition[] = [
         y: 605
       },
       {
+        x: 616,
+        y: 607
+      },
+      {
         x: 673,
         y: 642
+      }
+    ]
+  },
+  {
+    id: "osm_way_583666594",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 598,
+        y: 488
+      },
+      {
+        x: 542,
+        y: 453
       }
     ]
   },
@@ -11452,6 +11329,22 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 601,
         y: 510
+      }
+    ]
+  },
+  {
+    id: "osm_way_583666602",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 631,
+        y: 557
+      },
+      {
+        x: 604,
+        y: 546
       }
     ]
   },
@@ -11680,6 +11573,54 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_583666634",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 606,
+        y: 315
+      },
+      {
+        x: 542,
+        y: 276
+      }
+    ]
+  },
+  {
+    id: "osm_way_583666636",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 524,
+        y: 475
+      },
+      {
+        x: 427,
+        y: 431
+      }
+    ]
+  },
+  {
+    id: "osm_way_583924341",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 500,
+        y: 504
+      },
+      {
+        x: 561,
+        y: 556
+      }
+    ]
+  },
+  {
     id: "osm_way_583924342",
     name: "Residential",
     width: 32,
@@ -11792,38 +11733,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 1300,
         y: 608
-      }
-    ]
-  },
-  {
-    id: "osm_way_592022532",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1914,
-        y: 582
-      },
-      {
-        x: 1928,
-        y: 535
-      }
-    ]
-  },
-  {
-    id: "osm_way_592022535",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1923,
-        y: 690
-      },
-      {
-        x: 1929,
-        y: 610
       }
     ]
   },
@@ -12504,34 +12413,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_592223061",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1143,
-        y: 49
-      },
-      {
-        x: 1141,
-        y: 48
-      },
-      {
-        x: 1068,
-        y: 20
-      },
-      {
-        x: 1044,
-        y: 5
-      },
-      {
-        x: 1048,
-        y: -4
-      }
-    ]
-  },
-  {
     id: "osm_way_592225697",
     name: "Residential",
     width: 32,
@@ -12952,46 +12833,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_592231526",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1785,
-        y: 54
-      },
-      {
-        x: 1893,
-        y: -67
-      },
-      {
-        x: 1926,
-        y: -80
-      }
-    ]
-  },
-  {
-    id: "osm_way_592231546",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1595,
-        y: 39
-      },
-      {
-        x: 1595,
-        y: 46
-      },
-      {
-        x: 1600,
-        y: 53
-      }
-    ]
-  },
-  {
     id: "osm_way_592231547",
     name: "Residential",
     width: 32,
@@ -13148,82 +12989,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_592231566",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1491,
-        y: 47
-      },
-      {
-        x: 1489,
-        y: 35
-      },
-      {
-        x: 1485,
-        y: 18
-      }
-    ]
-  },
-  {
-    id: "osm_way_592231567",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1520,
-        y: 28
-      },
-      {
-        x: 1489,
-        y: 35
-      }
-    ]
-  },
-  {
-    id: "osm_way_592231569",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1523,
-        y: 40
-      },
-      {
-        x: 1520,
-        y: 28
-      },
-      {
-        x: 1515,
-        y: -32
-      },
-      {
-        x: 1536,
-        y: -25
-      }
-    ]
-  },
-  {
-    id: "osm_way_592250800",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1930,
-        y: 75
-      },
-      {
-        x: 1961,
-        y: 86
-      }
-    ]
-  },
-  {
     id: "osm_way_699500139",
     name: "Residential",
     width: 32,
@@ -13240,6 +13005,22 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_704732513",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 579,
+        y: 835
+      },
+      {
+        x: 589,
+        y: 814
+      }
+    ]
+  },
+  {
     id: "osm_way_713913008",
     name: "Residential",
     width: 32,
@@ -13248,10 +13029,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 1866,
         y: 1308
-      },
-      {
-        x: 1929,
-        y: 1329
       },
       {
         x: 1975,
@@ -13636,22 +13413,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_727470879",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1930,
-        y: 75
-      },
-      {
-        x: 1878,
-        y: 28
-      }
-    ]
-  },
-  {
     id: "osm_way_727481122",
     name: "Residential",
     width: 32,
@@ -13684,22 +13445,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 1562,
         y: 176
-      }
-    ]
-  },
-  {
-    id: "osm_way_727531690",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1923,
-        y: 94
-      },
-      {
-        x: 1948,
-        y: 103
       }
     ]
   },
@@ -13956,22 +13701,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_731161386",
-    name: "Residential",
-    width: 32,
-    importance: "secondary",
-    points: [
-      {
-        x: 1968,
-        y: 1502
-      },
-      {
-        x: 1950,
-        y: 1461
-      }
-    ]
-  },
-  {
     id: "osm_way_732916316",
     name: "Residential",
     width: 32,
@@ -14172,6 +13901,22 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_736307788",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 629,
+        y: 291
+      },
+      {
+        x: 592,
+        y: 269
+      }
+    ]
+  },
+  {
     id: "osm_way_736307789",
     name: "Residential",
     width: 32,
@@ -14188,6 +13933,22 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 644,
         y: 191
+      }
+    ]
+  },
+  {
+    id: "osm_way_736312631",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 511,
+        y: 199
+      },
+      {
+        x: 495,
+        y: 189
       }
     ]
   },
@@ -14316,6 +14077,30 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 637,
         y: 282
+      }
+    ]
+  },
+  {
+    id: "osm_way_818056830",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 1578,
+        y: 1587
+      },
+      {
+        x: 1621,
+        y: 1563
+      },
+      {
+        x: 1625,
+        y: 1583
+      },
+      {
+        x: 1602,
+        y: 1607
       }
     ]
   },
@@ -14480,6 +14265,26 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_922031744",
+    name: "Residential",
+    width: 32,
+    importance: "secondary",
+    points: [
+      {
+        x: 583,
+        y: 810
+      },
+      {
+        x: 553,
+        y: 800
+      },
+      {
+        x: 551,
+        y: 800
+      }
+    ]
+  },
+  {
     id: "osm_way_922036984",
     name: "Residential",
     width: 32,
@@ -14536,6 +14341,10 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 567,
         y: 757
+      },
+      {
+        x: 568,
+        y: 758
       },
       {
         x: 647,
@@ -14844,6 +14653,42 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_1000463450",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 589,
+        y: 848
+      },
+      {
+        x: 584,
+        y: 856
+      },
+      {
+        x: 580,
+        y: 862
+      }
+    ]
+  },
+  {
+    id: "osm_way_1000482721",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 584,
+        y: 85
+      },
+      {
+        x: 583,
+        y: 84
+      }
+    ]
+  },
+  {
     id: "osm_way_1004344568",
     name: "Service",
     width: 24,
@@ -14876,6 +14721,26 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 744,
         y: 290
+      }
+    ]
+  },
+  {
+    id: "osm_way_1004344573",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 581,
+        y: 712
+      },
+      {
+        x: 582,
+        y: 712
+      },
+      {
+        x: 601,
+        y: 719
       }
     ]
   },
@@ -15324,22 +15189,6 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
-    id: "osm_way_1010203678",
-    name: "Service",
-    width: 24,
-    importance: "secondary",
-    points: [
-      {
-        x: 1826,
-        y: 30
-      },
-      {
-        x: 1845,
-        y: 54
-      }
-    ]
-  },
-  {
     id: "osm_way_1021747593",
     name: "Service",
     width: 24,
@@ -15420,6 +15269,58 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_1072184044",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 534,
+        y: 834
+      },
+      {
+        x: 518,
+        y: 830
+      }
+    ]
+  },
+  {
+    id: "osm_way_1076462674",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 573,
+        y: 885
+      },
+      {
+        x: 582,
+        y: 873
+      }
+    ]
+  },
+  {
+    id: "osm_way_1076462675",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 558,
+        y: 871
+      },
+      {
+        x: 573,
+        y: 885
+      },
+      {
+        x: 582,
+        y: 893
+      }
+    ]
+  },
+  {
     id: "osm_way_1122101473",
     name: "Service",
     width: 24,
@@ -15456,6 +15357,22 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_1123471627",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 583,
+        y: 84
+      },
+      {
+        x: 580,
+        y: 80
+      }
+    ]
+  },
+  {
     id: "osm_way_1123978809",
     name: "Service",
     width: 24,
@@ -15468,22 +15385,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 1795,
         y: 81
-      }
-    ]
-  },
-  {
-    id: "osm_way_1123978810",
-    name: "Service",
-    width: 24,
-    importance: "secondary",
-    points: [
-      {
-        x: 1845,
-        y: 54
-      },
-      {
-        x: 1848,
-        y: 57
       }
     ]
   },
@@ -15944,6 +15845,26 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_1390024749",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 548,
+        y: 446
+      },
+      {
+        x: 504,
+        y: 423
+      },
+      {
+        x: 504,
+        y: 415
+      }
+    ]
+  },
+  {
     id: "osm_way_1418002244",
     name: "Service",
     width: 24,
@@ -16168,6 +16089,22 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_576559374",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 1475,
+        y: 1580
+      },
+      {
+        x: 1470,
+        y: 1582
+      }
+    ]
+  },
+  {
     id: "osm_way_576559409",
     name: "Service",
     width: 24,
@@ -16200,6 +16137,98 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 906,
         y: 1000
+      }
+    ]
+  },
+  {
+    id: "osm_way_576934135",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 528,
+        y: 839
+      },
+      {
+        x: 558,
+        y: 871
+      },
+      {
+        x: 569,
+        y: 856
+      },
+      {
+        x: 539,
+        y: 829
+      }
+    ]
+  },
+  {
+    id: "osm_way_576934136",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 584,
+        y: 856
+      },
+      {
+        x: 592,
+        y: 862
+      }
+    ]
+  },
+  {
+    id: "osm_way_576934137",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 607,
+        y: 851
+      },
+      {
+        x: 596,
+        y: 843
+      },
+      {
+        x: 589,
+        y: 848
+      },
+      {
+        x: 581,
+        y: 842
+      },
+      {
+        x: 569,
+        y: 856
+      }
+    ]
+  },
+  {
+    id: "osm_way_576934144",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 589,
+        y: 679
+      },
+      {
+        x: 482,
+        y: 633
+      },
+      {
+        x: 448,
+        y: 611
+      },
+      {
+        x: 457,
+        y: 600
       }
     ]
   },
@@ -16984,6 +17013,142 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_922478755",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 1583,
+        y: 1591
+      },
+      {
+        x: 1565,
+        y: 1596
+      }
+    ]
+  },
+  {
+    id: "osm_way_922478756",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 1565,
+        y: 1596
+      },
+      {
+        x: 1570,
+        y: 1590
+      }
+    ]
+  },
+  {
+    id: "osm_way_922478757",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 1503,
+        y: 1637
+      },
+      {
+        x: 1506,
+        y: 1607
+      }
+    ]
+  },
+  {
+    id: "osm_way_922478758",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 1506,
+        y: 1607
+      },
+      {
+        x: 1516,
+        y: 1592
+      }
+    ]
+  },
+  {
+    id: "osm_way_922478759",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 1533,
+        y: 1596
+      },
+      {
+        x: 1523,
+        y: 1609
+      },
+      {
+        x: 1506,
+        y: 1607
+      }
+    ]
+  },
+  {
+    id: "osm_way_922478760",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 1493,
+        y: 1589
+      },
+      {
+        x: 1486,
+        y: 1599
+      },
+      {
+        x: 1506,
+        y: 1607
+      }
+    ]
+  },
+  {
+    id: "osm_way_922478761",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 1565,
+        y: 1596
+      },
+      {
+        x: 1562,
+        y: 1596
+      },
+      {
+        x: 1533,
+        y: 1596
+      },
+      {
+        x: 1516,
+        y: 1592
+      },
+      {
+        x: 1493,
+        y: 1589
+      },
+      {
+        x: 1472,
+        y: 1591
+      }
+    ]
+  },
+  {
     id: "osm_way_923687302",
     name: "Service",
     width: 24,
@@ -16996,6 +17161,22 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 1431,
         y: 1364
+      }
+    ]
+  },
+  {
+    id: "osm_way_923697176",
+    name: "Service",
+    width: 24,
+    importance: "secondary",
+    points: [
+      {
+        x: 1555,
+        y: 1621
+      },
+      {
+        x: 1562,
+        y: 1596
       }
     ]
   },
@@ -17080,10 +17261,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 1266,
         y: 48
-      },
-      {
-        x: 1264,
-        y: 51
       },
       {
         x: 1258,
@@ -17320,6 +17497,30 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_1228597729",
+    name: "Jalan Batu Mejan",
+    width: 48,
+    importance: "primary",
+    points: [
+      {
+        x: 438,
+        y: 312
+      },
+      {
+        x: 557,
+        y: 375
+      },
+      {
+        x: 561,
+        y: 378
+      },
+      {
+        x: 585,
+        y: 391
+      }
+    ]
+  },
+  {
     id: "osm_way_1122325485",
     name: "Jalan Canggu Permai",
     width: 48,
@@ -17542,24 +17743,40 @@ export const berawaRoads: RoadPathDefinition[] = [
         y: 312
       },
       {
-        x: 481,
-        y: 216
+        x: 467,
+        y: 243
       },
       {
-        x: 490,
-        y: 205
+        x: 488,
+        y: 207
       },
       {
-        x: 530,
-        y: 191
+        x: 508,
+        y: 201
+      },
+      {
+        x: 511,
+        y: 199
+      },
+      {
+        x: 513,
+        y: 199
       },
       {
         x: 550,
         y: 171
       },
       {
-        x: 565,
-        y: 150
+        x: 567,
+        y: 140
+      },
+      {
+        x: 571,
+        y: 120
+      },
+      {
+        x: 577,
+        y: 101
       },
       {
         x: 584,
@@ -17570,14 +17787,6 @@ export const berawaRoads: RoadPathDefinition[] = [
         y: 45
       },
       {
-        x: 655,
-        y: 28
-      },
-      {
-        x: 684,
-        y: -5
-      },
-      {
         x: 723,
         y: -44
       },
@@ -17586,8 +17795,8 @@ export const berawaRoads: RoadPathDefinition[] = [
         y: -60
       },
       {
-        x: 940,
-        y: -129
+        x: 936,
+        y: -125
       },
       {
         x: 1046,
@@ -17658,36 +17867,16 @@ export const berawaRoads: RoadPathDefinition[] = [
         y: -230
       },
       {
-        x: 1227,
-        y: -42
+        x: 1239,
+        y: -63
       },
       {
-        x: 1176,
-        y: 22
-      },
-      {
-        x: 1156,
-        y: 39
-      },
-      {
-        x: 1151,
-        y: 43
-      },
-      {
-        x: 1143,
-        y: 49
+        x: 1185,
+        y: 14
       },
       {
         x: 1129,
         y: 62
-      },
-      {
-        x: 1127,
-        y: 63
-      },
-      {
-        x: 1113,
-        y: 75
       },
       {
         x: 1104,
@@ -17840,26 +18029,6 @@ export const berawaRoads: RoadPathDefinition[] = [
       {
         x: 2084,
         y: -180
-      },
-      {
-        x: 1893,
-        y: 13
-      },
-      {
-        x: 1885,
-        y: 21
-      },
-      {
-        x: 1878,
-        y: 28
-      },
-      {
-        x: 1869,
-        y: 36
-      },
-      {
-        x: 1848,
-        y: 57
       },
       {
         x: 1844,
@@ -18348,6 +18517,22 @@ export const berawaRoads: RoadPathDefinition[] = [
     ]
   },
   {
+    id: "osm_way_166725452",
+    name: "Jalan Pura Kayu Putih",
+    width: 48,
+    importance: "primary",
+    points: [
+      {
+        x: 1605,
+        y: 1611
+      },
+      {
+        x: 1615,
+        y: 1624
+      }
+    ]
+  },
+  {
     id: "osm_way_201167850",
     name: "Jalan Pura Kayu Putih",
     width: 48,
@@ -18414,8 +18599,48 @@ export const berawaRoads: RoadPathDefinition[] = [
         y: 1540
       },
       {
+        x: 1576,
+        y: 1586
+      },
+      {
         x: 1578,
         y: 1587
+      }
+    ]
+  },
+  {
+    id: "osm_way_770105086",
+    name: "Jalan Pura Kayu Putih",
+    width: 48,
+    importance: "primary",
+    points: [
+      {
+        x: 1602,
+        y: 1607
+      },
+      {
+        x: 1583,
+        y: 1591
+      },
+      {
+        x: 1578,
+        y: 1587
+      }
+    ]
+  },
+  {
+    id: "osm_way_818056831",
+    name: "Jalan Pura Kayu Putih",
+    width: 48,
+    importance: "primary",
+    points: [
+      {
+        x: 1602,
+        y: 1607
+      },
+      {
+        x: 1605,
+        y: 1611
       }
     ]
   },
@@ -19000,8 +19225,8 @@ export const berawaAreas: MapAreaDefinition[] = [
   {
     id: "pantai_berawa",
     name: "Jl. Pantai Berawa",
-    x: 1783,
-    y: 523,
+    x: 1781,
+    y: 528,
     radius: 300
   },
   {
@@ -19864,5 +20089,1508 @@ export const curatedVenueNodes: CuratedVenueMapNode[] = [
     isLandmark: false,
     questCritical: false,
     coordinateSource: "estimate"
+  }
+];
+
+export const berawaMapFeatures: MapFeatureDefinition[] = [
+  {
+    id: "osm_way_1094016381",
+    kind: "beach",
+    name: "Beach",
+    closed: true,
+    points: [
+      {
+        x: 899,
+        y: 1096
+      },
+      {
+        x: 909,
+        y: 1101
+      },
+      {
+        x: 910,
+        y: 1110
+      },
+      {
+        x: 913,
+        y: 1116
+      },
+      {
+        x: 922,
+        y: 1125
+      },
+      {
+        x: 929,
+        y: 1128
+      },
+      {
+        x: 933,
+        y: 1125
+      },
+      {
+        x: 938,
+        y: 1115
+      },
+      {
+        x: 952,
+        y: 1123
+      },
+      {
+        x: 961,
+        y: 1130
+      },
+      {
+        x: 961,
+        y: 1134
+      },
+      {
+        x: 935,
+        y: 1136
+      },
+      {
+        x: 926,
+        y: 1144
+      },
+      {
+        x: 917,
+        y: 1141
+      },
+      {
+        x: 907,
+        y: 1142
+      },
+      {
+        x: 903,
+        y: 1139
+      },
+      {
+        x: 897,
+        y: 1136
+      },
+      {
+        x: 896,
+        y: 1134
+      },
+      {
+        x: 891,
+        y: 1125
+      },
+      {
+        x: 893,
+        y: 1105
+      },
+      {
+        x: 894,
+        y: 1100
+      },
+      {
+        x: 899,
+        y: 1096
+      }
+    ]
+  },
+  {
+    id: "osm_way_1094017209",
+    kind: "beach",
+    name: "Beach",
+    closed: true,
+    points: [
+      {
+        x: 1200,
+        y: 1434
+      },
+      {
+        x: 1206,
+        y: 1439
+      },
+      {
+        x: 1217,
+        y: 1448
+      },
+      {
+        x: 1238,
+        y: 1465
+      },
+      {
+        x: 1261,
+        y: 1494
+      },
+      {
+        x: 1259,
+        y: 1495
+      },
+      {
+        x: 1257,
+        y: 1494
+      },
+      {
+        x: 1254,
+        y: 1492
+      },
+      {
+        x: 1251,
+        y: 1490
+      },
+      {
+        x: 1248,
+        y: 1487
+      },
+      {
+        x: 1245,
+        y: 1484
+      },
+      {
+        x: 1242,
+        y: 1481
+      },
+      {
+        x: 1234,
+        y: 1470
+      },
+      {
+        x: 1222,
+        y: 1460
+      },
+      {
+        x: 1215,
+        y: 1450
+      },
+      {
+        x: 1200,
+        y: 1434
+      }
+    ]
+  },
+  {
+    id: "osm_way_1094017230",
+    kind: "beach",
+    name: "Beach",
+    closed: true,
+    points: [
+      {
+        x: 1289,
+        y: 1496
+      },
+      {
+        x: 1288,
+        y: 1493
+      },
+      {
+        x: 1290,
+        y: 1482
+      },
+      {
+        x: 1292,
+        y: 1475
+      },
+      {
+        x: 1296,
+        y: 1467
+      },
+      {
+        x: 1302,
+        y: 1459
+      },
+      {
+        x: 1311,
+        y: 1454
+      },
+      {
+        x: 1321,
+        y: 1451
+      },
+      {
+        x: 1323,
+        y: 1464
+      },
+      {
+        x: 1331,
+        y: 1472
+      },
+      {
+        x: 1340,
+        y: 1481
+      },
+      {
+        x: 1346,
+        y: 1490
+      },
+      {
+        x: 1351,
+        y: 1498
+      },
+      {
+        x: 1358,
+        y: 1510
+      },
+      {
+        x: 1375,
+        y: 1541
+      },
+      {
+        x: 1381,
+        y: 1551
+      },
+      {
+        x: 1382,
+        y: 1553
+      },
+      {
+        x: 1384,
+        y: 1563
+      },
+      {
+        x: 1387,
+        y: 1572
+      },
+      {
+        x: 1390,
+        y: 1579
+      },
+      {
+        x: 1389,
+        y: 1588
+      },
+      {
+        x: 1380,
+        y: 1595
+      },
+      {
+        x: 1359,
+        y: 1577
+      },
+      {
+        x: 1352,
+        y: 1571
+      },
+      {
+        x: 1345,
+        y: 1563
+      },
+      {
+        x: 1327,
+        y: 1545
+      },
+      {
+        x: 1313,
+        y: 1531
+      },
+      {
+        x: 1294,
+        y: 1509
+      },
+      {
+        x: 1289,
+        y: 1496
+      }
+    ]
+  },
+  {
+    id: "osm_way_1502547324",
+    kind: "beach",
+    name: "Beach",
+    closed: true,
+    points: [
+      {
+        x: 861,
+        y: 1129
+      },
+      {
+        x: 860,
+        y: 1122
+      },
+      {
+        x: 869,
+        y: 1115
+      },
+      {
+        x: 879,
+        y: 1118
+      },
+      {
+        x: 886,
+        y: 1118
+      },
+      {
+        x: 891,
+        y: 1115
+      },
+      {
+        x: 890,
+        y: 1125
+      },
+      {
+        x: 897,
+        y: 1137
+      },
+      {
+        x: 905,
+        y: 1142
+      },
+      {
+        x: 917,
+        y: 1142
+      },
+      {
+        x: 924,
+        y: 1145
+      },
+      {
+        x: 940,
+        y: 1183
+      },
+      {
+        x: 979,
+        y: 1213
+      },
+      {
+        x: 1043,
+        y: 1251
+      },
+      {
+        x: 1090,
+        y: 1324
+      },
+      {
+        x: 1130,
+        y: 1377
+      },
+      {
+        x: 1191,
+        y: 1430
+      },
+      {
+        x: 1228,
+        y: 1468
+      },
+      {
+        x: 1253,
+        y: 1493
+      },
+      {
+        x: 1262,
+        y: 1496
+      },
+      {
+        x: 1276,
+        y: 1511
+      },
+      {
+        x: 1282,
+        y: 1521
+      },
+      {
+        x: 1399,
+        y: 1629
+      },
+      {
+        x: 1379,
+        y: 1632
+      },
+      {
+        x: 1352,
+        y: 1608
+      },
+      {
+        x: 1299,
+        y: 1569
+      },
+      {
+        x: 1259,
+        y: 1532
+      },
+      {
+        x: 1224,
+        y: 1484
+      },
+      {
+        x: 1200,
+        y: 1461
+      },
+      {
+        x: 1154,
+        y: 1417
+      },
+      {
+        x: 1123,
+        y: 1380
+      },
+      {
+        x: 1076,
+        y: 1340
+      },
+      {
+        x: 1028,
+        y: 1269
+      },
+      {
+        x: 990,
+        y: 1235
+      },
+      {
+        x: 934,
+        y: 1202
+      },
+      {
+        x: 861,
+        y: 1129
+      }
+    ]
+  },
+  {
+    id: "osm_way_1139069363",
+    kind: "beach",
+    name: "Nelayan Beach",
+    closed: true,
+    points: [
+      {
+        x: 697,
+        y: 963
+      },
+      {
+        x: 719,
+        y: 971
+      },
+      {
+        x: 712,
+        y: 984
+      },
+      {
+        x: 695,
+        y: 980
+      },
+      {
+        x: 697,
+        y: 963
+      }
+    ]
+  },
+  {
+    id: "osm_way_1301534896",
+    kind: "coastline",
+    name: "Coastline",
+    closed: false,
+    points: [
+      {
+        x: 291,
+        y: 662
+      },
+      {
+        x: 313,
+        y: 675
+      },
+      {
+        x: 332,
+        y: 688
+      },
+      {
+        x: 359,
+        y: 714
+      },
+      {
+        x: 396,
+        y: 750
+      },
+      {
+        x: 412,
+        y: 763
+      },
+      {
+        x: 435,
+        y: 776
+      },
+      {
+        x: 447,
+        y: 784
+      },
+      {
+        x: 463,
+        y: 801
+      },
+      {
+        x: 487,
+        y: 836
+      },
+      {
+        x: 493,
+        y: 845
+      },
+      {
+        x: 498,
+        y: 849
+      },
+      {
+        x: 511,
+        y: 857
+      },
+      {
+        x: 533,
+        y: 870
+      },
+      {
+        x: 558,
+        y: 891
+      },
+      {
+        x: 616,
+        y: 943
+      },
+      {
+        x: 653,
+        y: 974
+      },
+      {
+        x: 661,
+        y: 979
+      },
+      {
+        x: 678,
+        y: 989
+      },
+      {
+        x: 710,
+        y: 1005
+      },
+      {
+        x: 737,
+        y: 1020
+      },
+      {
+        x: 742,
+        y: 1024
+      },
+      {
+        x: 751,
+        y: 1040
+      }
+    ]
+  },
+  {
+    id: "osm_way_1301534897",
+    kind: "coastline",
+    name: "Coastline",
+    closed: false,
+    points: [
+      {
+        x: 861,
+        y: 1129
+      },
+      {
+        x: 902,
+        y: 1170
+      },
+      {
+        x: 934,
+        y: 1202
+      },
+      {
+        x: 990,
+        y: 1235
+      },
+      {
+        x: 1028,
+        y: 1269
+      },
+      {
+        x: 1076,
+        y: 1340
+      },
+      {
+        x: 1122,
+        y: 1379
+      },
+      {
+        x: 1123,
+        y: 1380
+      },
+      {
+        x: 1154,
+        y: 1417
+      },
+      {
+        x: 1200,
+        y: 1461
+      },
+      {
+        x: 1224,
+        y: 1484
+      },
+      {
+        x: 1259,
+        y: 1532
+      },
+      {
+        x: 1283,
+        y: 1555
+      },
+      {
+        x: 1298,
+        y: 1569
+      },
+      {
+        x: 1299,
+        y: 1569
+      },
+      {
+        x: 1324,
+        y: 1588
+      },
+      {
+        x: 1352,
+        y: 1608
+      },
+      {
+        x: 1379,
+        y: 1632
+      },
+      {
+        x: 1408,
+        y: 1651
+      },
+      {
+        x: 1436,
+        y: 1685
+      }
+    ]
+  },
+  {
+    id: "osm_way_1301560105",
+    kind: "coastline",
+    name: "Coastline",
+    closed: false,
+    points: [
+      {
+        x: 751,
+        y: 1040
+      },
+      {
+        x: 758,
+        y: 1052
+      },
+      {
+        x: 772,
+        y: 1069
+      },
+      {
+        x: 794,
+        y: 1093
+      },
+      {
+        x: 816,
+        y: 1107
+      },
+      {
+        x: 831,
+        y: 1116
+      },
+      {
+        x: 854,
+        y: 1125
+      }
+    ]
+  },
+  {
+    id: "osm_way_1301634202",
+    kind: "coastline",
+    name: "Coastline",
+    closed: false,
+    points: [
+      {
+        x: 854,
+        y: 1125
+      },
+      {
+        x: 861,
+        y: 1129
+      }
+    ]
+  },
+  {
+    id: "osm_way_260611647",
+    kind: "water",
+    name: "Water",
+    closed: true,
+    points: [
+      {
+        x: 1332,
+        y: 1452
+      },
+      {
+        x: 1337,
+        y: 1451
+      },
+      {
+        x: 1340,
+        y: 1449
+      },
+      {
+        x: 1343,
+        y: 1452
+      },
+      {
+        x: 1346,
+        y: 1457
+      },
+      {
+        x: 1354,
+        y: 1465
+      },
+      {
+        x: 1362,
+        y: 1466
+      },
+      {
+        x: 1366,
+        y: 1483
+      },
+      {
+        x: 1369,
+        y: 1488
+      },
+      {
+        x: 1382,
+        y: 1517
+      },
+      {
+        x: 1390,
+        y: 1529
+      },
+      {
+        x: 1408,
+        y: 1547
+      },
+      {
+        x: 1412,
+        y: 1556
+      },
+      {
+        x: 1417,
+        y: 1564
+      },
+      {
+        x: 1428,
+        y: 1580
+      },
+      {
+        x: 1441,
+        y: 1622
+      },
+      {
+        x: 1452,
+        y: 1644
+      },
+      {
+        x: 1459,
+        y: 1653
+      },
+      {
+        x: 1469,
+        y: 1660
+      },
+      {
+        x: 1499,
+        y: 1666
+      },
+      {
+        x: 1572,
+        y: 1664
+      },
+      {
+        x: 1584,
+        y: 1652
+      },
+      {
+        x: 1598,
+        y: 1625
+      },
+      {
+        x: 1601,
+        y: 1620
+      },
+      {
+        x: 1620,
+        y: 1603
+      },
+      {
+        x: 1646,
+        y: 1579
+      },
+      {
+        x: 1670,
+        y: 1566
+      },
+      {
+        x: 1689,
+        y: 1564
+      },
+      {
+        x: 1712,
+        y: 1564
+      },
+      {
+        x: 1725,
+        y: 1583
+      },
+      {
+        x: 1720,
+        y: 1586
+      },
+      {
+        x: 1707,
+        y: 1573
+      },
+      {
+        x: 1695,
+        y: 1572
+      },
+      {
+        x: 1682,
+        y: 1573
+      },
+      {
+        x: 1660,
+        y: 1580
+      },
+      {
+        x: 1642,
+        y: 1593
+      },
+      {
+        x: 1605,
+        y: 1627
+      },
+      {
+        x: 1585,
+        y: 1663
+      },
+      {
+        x: 1574,
+        y: 1671
+      },
+      {
+        x: 1549,
+        y: 1669
+      },
+      {
+        x: 1519,
+        y: 1671
+      },
+      {
+        x: 1482,
+        y: 1669
+      },
+      {
+        x: 1459,
+        y: 1665
+      },
+      {
+        x: 1450,
+        y: 1659
+      },
+      {
+        x: 1443,
+        y: 1646
+      },
+      {
+        x: 1434,
+        y: 1620
+      },
+      {
+        x: 1423,
+        y: 1581
+      },
+      {
+        x: 1400,
+        y: 1547
+      },
+      {
+        x: 1394,
+        y: 1541
+      },
+      {
+        x: 1377,
+        y: 1519
+      },
+      {
+        x: 1365,
+        y: 1499
+      },
+      {
+        x: 1358,
+        y: 1489
+      },
+      {
+        x: 1354,
+        y: 1479
+      },
+      {
+        x: 1348,
+        y: 1477
+      },
+      {
+        x: 1333,
+        y: 1461
+      },
+      {
+        x: 1332,
+        y: 1457
+      },
+      {
+        x: 1332,
+        y: 1452
+      }
+    ]
+  },
+  {
+    id: "osm_way_260664841",
+    kind: "water",
+    name: "Water",
+    closed: true,
+    points: [
+      {
+        x: 142,
+        y: 334
+      },
+      {
+        x: 131,
+        y: 334
+      },
+      {
+        x: 109,
+        y: 345
+      },
+      {
+        x: 94,
+        y: 353
+      },
+      {
+        x: 93,
+        y: 382
+      },
+      {
+        x: 89,
+        y: 397
+      },
+      {
+        x: 76,
+        y: 400
+      },
+      {
+        x: 73,
+        y: 394
+      },
+      {
+        x: 67,
+        y: 385
+      },
+      {
+        x: 73,
+        y: 378
+      },
+      {
+        x: 75,
+        y: 366
+      },
+      {
+        x: 88,
+        y: 346
+      },
+      {
+        x: 94,
+        y: 340
+      },
+      {
+        x: 98,
+        y: 335
+      },
+      {
+        x: 96,
+        y: 333
+      },
+      {
+        x: 90,
+        y: 325
+      },
+      {
+        x: 90,
+        y: 322
+      },
+      {
+        x: 97,
+        y: 329
+      },
+      {
+        x: 102,
+        y: 332
+      },
+      {
+        x: 113,
+        y: 329
+      },
+      {
+        x: 124,
+        y: 325
+      },
+      {
+        x: 139,
+        y: 322
+      },
+      {
+        x: 146,
+        y: 323
+      },
+      {
+        x: 146,
+        y: 317
+      },
+      {
+        x: 149,
+        y: 320
+      },
+      {
+        x: 151,
+        y: 326
+      },
+      {
+        x: 160,
+        y: 342
+      },
+      {
+        x: 171,
+        y: 356
+      },
+      {
+        x: 180,
+        y: 359
+      },
+      {
+        x: 200,
+        y: 361
+      },
+      {
+        x: 230,
+        y: 355
+      },
+      {
+        x: 248,
+        y: 350
+      },
+      {
+        x: 272,
+        y: 334
+      },
+      {
+        x: 285,
+        y: 325
+      },
+      {
+        x: 312,
+        y: 302
+      },
+      {
+        x: 337,
+        y: 284
+      },
+      {
+        x: 365,
+        y: 256
+      },
+      {
+        x: 380,
+        y: 244
+      },
+      {
+        x: 398,
+        y: 228
+      },
+      {
+        x: 410,
+        y: 202
+      },
+      {
+        x: 415,
+        y: 180
+      },
+      {
+        x: 428,
+        y: 164
+      },
+      {
+        x: 445,
+        y: 154
+      },
+      {
+        x: 457,
+        y: 143
+      },
+      {
+        x: 461,
+        y: 130
+      },
+      {
+        x: 469,
+        y: 109
+      },
+      {
+        x: 484,
+        y: 96
+      },
+      {
+        x: 519,
+        y: 74
+      },
+      {
+        x: 530,
+        y: 55
+      },
+      {
+        x: 534,
+        y: 42
+      },
+      {
+        x: 544,
+        y: 22
+      },
+      {
+        x: 554,
+        y: 23
+      },
+      {
+        x: 540,
+        y: 51
+      },
+      {
+        x: 529,
+        y: 68
+      },
+      {
+        x: 510,
+        y: 86
+      },
+      {
+        x: 488,
+        y: 99
+      },
+      {
+        x: 475,
+        y: 110
+      },
+      {
+        x: 469,
+        y: 129
+      },
+      {
+        x: 463,
+        y: 148
+      },
+      {
+        x: 450,
+        y: 157
+      },
+      {
+        x: 436,
+        y: 168
+      },
+      {
+        x: 426,
+        y: 177
+      },
+      {
+        x: 419,
+        y: 189
+      },
+      {
+        x: 414,
+        y: 200
+      },
+      {
+        x: 407,
+        y: 226
+      },
+      {
+        x: 406,
+        y: 231
+      },
+      {
+        x: 408,
+        y: 234
+      },
+      {
+        x: 409,
+        y: 237
+      },
+      {
+        x: 403,
+        y: 238
+      },
+      {
+        x: 396,
+        y: 243
+      },
+      {
+        x: 378,
+        y: 257
+      },
+      {
+        x: 358,
+        y: 277
+      },
+      {
+        x: 333,
+        y: 296
+      },
+      {
+        x: 320,
+        y: 308
+      },
+      {
+        x: 303,
+        y: 325
+      },
+      {
+        x: 281,
+        y: 343
+      },
+      {
+        x: 272,
+        y: 351
+      },
+      {
+        x: 260,
+        y: 357
+      },
+      {
+        x: 245,
+        y: 365
+      },
+      {
+        x: 230,
+        y: 369
+      },
+      {
+        x: 215,
+        y: 371
+      },
+      {
+        x: 190,
+        y: 372
+      },
+      {
+        x: 179,
+        y: 369
+      },
+      {
+        x: 168,
+        y: 365
+      },
+      {
+        x: 160,
+        y: 359
+      },
+      {
+        x: 149,
+        y: 342
+      },
+      {
+        x: 147,
+        y: 338
+      },
+      {
+        x: 142,
+        y: 334
+      }
+    ]
+  },
+  {
+    id: "osm_way_445435643",
+    kind: "water",
+    name: "Water",
+    closed: true,
+    points: [
+      {
+        x: 787,
+        y: 1028
+      },
+      {
+        x: 793,
+        y: 1030
+      },
+      {
+        x: 803,
+        y: 1029
+      },
+      {
+        x: 817,
+        y: 1027
+      },
+      {
+        x: 823,
+        y: 1030
+      },
+      {
+        x: 826,
+        y: 1034
+      },
+      {
+        x: 832,
+        y: 1038
+      },
+      {
+        x: 838,
+        y: 1038
+      },
+      {
+        x: 842,
+        y: 1040
+      },
+      {
+        x: 843,
+        y: 1045
+      },
+      {
+        x: 846,
+        y: 1049
+      },
+      {
+        x: 851,
+        y: 1051
+      },
+      {
+        x: 864,
+        y: 1051
+      },
+      {
+        x: 899,
+        y: 1074
+      },
+      {
+        x: 918,
+        y: 1089
+      },
+      {
+        x: 926,
+        y: 1097
+      },
+      {
+        x: 916,
+        y: 1092
+      },
+      {
+        x: 903,
+        y: 1081
+      },
+      {
+        x: 874,
+        y: 1067
+      },
+      {
+        x: 858,
+        y: 1056
+      },
+      {
+        x: 858,
+        y: 1062
+      },
+      {
+        x: 862,
+        y: 1070
+      },
+      {
+        x: 863,
+        y: 1073
+      },
+      {
+        x: 878,
+        y: 1081
+      },
+      {
+        x: 880,
+        y: 1085
+      },
+      {
+        x: 872,
+        y: 1085
+      },
+      {
+        x: 869,
+        y: 1087
+      },
+      {
+        x: 851,
+        y: 1084
+      },
+      {
+        x: 842,
+        y: 1081
+      },
+      {
+        x: 839,
+        y: 1072
+      },
+      {
+        x: 832,
+        y: 1067
+      },
+      {
+        x: 828,
+        y: 1062
+      },
+      {
+        x: 818,
+        y: 1057
+      },
+      {
+        x: 806,
+        y: 1052
+      },
+      {
+        x: 802,
+        y: 1049
+      },
+      {
+        x: 797,
+        y: 1047
+      },
+      {
+        x: 792,
+        y: 1046
+      },
+      {
+        x: 787,
+        y: 1043
+      },
+      {
+        x: 783,
+        y: 1037
+      },
+      {
+        x: 779,
+        y: 1028
+      },
+      {
+        x: 777,
+        y: 1022
+      },
+      {
+        x: 778,
+        y: 1017
+      },
+      {
+        x: 780,
+        y: 1011
+      },
+      {
+        x: 783,
+        y: 1019
+      },
+      {
+        x: 783,
+        y: 1024
+      },
+      {
+        x: 787,
+        y: 1028
+      }
+    ]
   }
 ];

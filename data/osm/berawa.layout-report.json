@@ -12,11 +12,12 @@
     "h": 1700
   },
   "pad": 80,
-  "roadWayCount": 923,
-  "roadNodeCount": 4417,
-  "roadSegmentCount": 4562,
-  "roadPathCount": 923,
-  "osmPoiCount": 618,
+  "roadWayCount": 934,
+  "roadNodeCount": 4346,
+  "roadSegmentCount": 4501,
+  "roadPathCount": 934,
+  "osmPoiCount": 788,
+  "mapFeatureCount": 12,
   "orientation": {
     "beach": {
       "x": 1189,

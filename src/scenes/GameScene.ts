@@ -1,5 +1,13 @@
 import Phaser from "phaser";
-import { berawaAreas, berawaRoads, curatedVenueNodes, venueMapNodes, type CuratedVenueMapNode } from "../data/berawaLayout";
+import {
+  berawaAreas,
+  berawaMapFeatures,
+  berawaRoads,
+  curatedVenueNodes,
+  venueMapNodes,
+  type CuratedVenueMapNode,
+  type MapFeatureDefinition
+} from "../data/berawaLayout";
 import { activityDefinitions, interestGroupDefinitions } from "../data/community";
 import { itemDefinitions } from "../data/items";
 import { collisionRects, pickupDefinitions, WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
@@ -325,6 +333,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawBeach(g: Phaser.GameObjects.Graphics): void {
+    if (berawaMapFeatures.length > 0) {
+      this.drawOsmBeach(g);
+      return;
+    }
+    this.drawFallbackBeach(g);
+  }
+
+  private drawFallbackBeach(g: Phaser.GameObjects.Graphics): void {
     g.fillStyle(0xd9b875, 1);
     g.fillRect(0, 1160, WORLD_WIDTH, 360);
     g.fillStyle(0xcda561, 0.55);
@@ -356,6 +372,71 @@ export class GameScene extends Phaser.Scene {
       g.lineTo(x, 1190 + Math.sin(x / 190) * 28);
     }
     g.strokePath();
+  }
+
+  private drawOsmBeach(g: Phaser.GameObjects.Graphics): void {
+    const coastline = berawaMapFeatures
+      .filter((feature) => feature.kind === "coastline")
+      .flatMap((feature) => feature.points)
+      .sort((a, b) => a.y - b.y || a.x - b.x);
+
+    if (coastline.length > 1) {
+      g.fillStyle(0x18708b, 1);
+      g.beginPath();
+      g.moveTo(coastline[0].x, coastline[0].y);
+      for (const point of coastline.slice(1)) {
+        g.lineTo(point.x, point.y);
+      }
+      g.lineTo(0, WORLD_HEIGHT);
+      g.lineTo(0, coastline[0].y);
+      g.closePath();
+      g.fillPath();
+
+      g.lineStyle(4, 0x9ee6df, 0.72);
+      this.strokeRoadPath(g, coastline);
+      for (let index = 0; index < coastline.length; index += 5) {
+        const point = coastline[index];
+        g.lineStyle(2, 0x9ee6df, 0.38);
+        g.beginPath();
+        g.arc(point.x - 18, point.y + 16, 18, Phaser.Math.DegToRad(205), Phaser.Math.DegToRad(335));
+        g.strokePath();
+      }
+    }
+
+    for (const feature of berawaMapFeatures.filter((candidate) => candidate.kind === "water")) {
+      this.fillMapFeature(g, feature, 0x2d9ab0, 0.66, 0x9ee6df, 0.32);
+    }
+
+    for (const feature of berawaMapFeatures.filter((candidate) => candidate.kind === "beach")) {
+      this.fillMapFeature(g, feature, 0xd9b875, 0.96, 0xf4dfaa, 0.54);
+      g.fillStyle(0xcda561, 0.38);
+      for (const point of feature.points.filter((_, index) => index % 4 === 0)) {
+        g.fillCircle(point.x, point.y, 3);
+      }
+    }
+  }
+
+  private fillMapFeature(
+    g: Phaser.GameObjects.Graphics,
+    feature: MapFeatureDefinition,
+    fill: number,
+    alpha: number,
+    stroke: number,
+    strokeAlpha: number
+  ): void {
+    if (feature.points.length < 3) {
+      return;
+    }
+    g.fillStyle(fill, alpha);
+    g.beginPath();
+    g.moveTo(feature.points[0].x, feature.points[0].y);
+    for (const point of feature.points.slice(1)) {
+      g.lineTo(point.x, point.y);
+    }
+    g.closePath();
+    g.fillPath();
+    g.lineStyle(2, stroke, strokeAlpha);
+    this.strokeRoadPath(g, feature.points);
   }
 
   private drawRoads(g: Phaser.GameObjects.Graphics): void {
