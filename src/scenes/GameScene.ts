@@ -208,6 +208,8 @@ const PRESENTED_BERAWA_ROADS = getPresentedRoads(berawaRoads);
 const VENUE_SNAP_ROADS = getVenueSnapRoads(berawaRoads);
 const TRAFFIC_BIKE_COUNT = 8;
 const TRAFFIC_ROUTE_MIN_LENGTH = 230;
+const MAX_STATIC_MAP_BAKE_SCALE = 2.5;
+const FALLBACK_MAX_TEXTURE_SIZE = 4096;
 const TRAFFIC_ROUTES: TrafficRouteDefinition[] = PRESENTED_BERAWA_ROADS
   .filter((entry) => entry.visualClass !== "lane" && entry.length >= TRAFFIC_ROUTE_MIN_LENGTH && entry.road.points.length > 1)
   .map((entry) => ({
@@ -390,12 +392,36 @@ export class GameScene extends Phaser.Scene {
       this.textures.remove(textureKey);
     }
 
+    const bakeScale = this.getStaticMapBakeScale();
+    const textureWidth = Math.ceil(WORLD_WIDTH * bakeScale);
+    const textureHeight = Math.ceil(WORLD_HEIGHT * bakeScale);
     const g = this.add.graphics().setVisible(false);
+    g.save();
+    g.scaleCanvas(bakeScale, bakeScale);
     this.drawStaticNeighborhood(g);
-    g.generateTexture(textureKey, WORLD_WIDTH, WORLD_HEIGHT);
+    g.restore();
+    g.generateTexture(textureKey, textureWidth, textureHeight);
     g.destroy();
-    this.add.image(0, 0, textureKey).setOrigin(0).setDepth(-100);
+    this.add.image(0, 0, textureKey).setOrigin(0).setDepth(-100).setDisplaySize(WORLD_WIDTH, WORLD_HEIGHT);
     this.addAreaLabels();
+  }
+
+  private getStaticMapBakeScale(): number {
+    const dpr = typeof window !== "undefined" ? Math.max(1, window.devicePixelRatio || 1) : 1;
+    const zoomTarget = Math.max(POKEMON_SCALE.camera.desktopZoom, POKEMON_SCALE.camera.mobileZoom);
+    const maxTextureSize = this.getRendererMaxTextureSize();
+    const textureLimitScale = Math.max(1, (maxTextureSize - 16) / Math.max(WORLD_WIDTH, WORLD_HEIGHT));
+    return Math.min(MAX_STATIC_MAP_BAKE_SCALE, textureLimitScale, Math.max(1, dpr * zoomTarget));
+  }
+
+  private getRendererMaxTextureSize(): number {
+    const renderer = this.game.renderer as Phaser.Renderer.WebGL.WebGLRenderer & {
+      getMaxTextureSize?: () => number;
+    };
+    if (typeof renderer.getMaxTextureSize === "function") {
+      return renderer.getMaxTextureSize();
+    }
+    return FALLBACK_MAX_TEXTURE_SIZE;
   }
 
   private drawStaticNeighborhood(g: Phaser.GameObjects.Graphics): void {
