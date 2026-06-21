@@ -21,6 +21,7 @@ import { ScriptedDialogueProvider, type DialogueProvider } from "../systems/dial
 import { InteractionController, type InteractionTarget } from "../systems/interaction/InteractionController";
 import { InputController, type GameKeyMap } from "../systems/input/InputController";
 import { IntentDispatcher, type IntentResult } from "../systems/intents/IntentDispatcher";
+import { POKEMON_SCALE, roadWidthForImportance } from "../systems/map/PlayerUnitScale";
 import {
   computeVenuePresentationLayout,
   getVenueFootprint,
@@ -486,13 +487,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private roadRenderWidth(importance: "primary" | "secondary" | "lane"): number {
-    if (importance === "primary") {
-      return 52;
-    }
-    if (importance === "secondary") {
-      return 26;
-    }
-    return 12;
+    return roadWidthForImportance(importance);
   }
 
   private strokeRoadPath(g: Phaser.GameObjects.Graphics, points: Array<{ x: number; y: number }>): void {
@@ -2866,7 +2861,7 @@ export class GameScene extends Phaser.Scene {
 
   private layoutForViewport(): void {
     const { width, height } = this.scale;
-    this.cameras.main.setZoom(width < 720 ? 1.22 : 1.34);
+    this.cameras.main.setZoom(width < 720 ? POKEMON_SCALE.camera.mobileZoom : POKEMON_SCALE.camera.desktopZoom);
     this.promptText.setPosition(20, height - 36);
     this.toastText.setPosition(width / 2, Math.max(92, height * 0.17));
     this.hudController.layoutTouchControls();

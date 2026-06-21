@@ -1,4 +1,5 @@
 import type { CuratedVenueMapNode, RoadPathDefinition } from "../../data/berawaLayout";
+import { PLAYER_UNIT, POKEMON_SCALE, playerUnits, roadWidthForImportance } from "./PlayerUnitScale";
 
 export interface VenueFootprint {
   width: number;
@@ -27,21 +28,14 @@ export interface VenuePresentationPlacement extends VenueFootprint {
 }
 
 export const PLAYER_PRESENTATION_FOOTPRINT: VenueFootprint = {
-  width: 24,
-  height: 30
+  width: PLAYER_UNIT.width,
+  height: PLAYER_UNIT.height
 };
 
-export const BUILDING_SCALE_MULTIPLES = {
-  normal: { width: 1.55, height: 1.3 },
-  wide: { width: 1.8, height: 1.4 },
-  questCritical: { width: 2.1, height: 1.5 },
-  landmark: { width: 5.0, height: 3.0 },
-  beachLandmark: { width: 4.6, height: 2.2 },
-  beachMarker: { width: 2.4, height: 1.25 }
-} as const;
+export const BUILDING_SCALE_MULTIPLES = POKEMON_SCALE.buildings;
 
-export const ROADSIDE_BUILDING_GAP = 8;
-export const MAX_ROADSIDE_TANGENT_SLIDE = 120;
+export const ROADSIDE_BUILDING_GAP = playerUnits(POKEMON_SCALE.layout.roadsideGap);
+export const MAX_ROADSIDE_TANGENT_SLIDE = playerUnits(POKEMON_SCALE.layout.maxRoadsideTangentSlide);
 
 export function getVenueFootprint(node: CuratedVenueMapNode): VenueFootprint {
   if (node.category === "beach") {
@@ -91,8 +85,8 @@ function placeVenueBesideRoad(node: CuratedVenueMapNode, roads: RoadPathDefiniti
     x: nearest.normal.x * side,
     y: nearest.normal.y * side
   };
-  const roadsideGap = 8;
-  const offset = nearest.roadWidth / 2 + footprint.height / 2 + roadsideGap;
+  const presentationRoadWidth = roadWidthForImportance(nearest.roadImportance);
+  const offset = presentationRoadWidth / 2 + footprint.height / 2 + ROADSIDE_BUILDING_GAP;
 
   return {
     ...footprint,
@@ -107,7 +101,7 @@ function placeVenueBesideRoad(node: CuratedVenueMapNode, roads: RoadPathDefiniti
     snappedToRoad: true,
     roadId: nearest.roadId,
     roadName: nearest.roadName,
-    roadWidth: nearest.roadWidth,
+    roadWidth: presentationRoadWidth,
     distanceFromRoad: nearest.distance
   };
 }
@@ -334,6 +328,7 @@ interface NearestRoadSegment {
   roadId: string;
   roadName: string;
   roadWidth: number;
+  roadImportance: RoadPathDefinition["importance"];
   closest: MapPoint;
   tangent: MapPoint;
   normal: MapPoint;
@@ -384,6 +379,7 @@ function describeSegment(
     roadId: road.id,
     roadName: road.name,
     roadWidth: road.width,
+    roadImportance: road.importance,
     closest,
     tangent,
     normal: { x: -tangent.y, y: tangent.x },
