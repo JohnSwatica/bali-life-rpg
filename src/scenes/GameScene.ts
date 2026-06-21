@@ -161,6 +161,16 @@ interface WantedOffenderRuntime {
   speed: number;
 }
 
+interface MinimapLayout {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  offsetX: number;
+  offsetY: number;
+  scale: number;
+}
+
 const WALK_SPEED = 78;
 const BIKE_SPEED = 345;
 const GROUP_WALK_SPEED = 92;
@@ -180,6 +190,11 @@ const WATER_BOUNDARY_TOAST_COOLDOWN_MS = 1800;
 const VENUE_LABEL_NEAR_RADIUS = 210;
 const VENUE_LABEL_STACK_DISTANCE = 92;
 const MAX_VISIBLE_VENUE_LABELS = 5;
+const MINIMAP_MAX_WIDTH = 280;
+const MINIMAP_MIN_WIDTH = 104;
+const MINIMAP_PADDING = 7;
+const PRESENTED_BERAWA_ROADS = getPresentedRoads(berawaRoads);
+const VENUE_SNAP_ROADS = getVenueSnapRoads(berawaRoads);
 const BIKE_MUD_ZONES: MudZoneDefinition[] = [
   {
     id: "berawa-shortcut-mud",
@@ -240,6 +255,7 @@ export class GameScene extends Phaser.Scene {
   private questText!: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
   private toastText!: Phaser.GameObjects.Text;
+  private minimapGraphics?: Phaser.GameObjects.Graphics;
   private toastTimer = 0;
   private panel?: Phaser.GameObjects.Container;
   private nightOverlay!: Phaser.GameObjects.Graphics;
@@ -463,13 +479,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawRoads(g: Phaser.GameObjects.Graphics): void {
-    const roads = getPresentedRoads(berawaRoads);
-    for (const entry of roads) {
+    for (const entry of PRESENTED_BERAWA_ROADS) {
       g.lineStyle(entry.width + (entry.visualClass === "lane" ? 8 : 16), 0x3f484b, 1);
       this.strokeRoadPath(g, entry.road.points);
     }
 
-    for (const entry of roads) {
+    for (const entry of PRESENTED_BERAWA_ROADS) {
       const roadColor = entry.visualClass === "lane" ? 0x77715e : entry.visualClass === "secondary" ? 0x586167 : 0x596368;
       g.lineStyle(entry.width, roadColor, 1);
       this.strokeRoadPath(g, entry.road.points);
@@ -523,7 +538,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawCuratedVenueBuildings(g: Phaser.GameObjects.Graphics): void {
-    for (const placement of computeVenuePresentationLayout(curatedVenueNodes, getVenueSnapRoads(berawaRoads))) {
+    for (const placement of computeVenuePresentationLayout(curatedVenueNodes, VENUE_SNAP_ROADS)) {
       if (placement.node.category === "beach") {
         this.drawBeachVenueMarker(g, placement.node);
       } else {
@@ -879,7 +894,7 @@ export class GameScene extends Phaser.Scene {
       venues.set(node.venueId, node.name);
     }
     const presentationByVenue = new Map(
-      computeVenuePresentationLayout(curatedVenueNodes, getVenueSnapRoads(berawaRoads)).map((placement) => [placement.node.venueId, placement])
+      computeVenuePresentationLayout(curatedVenueNodes, VENUE_SNAP_ROADS).map((placement) => [placement.node.venueId, placement])
     );
     for (const node of venueMapNodes) {
       const placement = presentationByVenue.get(node.venueId);
@@ -1063,6 +1078,7 @@ export class GameScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(UI_DEPTH + 3)
       .setAlpha(0);
+    this.minimapGraphics = this.add.graphics().setScrollFactor(0).setDepth(UI_DEPTH + 1);
 
     this.nightOverlay = this.add.graphics().setScrollFactor(0).setDepth(900);
     this.lanternGlow = this.add.graphics().setDepth(905);
@@ -1503,6 +1519,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.redrawHudChrome();
+    this.drawMinimap();
     this.publishDebugSnapshot(target);
   }
 
@@ -2507,6 +2524,178 @@ export class GameScene extends Phaser.Scene {
       }
       candidate.entry.label.setVisible(true);
       shown.push(candidate.entry.label);
+    }
+  }
+
+  private drawMinimap(): void {
+    if (!this.minimapGraphics) {
+      return;
+    }
+
+    const g = this.minimapGraphics;
+    const layout = this.getMinimapLayout();
+    g.clear();
+    g.fillStyle(0x0f1820, 0.74);
+    g.fillRoundedRect(layout.x, layout.y, layout.width, layout.height, 7);
+    g.lineStyle(1, 0xf4d58d, 0.32);
+    g.strokeRoundedRect(layout.x, layout.y, layout.width, layout.height, 7);
+
+    g.fillStyle(0x497f55, 0.92);
+    g.fillRoundedRect(
+      layout.offsetX,
+      layout.offsetY,
+      WORLD_WIDTH * layout.scale,
+      WORLD_HEIGHT * layout.scale,
+      4
+    );
+
+    for (const feature of berawaMapFeatures) {
+      if (feature.kind === "water") {
+        this.fillMinimapFeature(g, feature, layout, 0x2d9ab0, 0.7);
+      } else if (feature.kind === "beach") {
+        this.fillMinimapFeature(g, feature, layout, 0xd9b875, 0.88);
+      } else if (feature.kind === "coastline") {
+        g.lineStyle(1.5, 0x9ee6df, 0.75);
+        this.strokeMinimapPath(g, feature.points, layout);
+      }
+    }
+
+    for (const entry of PRESENTED_BERAWA_ROADS) {
+      const width = entry.visualClass === "main" ? 2.3 : entry.visualClass === "secondary" ? 1.5 : 0.9;
+      const color = entry.visualClass === "main" ? 0xe5d08f : entry.visualClass === "secondary" ? 0xb9b49d : 0x7c897b;
+      g.lineStyle(width, color, entry.visualClass === "lane" ? 0.58 : 0.86);
+      this.strokeMinimapPath(g, entry.road.points, layout);
+    }
+
+    this.drawMinimapDiscoveredVenues(g, layout);
+    this.drawMinimapCameraView(g, layout);
+    this.drawMinimapPlayer(g, layout);
+  }
+
+  private getMinimapLayout(): MinimapLayout {
+    const widthRatio = this.scale.width < 720 ? 0.26 : 0.23;
+    const width = Phaser.Math.Clamp(Math.round(this.scale.width * widthRatio), MINIMAP_MIN_WIDTH, MINIMAP_MAX_WIDTH);
+    const height = Math.round(width * (WORLD_HEIGHT / WORLD_WIDTH));
+    const x = 16;
+    const y = 170;
+    const innerWidth = width - MINIMAP_PADDING * 2;
+    const innerHeight = height - MINIMAP_PADDING * 2;
+    const scale = Math.min(innerWidth / WORLD_WIDTH, innerHeight / WORLD_HEIGHT);
+    const drawWidth = WORLD_WIDTH * scale;
+    const drawHeight = WORLD_HEIGHT * scale;
+
+    return {
+      x,
+      y,
+      width,
+      height,
+      offsetX: x + MINIMAP_PADDING + (innerWidth - drawWidth) / 2,
+      offsetY: y + MINIMAP_PADDING + (innerHeight - drawHeight) / 2,
+      scale
+    };
+  }
+
+  private drawMinimapDiscoveredVenues(g: Phaser.GameObjects.Graphics, layout: MinimapLayout): void {
+    const discovery = this.world.mapDiscovery;
+    for (const node of curatedVenueNodes) {
+      if (!discovery.revealAll && !discovery.discoveredVenueIds.includes(node.venueId)) {
+        continue;
+      }
+      const point = this.projectMinimapPoint(node, layout);
+      const palette = this.venuePalette(node.category);
+      const radius = node.isLandmark ? 3.2 : 2.2;
+      g.fillStyle(palette.roof, 0.95);
+      g.fillCircle(point.x, point.y, radius);
+      g.lineStyle(1, 0xfff0bd, node.isLandmark ? 0.7 : 0.34);
+      g.strokeCircle(point.x, point.y, radius + 1);
+    }
+  }
+
+  private drawMinimapCameraView(g: Phaser.GameObjects.Graphics, layout: MinimapLayout): void {
+    const view = this.cameras.main.worldView;
+    const topLeft = this.projectMinimapPoint({ x: view.x, y: view.y }, layout);
+    g.lineStyle(1, 0xffffff, 0.44);
+    g.strokeRect(topLeft.x, topLeft.y, view.width * layout.scale, view.height * layout.scale);
+  }
+
+  private drawMinimapPlayer(g: Phaser.GameObjects.Graphics, layout: MinimapLayout): void {
+    const point = this.projectMinimapPoint(this.player, layout);
+    const heading = this.getDirectionVector(this.playerState.direction);
+    const left = { x: -heading.y, y: heading.x };
+    const tip = { x: point.x + heading.x * 8, y: point.y + heading.y * 8 };
+    const back = { x: point.x - heading.x * 4, y: point.y - heading.y * 4 };
+
+    g.fillStyle(0xfff0bd, 1);
+    g.beginPath();
+    g.moveTo(tip.x, tip.y);
+    g.lineTo(back.x + left.x * 4.5, back.y + left.y * 4.5);
+    g.lineTo(back.x - left.x * 4.5, back.y - left.y * 4.5);
+    g.closePath();
+    g.fillPath();
+    g.lineStyle(1, 0x2b1d17, 0.8);
+    g.strokePath();
+  }
+
+  private fillMinimapFeature(
+    g: Phaser.GameObjects.Graphics,
+    feature: MapFeatureDefinition,
+    layout: MinimapLayout,
+    color: number,
+    alpha: number
+  ): void {
+    if (feature.points.length < 3) {
+      return;
+    }
+
+    const first = this.projectMinimapPoint(feature.points[0], layout);
+    g.fillStyle(color, alpha);
+    g.beginPath();
+    g.moveTo(first.x, first.y);
+    for (const point of feature.points.slice(1)) {
+      const next = this.projectMinimapPoint(point, layout);
+      g.lineTo(next.x, next.y);
+    }
+    g.closePath();
+    g.fillPath();
+  }
+
+  private strokeMinimapPath(
+    g: Phaser.GameObjects.Graphics,
+    points: Array<{ x: number; y: number }>,
+    layout: MinimapLayout
+  ): void {
+    if (points.length < 2) {
+      return;
+    }
+
+    const first = this.projectMinimapPoint(points[0], layout);
+    g.beginPath();
+    g.moveTo(first.x, first.y);
+    for (const point of points.slice(1)) {
+      const next = this.projectMinimapPoint(point, layout);
+      g.lineTo(next.x, next.y);
+    }
+    g.strokePath();
+  }
+
+  private projectMinimapPoint(point: { x: number; y: number }, layout: MinimapLayout): MapPoint {
+    return {
+      x: layout.offsetX + point.x * layout.scale,
+      y: layout.offsetY + point.y * layout.scale
+    };
+  }
+
+  private getDirectionVector(direction: Direction): MapPoint {
+    switch (direction) {
+      case "left":
+        return { x: -1, y: 0 };
+      case "right":
+        return { x: 1, y: 0 };
+      case "up":
+        return { x: 0, y: -1 };
+      case "down":
+      default:
+        return { x: 0, y: 1 };
     }
   }
 
