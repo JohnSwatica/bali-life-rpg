@@ -169,6 +169,9 @@ const REPEAT_FLAG_BOUNTY = 35;
 const TRAFFIC_HIT_COOLDOWN_MS = 2200;
 const TRAFFIC_HIT_MONEY_LOSS = 10;
 const TRAFFIC_KNOCKBACK_DISTANCE = 76;
+const VENUE_LABEL_NEAR_RADIUS = 210;
+const VENUE_LABEL_STACK_DISTANCE = 92;
+const MAX_VISIBLE_VENUE_LABELS = 5;
 const BIKE_MUD_ZONES: MudZoneDefinition[] = [
   {
     id: "berawa-shortcut-mud",
@@ -447,13 +450,15 @@ export class GameScene extends Phaser.Scene {
 
   private drawRoads(g: Phaser.GameObjects.Graphics): void {
     for (const road of berawaRoads) {
-      g.lineStyle(road.width + 18, 0x3f484b, 1);
+      const width = this.roadRenderWidth(road.importance);
+      g.lineStyle(width + (road.importance === "lane" ? 8 : 16), 0x3f484b, 1);
       this.strokeRoadPath(g, road.points);
     }
 
     for (const road of berawaRoads) {
       const roadColor = road.importance === "lane" ? 0x77715e : road.importance === "secondary" ? 0x586167 : 0x596368;
-      g.lineStyle(road.width, roadColor, 1);
+      const width = this.roadRenderWidth(road.importance);
+      g.lineStyle(width, roadColor, 1);
       this.strokeRoadPath(g, road.points);
       g.lineStyle(2, 0x2e3638, 0.34);
       this.strokeRoadPath(g, road.points);
@@ -466,6 +471,16 @@ export class GameScene extends Phaser.Scene {
         this.drawDashedPath(g, road.points, 34, 58);
       }
     }
+  }
+
+  private roadRenderWidth(importance: "primary" | "secondary" | "lane"): number {
+    if (importance === "primary") {
+      return 52;
+    }
+    if (importance === "secondary") {
+      return 26;
+    }
+    return 12;
   }
 
   private strokeRoadPath(g: Phaser.GameObjects.Graphics, points: Array<{ x: number; y: number }>): void {
@@ -860,9 +875,13 @@ export class GameScene extends Phaser.Scene {
     for (const node of curatedVenueNodes) {
       venues.set(node.venueId, node.name);
     }
+    const presentationByVenue = new Map(
+      computeVenuePresentationLayout(curatedVenueNodes, berawaRoads).map((placement) => [placement.node.venueId, placement])
+    );
     for (const node of venueMapNodes) {
+      const placement = presentationByVenue.get(node.venueId);
       const label = this.add
-        .text(node.x, node.y - 58, venues.get(node.venueId) ?? node.venueId, {
+        .text(placement?.x ?? node.x, (placement ? placement.y - placement.height / 2 : node.y) - 28, venues.get(node.venueId) ?? node.venueId, {
           ...this.mapLabelStyle(),
           fontSize: "12px",
           backgroundColor: "rgba(16, 24, 32, 0.52)",
@@ -2420,13 +2439,44 @@ export class GameScene extends Phaser.Scene {
 
   private updateDiscoveryLabelVisibility(): void {
     const discovery = this.world.mapDiscovery;
+    const venueCandidates: Array<{ entry: { subjectType: "area" | "venue"; id: string; label: Phaser.GameObjects.Text }; distance: number }> = [];
     for (const entry of this.discoveryLabels) {
       const discovered =
         discovery.revealAll ||
         (entry.subjectType === "area"
           ? discovery.discoveredAreaIds.includes(entry.id)
           : discovery.discoveredVenueIds.includes(entry.id));
-      entry.label.setVisible(discovered);
+      if (!discovered) {
+        entry.label.setVisible(false);
+        continue;
+      }
+
+      if (entry.subjectType === "area") {
+        entry.label.setVisible(true);
+        continue;
+      }
+
+      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, entry.label.x, entry.label.y);
+      entry.label.setVisible(false);
+      if (distance <= VENUE_LABEL_NEAR_RADIUS) {
+        venueCandidates.push({ entry, distance });
+      }
+    }
+
+    const shown: Phaser.GameObjects.Text[] = [];
+    venueCandidates.sort((a, b) => a.distance - b.distance);
+    for (const candidate of venueCandidates) {
+      if (shown.length >= MAX_VISIBLE_VENUE_LABELS) {
+        break;
+      }
+      const stacks = shown.some(
+        (label) => Phaser.Math.Distance.Between(label.x, label.y, candidate.entry.label.x, candidate.entry.label.y) < VENUE_LABEL_STACK_DISTANCE
+      );
+      if (stacks) {
+        continue;
+      }
+      candidate.entry.label.setVisible(true);
+      shown.push(candidate.entry.label);
     }
   }
 
