@@ -71,3 +71,9 @@ The old hand-placed market/building/decor render pass is no longer called. Runti
 ## 2026-06-21 - OSM Beach And Coastline Features
 
 The offline Overpass extract now includes bounded POI ways/relations plus specific OSM beach, coastline, and water ways. The generated runtime layout exports `berawaMapFeatures`, and `GameScene` draws the beach/ocean edge from those static features when present. This keeps runtime offline and data-driven while replacing the previous fixed rectangular beach band. Water collision remains a later pass rather than blocking this visual credibility improvement.
+
+## 2026-06-21 - Walkable Map Presentation Without Coordinate Changes
+
+The Berawa venue coordinates and curated venue data remain untouched. Runtime presentation now derives a separate venue building layout from the generated coordinates: player-anchored building footprints, roadside snapping to the nearest road segment, road-facing fronts, tangent-only de-overlap with a capped slide, and closer camera framing. This keeps geography/source pins stable while making the map read as a walkable street-level slice.
+
+Road legibility is now a render concern, not a data rewrite: primary, secondary, and lane roads receive explicit visual widths at draw time. Venue label visibility is also presentation-only: discovered labels appear near the player and are stack-limited so dense cafe clusters read as nearby shopfronts instead of a pile of text.

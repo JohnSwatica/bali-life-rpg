@@ -13,7 +13,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
-- Current branch for curated locality map work: `feat/curated-locality-map`.
+- Current branch for walkable presentation work: `fix/walkable-presentation`, branched from `feat/curated-locality-map`.
 
 ## What Was Added Recently
 
@@ -23,6 +23,11 @@ Copy/paste this into a new AI session to bring it up to speed.
 - The generated bbox is now framed to the curated venue cloud and filters the larger OSM cache to 934 road paths.
 - Runtime map art now renders baked roads, OSM beach/coastline/water features, greenery, and one simple blocky building per rendered curated venue through `curatedVenueNodes`. The old hand-placed market/building/decor layer and dense road-point marker layer are no longer called.
 - The generated layout exports `berawaMapFeatures`: currently 5 beach polygons, 4 coastline paths, and 3 water shapes.
+- Walkable map presentation pass is complete without changing venue coordinates, `src/data/curatedVenues.ts`, `src/data/berawaLayout.ts`, or `data/osm/berawa.curated-coords.json`.
+- Venue buildings now use player-anchored presentation sizes from `src/systems/map/VenuePresentation.ts`: normal `1.55 x 1.3`, wide `1.8 x 1.4`, quest-critical `2.1 x 1.5`, landmark `5.0 x 3.0`, beach landmark `4.6 x 2.2`, beach marker `2.4 x 1.25` against a `24 x 30` player footprint.
+- Venue buildings are presentation-snapped beside their nearest road segment, with fronts facing the road, then de-overlapped by sliding along road tangents. The current automated layout check reports 40 non-beach placements, 0 overlaps, and max tangent slide about 62.4 px under a 120 px cap.
+- Camera zoom is now `1.34` on desktop/tablet-width viewports and `1.22` on narrow mobile viewports.
+- Roads render with explicit class widths: primary `52`, secondary `26`, lane `12`; venue labels now show only near the player and are stack-limited.
 - Static map geometry is generated once into a texture; camera zoom is tuned closer, and dynamic NPC/pickup/traffic/group/wanted sprites are culled off-camera.
 - OSM/Nominatim/Overpass caches are committed under `data/osm/`, including the required raw Overpass extract at `data/osm/berawa.overpass.json`.
 - The generated map is north-up with a uniform projection into the existing `2400 x 1700` world. Orientation sanity in the report confirms beach lower/SW, Nelayan north, and Tegal Sari east of the beach side.
@@ -78,6 +83,11 @@ Copy/paste this into a new AI session to bring it up to speed.
 - `6b054bb` - `perf: bake static map and tune camera scale`
 - `ac4dc1f` - `fix: remove dense road marker layer`
 - `afd3c2a` - `feat: add OSM beach and coastline map features`
+- `d0cf27b` - `feat: consistent player-anchored building scale`
+- `15d4083` - `feat: snap venue buildings to roadside`
+- `a805c55` - `feat: de-overlap roadside venues along the street`
+- `a610964` - `feat: zoomed-in walkable camera`
+- `2ea3bda` - `chore: road width-by-class and label declutter`
 
 ## Current Verification
 
@@ -87,6 +97,10 @@ Copy/paste this into a new AI session to bring it up to speed.
 - OSM report currently shows 934 road paths, 4,346 shared OSM road nodes, 4,501 road segments, 788 POIs, and 12 terrain features after filtering the larger cache to the curated venue frame.
 - Curated venue coordinate matching: 23 OSM POI matches, 0 Nominatim matches, 15 flagged estimates, and 3 flagged fallbacks. All 41 `shouldRender` venues have generated building nodes.
 - Runtime source check found OSM/Nominatim/Overpass URLs and `fetch` only in `scripts/generateLayoutFromOSM.ts`, not game runtime code.
+- Walkable presentation diff only touches `src/scenes/GameScene.ts` and `src/systems/map/VenuePresentation.ts`; no generated coordinate/data files changed.
+- Automated venue presentation check reports 0 overlaps among 40 non-beach venue buildings; presentation-only source pins are preserved as `sourceX/sourceY`.
+- Final walkable presentation build passed with `npm run build`.
+- In-app browser smoke loaded `http://127.0.0.1:5173/?verify=walkable-presentation`, found the Phaser canvas, reported no console errors, and verified `P` opens Phone while `ESC` returns to world.
 - Source grep confirms no code path reads removed flat `playerState.reputation`, `playerState.wantedLevel`, `playerState.bounty`, `playerState.flaggedByVictims`, or `playerState.lastFlagReason` fields.
 - v1/v2 save migration maps old standing fields into schema v3 `WorldState.reputation` and strips legacy flat standing keys from the hydrated local player.
 - Quest code compiles and both starter quests complete through `QuestRegistry` in browser automation.
@@ -114,7 +128,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Phone UI is functional but still a shell; it is not a polished production phone app.
 - Godmode is simple and development-only.
 - Map discovery is a foundation, not a full minimap.
-- The road network, coastline/beach/water features, and curated building layer now follow OSM/generated coordinates. Rendering is still stylized and collision remains conservative rather than coastline-aware.
+- The road network, coastline/beach/water features, and curated building layer now follow OSM/generated coordinates. Building presentation is road-snapped and de-overlapped, but collision remains conservative rather than coastline-aware.
 - Eighteen curated coordinates still need manual review because they resolved via flagged estimate/fallback rather than OSM/Nominatim. See `data/osm/berawa.curated-coords.json`.
 - Venue rating/review fields are data-only. There is no Google Places API, scraping, live verification, or live venue ranking.
 - Multiplayer is intentionally locked and inert.
@@ -130,7 +144,7 @@ Copy/paste this into a new AI session to bring it up to speed.
    - Trigger traffic-bike collision and judge knockback/shake/splash timing.
    - Click all six HUD buttons with the real Mac trackpad/mouse.
    - Try the mobile HUD on an actual phone, especially tall screens.
-   - Drive around and judge whether the OSM road network plus curated venue buildings read as recognizably Berawa.
+   - Drive around and judge whether the OSM road network plus road-snapped curated venue buildings read as recognizably Berawa and walkable at the new zoom.
    - Open Phone > Venues > Details and inspect discovery filtering plus associated NPCs/items/quests visually.
    - Build NPC affinity through memory and confirm Contacts/dialogue feel readable.
 
@@ -141,6 +155,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 3. Continue Berawa credibility:
    - Manually verify the flagged coordinates in `data/osm/berawa.curated-coords.json`, especially estimate/fallback entries.
    - Add coastline-aware water collision or soft boundary feedback.
+   - If the new presentation feels too tight/loose on a real phone, tune only `BUILDING_SCALE_MULTIPLES`, `MAX_ROADSIDE_TANGENT_SLIDE`, and the two camera zoom values before changing map data.
    - Replace old hardcoded traffic lanes with generated road-following paths.
    - Curate a small verified venue file before adding more real-world-name candidates.
    - Add a compact map UI only after discovery state is stable.
@@ -156,27 +171,27 @@ Copy/paste this into a new AI session to bring it up to speed.
 Title:
 
 ```text
-Rebuild Berawa map around curated real-local venues
+Walkable Berawa map presentation pass
 ```
 
 Summary:
 
 ```text
-- Add src/data/curatedVenues.ts as the rendered venue catalog.
-- Resolve curated venue coordinates through an OSM-first generator cascade and commit berawa.curated-coords.json.
-- Frame the generated bbox to the curated venue cloud and filter the larger OSM road cache to the playable frame.
-- Render one simple blocky building per shouldRender venue while preserving existing gameplay venue IDs through layoutLookup.
-- Bake the static map into one texture, tune camera zoom, and cull off-camera dynamic objects.
-- Update README, BERAWA_MAP_PLAN, STATE.md, and DECISIONS.md.
+- Add a player-anchored venue presentation helper for tunable building footprints.
+- Snap rendered venue buildings beside their nearest road segment without changing source coordinates.
+- De-overlap dense venue clusters by sliding along road tangents with a capped displacement.
+- Tune camera zoom to 1.34 desktop / 1.22 mobile and render roads with clearer class widths.
+- Declutter venue labels so discovered names appear near the player instead of stacking globally.
+- Update STATE.md and DECISIONS.md.
 ```
 
 Test notes:
 
 ```text
 - npm run build after every phase
-- npm run generate:layout deterministic from committed cache
-- Source/runtime checks for no OSM/Nominatim/Overpass calls outside scripts
-- Browser smoke verified map load, static baked map texture, phone open/close, shops/quests, save migration, and godmode
+- Presentation geometry check: 40 non-beach buildings, 0 overlaps, max tangent slide ~62.4 px
+- Diff check: no venue coordinate/catalog/generated data files changed
+- Browser smoke verified canvas load, no console errors, and phone P/ESC flow
 ```
 
 ## Do Not Do Next
