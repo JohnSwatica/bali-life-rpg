@@ -138,14 +138,25 @@ interface GroupTravelerRuntime {
   bikeSprite: Phaser.GameObjects.Sprite;
 }
 
+interface TrafficRouteDefinition {
+  id: string;
+  points: MapPoint[];
+  length: number;
+}
+
+interface TrafficJunctionOption {
+  route: TrafficRouteDefinition;
+  pointIndex: number;
+}
+
 interface TrafficBikeRuntime {
   sprite: Phaser.GameObjects.Sprite;
-  axis: "x" | "y";
-  min: number;
-  max: number;
-  fixed: number;
+  route: TrafficRouteDefinition;
+  targetIndex: number;
   direction: 1 | -1;
   speed: number;
+  velocity: Phaser.Math.Vector2;
+  seed: number;
 }
 
 interface WantedOffenderRuntime {
@@ -195,6 +206,16 @@ const MINIMAP_MIN_WIDTH = 104;
 const MINIMAP_PADDING = 7;
 const PRESENTED_BERAWA_ROADS = getPresentedRoads(berawaRoads);
 const VENUE_SNAP_ROADS = getVenueSnapRoads(berawaRoads);
+const TRAFFIC_BIKE_COUNT = 8;
+const TRAFFIC_ROUTE_MIN_LENGTH = 230;
+const TRAFFIC_ROUTES: TrafficRouteDefinition[] = PRESENTED_BERAWA_ROADS
+  .filter((entry) => entry.visualClass !== "lane" && entry.length >= TRAFFIC_ROUTE_MIN_LENGTH && entry.road.points.length > 1)
+  .map((entry) => ({
+    id: entry.road.id,
+    points: entry.road.points,
+    length: entry.length
+  }));
+const TRAFFIC_JUNCTIONS = buildTrafficJunctionIndex(TRAFFIC_ROUTES);
 const BIKE_MUD_ZONES: MudZoneDefinition[] = [
   {
     id: "berawa-shortcut-mud",
@@ -215,6 +236,29 @@ const BIKE_MUD_ZONES: MudZoneDefinition[] = [
 ];
 const UI_DEPTH = 1200;
 
+function buildTrafficJunctionIndex(routes: TrafficRouteDefinition[]): Map<string, TrafficJunctionOption[]> {
+  const junctions = new Map<string, TrafficJunctionOption[]>();
+  for (const route of routes) {
+    route.points.forEach((point, pointIndex) => {
+      const key = trafficPointKey(point);
+      const options = junctions.get(key) ?? [];
+      options.push({ route, pointIndex });
+      junctions.set(key, options);
+    });
+  }
+  for (const [key, options] of junctions) {
+    const uniqueRouteCount = new Set(options.map((option) => option.route.id)).size;
+    if (uniqueRouteCount < 2) {
+      junctions.delete(key);
+    }
+  }
+  return junctions;
+}
+
+function trafficPointKey(point: MapPoint): string {
+  return `${Math.round(point.x)}:${Math.round(point.y)}`;
+}
+
 export class GameScene extends Phaser.Scene {
   private world!: WorldState;
   private playerState!: PlayerEntityState;
@@ -224,6 +268,7 @@ export class GameScene extends Phaser.Scene {
   private pickupSprites = new Map<string, Phaser.GameObjects.Sprite>();
   private playerBike?: Phaser.GameObjects.Sprite;
   private trafficBikes: TrafficBikeRuntime[] = [];
+  private trafficRouteCursor = 0;
   private trafficHitCooldown = 0;
   private bikeHarmCooldown = 0;
   private groupLeader?: GroupTravelerRuntime;
@@ -952,21 +997,61 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createTrafficBikes(): void {
-    const routes: Array<Omit<TrafficBikeRuntime, "sprite"> & { x: number; y: number }> = [
-      { x: -70, y: 805, axis: "x", min: -90, max: WORLD_WIDTH + 90, fixed: 805, direction: 1, speed: 260 },
-      { x: WORLD_WIDTH + 70, y: 852, axis: "x", min: -90, max: WORLD_WIDTH + 90, fixed: 852, direction: -1, speed: 235 },
-      { x: 975, y: -70, axis: "y", min: -90, max: 1210, fixed: 975, direction: 1, speed: 215 }
-    ];
+    if (TRAFFIC_ROUTES.length === 0) {
+      this.trafficBikes = [];
+      return;
+    }
 
-    this.trafficBikes = routes.map((route) => {
-      const sprite = this.add.sprite(route.x, route.y, "traffic-bike").setDepth(route.y + 4);
-      if (route.axis === "x") {
-        sprite.setScale(route.direction < 0 ? -1 : 1, 1);
-      } else {
-        sprite.setAngle(route.direction > 0 ? 90 : -90);
-      }
-      return { ...route, sprite };
+    this.trafficBikes = Array.from({ length: TRAFFIC_BIKE_COUNT }, (_, index) => {
+      const sprite = this.add.sprite(0, 0, "traffic-bike");
+      const bike: TrafficBikeRuntime = {
+        sprite,
+        route: TRAFFIC_ROUTES[0],
+        targetIndex: 1,
+        direction: 1,
+        speed: 150,
+        velocity: new Phaser.Math.Vector2(1, 0),
+        seed: index
+      };
+      this.configureTrafficBike(bike, index, true);
+      return bike;
     });
+  }
+
+  private configureTrafficBike(bike: TrafficBikeRuntime, seed: number, distributeOnRoute: boolean): void {
+    const route = this.getTrafficRoute(seed);
+    const direction: 1 | -1 = seed % 2 === 0 ? 1 : -1;
+    const maxInteriorIndex = Math.max(1, route.points.length - 2);
+    const interiorIndex = Math.min(route.points.length - 2, 1 + ((seed * 3) % maxInteriorIndex));
+    const startIndex = distributeOnRoute ? interiorIndex : direction > 0 ? 0 : route.points.length - 1;
+    const targetIndex = Phaser.Math.Clamp(startIndex + direction, 0, route.points.length - 1);
+
+    const resolvedDirection: 1 | -1 = targetIndex === startIndex ? (direction === 1 ? -1 : 1) : direction;
+    bike.route = route;
+    bike.direction = resolvedDirection;
+    bike.targetIndex = targetIndex === startIndex ? Phaser.Math.Clamp(startIndex + resolvedDirection, 0, route.points.length - 1) : targetIndex;
+    bike.speed = 135 + ((seed * 23) % 70);
+    bike.seed = seed;
+    const start = route.points[startIndex];
+    bike.sprite.setPosition(start.x, start.y);
+    this.updateTrafficBikeVelocityAndFacing(bike);
+  }
+
+  private getTrafficRoute(seed: number): TrafficRouteDefinition {
+    const routeCount = TRAFFIC_ROUTES.length;
+    const searchCount = Math.min(routeCount, 28);
+    const nearbyRoutes = [...TRAFFIC_ROUTES]
+      .sort((a, b) => this.distanceFromPlayerToRoute(a) - this.distanceFromPlayerToRoute(b))
+      .slice(0, searchCount);
+    return nearbyRoutes[(seed * 5) % nearbyRoutes.length] ?? TRAFFIC_ROUTES[seed % routeCount];
+  }
+
+  private distanceFromPlayerToRoute(route: TrafficRouteDefinition): number {
+    let distance = Number.POSITIVE_INFINITY;
+    for (const point of route.points) {
+      distance = Math.min(distance, Phaser.Math.Distance.Between(this.player.x, this.player.y, point.x, point.y));
+    }
+    return distance;
   }
 
   private createWantedOffenders(): void {
@@ -1144,33 +1229,125 @@ export class GameScene extends Phaser.Scene {
   private updateTraffic(delta: number): void {
     this.trafficHitCooldown = Math.max(0, this.trafficHitCooldown - delta);
     this.bikeHarmCooldown = Math.max(0, this.bikeHarmCooldown - delta);
-    const seconds = delta / 1000;
     for (const bike of this.trafficBikes) {
-      if (bike.axis === "x") {
-        bike.sprite.x += bike.direction * bike.speed * seconds;
-        bike.sprite.y = bike.fixed;
-        if (bike.direction > 0 && bike.sprite.x > bike.max) {
-          bike.sprite.x = bike.min;
-        } else if (bike.direction < 0 && bike.sprite.x < bike.min) {
-          bike.sprite.x = bike.max;
-        }
-        bike.sprite.setScale(bike.direction < 0 ? -1 : 1, 1);
-      } else {
-        bike.sprite.y += bike.direction * bike.speed * seconds;
-        bike.sprite.x = bike.fixed;
-        if (bike.direction > 0 && bike.sprite.y > bike.max) {
-          bike.sprite.y = bike.min;
-        } else if (bike.direction < 0 && bike.sprite.y < bike.min) {
-          bike.sprite.y = bike.max;
-        }
-        bike.sprite.setAngle(bike.direction > 0 ? 90 : -90);
-      }
+      this.moveTrafficBikeAlongRoad(bike, (bike.speed * delta) / 1000);
       bike.sprite.setDepth(bike.sprite.y + 3);
 
       if (this.trafficHitCooldown <= 0 && Phaser.Math.Distance.Between(this.player.x, this.player.y, bike.sprite.x, bike.sprite.y) < 34) {
         this.applyTrafficHit(bike);
       }
     }
+  }
+
+  private moveTrafficBikeAlongRoad(bike: TrafficBikeRuntime, distance: number): void {
+    let remaining = distance;
+    let guard = 0;
+
+    while (remaining > 0 && guard < 6) {
+      guard += 1;
+      const target = bike.route.points[bike.targetIndex];
+      if (!target) {
+        this.respawnTrafficBike(bike);
+        return;
+      }
+
+      const dx = target.x - bike.sprite.x;
+      const dy = target.y - bike.sprite.y;
+      const segmentDistance = Math.hypot(dx, dy);
+      if (segmentDistance <= 1) {
+        bike.sprite.setPosition(target.x, target.y);
+        this.advanceTrafficBikeTarget(bike);
+        continue;
+      }
+
+      const step = Math.min(segmentDistance, remaining);
+      bike.sprite.x += (dx / segmentDistance) * step;
+      bike.sprite.y += (dy / segmentDistance) * step;
+      bike.velocity.set((dx / segmentDistance) * bike.speed, (dy / segmentDistance) * bike.speed);
+      remaining -= step;
+
+      if (segmentDistance - step <= 1) {
+        bike.sprite.setPosition(target.x, target.y);
+        this.advanceTrafficBikeTarget(bike);
+      }
+    }
+
+    this.updateTrafficBikeFacingFromVelocity(bike);
+  }
+
+  private advanceTrafficBikeTarget(bike: TrafficBikeRuntime): void {
+    const currentPointIndex = bike.targetIndex;
+    if (this.tryTrafficJunctionTurn(bike, currentPointIndex)) {
+      this.updateTrafficBikeVelocityAndFacing(bike);
+      return;
+    }
+
+    const nextIndex = currentPointIndex + bike.direction;
+    if (nextIndex < 0 || nextIndex >= bike.route.points.length) {
+      this.respawnTrafficBike(bike);
+      return;
+    }
+    bike.targetIndex = nextIndex;
+    this.updateTrafficBikeVelocityAndFacing(bike);
+  }
+
+  private tryTrafficJunctionTurn(bike: TrafficBikeRuntime, pointIndex: number): boolean {
+    const point = bike.route.points[pointIndex];
+    const options = TRAFFIC_JUNCTIONS.get(trafficPointKey(point))?.filter((option) => option.route.id !== bike.route.id) ?? [];
+    if (options.length === 0) {
+      return false;
+    }
+
+    this.trafficRouteCursor += 1;
+    if ((bike.seed + pointIndex + this.trafficRouteCursor) % 3 !== 0) {
+      return false;
+    }
+
+    const option = options[(bike.seed + this.trafficRouteCursor) % options.length];
+    const directions: Array<1 | -1> = [];
+    if (option.pointIndex < option.route.points.length - 1) {
+      directions.push(1);
+    }
+    if (option.pointIndex > 0) {
+      directions.push(-1);
+    }
+    if (directions.length === 0) {
+      return false;
+    }
+
+    const direction = directions[(bike.seed + pointIndex + this.trafficRouteCursor) % directions.length];
+    bike.route = option.route;
+    bike.direction = direction;
+    bike.targetIndex = option.pointIndex + direction;
+    return true;
+  }
+
+  private respawnTrafficBike(bike: TrafficBikeRuntime): void {
+    this.trafficRouteCursor += 1;
+    this.configureTrafficBike(bike, bike.seed + this.trafficRouteCursor + 11, false);
+  }
+
+  private updateTrafficBikeVelocityAndFacing(bike: TrafficBikeRuntime): void {
+    const target = bike.route.points[bike.targetIndex];
+    if (!target) {
+      bike.velocity.set(0, 0);
+      return;
+    }
+    const dx = target.x - bike.sprite.x;
+    const dy = target.y - bike.sprite.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance > 0) {
+      bike.velocity.set((dx / distance) * bike.speed, (dy / distance) * bike.speed);
+    }
+    this.updateTrafficBikeFacingFromVelocity(bike);
+  }
+
+  private updateTrafficBikeFacingFromVelocity(bike: TrafficBikeRuntime): void {
+    if (bike.velocity.lengthSq() <= 0.01) {
+      return;
+    }
+    bike.sprite.setScale(1, 1);
+    bike.sprite.setAngle(Phaser.Math.RadToDeg(Math.atan2(bike.velocity.y, bike.velocity.x)));
   }
 
   private updateWantedOffenders(delta: number): void {
@@ -1247,10 +1424,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private applyTrafficKnockback(source: TrafficBikeRuntime): void {
-    const knockback = source.axis === "x"
-      ? new Phaser.Math.Vector2(source.direction, this.player.y <= source.fixed ? -0.7 : 0.7)
-      : new Phaser.Math.Vector2(this.player.x <= source.fixed ? -0.7 : 0.7, source.direction);
-    knockback.normalize();
+    const knockback = source.velocity.lengthSq() > 0.01
+      ? source.velocity.clone().normalize()
+      : new Phaser.Math.Vector2(this.player.x - source.sprite.x || 1, this.player.y - source.sprite.y).normalize();
     const away = new Phaser.Math.Vector2(this.player.x - source.sprite.x, this.player.y - source.sprite.y);
     if (away.lengthSq() > 16) {
       away.normalize();
