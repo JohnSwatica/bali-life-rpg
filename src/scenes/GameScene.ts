@@ -21,6 +21,7 @@ import { ScriptedDialogueProvider, type DialogueProvider } from "../systems/dial
 import { InteractionController, type InteractionTarget } from "../systems/interaction/InteractionController";
 import { InputController, type GameKeyMap } from "../systems/input/InputController";
 import { IntentDispatcher, type IntentResult } from "../systems/intents/IntentDispatcher";
+import { getVenueFootprint } from "../systems/map/VenuePresentation";
 import { getRelationship } from "../systems/relationships/RelationshipMemory";
 import {
   clearWantedStanding,
@@ -509,7 +510,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawCuratedVenueBuilding(g: Phaser.GameObjects.Graphics, node: CuratedVenueMapNode): void {
-    const size = this.venueBuildingSize(node);
+    const size = getVenueFootprint(node);
     const x = node.x - size.width / 2;
     const y = node.y - size.height / 2;
     const palette = this.venuePalette(node.category);
@@ -543,8 +544,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawBeachVenueMarker(g: Phaser.GameObjects.Graphics, node: CuratedVenueMapNode): void {
-    const width = node.isLandmark ? 82 : 58;
-    const height = node.isLandmark ? 44 : 34;
+    const { width, height } = getVenueFootprint(node);
     const x = node.x - width / 2;
     const y = node.y - height / 2;
     g.fillStyle(0x111b22, 0.18);
@@ -556,19 +556,6 @@ export class GameScene extends Phaser.Scene {
     g.fillStyle(0xf7f1d2, 0.9);
     g.fillCircle(node.x - width * 0.2, y + height * 0.58, 5);
     g.fillCircle(node.x + width * 0.2, y + height * 0.58, 5);
-  }
-
-  private venueBuildingSize(node: CuratedVenueMapNode): { width: number; height: number } {
-    if (node.isLandmark) {
-      return node.category === "beach_club" ? { width: 118, height: 76 } : { width: 94, height: 64 };
-    }
-    if (node.questCritical) {
-      return { width: 68, height: 48 };
-    }
-    if (node.category === "coworking" || node.category === "grocery") {
-      return { width: 60, height: 44 };
-    }
-    return { width: 48, height: 36 };
   }
 
   private venuePalette(category: string): { wall: number; roof: number } {
