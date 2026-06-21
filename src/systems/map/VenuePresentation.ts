@@ -74,6 +74,9 @@ function placeVenueBesideRoad(node: CuratedVenueMapNode, roads: RoadPathDefiniti
   if (!nearest) {
     return createUnsnappedPlacement(node, footprint);
   }
+  if (nearest.distance > playerUnits(POKEMON_SCALE.layout.maxRoadSnapDistance)) {
+    return createUnsnappedPlacement(node, footprint);
+  }
 
   const sideVector = {
     x: node.x - nearest.closest.x,
@@ -135,7 +138,7 @@ function createUnsnappedPlacement(node: CuratedVenueMapNode, footprint: VenueFoo
 function resolveRoadsideOverlaps(placements: VenuePresentationPlacement[]): VenuePresentationPlacement[] {
   const resolved = placements.map((placement) => ({ ...placement }));
   packRoadsideRows(resolved);
-  const passes = 24;
+  const passes = 72;
 
   for (let pass = 0; pass < passes; pass += 1) {
     let changed = false;
@@ -152,9 +155,9 @@ function resolveRoadsideOverlaps(placements: VenuePresentationPlacement[]): Venu
           continue;
         }
 
-        const separation = Math.min(42, Math.max(8, overlap.depth + ROADSIDE_BUILDING_GAP));
-        const movedA = slidePlacementAwayFrom(a, b, separation / 2);
-        const movedB = slidePlacementAwayFrom(b, a, separation / 2);
+        const moved = separatePlacementsAlongAxis(a, b, overlap);
+        const movedA = moved > 0;
+        const movedB = moved > 0;
         changed = movedA || movedB || changed;
       }
     }
@@ -247,6 +250,63 @@ function slidePlacementAwayFrom(
   return applySignedTangentSlide(placement, direction * Math.min(remaining, requestedDistance)) > 0;
 }
 
+function separatePlacementsAlongAxis(
+  a: VenuePresentationPlacement,
+  b: VenuePresentationPlacement,
+  overlap: { depth: number; axis: MapPoint }
+): number {
+  const centerDelta = { x: b.x - a.x, y: b.y - a.y };
+  const direction = dot(centerDelta, overlap.axis) >= 0 ? 1 : -1;
+  const requiredProjection = Math.min(120, Math.max(12, overlap.depth + ROADSIDE_BUILDING_GAP));
+  const aPower = a.snappedToRoad ? Math.abs(dot(a.tangent, overlap.axis)) : 0;
+  const bPower = b.snappedToRoad ? Math.abs(dot(b.tangent, overlap.axis)) : 0;
+  const totalPower = aPower + bPower;
+
+  if (totalPower < 0.12) {
+    const fallbackDistance = requiredProjection / 2;
+    const movedA = slidePlacementAwayFrom(a, b, fallbackDistance) ? fallbackDistance : 0;
+    const movedB = slidePlacementAwayFrom(b, a, fallbackDistance) ? fallbackDistance : 0;
+    return movedA + movedB;
+  }
+
+  const aTarget = (requiredProjection * (aPower || 0)) / totalPower;
+  const bTarget = requiredProjection - aTarget;
+  let moved = 0;
+  const movedA = slidePlacementProjection(a, overlap.axis, -direction * aTarget);
+  const movedB = slidePlacementProjection(b, overlap.axis, direction * bTarget);
+  moved += movedA + movedB;
+
+  const missingA = aTarget - movedA;
+  const missingB = bTarget - movedB;
+  if (missingA > 0.5) {
+    moved += slidePlacementProjection(b, overlap.axis, direction * missingA);
+  }
+  if (missingB > 0.5) {
+    moved += slidePlacementProjection(a, overlap.axis, -direction * missingB);
+  }
+
+  return moved;
+}
+
+function slidePlacementProjection(
+  placement: VenuePresentationPlacement,
+  axis: MapPoint,
+  signedProjectionDistance: number
+): number {
+  if (!placement.snappedToRoad || signedProjectionDistance === 0) {
+    return 0;
+  }
+
+  const tangentProjection = dot(placement.tangent, axis);
+  if (Math.abs(tangentProjection) < 0.08) {
+    return 0;
+  }
+
+  const requestedSlide = signedProjectionDistance / tangentProjection;
+  const movedSlide = applySignedTangentSlide(placement, requestedSlide);
+  return movedSlide * Math.abs(tangentProjection);
+}
+
 function slideAlongReferenceTangent(
   placement: VenuePresentationPlacement,
   referenceTangent: MapPoint,
@@ -287,23 +347,34 @@ export function venuePlacementsOverlap(a: VenuePresentationPlacement, b: VenuePr
 function getOrientedOverlap(
   a: VenuePresentationPlacement,
   b: VenuePresentationPlacement
-): { overlaps: boolean; depth: number } {
+): { overlaps: boolean; depth: number; axis: MapPoint } {
   const aCorners = getVenuePlacementCorners(a);
   const bCorners = getVenuePlacementCorners(b);
   const axes = [a.tangent, a.outwardNormal, b.tangent, b.outwardNormal];
-  let minDepth = Number.POSITIVE_INFINITY;
+  let bestDepth = Number.POSITIVE_INFINITY;
+  let bestAxis = axes[0];
+  let bestCost = Number.POSITIVE_INFINITY;
 
   for (const axis of axes) {
     const aProjection = projectPolygon(aCorners, axis);
     const bProjection = projectPolygon(bCorners, axis);
     const depth = Math.min(aProjection.max, bProjection.max) - Math.max(aProjection.min, bProjection.min);
     if (depth <= 0) {
-      return { overlaps: false, depth: 0 };
+      return { overlaps: false, depth: 0, axis };
     }
-    minDepth = Math.min(minDepth, depth);
+
+    const movementPower =
+      (a.snappedToRoad ? Math.abs(dot(a.tangent, axis)) : 0) +
+      (b.snappedToRoad ? Math.abs(dot(b.tangent, axis)) : 0);
+    const cost = depth / Math.max(0.12, movementPower);
+    if (cost < bestCost) {
+      bestCost = cost;
+      bestDepth = depth;
+      bestAxis = axis;
+    }
   }
 
-  return { overlaps: true, depth: minDepth };
+  return { overlaps: true, depth: bestDepth, axis: bestAxis };
 }
 
 function placementLocalToWorld(placement: VenuePresentationPlacement, localX: number, localY: number): MapPoint {

@@ -14,16 +14,17 @@ export const POKEMON_SCALE = {
     lane: 1.35
   },
   buildings: {
-    normal: { width: 3.2, height: 2.7 },
-    wide: { width: 3.8, height: 3.0 },
-    questCritical: { width: 4.3, height: 3.2 },
-    landmark: { width: 7.5, height: 5.2 },
-    beachLandmark: { width: 7.0, height: 3.8 },
+    normal: { width: 3.0, height: 2.4 },
+    wide: { width: 3.4, height: 2.6 },
+    questCritical: { width: 3.8, height: 2.8 },
+    landmark: { width: 6.0, height: 4.2 },
+    beachLandmark: { width: 6.2, height: 3.4 },
     beachMarker: { width: 4.0, height: 2.3 }
   },
   layout: {
     roadsideGap: 0.4,
-    maxRoadsideTangentSlide: 6.0
+    maxRoadsideTangentSlide: 20.0,
+    maxRoadSnapDistance: 5.5
   },
   camera: {
     desktopZoom: 1.62,

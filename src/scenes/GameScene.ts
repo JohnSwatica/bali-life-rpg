@@ -21,7 +21,8 @@ import { ScriptedDialogueProvider, type DialogueProvider } from "../systems/dial
 import { InteractionController, type InteractionTarget } from "../systems/interaction/InteractionController";
 import { InputController, type GameKeyMap } from "../systems/input/InputController";
 import { IntentDispatcher, type IntentResult } from "../systems/intents/IntentDispatcher";
-import { POKEMON_SCALE, roadWidthForImportance } from "../systems/map/PlayerUnitScale";
+import { POKEMON_SCALE } from "../systems/map/PlayerUnitScale";
+import { getPresentedRoads, getVenueSnapRoads } from "../systems/map/RoadPresentation";
 import {
   computeVenuePresentationLayout,
   getVenueFootprint,
@@ -462,32 +463,27 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawRoads(g: Phaser.GameObjects.Graphics): void {
-    for (const road of berawaRoads) {
-      const width = this.roadRenderWidth(road.importance);
-      g.lineStyle(width + (road.importance === "lane" ? 8 : 16), 0x3f484b, 1);
-      this.strokeRoadPath(g, road.points);
+    const roads = getPresentedRoads(berawaRoads);
+    for (const entry of roads) {
+      g.lineStyle(entry.width + (entry.visualClass === "lane" ? 8 : 16), 0x3f484b, 1);
+      this.strokeRoadPath(g, entry.road.points);
     }
 
-    for (const road of berawaRoads) {
-      const roadColor = road.importance === "lane" ? 0x77715e : road.importance === "secondary" ? 0x586167 : 0x596368;
-      const width = this.roadRenderWidth(road.importance);
-      g.lineStyle(width, roadColor, 1);
-      this.strokeRoadPath(g, road.points);
+    for (const entry of roads) {
+      const roadColor = entry.visualClass === "lane" ? 0x77715e : entry.visualClass === "secondary" ? 0x586167 : 0x596368;
+      g.lineStyle(entry.width, roadColor, 1);
+      this.strokeRoadPath(g, entry.road.points);
       g.lineStyle(2, 0x2e3638, 0.34);
-      this.strokeRoadPath(g, road.points);
+      this.strokeRoadPath(g, entry.road.points);
 
-      if (road.importance === "primary") {
+      if (entry.visualClass === "main") {
         g.lineStyle(4, 0xf1d36b, 0.74);
-        this.drawDashedPath(g, road.points, 54, 62);
-      } else if (road.importance === "secondary") {
+        this.drawDashedPath(g, entry.road.points, 54, 62);
+      } else if (entry.visualClass === "secondary") {
         g.lineStyle(3, 0xf4d58d, 0.28);
-        this.drawDashedPath(g, road.points, 34, 58);
+        this.drawDashedPath(g, entry.road.points, 34, 58);
       }
     }
-  }
-
-  private roadRenderWidth(importance: "primary" | "secondary" | "lane"): number {
-    return roadWidthForImportance(importance);
   }
 
   private strokeRoadPath(g: Phaser.GameObjects.Graphics, points: Array<{ x: number; y: number }>): void {
@@ -527,7 +523,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawCuratedVenueBuildings(g: Phaser.GameObjects.Graphics): void {
-    for (const placement of computeVenuePresentationLayout(curatedVenueNodes, berawaRoads)) {
+    for (const placement of computeVenuePresentationLayout(curatedVenueNodes, getVenueSnapRoads(berawaRoads))) {
       if (placement.node.category === "beach") {
         this.drawBeachVenueMarker(g, placement.node);
       } else {
@@ -883,7 +879,7 @@ export class GameScene extends Phaser.Scene {
       venues.set(node.venueId, node.name);
     }
     const presentationByVenue = new Map(
-      computeVenuePresentationLayout(curatedVenueNodes, berawaRoads).map((placement) => [placement.node.venueId, placement])
+      computeVenuePresentationLayout(curatedVenueNodes, getVenueSnapRoads(berawaRoads)).map((placement) => [placement.node.venueId, placement])
     );
     for (const node of venueMapNodes) {
       const placement = presentationByVenue.get(node.venueId);
