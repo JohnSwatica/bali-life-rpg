@@ -425,15 +425,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawStaticNeighborhood(g: Phaser.GameObjects.Graphics): void {
-    g.fillStyle(0x4f8f5d, 1);
+    g.fillStyle(0x66a36a, 1);
     g.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
     for (let y = 0; y < 1230; y += 48) {
       for (let x = 0; x < WORLD_WIDTH; x += 48) {
-        const tint = (x / 48 + y / 48) % 3 === 0 ? 0x5ca66c : 0x478855;
-        g.fillStyle(tint, 0.18);
-        g.fillCircle(x + 12, y + 18, 3);
-        g.fillCircle(x + 35, y + 38, 2);
+        const tint = (x / 48 + y / 48) % 3 === 0 ? 0x79b779 : 0x4e8f5a;
+        g.fillStyle(tint, 0.09);
+        g.fillCircle(x + 12, y + 18, 2);
+        g.fillCircle(x + 35, y + 38, 1.4);
       }
     }
 
@@ -551,22 +551,23 @@ export class GameScene extends Phaser.Scene {
 
   private drawRoads(g: Phaser.GameObjects.Graphics): void {
     for (const entry of PRESENTED_BERAWA_ROADS) {
-      g.lineStyle(entry.width + (entry.visualClass === "lane" ? 8 : 16), 0x3f484b, 1);
+      const shoulderWidth = entry.width + (entry.visualClass === "lane" ? 8 : 16);
+      g.lineStyle(shoulderWidth, 0x8d8c73, entry.visualClass === "lane" ? 0.38 : 0.5);
       this.strokeRoadPath(g, entry.road.points);
     }
 
     for (const entry of PRESENTED_BERAWA_ROADS) {
-      const roadColor = entry.visualClass === "lane" ? 0x77715e : entry.visualClass === "secondary" ? 0x586167 : 0x596368;
+      const roadColor = entry.visualClass === "lane" ? 0xcac4aa : entry.visualClass === "secondary" ? 0xded0b0 : 0xf0dfb9;
       g.lineStyle(entry.width, roadColor, 1);
       this.strokeRoadPath(g, entry.road.points);
-      g.lineStyle(2, 0x2e3638, 0.34);
+      g.lineStyle(2, 0x8b8068, 0.36);
       this.strokeRoadPath(g, entry.road.points);
 
       if (entry.visualClass === "main") {
-        g.lineStyle(4, 0xf1d36b, 0.74);
+        g.lineStyle(4, 0xfff7d3, 0.74);
         this.drawDashedPath(g, entry.road.points, 54, 62);
       } else if (entry.visualClass === "secondary") {
-        g.lineStyle(3, 0xf4d58d, 0.28);
+        g.lineStyle(3, 0xfff0bd, 0.34);
         this.drawDashedPath(g, entry.road.points, 34, 58);
       }
     }
@@ -624,15 +625,15 @@ export class GameScene extends Phaser.Scene {
     const palette = this.venuePalette(node.category);
     const corner = node.isLandmark ? 10 : 6;
 
-    g.fillStyle(0x1b1713, 0.22);
-    this.fillPlacedRect(g, placement, 7, 10, size.width, size.height, 0x1b1713, 0.22);
+    g.fillStyle(0x1b1713, 0.11);
+    this.fillPlacedRect(g, placement, 4, 5, size.width, size.height, 0x1b1713, 0.11);
     g.fillStyle(palette.wall, 1);
     this.fillPlacedRect(g, placement, 0, 0, size.width, size.height, palette.wall, 1);
     g.fillStyle(palette.roof, 1);
     this.fillPlacedRect(g, placement, 0, -size.height * 0.34, size.width + 10, Math.max(18, size.height * 0.34), palette.roof, 1);
 
-    g.fillStyle(0x2b2a26, 0.72);
-    this.fillPlacedRect(g, placement, 0, -size.height / 2 + 9, 14, 18, 0x2b2a26, 0.72);
+    g.fillStyle(0x2b2a26, 0.56);
+    this.fillPlacedRect(g, placement, 0, -size.height / 2 + 9, 14, 18, 0x2b2a26, 0.56);
     g.fillStyle(0xf7e7ad, 0.85);
     this.fillPlacedRect(g, placement, -size.width * 0.26, size.height * 0.08, 12, 10, 0xf7e7ad, 0.85);
     this.fillPlacedRect(g, placement, size.width * 0.26, size.height * 0.08, 12, 10, 0xf7e7ad, 0.85);
