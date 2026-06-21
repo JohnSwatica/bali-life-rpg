@@ -1,6 +1,7 @@
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { curatedVenues, shouldRender, type CuratedVenue } from "../src/data/curatedVenues";
 import { venueDefinitions } from "../src/data/venues";
 
 const M_PER_LAT = 110540;
@@ -44,6 +45,8 @@ interface NeighborhoodConfig {
   outputPath: string;
   cacheDir: string;
   geocodeCachePath: string;
+  curatedGeocodeCachePath: string;
+  curatedCoordsPath: string;
   overpassCachePath: string;
   reportPath: string;
 }
@@ -59,6 +62,12 @@ interface NominatimResult {
 }
 
 interface AnchorCacheEntry {
+  id: string;
+  query: string;
+  results: NominatimResult[];
+}
+
+interface CuratedGeocodeCacheEntry {
   id: string;
   query: string;
   results: NominatimResult[];
@@ -140,12 +149,52 @@ interface GeneratedVenueNode {
   areaId: string;
 }
 
+interface GeneratedCuratedVenueNode extends GeneratedVenueNode {
+  curatedVenueId: string;
+  name: string;
+  category: CuratedVenue["category"];
+  isLandmark: boolean;
+  questCritical: boolean;
+  coordinateSource: CuratedCoordinateSource;
+}
+
 interface MatchedVenue {
   venueId: string;
-  source: "anchor" | "osm_poi" | "fallback";
+  curatedVenueId?: string;
+  source: "anchor" | "osm_poi" | "fallback" | CuratedCoordinateSource;
   sourceName: string;
   point: Point;
   areaId: string;
+}
+
+type CuratedCoordinateSource = "osm" | "nominatim" | "estimate" | "fallback";
+
+interface LatLng {
+  lat: number;
+  lng: number;
+}
+
+interface PoiMatch {
+  poi: OverpassElement;
+  sourceName: string;
+  score: number;
+}
+
+interface ResolvedCuratedVenue {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  source: CuratedCoordinateSource;
+  sourceName: string;
+  matchedName?: string;
+  gameVenueId: string;
+  areaId: string;
+  shouldRender: boolean;
+  questCritical: boolean;
+  isLandmark: boolean;
+  category: CuratedVenue["category"];
+  needsManualCheck: boolean;
 }
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -188,8 +237,18 @@ const CONFIG: NeighborhoodConfig = {
   outputPath: path.join(repoRoot, "src/data/berawaLayout.ts"),
   cacheDir: path.join(repoRoot, "data/osm"),
   geocodeCachePath: path.join(repoRoot, "data/osm/berawa.anchors.json"),
+  curatedGeocodeCachePath: path.join(repoRoot, "data/osm/berawa.curated-geocode.json"),
+  curatedCoordsPath: path.join(repoRoot, "data/osm/berawa.curated-coords.json"),
   overpassCachePath: path.join(repoRoot, "data/osm/berawa.overpass.json"),
   reportPath: path.join(repoRoot, "data/osm/berawa.layout-report.json")
+};
+
+const CURATED_TO_GAME_VENUE_ID: Record<string, string> = {
+  milk_and_madu_berawa: "milk_madu_berawa",
+  nude: "nude_cafe_berawa",
+  ulekan: "ulekan_berawa",
+  satu_satu_coffee_company: "satu_satu_coffee",
+  bungalow_living_bali: "bungalow_living"
 };
 
 async function main() {
@@ -200,10 +259,13 @@ async function main() {
   const anchorCache = await loadOrFetchGeocode(CONFIG, refreshGeocode);
   const anchors = resolveAnchors(CONFIG, anchorCache);
   const bbox = chooseBBox(CONFIG.fallbackBbox, anchors);
-  const projector = makeProjector(bbox, CONFIG.world, CONFIG.pad);
   const overpass = await loadOrFetchOverpass(CONFIG, bbox, refreshOsm);
-  const generated = generateLayout(CONFIG, bbox, projector, overpass, anchors);
+  const curatedGeocodeCache = await loadOrFetchCuratedGeocode(CONFIG, curatedVenues, overpass, refreshGeocode);
+  const resolvedCuratedVenues = resolveCuratedVenueCoordinates(CONFIG, curatedVenues, overpass, curatedGeocodeCache);
+  const projector = makeProjector(bbox, CONFIG.world, CONFIG.pad);
+  const generated = generateLayout(CONFIG, bbox, projector, overpass, anchors, resolvedCuratedVenues);
 
+  await writeFile(CONFIG.curatedCoordsPath, `${JSON.stringify(renderCuratedCoordinateFile(resolvedCuratedVenues), null, 2)}\n`, "utf8");
   await writeFile(CONFIG.outputPath, renderBerawaLayout(generated), "utf8");
   await writeFile(CONFIG.reportPath, `${JSON.stringify(generated.report, null, 2)}\n`, "utf8");
 
@@ -213,6 +275,10 @@ async function main() {
   );
   console.log(
     `Venues matched ${generated.report.venues.matched}; fallback ${generated.report.venues.fallback}; bbox ${formatBBox(bbox)}`
+  );
+  const coordSummary = summarizeCuratedCoordinates(resolvedCuratedVenues);
+  console.log(
+    `Curated coords osm ${coordSummary.osm}; nominatim ${coordSummary.nominatim}; estimate ${coordSummary.estimate}; fallback ${coordSummary.fallback}`
   );
   if (generated.report.venues.unmatched.length > 0) {
     console.log(`Manual/fallback venue placement: ${generated.report.venues.unmatched.join(", ")}`);
@@ -237,6 +303,42 @@ async function loadOrFetchGeocode(config: NeighborhoodConfig, refresh: boolean):
     await sleep(1100);
   }
   await writeFile(config.geocodeCachePath, `${JSON.stringify(entries, null, 2)}\n`, "utf8");
+  return entries;
+}
+
+async function loadOrFetchCuratedGeocode(
+  config: NeighborhoodConfig,
+  venues: CuratedVenue[],
+  overpass: OverpassResponse,
+  refresh: boolean
+): Promise<CuratedGeocodeCacheEntry[]> {
+  const cached = !refresh && (await exists(config.curatedGeocodeCachePath)) ? await readJson<CuratedGeocodeCacheEntry[]>(config.curatedGeocodeCachePath) : [];
+  const entriesById = new Map(cached.map((entry) => [entry.id, entry]));
+  const poiIndex = buildPoiNameIndex(overpass.elements.filter(isPoiNode));
+  let changed = false;
+
+  for (const venue of venues) {
+    const osmMatch = findPoiMatch(poiIndex, [venue.name, venue.geocodeQuery.split(",")[0]]);
+    if (osmMatch || (!refresh && entriesById.has(venue.id))) {
+      continue;
+    }
+
+    const url = new URL("https://nominatim.openstreetmap.org/search");
+    url.searchParams.set("format", "json");
+    url.searchParams.set("limit", "5");
+    url.searchParams.set("q", venue.geocodeQuery);
+    const results = await fetchJson<NominatimResult[]>(url.toString(), {
+      headers: { "User-Agent": USER_AGENT, Accept: "application/json" }
+    });
+    entriesById.set(venue.id, { id: venue.id, query: venue.geocodeQuery, results });
+    changed = true;
+    await sleep(1100);
+  }
+
+  const entries = [...entriesById.values()].sort((a, b) => a.id.localeCompare(b.id));
+  if (changed || refresh || !(await exists(config.curatedGeocodeCachePath))) {
+    await writeFile(config.curatedGeocodeCachePath, `${JSON.stringify(entries, null, 2)}\n`, "utf8");
+  }
   return entries;
 }
 
@@ -322,6 +424,118 @@ function chooseBBox(fallback: BBox, anchors: AnchorPoint[]): BBox {
   return plausible ? padded : fallback;
 }
 
+function resolveCuratedVenueCoordinates(
+  config: NeighborhoodConfig,
+  venues: CuratedVenue[],
+  overpass: OverpassResponse,
+  geocodeCache: CuratedGeocodeCacheEntry[]
+): ResolvedCuratedVenue[] {
+  const poiIndex = buildPoiNameIndex(overpass.elements.filter(isPoiNode));
+  const geocodeById = new Map(geocodeCache.map((entry) => [entry.id, entry]));
+  const roadCentroids = buildRoadLatLngCentroids(overpass.elements.filter(isRoadWay));
+
+  return venues.map((venue) => {
+    const areaId = areaIdForCuratedVenue(venue);
+    const gameVenueId = CURATED_TO_GAME_VENUE_ID[venue.id] ?? venue.id;
+    const osmMatch = findPoiMatch(poiIndex, [venue.name, venue.geocodeQuery.split(",")[0]]);
+    const base = {
+      id: venue.id,
+      name: venue.name,
+      gameVenueId,
+      areaId,
+      shouldRender: shouldRender(venue),
+      questCritical: venue.questCritical,
+      isLandmark: venue.isLandmark,
+      category: venue.category
+    };
+
+    if (osmMatch?.poi.lat != null && osmMatch.poi.lon != null) {
+      return {
+        ...base,
+        lat: roundCoord(osmMatch.poi.lat),
+        lng: roundCoord(osmMatch.poi.lon),
+        source: "osm" as const,
+        sourceName: `OSM node ${osmMatch.poi.id}`,
+        matchedName: osmMatch.sourceName,
+        needsManualCheck: false
+      };
+    }
+
+    const geocode = selectNominatimResult(geocodeById.get(venue.id)?.results ?? [], config.fallbackBbox);
+    if (geocode) {
+      return {
+        ...base,
+        lat: roundCoord(Number(geocode.lat)),
+        lng: roundCoord(Number(geocode.lon)),
+        source: "nominatim" as const,
+        sourceName: geocode.display_name,
+        needsManualCheck: false
+      };
+    }
+
+    if (venue.estimatedCoord) {
+      return {
+        ...base,
+        lat: roundCoord(venue.estimatedCoord.lat),
+        lng: roundCoord(venue.estimatedCoord.lng),
+        source: "estimate" as const,
+        sourceName: "unverified Gemini estimate",
+        needsManualCheck: true
+      };
+    }
+
+    const fallback = fallbackLatLngForVenue(config, venue, roadCentroids);
+    return {
+      ...base,
+      lat: roundCoord(fallback.lat),
+      lng: roundCoord(fallback.lng),
+      source: "fallback" as const,
+      sourceName: "deterministic street/area fallback",
+      needsManualCheck: true
+    };
+  });
+}
+
+function renderCuratedCoordinateFile(resolved: ResolvedCuratedVenue[]) {
+  return {
+    generatedAt: "deterministic-from-cache",
+    source: "OSM cached POIs first, then cached Nominatim, then flagged estimates/fallbacks",
+    summary: summarizeCuratedCoordinates(resolved),
+    manualCheckVenueIds: resolved.filter((venue) => venue.needsManualCheck).map((venue) => venue.id),
+    venues: Object.fromEntries(
+      resolved.map((venue) => [
+        venue.id,
+        {
+          lat: venue.lat,
+          lng: venue.lng,
+          source: venue.source,
+          name: venue.name,
+          gameVenueId: venue.gameVenueId,
+          areaId: venue.areaId,
+          shouldRender: venue.shouldRender,
+          questCritical: venue.questCritical,
+          sourceName: venue.sourceName,
+          matchedName: venue.matchedName,
+          needsManualCheck: venue.needsManualCheck
+        }
+      ])
+    )
+  };
+}
+
+function summarizeCuratedCoordinates(resolved: ResolvedCuratedVenue[]) {
+  return resolved.reduce(
+    (summary, venue) => {
+      summary.total += 1;
+      summary.rendered += venue.shouldRender ? 1 : 0;
+      summary.questCritical += venue.questCritical ? 1 : 0;
+      summary[venue.source] += 1;
+      return summary;
+    },
+    { total: 0, rendered: 0, questCritical: 0, osm: 0, nominatim: 0, estimate: 0, fallback: 0 }
+  );
+}
+
 function padBBox(bbox: BBox, ratio: number): BBox {
   const latPad = (bbox.north - bbox.south) * ratio;
   const lonPad = (bbox.east - bbox.west) * ratio;
@@ -360,7 +574,8 @@ function generateLayout(
   bbox: BBox,
   project: (lat: number, lon: number) => Point,
   overpass: OverpassResponse,
-  anchors: AnchorPoint[]
+  anchors: AnchorPoint[],
+  resolvedCuratedVenues: ResolvedCuratedVenue[]
 ) {
   const highways = overpass.elements.filter(isRoadWay);
   const nodeRefCounts = countWayNodeRefs(highways);
@@ -409,7 +624,7 @@ function generateLayout(
   const roadCentroids = buildRoadCentroids(highways, project);
   const areas = buildAreas(config, anchorById, roadCentroids, project);
   const areaById = new Map(areas.map((area) => [area.id, area]));
-  const venues = buildVenueNodes(config, anchorById, pois, project, areaById);
+  const venues = buildVenueNodes(config, anchorById, pois, project, areaById, resolvedCuratedVenues);
   const report = {
     generatedAt: "deterministic-from-cache",
     source: "OpenStreetMap via Nominatim and Overpass caches",
@@ -422,12 +637,14 @@ function generateLayout(
     roadPathCount: roads.length,
     osmPoiCount: pois.length,
     orientation: orientationReport(anchorById, roadCentroids, project),
+    curatedCoordinates: renderCuratedCoordinateFile(resolvedCuratedVenues).summary,
     venues: {
       matched: venues.matches.filter((match) => match.source !== "fallback").length,
       fallback: venues.matches.filter((match) => match.source === "fallback").length,
       unmatched: venues.matches.filter((match) => match.source === "fallback").map((match) => match.venueId),
       matches: venues.matches.map((match) => ({
         venueId: match.venueId,
+        curatedVenueId: match.curatedVenueId,
         source: match.source,
         sourceName: match.sourceName,
         areaId: match.areaId,
@@ -437,7 +654,7 @@ function generateLayout(
     }
   };
 
-  return { roads, areas, venueNodes: venues.nodes, report };
+  return { roads, areas, venueNodes: venues.nodes, curatedVenueNodes: venues.curatedNodes, report };
 }
 
 function buildAreas(
@@ -470,16 +687,10 @@ function buildVenueNodes(
   anchorById: Map<string, AnchorPoint>,
   pois: OverpassElement[],
   project: (lat: number, lon: number) => Point,
-  areaById: Map<string, GeneratedArea>
-): { nodes: GeneratedVenueNode[]; matches: MatchedVenue[] } {
-  const poiByName = new Map<string, OverpassElement>();
-  for (const poi of pois) {
-    const name = poi.tags?.name;
-    const normalized = name ? normalizeName(name) : "";
-    if (normalized.length >= 4) {
-      poiByName.set(normalized, poi);
-    }
-  }
+  areaById: Map<string, GeneratedArea>,
+  resolvedCuratedVenues: ResolvedCuratedVenue[]
+): { nodes: GeneratedVenueNode[]; curatedNodes: GeneratedCuratedVenueNode[]; matches: MatchedVenue[] } {
+  const poiIndex = buildPoiNameIndex(pois);
 
   const anchorByVenue = new Map<string, AnchorPoint>();
   for (const anchor of anchorById.values()) {
@@ -490,7 +701,43 @@ function buildVenueNodes(
 
   const matches: MatchedVenue[] = [];
   const nodes: GeneratedVenueNode[] = [];
-  const venueIds = Object.keys(venueDefinitions).sort();
+  const curatedNodes: GeneratedCuratedVenueNode[] = [];
+  const representedVenueIds = new Set<string>();
+
+  for (const venue of resolvedCuratedVenues.filter((candidate) => candidate.shouldRender)) {
+    const point = project(venue.lat, venue.lng);
+    const radius = venue.id === "berawa_beach" ? 250 : venue.isLandmark ? 230 : venue.questCritical ? 190 : 145;
+    const node = {
+      venueId: venue.gameVenueId,
+      x: round(point.x),
+      y: round(point.y),
+      radius,
+      areaId: venue.areaId
+    };
+    nodes.push(node);
+    curatedNodes.push({
+      ...node,
+      curatedVenueId: venue.id,
+      name: venue.name,
+      category: venue.category,
+      isLandmark: venue.isLandmark,
+      questCritical: venue.questCritical,
+      coordinateSource: venue.source
+    });
+    representedVenueIds.add(venue.gameVenueId);
+    matches.push({
+      venueId: venue.gameVenueId,
+      curatedVenueId: venue.id,
+      source: venue.source,
+      sourceName: venue.sourceName,
+      point,
+      areaId: venue.areaId
+    });
+  }
+
+  const venueIds = Object.keys(venueDefinitions)
+    .filter((venueId) => !representedVenueIds.has(venueId))
+    .sort();
   for (const venueId of venueIds) {
     const venue = venueDefinitions[venueId];
     const anchor = anchorByVenue.get(venueId);
@@ -508,12 +755,13 @@ function buildVenueNodes(
     }
 
     if (!match) {
-      const poi = findPoiMatch(poiByName, [venue.name, venue.realWorldRef?.mapName ?? venue.name]);
+      const poiMatch = findPoiMatch(poiIndex, [venue.name, venue.realWorldRef?.mapName ?? venue.name]);
+      const poi = poiMatch?.poi;
       if (poi?.lat && poi.lon) {
         match = {
           venueId,
           source: "osm_poi",
-          sourceName: poi.tags?.name ?? `osm node ${poi.id}`,
+          sourceName: poi.tags?.name ?? poiMatch.sourceName,
           point: project(poi.lat, poi.lon),
           areaId: preferredArea
         };
@@ -543,7 +791,8 @@ function buildVenueNodes(
   }
 
   nodes.sort((a, b) => a.venueId.localeCompare(b.venueId));
-  return { nodes, matches };
+  curatedNodes.sort((a, b) => a.curatedVenueId.localeCompare(b.curatedVenueId));
+  return { nodes, curatedNodes, matches };
 }
 
 function firstAreaForVenue(config: NeighborhoodConfig, venueId: string): string {
@@ -551,23 +800,61 @@ function firstAreaForVenue(config: NeighborhoodConfig, venueId: string): string 
   return anchor?.areaIds?.[0] ?? "pantai_berawa";
 }
 
-function findPoiMatch(poiByName: Map<string, OverpassElement>, names: string[]): OverpassElement | undefined {
-  const normalized = names.map(normalizeName).filter(Boolean);
+function buildPoiNameIndex(pois: OverpassElement[]): Array<{ normalized: string; poi: OverpassElement; sourceName: string }> {
+  return pois
+    .map((poi) => {
+      const sourceName = poi.tags?.name ?? "";
+      return { normalized: normalizeName(sourceName), poi, sourceName };
+    })
+    .filter((entry) => entry.normalized.length >= 4)
+    .sort((a, b) => a.normalized.localeCompare(b.normalized) || a.poi.id - b.poi.id);
+}
+
+function findPoiMatch(index: Array<{ normalized: string; poi: OverpassElement; sourceName: string }>, names: string[]): PoiMatch | undefined {
+  const normalized = names.map(normalizeName).filter((name) => name.length >= 4);
+  let best: PoiMatch | undefined;
+
   for (const name of normalized) {
-    const exact = poiByName.get(name);
-    if (exact) {
-      return exact;
+    for (const entry of index) {
+      const score = poiNameScore(name, entry.normalized);
+      if (score <= 0) {
+        continue;
+      }
+      if (!best || score > best.score || (score === best.score && entry.sourceName.localeCompare(best.sourceName) < 0)) {
+        best = { poi: entry.poi, sourceName: entry.sourceName, score };
+      }
     }
   }
-  for (const [poiName, poi] of poiByName) {
-    if (poiName.length < 4) {
-      continue;
-    }
-    if (normalized.some((name) => name.length >= 4 && (poiName.includes(name) || name.includes(poiName)))) {
-      return poi;
+
+  return best && best.score >= 0.72 ? best : undefined;
+}
+
+function poiNameScore(target: string, candidate: string): number {
+  const targetTokens = new Set(target.split(" ").filter((token) => token.length >= 3));
+  const candidateTokens = new Set(candidate.split(" ").filter((token) => token.length >= 3));
+  if (targetTokens.size === 0 || candidateTokens.size === 0) {
+    return 0;
+  }
+  let shared = 0;
+  for (const token of targetTokens) {
+    if (candidateTokens.has(token)) {
+      shared += 1;
     }
   }
-  return undefined;
+
+  if (target === candidate) {
+    return 1;
+  }
+  if (candidate.includes(target) || target.includes(candidate)) {
+    if (targetTokens.size === 1 && shared === 1) {
+      return 0.86;
+    }
+    if (targetTokens.size > 1 && shared >= 2) {
+      return 0.9;
+    }
+    return 0;
+  }
+  return shared / Math.max(targetTokens.size, candidateTokens.size);
 }
 
 function isRoadWay(element: OverpassElement): boolean {
@@ -601,6 +888,105 @@ function buildRoadCentroids(ways: OverpassElement[], project: (lat: number, lon:
     grouped.set(normalized, points);
   }
   return new Map([...grouped].map(([name, points]) => [name, averagePoint(points)]));
+}
+
+function buildRoadLatLngCentroids(ways: OverpassElement[]): Map<string, LatLng> {
+  const grouped = new Map<string, LatLng[]>();
+  for (const way of ways) {
+    const name = way.tags?.name;
+    if (!name || !way.geometry) {
+      continue;
+    }
+    const normalized = normalizeName(name);
+    const points = grouped.get(normalized) ?? [];
+    points.push(...way.geometry.map((coord) => ({ lat: coord.lat, lng: coord.lon })));
+    grouped.set(normalized, points);
+  }
+  return new Map(
+    [...grouped].map(([name, points]) => [
+      name,
+      {
+        lat: points.reduce((sum, point) => sum + point.lat, 0) / points.length,
+        lng: points.reduce((sum, point) => sum + point.lng, 0) / points.length
+      }
+    ])
+  );
+}
+
+function selectNominatimResult(results: NominatimResult[], expectedBbox: BBox): NominatimResult | undefined {
+  return (
+    results.find((result) => {
+      const lat = Number(result.lat);
+      const lng = Number(result.lon);
+      return (
+        Number.isFinite(lat) &&
+        Number.isFinite(lng) &&
+        lat >= expectedBbox.south - 0.04 &&
+        lat <= expectedBbox.north + 0.04 &&
+        lng >= expectedBbox.west - 0.04 &&
+        lng <= expectedBbox.east + 0.04
+      );
+    }) ?? results[0]
+  );
+}
+
+function areaIdForCuratedVenue(venue: CuratedVenue): string {
+  const street = normalizeName(venue.street ?? venue.address ?? venue.geocodeQuery);
+  const idAndName = normalizeName(`${venue.id} ${venue.name}`);
+  if (venue.category === "beach" || idAndName.includes("beach")) {
+    return "beach";
+  }
+  if (venue.category === "beach_club" || idAndName.includes("finns") || idAndName.includes("atlas")) {
+    return "beach";
+  }
+  if (street.includes("tegal sari")) {
+    return "tegal_sari";
+  }
+  if (street.includes("nelayan")) {
+    return "nelayan";
+  }
+  if (street.includes("semat") || street.includes("subak")) {
+    return "cafe_cluster";
+  }
+  return "pantai_berawa";
+}
+
+function fallbackLatLngForVenue(config: NeighborhoodConfig, venue: CuratedVenue, roadCentroids: Map<string, LatLng>): LatLng {
+  const roadPoint = venue.street ? roadCentroids.get(normalizeName(venue.street)) : undefined;
+  const areaPoint = areaLatLngFallback(config, areaIdForCuratedVenue(venue));
+  const base = roadPoint ?? areaPoint;
+  return offsetLatLng(base, venue.id);
+}
+
+function areaLatLngFallback(config: NeighborhoodConfig, areaId: string): LatLng {
+  const bbox = config.fallbackBbox;
+  const points: Record<string, LatLng> = {
+    beach: { lat: bbox.south + (bbox.north - bbox.south) * 0.18, lng: bbox.west + (bbox.east - bbox.west) * 0.18 },
+    finns_area: { lat: bbox.south + (bbox.north - bbox.south) * 0.32, lng: bbox.west + (bbox.east - bbox.west) * 0.4 },
+    pantai_berawa: { lat: bbox.south + (bbox.north - bbox.south) * 0.58, lng: bbox.west + (bbox.east - bbox.west) * 0.55 },
+    cafe_cluster: { lat: bbox.south + (bbox.north - bbox.south) * 0.68, lng: bbox.west + (bbox.east - bbox.west) * 0.72 },
+    nelayan: { lat: bbox.south + (bbox.north - bbox.south) * 0.82, lng: bbox.west + (bbox.east - bbox.west) * 0.42 },
+    tegal_sari: { lat: bbox.south + (bbox.north - bbox.south) * 0.52, lng: bbox.west + (bbox.east - bbox.west) * 0.82 }
+  };
+  return points[areaId] ?? {
+    lat: (bbox.south + bbox.north) / 2,
+    lng: (bbox.west + bbox.east) / 2
+  };
+}
+
+function offsetLatLng(point: LatLng, seed: string): LatLng {
+  let hash = 0;
+  for (const char of seed) {
+    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }
+  const lat0 = point.lat;
+  const mPerLon = 111320 * Math.cos((lat0 * Math.PI) / 180);
+  const angle = ((hash % 360) * Math.PI) / 180;
+  const distanceM = 28 + (hash % 44);
+  return {
+    lat: point.lat + (Math.sin(angle) * distanceM) / M_PER_LAT,
+    lng: point.lng + (Math.cos(angle) * distanceM) / mPerLon
+  };
 }
 
 function highwayToKind(highway: string | undefined): RoadKind | null {
@@ -720,6 +1106,7 @@ function renderBerawaLayout(generated: {
   roads: GeneratedRoad[];
   areas: GeneratedArea[];
   venueNodes: GeneratedVenueNode[];
+  curatedVenueNodes: GeneratedCuratedVenueNode[];
   report: unknown;
 }): string {
   return `/* AUTO-GENERATED by scripts/generateLayoutFromOSM.ts. Do not hand-edit coordinates.
@@ -751,6 +1138,15 @@ export interface VenueMapNode {
   areaId: string;
 }
 
+export interface CuratedVenueMapNode extends VenueMapNode {
+  curatedVenueId: string;
+  name: string;
+  category: string;
+  isLandmark: boolean;
+  questCritical: boolean;
+  coordinateSource: string;
+}
+
 export const osmLayoutMetadata = ${toTs(generated.report)} as const;
 
 export const berawaRoads: RoadPathDefinition[] = ${toTs(generated.roads)};
@@ -758,6 +1154,8 @@ export const berawaRoads: RoadPathDefinition[] = ${toTs(generated.roads)};
 export const berawaAreas: MapAreaDefinition[] = ${toTs(generated.areas)};
 
 export const venueMapNodes: VenueMapNode[] = ${toTs(generated.venueNodes)};
+
+export const curatedVenueNodes: CuratedVenueMapNode[] = ${toTs(generated.curatedVenueNodes)};
 `;
 }
 
@@ -807,6 +1205,10 @@ function formatBBox(bbox: BBox): string {
 
 function round(value: number): number {
   return Math.round(value);
+}
+
+function roundCoord(value: number): number {
+  return Number(value.toFixed(7));
 }
 
 function sleep(ms: number): Promise<void> {

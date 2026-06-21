@@ -27,6 +27,15 @@ export interface VenueMapNode {
   areaId: string;
 }
 
+export interface CuratedVenueMapNode extends VenueMapNode {
+  curatedVenueId: string;
+  name: string;
+  category: string;
+  isLandmark: boolean;
+  questCritical: boolean;
+  coordinateSource: string;
+}
+
 export const osmLayoutMetadata = {
   generatedAt: "deterministic-from-cache",
   source: "OpenStreetMap via Nominatim and Overpass caches",
@@ -69,71 +78,393 @@ export const osmLayoutMetadata = {
       tegalSariRightOfBeach: true
     }
   },
+  curatedCoordinates: {
+    total: 41,
+    rendered: 41,
+    questCritical: 8,
+    osm: 23,
+    nominatim: 0,
+    estimate: 15,
+    fallback: 3
+  },
   venues: {
-    matched: 7,
+    matched: 38,
     fallback: 4,
     unmatched: [
+      "finns_recreation_club",
       "baked_berawa",
       "bali_family_rental_scooter",
-      "finns_recreation_club",
       "mowies_berawa"
     ],
     matches: [
       {
-        venueId: "baked_berawa",
-        source: "fallback",
-        sourceName: "manual fallback near generated area",
-        areaId: "nelayan",
-        x: 635,
-        y: 830
-      },
-      {
-        venueId: "bali_family_rental_scooter",
-        source: "fallback",
-        sourceName: "manual fallback near generated area",
+        venueId: "milk_madu_berawa",
+        curatedVenueId: "milk_and_madu_berawa",
+        source: "osm",
+        sourceName: "OSM node 6161580981",
         areaId: "pantai_berawa",
-        x: 1437,
-        y: 698
+        x: 1286,
+        y: 1138
       },
       {
-        venueId: "berawa_beach",
-        source: "anchor",
-        sourceName: "Brekele Berawa Beach House, 1, Jalan Pantai Berawa, Canggu, Kuta Utara, Badung, Bali, Nusa Tenggara, 08456, Indonesia",
-        areaId: "beach",
-        x: 988,
-        y: 1402
+        venueId: "milu_by_nook",
+        curatedVenueId: "milu_by_nook",
+        source: "osm",
+        sourceName: "OSM node 6893325285",
+        areaId: "pantai_berawa",
+        x: 1197,
+        y: 1121
       },
       {
-        venueId: "bungalow_living",
-        source: "osm_poi",
-        sourceName: "bungalow living Bali",
+        venueId: "nude_cafe_berawa",
+        curatedVenueId: "nude",
+        source: "osm",
+        sourceName: "OSM node 5313312521",
+        areaId: "pantai_berawa",
+        x: 985,
+        y: 1075
+      },
+      {
+        venueId: "hungry_bird_coffee_roaster",
+        curatedVenueId: "hungry_bird_coffee_roaster",
+        source: "osm",
+        sourceName: "OSM node 6038102486",
+        areaId: "cafe_cluster",
+        x: 1041,
+        y: 877
+      },
+      {
+        venueId: "cinta_cafe",
+        curatedVenueId: "cinta_cafe",
+        source: "osm",
+        sourceName: "OSM node 5936035686",
+        areaId: "pantai_berawa",
+        x: 1037,
+        y: 1110
+      },
+      {
+        venueId: "macan_cafe",
+        curatedVenueId: "macan_cafe",
+        source: "estimate",
+        sourceName: "unverified Gemini estimate",
+        areaId: "pantai_berawa",
+        x: 976,
+        y: 1173
+      },
+      {
+        venueId: "secret_spot_canggu",
+        curatedVenueId: "secret_spot_canggu",
+        source: "osm",
+        sourceName: "OSM node 6818846985",
+        areaId: "pantai_berawa",
+        x: 680,
+        y: 603
+      },
+      {
+        venueId: "lusa_by_suka",
+        curatedVenueId: "lusa_by_suka",
+        source: "estimate",
+        sourceName: "unverified Gemini estimate",
+        areaId: "pantai_berawa",
+        x: 723,
+        y: 1323
+      },
+      {
+        venueId: "matcha_cafe_bali",
+        curatedVenueId: "matcha_cafe_bali",
+        source: "osm",
+        sourceName: "OSM node 5367292222",
+        areaId: "pantai_berawa",
+        x: 956,
+        y: 1101
+      },
+      {
+        venueId: "two_trees_eatery",
+        curatedVenueId: "two_trees_eatery",
+        source: "estimate",
+        sourceName: "unverified Gemini estimate",
+        areaId: "pantai_berawa",
+        x: 774,
+        y: 1310
+      },
+      {
+        venueId: "ruko_cafe",
+        curatedVenueId: "ruko_cafe",
+        source: "osm",
+        sourceName: "OSM node 4785702027",
+        areaId: "pantai_berawa",
+        x: 979,
+        y: 1346
+      },
+      {
+        venueId: "sari_kitchen_and_community",
+        curatedVenueId: "sari_kitchen_and_community",
+        source: "estimate",
+        sourceName: "unverified Gemini estimate",
+        areaId: "pantai_berawa",
+        x: 936,
+        y: 1143
+      },
+      {
+        venueId: "losteria_funiculi_funicula_canggu",
+        curatedVenueId: "losteria_funiculi_funicula_canggu",
+        source: "estimate",
+        sourceName: "unverified Gemini estimate",
+        areaId: "pantai_berawa",
+        x: 882,
+        y: 1240
+      },
+      {
+        venueId: "ulekan_berawa",
+        curatedVenueId: "ulekan",
+        source: "osm",
+        sourceName: "OSM node 5105941921",
         areaId: "tegal_sari",
-        x: 1426,
-        y: 813
+        x: 1146,
+        y: 1099
+      },
+      {
+        venueId: "tygr_sushi_berawa",
+        curatedVenueId: "tygr_sushi_berawa",
+        source: "osm",
+        sourceName: "OSM node 5251732521",
+        areaId: "pantai_berawa",
+        x: 1053,
+        y: 1114
+      },
+      {
+        venueId: "wild_habit_pizza",
+        curatedVenueId: "wild_habit_pizza",
+        source: "estimate",
+        sourceName: "unverified Gemini estimate",
+        areaId: "pantai_berawa",
+        x: 908,
+        y: 1225
+      },
+      {
+        venueId: "bottega_italiana_berawa",
+        curatedVenueId: "bottega_italiana_berawa",
+        source: "osm",
+        sourceName: "OSM node 5588055723",
+        areaId: "pantai_berawa",
+        x: 581,
+        y: 729
+      },
+      {
+        venueId: "da_romeo_restaurant",
+        curatedVenueId: "da_romeo_restaurant",
+        source: "estimate",
+        sourceName: "unverified Gemini estimate",
+        areaId: "pantai_berawa",
+        x: 935,
+        y: 1207
+      },
+      {
+        venueId: "manggis_in_canggu",
+        curatedVenueId: "manggis_in_canggu",
+        source: "osm",
+        sourceName: "OSM node 6821491085",
+        areaId: "pantai_berawa",
+        x: 882,
+        y: 1054
+      },
+      {
+        venueId: "one_eyed_jack",
+        curatedVenueId: "one_eyed_jack",
+        source: "osm",
+        sourceName: "OSM node 5928825087",
+        areaId: "pantai_berawa",
+        x: 979,
+        y: 1369
+      },
+      {
+        venueId: "golden_monkey_chinese_restaurant",
+        curatedVenueId: "golden_monkey_chinese_restaurant",
+        source: "estimate",
+        sourceName: "unverified Gemini estimate",
+        areaId: "pantai_berawa",
+        x: 920,
+        y: 1218
+      },
+      {
+        venueId: "trattoria_canggu",
+        curatedVenueId: "trattoria_canggu",
+        source: "osm",
+        sourceName: "OSM node 2847506934",
+        areaId: "pantai_berawa",
+        x: 1324,
+        y: 1322
+      },
+      {
+        venueId: "behind_the_green_door",
+        curatedVenueId: "behind_the_green_door",
+        source: "osm",
+        sourceName: "OSM node 10587201905",
+        areaId: "pantai_berawa",
+        x: 1349,
+        y: 1519
+      },
+      {
+        venueId: "synkonah",
+        curatedVenueId: "synkonah",
+        source: "estimate",
+        sourceName: "unverified Gemini estimate",
+        areaId: "pantai_berawa",
+        x: 869,
+        y: 1246
+      },
+      {
+        venueId: "the_shady_pig",
+        curatedVenueId: "the_shady_pig",
+        source: "estimate",
+        sourceName: "unverified Gemini estimate",
+        areaId: "pantai_berawa",
+        x: 924,
+        y: 1191
+      },
+      {
+        venueId: "finns_beach_club",
+        curatedVenueId: "finns_beach_club",
+        source: "osm",
+        sourceName: "OSM node 7127738894",
+        areaId: "beach",
+        x: 963,
+        y: 1450
+      },
+      {
+        venueId: "atlas_beach_fest",
+        curatedVenueId: "atlas_beach_fest",
+        source: "estimate",
+        sourceName: "unverified Gemini estimate",
+        areaId: "beach",
+        x: 567,
+        y: 1425
+      },
+      {
+        venueId: "monsieur_spoon_berawa",
+        curatedVenueId: "monsieur_spoon_berawa",
+        source: "osm",
+        sourceName: "OSM node 2595110617",
+        areaId: "pantai_berawa",
+        x: 675,
+        y: 645
+      },
+      {
+        venueId: "braud_cafe",
+        curatedVenueId: "braud_cafe",
+        source: "estimate",
+        sourceName: "unverified Gemini estimate",
+        areaId: "cafe_cluster",
+        x: 1214,
+        y: 1471
+      },
+      {
+        venueId: "bakersfield_berawa",
+        curatedVenueId: "bakersfield_berawa",
+        source: "estimate",
+        sourceName: "unverified Gemini estimate",
+        areaId: "cafe_cluster",
+        x: 1079,
+        y: 1128
+      },
+      {
+        venueId: "frestive_berawa",
+        curatedVenueId: "frestive_berawa",
+        source: "osm",
+        sourceName: "OSM node 5930668085",
+        areaId: "pantai_berawa",
+        x: 932,
+        y: 1075
+      },
+      {
+        venueId: "popular_deli_berawa",
+        curatedVenueId: "popular_deli_berawa",
+        source: "estimate",
+        sourceName: "unverified Gemini estimate",
+        areaId: "cafe_cluster",
+        x: 1132,
+        y: 1027
+      },
+      {
+        venueId: "tropical_nomad_coworking_space",
+        curatedVenueId: "tropical_nomad_coworking_space",
+        source: "osm",
+        sourceName: "OSM node 12813348701",
+        areaId: "cafe_cluster",
+        x: 876,
+        y: 701
+      },
+      {
+        venueId: "outpost_canggu_coworking",
+        curatedVenueId: "outpost_canggu_coworking",
+        source: "estimate",
+        sourceName: "unverified Gemini estimate",
+        areaId: "cafe_cluster",
+        x: 1093,
+        y: 1202
+      },
+      {
+        venueId: "finns_recreation_club",
+        curatedVenueId: "finns_recreation_club",
+        source: "fallback",
+        sourceName: "deterministic street/area fallback",
+        areaId: "beach",
+        x: 375,
+        y: 2117
       },
       {
         venueId: "canggu_station",
-        source: "anchor",
-        sourceName: "Canggu Station, Jalan Pantai Berawa, Tibubeneng, Kuta Utara, Badung, Bali, Nusa Tenggara, 90361, Indonesia",
-        areaId: "pantai_berawa",
+        curatedVenueId: "canggu_station",
+        source: "osm",
+        sourceName: "OSM node 4449416693",
+        areaId: "cafe_cluster",
         x: 1323,
         y: 1299
       },
       {
-        venueId: "finns_recreation_club",
+        venueId: "baked_berawa",
+        curatedVenueId: "baked_berawa",
         source: "fallback",
-        sourceName: "manual fallback near generated area",
-        areaId: "finns_area",
-        x: 1131,
-        y: 1264
+        sourceName: "deterministic street/area fallback",
+        areaId: "pantai_berawa",
+        x: 759,
+        y: 1507
       },
       {
-        venueId: "milk_madu_berawa",
-        source: "anchor",
-        sourceName: "Milk and Madu, Jalan Pantai Berawa, Tibubeneng, Kuta Utara, Badung, Bali, Nusa Tenggara, 80363, Indonesia",
-        areaId: "cafe_cluster",
-        x: 1286,
-        y: 1138
+        venueId: "satu_satu_coffee",
+        curatedVenueId: "satu_satu_coffee_company",
+        source: "osm",
+        sourceName: "OSM node 4860940621",
+        areaId: "pantai_berawa",
+        x: 1381,
+        y: 866
+      },
+      {
+        venueId: "bungalow_living",
+        curatedVenueId: "bungalow_living_bali",
+        source: "osm",
+        sourceName: "OSM node 5550637521",
+        areaId: "pantai_berawa",
+        x: 1426,
+        y: 813
+      },
+      {
+        venueId: "bali_family_rental_scooter",
+        curatedVenueId: "bali_family_rental_scooter",
+        source: "fallback",
+        sourceName: "deterministic street/area fallback",
+        areaId: "pantai_berawa",
+        x: 767,
+        y: 1513
+      },
+      {
+        venueId: "berawa_beach",
+        curatedVenueId: "berawa_beach",
+        source: "osm",
+        sourceName: "OSM node 7093171686",
+        areaId: "beach",
+        x: 1013,
+        y: 1531
       },
       {
         venueId: "mowies_berawa",
@@ -142,30 +473,6 @@ export const osmLayoutMetadata = {
         areaId: "beach",
         x: 885,
         y: 1408
-      },
-      {
-        venueId: "nude_cafe_berawa",
-        source: "anchor",
-        sourceName: "Nude, Jalan Pantai Berawa, Tibubeneng, Kuta Utara, Badung, Bali, Nusa Tenggara, 80363, Indonesia",
-        areaId: "cafe_cluster",
-        x: 985,
-        y: 1075
-      },
-      {
-        venueId: "satu_satu_coffee",
-        source: "anchor",
-        sourceName: "Satu-satu coffee company, Jalan Pantai Berawa, Tibubeneng, Kuta Utara, Badung, Bali, Nusa Tenggara, 08456, Indonesia",
-        areaId: "finns_area",
-        x: 1381,
-        y: 866
-      },
-      {
-        venueId: "ulekan_berawa",
-        source: "osm_poi",
-        sourceName: "Ulekan",
-        areaId: "cafe_cluster",
-        x: 1146,
-        y: 1099
       }
     ]
   }
@@ -29541,53 +29848,179 @@ export const berawaAreas: MapAreaDefinition[] = [
 
 export const venueMapNodes: VenueMapNode[] = [
   {
+    venueId: "atlas_beach_fest",
+    x: 567,
+    y: 1425,
+    radius: 230,
+    areaId: "beach"
+  },
+  {
     venueId: "baked_berawa",
-    x: 635,
-    y: 830,
-    radius: 170,
-    areaId: "nelayan"
+    x: 759,
+    y: 1507,
+    radius: 190,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "bakersfield_berawa",
+    x: 1079,
+    y: 1128,
+    radius: 145,
+    areaId: "cafe_cluster"
   },
   {
     venueId: "bali_family_rental_scooter",
-    x: 1437,
-    y: 698,
-    radius: 170,
+    x: 767,
+    y: 1513,
+    radius: 190,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "behind_the_green_door",
+    x: 1349,
+    y: 1519,
+    radius: 145,
     areaId: "pantai_berawa"
   },
   {
     venueId: "berawa_beach",
-    x: 988,
-    y: 1402,
-    radius: 240,
+    x: 1013,
+    y: 1531,
+    radius: 250,
     areaId: "beach"
+  },
+  {
+    venueId: "bottega_italiana_berawa",
+    x: 581,
+    y: 729,
+    radius: 145,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "braud_cafe",
+    x: 1214,
+    y: 1471,
+    radius: 145,
+    areaId: "cafe_cluster"
   },
   {
     venueId: "bungalow_living",
     x: 1426,
     y: 813,
-    radius: 170,
-    areaId: "tegal_sari"
+    radius: 190,
+    areaId: "pantai_berawa"
   },
   {
     venueId: "canggu_station",
     x: 1323,
     y: 1299,
-    radius: 170,
+    radius: 190,
+    areaId: "cafe_cluster"
+  },
+  {
+    venueId: "cinta_cafe",
+    x: 1037,
+    y: 1110,
+    radius: 145,
     areaId: "pantai_berawa"
   },
   {
+    venueId: "da_romeo_restaurant",
+    x: 935,
+    y: 1207,
+    radius: 145,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "finns_beach_club",
+    x: 963,
+    y: 1450,
+    radius: 230,
+    areaId: "beach"
+  },
+  {
     venueId: "finns_recreation_club",
-    x: 1131,
-    y: 1264,
-    radius: 220,
-    areaId: "finns_area"
+    x: 375,
+    y: 2117,
+    radius: 230,
+    areaId: "beach"
+  },
+  {
+    venueId: "frestive_berawa",
+    x: 932,
+    y: 1075,
+    radius: 145,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "golden_monkey_chinese_restaurant",
+    x: 920,
+    y: 1218,
+    radius: 145,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "hungry_bird_coffee_roaster",
+    x: 1041,
+    y: 877,
+    radius: 145,
+    areaId: "cafe_cluster"
+  },
+  {
+    venueId: "losteria_funiculi_funicula_canggu",
+    x: 882,
+    y: 1240,
+    radius: 145,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "lusa_by_suka",
+    x: 723,
+    y: 1323,
+    radius: 145,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "macan_cafe",
+    x: 976,
+    y: 1173,
+    radius: 145,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "manggis_in_canggu",
+    x: 882,
+    y: 1054,
+    radius: 145,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "matcha_cafe_bali",
+    x: 956,
+    y: 1101,
+    radius: 145,
+    areaId: "pantai_berawa"
   },
   {
     venueId: "milk_madu_berawa",
     x: 1286,
     y: 1138,
-    radius: 170,
-    areaId: "cafe_cluster"
+    radius: 190,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "milu_by_nook",
+    x: 1197,
+    y: 1121,
+    radius: 145,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "monsieur_spoon_berawa",
+    x: 675,
+    y: 645,
+    radius: 145,
+    areaId: "pantai_berawa"
   },
   {
     venueId: "mowies_berawa",
@@ -29600,21 +30033,648 @@ export const venueMapNodes: VenueMapNode[] = [
     venueId: "nude_cafe_berawa",
     x: 985,
     y: 1075,
-    radius: 170,
+    radius: 145,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "one_eyed_jack",
+    x: 979,
+    y: 1369,
+    radius: 145,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "outpost_canggu_coworking",
+    x: 1093,
+    y: 1202,
+    radius: 145,
     areaId: "cafe_cluster"
+  },
+  {
+    venueId: "popular_deli_berawa",
+    x: 1132,
+    y: 1027,
+    radius: 145,
+    areaId: "cafe_cluster"
+  },
+  {
+    venueId: "ruko_cafe",
+    x: 979,
+    y: 1346,
+    radius: 145,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "sari_kitchen_and_community",
+    x: 936,
+    y: 1143,
+    radius: 145,
+    areaId: "pantai_berawa"
   },
   {
     venueId: "satu_satu_coffee",
     x: 1381,
     y: 866,
-    radius: 170,
-    areaId: "finns_area"
+    radius: 190,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "secret_spot_canggu",
+    x: 680,
+    y: 603,
+    radius: 145,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "synkonah",
+    x: 869,
+    y: 1246,
+    radius: 145,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "the_shady_pig",
+    x: 924,
+    y: 1191,
+    radius: 145,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "trattoria_canggu",
+    x: 1324,
+    y: 1322,
+    radius: 145,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "tropical_nomad_coworking_space",
+    x: 876,
+    y: 701,
+    radius: 145,
+    areaId: "cafe_cluster"
+  },
+  {
+    venueId: "two_trees_eatery",
+    x: 774,
+    y: 1310,
+    radius: 145,
+    areaId: "pantai_berawa"
+  },
+  {
+    venueId: "tygr_sushi_berawa",
+    x: 1053,
+    y: 1114,
+    radius: 145,
+    areaId: "pantai_berawa"
   },
   {
     venueId: "ulekan_berawa",
     x: 1146,
     y: 1099,
-    radius: 170,
-    areaId: "cafe_cluster"
+    radius: 145,
+    areaId: "tegal_sari"
+  },
+  {
+    venueId: "wild_habit_pizza",
+    x: 908,
+    y: 1225,
+    radius: 145,
+    areaId: "pantai_berawa"
+  }
+];
+
+export const curatedVenueNodes: CuratedVenueMapNode[] = [
+  {
+    venueId: "atlas_beach_fest",
+    x: 567,
+    y: 1425,
+    radius: 230,
+    areaId: "beach",
+    curatedVenueId: "atlas_beach_fest",
+    name: "Atlas Beach Fest",
+    category: "beach_club",
+    isLandmark: true,
+    questCritical: false,
+    coordinateSource: "estimate"
+  },
+  {
+    venueId: "baked_berawa",
+    x: 759,
+    y: 1507,
+    radius: 190,
+    areaId: "pantai_berawa",
+    curatedVenueId: "baked_berawa",
+    name: "BAKED. Berawa",
+    category: "bakery",
+    isLandmark: false,
+    questCritical: true,
+    coordinateSource: "fallback"
+  },
+  {
+    venueId: "bakersfield_berawa",
+    x: 1079,
+    y: 1128,
+    radius: 145,
+    areaId: "cafe_cluster",
+    curatedVenueId: "bakersfield_berawa",
+    name: "Bakersfield Berawa",
+    category: "bakery",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "estimate"
+  },
+  {
+    venueId: "bali_family_rental_scooter",
+    x: 767,
+    y: 1513,
+    radius: 190,
+    areaId: "pantai_berawa",
+    curatedVenueId: "bali_family_rental_scooter",
+    name: "Bali Family Rental Scooter",
+    category: "shop",
+    isLandmark: false,
+    questCritical: true,
+    coordinateSource: "fallback"
+  },
+  {
+    venueId: "behind_the_green_door",
+    x: 1349,
+    y: 1519,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "behind_the_green_door",
+    name: "Behind The Green Door",
+    category: "bar",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "berawa_beach",
+    x: 1013,
+    y: 1531,
+    radius: 250,
+    areaId: "beach",
+    curatedVenueId: "berawa_beach",
+    name: "Berawa Beach",
+    category: "beach",
+    isLandmark: true,
+    questCritical: true,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "bottega_italiana_berawa",
+    x: 581,
+    y: 729,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "bottega_italiana_berawa",
+    name: "Bottega Italiana Berawa",
+    category: "restaurant",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "braud_cafe",
+    x: 1214,
+    y: 1471,
+    radius: 145,
+    areaId: "cafe_cluster",
+    curatedVenueId: "braud_cafe",
+    name: "Braud Cafe",
+    category: "bakery",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "estimate"
+  },
+  {
+    venueId: "bungalow_living",
+    x: 1426,
+    y: 813,
+    radius: 190,
+    areaId: "pantai_berawa",
+    curatedVenueId: "bungalow_living_bali",
+    name: "Bungalow Living Bali",
+    category: "shop",
+    isLandmark: false,
+    questCritical: true,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "canggu_station",
+    x: 1323,
+    y: 1299,
+    radius: 190,
+    areaId: "cafe_cluster",
+    curatedVenueId: "canggu_station",
+    name: "Canggu Station",
+    category: "grocery",
+    isLandmark: false,
+    questCritical: true,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "cinta_cafe",
+    x: 1037,
+    y: 1110,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "cinta_cafe",
+    name: "Cinta Cafe",
+    category: "cafe",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "da_romeo_restaurant",
+    x: 935,
+    y: 1207,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "da_romeo_restaurant",
+    name: "Da Romeo Restaurant",
+    category: "restaurant",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "estimate"
+  },
+  {
+    venueId: "finns_beach_club",
+    x: 963,
+    y: 1450,
+    radius: 230,
+    areaId: "beach",
+    curatedVenueId: "finns_beach_club",
+    name: "FINNS Beach Club",
+    category: "beach_club",
+    isLandmark: true,
+    questCritical: false,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "finns_recreation_club",
+    x: 375,
+    y: 2117,
+    radius: 230,
+    areaId: "beach",
+    curatedVenueId: "finns_recreation_club",
+    name: "FINNS Recreation Club",
+    category: "restaurant",
+    isLandmark: true,
+    questCritical: true,
+    coordinateSource: "fallback"
+  },
+  {
+    venueId: "frestive_berawa",
+    x: 932,
+    y: 1075,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "frestive_berawa",
+    name: "Frestive Berawa",
+    category: "grocery",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "golden_monkey_chinese_restaurant",
+    x: 920,
+    y: 1218,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "golden_monkey_chinese_restaurant",
+    name: "Golden Monkey Chinese Restaurant",
+    category: "restaurant",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "estimate"
+  },
+  {
+    venueId: "hungry_bird_coffee_roaster",
+    x: 1041,
+    y: 877,
+    radius: 145,
+    areaId: "cafe_cluster",
+    curatedVenueId: "hungry_bird_coffee_roaster",
+    name: "Hungry Bird Coffee Roaster",
+    category: "coffee",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "losteria_funiculi_funicula_canggu",
+    x: 882,
+    y: 1240,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "losteria_funiculi_funicula_canggu",
+    name: "L'Osteria Funiculì Funiculà Canggu",
+    category: "restaurant",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "estimate"
+  },
+  {
+    venueId: "lusa_by_suka",
+    x: 723,
+    y: 1323,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "lusa_by_suka",
+    name: "Lusa By Suka",
+    category: "cafe",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "estimate"
+  },
+  {
+    venueId: "macan_cafe",
+    x: 976,
+    y: 1173,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "macan_cafe",
+    name: "Macan Cafe",
+    category: "cafe",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "estimate"
+  },
+  {
+    venueId: "manggis_in_canggu",
+    x: 882,
+    y: 1054,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "manggis_in_canggu",
+    name: "Manggis in Canggu",
+    category: "restaurant",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "matcha_cafe_bali",
+    x: 956,
+    y: 1101,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "matcha_cafe_bali",
+    name: "Matcha Cafe Bali",
+    category: "cafe",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "milk_madu_berawa",
+    x: 1286,
+    y: 1138,
+    radius: 190,
+    areaId: "pantai_berawa",
+    curatedVenueId: "milk_and_madu_berawa",
+    name: "Milk & Madu Berawa",
+    category: "cafe",
+    isLandmark: false,
+    questCritical: true,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "milu_by_nook",
+    x: 1197,
+    y: 1121,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "milu_by_nook",
+    name: "Milu by Nook",
+    category: "cafe",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "monsieur_spoon_berawa",
+    x: 675,
+    y: 645,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "monsieur_spoon_berawa",
+    name: "Monsieur Spoon Berawa",
+    category: "bakery",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "nude_cafe_berawa",
+    x: 985,
+    y: 1075,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "nude",
+    name: "Nude",
+    category: "cafe",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "one_eyed_jack",
+    x: 979,
+    y: 1369,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "one_eyed_jack",
+    name: "One Eyed Jack",
+    category: "restaurant",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "outpost_canggu_coworking",
+    x: 1093,
+    y: 1202,
+    radius: 145,
+    areaId: "cafe_cluster",
+    curatedVenueId: "outpost_canggu_coworking",
+    name: "Outpost Canggu Coworking",
+    category: "coworking",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "estimate"
+  },
+  {
+    venueId: "popular_deli_berawa",
+    x: 1132,
+    y: 1027,
+    radius: 145,
+    areaId: "cafe_cluster",
+    curatedVenueId: "popular_deli_berawa",
+    name: "Popular Deli Berawa",
+    category: "grocery",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "estimate"
+  },
+  {
+    venueId: "ruko_cafe",
+    x: 979,
+    y: 1346,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "ruko_cafe",
+    name: "Ruko Cafe",
+    category: "cafe",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "sari_kitchen_and_community",
+    x: 936,
+    y: 1143,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "sari_kitchen_and_community",
+    name: "Sari Kitchen & Community",
+    category: "cafe",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "estimate"
+  },
+  {
+    venueId: "satu_satu_coffee",
+    x: 1381,
+    y: 866,
+    radius: 190,
+    areaId: "pantai_berawa",
+    curatedVenueId: "satu_satu_coffee_company",
+    name: "Satu-Satu Coffee Company",
+    category: "coffee",
+    isLandmark: false,
+    questCritical: true,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "secret_spot_canggu",
+    x: 680,
+    y: 603,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "secret_spot_canggu",
+    name: "Secret Spot Canggu",
+    category: "cafe",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "synkonah",
+    x: 869,
+    y: 1246,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "synkonah",
+    name: "Synkonah",
+    category: "bar",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "estimate"
+  },
+  {
+    venueId: "the_shady_pig",
+    x: 924,
+    y: 1191,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "the_shady_pig",
+    name: "The Shady Pig",
+    category: "bar",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "estimate"
+  },
+  {
+    venueId: "trattoria_canggu",
+    x: 1324,
+    y: 1322,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "trattoria_canggu",
+    name: "Trattoria Canggu",
+    category: "restaurant",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "tropical_nomad_coworking_space",
+    x: 876,
+    y: 701,
+    radius: 145,
+    areaId: "cafe_cluster",
+    curatedVenueId: "tropical_nomad_coworking_space",
+    name: "Tropical Nomad Coworking Space",
+    category: "coworking",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "two_trees_eatery",
+    x: 774,
+    y: 1310,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "two_trees_eatery",
+    name: "Two Trees Eatery",
+    category: "cafe",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "estimate"
+  },
+  {
+    venueId: "tygr_sushi_berawa",
+    x: 1053,
+    y: 1114,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "tygr_sushi_berawa",
+    name: "Tygr Sushi Berawa",
+    category: "restaurant",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "ulekan_berawa",
+    x: 1146,
+    y: 1099,
+    radius: 145,
+    areaId: "tegal_sari",
+    curatedVenueId: "ulekan",
+    name: "Ulekan",
+    category: "restaurant",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "osm"
+  },
+  {
+    venueId: "wild_habit_pizza",
+    x: 908,
+    y: 1225,
+    radius: 145,
+    areaId: "pantai_berawa",
+    curatedVenueId: "wild_habit_pizza",
+    name: "Wild Habit Pizza",
+    category: "restaurant",
+    isLandmark: false,
+    questCritical: false,
+    coordinateSource: "estimate"
   }
 ];
