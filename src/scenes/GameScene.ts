@@ -21,7 +21,12 @@ import { ScriptedDialogueProvider, type DialogueProvider } from "../systems/dial
 import { InteractionController, type InteractionTarget } from "../systems/interaction/InteractionController";
 import { InputController, type GameKeyMap } from "../systems/input/InputController";
 import { IntentDispatcher, type IntentResult } from "../systems/intents/IntentDispatcher";
-import { getVenueFootprint } from "../systems/map/VenuePresentation";
+import {
+  computeVenuePresentationLayout,
+  getVenueFootprint,
+  type MapPoint,
+  type VenuePresentationPlacement
+} from "../systems/map/VenuePresentation";
 import { getRelationship } from "../systems/relationships/RelationshipMemory";
 import {
   clearWantedStanding,
@@ -500,47 +505,112 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawCuratedVenueBuildings(g: Phaser.GameObjects.Graphics): void {
-    for (const node of curatedVenueNodes) {
-      if (node.category === "beach") {
-        this.drawBeachVenueMarker(g, node);
+    for (const placement of computeVenuePresentationLayout(curatedVenueNodes, berawaRoads)) {
+      if (placement.node.category === "beach") {
+        this.drawBeachVenueMarker(g, placement.node);
       } else {
-        this.drawCuratedVenueBuilding(g, node);
+        this.drawCuratedVenueBuilding(g, placement);
       }
     }
   }
 
-  private drawCuratedVenueBuilding(g: Phaser.GameObjects.Graphics, node: CuratedVenueMapNode): void {
-    const size = getVenueFootprint(node);
-    const x = node.x - size.width / 2;
-    const y = node.y - size.height / 2;
+  private drawCuratedVenueBuilding(g: Phaser.GameObjects.Graphics, placement: VenuePresentationPlacement): void {
+    const { node } = placement;
+    const size = placement;
     const palette = this.venuePalette(node.category);
     const corner = node.isLandmark ? 10 : 6;
 
     g.fillStyle(0x1b1713, 0.22);
-    g.fillRoundedRect(x + 7, y + 10, size.width, size.height, corner);
+    this.fillPlacedRect(g, placement, 7, 10, size.width, size.height, 0x1b1713, 0.22);
     g.fillStyle(palette.wall, 1);
-    g.fillRoundedRect(x, y, size.width, size.height, corner);
+    this.fillPlacedRect(g, placement, 0, 0, size.width, size.height, palette.wall, 1);
     g.fillStyle(palette.roof, 1);
-    g.fillRoundedRect(x - 5, y - 11, size.width + 10, Math.max(18, size.height * 0.34), corner);
+    this.fillPlacedRect(g, placement, 0, -size.height * 0.34, size.width + 10, Math.max(18, size.height * 0.34), palette.roof, 1);
 
     g.fillStyle(0x2b2a26, 0.72);
-    g.fillRoundedRect(node.x - 7, y + size.height - 18, 14, 18, 4);
+    this.fillPlacedRect(g, placement, 0, -size.height / 2 + 9, 14, 18, 0x2b2a26, 0.72);
     g.fillStyle(0xf7e7ad, 0.85);
-    g.fillRoundedRect(x + size.width * 0.18, y + size.height * 0.42, 12, 10, 3);
-    g.fillRoundedRect(x + size.width * 0.68, y + size.height * 0.42, 12, 10, 3);
+    this.fillPlacedRect(g, placement, -size.width * 0.26, size.height * 0.08, 12, 10, 0xf7e7ad, 0.85);
+    this.fillPlacedRect(g, placement, size.width * 0.26, size.height * 0.08, 12, 10, 0xf7e7ad, 0.85);
 
     if (node.isLandmark) {
       g.lineStyle(3, 0xf6d67a, 0.82);
-      g.strokeRoundedRect(x - 4, y - 15, size.width + 8, size.height + 19, corner + 2);
+      this.strokePlacedRect(g, placement, 0, -2, size.width + 8, size.height + 12);
     } else if (node.questCritical) {
       g.lineStyle(2, 0xf7f1d2, 0.58);
-      g.strokeRoundedRect(x - 2, y - 13, size.width + 4, size.height + 15, corner + 1);
+      this.strokePlacedRect(g, placement, 0, -2, size.width + 4, size.height + 10);
     }
 
     if (node.coordinateSource === "estimate" || node.coordinateSource === "fallback") {
       g.fillStyle(node.coordinateSource === "estimate" ? 0xf0b35f : 0xb8b4a1, 0.92);
-      g.fillCircle(x + size.width - 7, y + 7, 4);
+      const marker = this.localToWorld(placement, size.width / 2 - 7, -size.height / 2 + 7);
+      g.fillCircle(marker.x, marker.y, 4);
     }
+  }
+
+  private fillPlacedRect(
+    g: Phaser.GameObjects.Graphics,
+    placement: VenuePresentationPlacement,
+    offsetX: number,
+    offsetY: number,
+    width: number,
+    height: number,
+    color: number,
+    alpha: number
+  ): void {
+    const points = this.placedRectPoints(placement, offsetX, offsetY, width, height);
+    g.fillStyle(color, alpha);
+    g.beginPath();
+    g.moveTo(points[0].x, points[0].y);
+    for (const point of points.slice(1)) {
+      g.lineTo(point.x, point.y);
+    }
+    g.closePath();
+    g.fillPath();
+  }
+
+  private strokePlacedRect(
+    g: Phaser.GameObjects.Graphics,
+    placement: VenuePresentationPlacement,
+    offsetX: number,
+    offsetY: number,
+    width: number,
+    height: number
+  ): void {
+    const points = this.placedRectPoints(placement, offsetX, offsetY, width, height);
+    g.beginPath();
+    g.moveTo(points[0].x, points[0].y);
+    for (const point of points.slice(1)) {
+      g.lineTo(point.x, point.y);
+    }
+    g.closePath();
+    g.strokePath();
+  }
+
+  private placedRectPoints(
+    placement: VenuePresentationPlacement,
+    offsetX: number,
+    offsetY: number,
+    width: number,
+    height: number
+  ): MapPoint[] {
+    const left = offsetX - width / 2;
+    const right = offsetX + width / 2;
+    const top = offsetY - height / 2;
+    const bottom = offsetY + height / 2;
+    return [
+      this.localToWorld(placement, left, top),
+      this.localToWorld(placement, right, top),
+      this.localToWorld(placement, right, bottom),
+      this.localToWorld(placement, left, bottom)
+    ];
+  }
+
+  private localToWorld(placement: VenuePresentationPlacement, localX: number, localY: number): MapPoint {
+    return {
+      x: placement.x + placement.tangent.x * localX + placement.outwardNormal.x * localY,
+      y: placement.y + placement.tangent.y * localX + placement.outwardNormal.y * localY
+    };
   }
 
   private drawBeachVenueMarker(g: Phaser.GameObjects.Graphics, node: CuratedVenueMapNode): void {
