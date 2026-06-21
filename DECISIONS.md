@@ -51,3 +51,19 @@ The OSM generator is parameterized by neighborhood id, anchors, fallback bbox, w
 ## 2026-06-20 - OpenStreetMap Attribution
 
 The project now carries the required attribution text, `Map data © OpenStreetMap contributors`, in README and in the in-game Phone Community tab. Venue quality/rating fields remain manually seeded or `needs_verification`; no Google data, Google scraping, or live venue claims were added.
+
+## 2026-06-21 - Curated Venue Map Spine
+
+`src/data/curatedVenues.ts` is now the rendered Berawa venue spine. The existing `src/data/venues.ts` catalog remains authoritative for gameplay descriptions, NPC links, items, quests, and placeholder commerce/check-in seams; the curated file supplies the broader rendered venue list, quality threshold, geocode queries, and the `shouldRender` rule.
+
+## 2026-06-21 - OSM-First Coordinate Cascade
+
+The offline generator resolves curated venue coordinates through cached OSM POI matching first, then cached Nominatim attempts, then flagged `estimatedCoord`, then flagged area fallback. `data/osm/berawa.curated-coords.json` is committed as the reviewable source breakdown. Estimate/fallback coordinates are not treated as verified pins and remain the manual-check shortlist.
+
+## 2026-06-21 - Venue-Framed Projection
+
+The generated bbox is now derived from resolved curated venue coordinates with padding, then the larger committed OSM extract is filtered to that frame before projection. This keeps the runtime map north-up and uniform-scale while making the playable slice feel closer and more local to the curated Berawa venue cloud.
+
+## 2026-06-21 - Simple Curated Buildings Over Box-Soup
+
+The old hand-placed market/building/decor render pass is no longer called. Runtime map art is baked once as roads, stylized beach/ocean, low-cost greenery, and one simple building per rendered curated venue. Existing shops, NPC stops, pickups, and spawn still resolve through `venueMapNodes` and `layoutLookup` so current gameplay IDs remain stable.

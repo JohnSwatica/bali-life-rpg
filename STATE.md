@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-06-20
+Last updated: 2026-06-21
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -13,12 +13,16 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
-- Current branch for OSM map work: `feat/osm-map`.
+- Current branch for curated locality map work: `feat/curated-locality-map`.
 
 ## What Was Added Recently
 
 - Git is now initialized locally. Baseline and every sprint phase are committed.
-- Berawa layout is now generated from OpenStreetMap data by `scripts/generateLayoutFromOSM.ts`; runtime consumes static generated data from `src/data/berawaLayout.ts`.
+- Berawa layout is now generated from OpenStreetMap data plus `src/data/curatedVenues.ts` by `scripts/generateLayoutFromOSM.ts`; runtime consumes static generated data from `src/data/berawaLayout.ts`.
+- Curated coordinate resolution is cached at `data/osm/berawa.curated-coords.json`: 41 rendered venues, 23 OSM POI matches, 0 Nominatim matches, 15 flagged estimates, and 3 flagged fallbacks. The estimate/fallback list is the manual-check shortlist, not live truth.
+- The generated bbox is now framed to the curated venue cloud and filters the larger OSM cache to 923 road paths.
+- Runtime map art now renders baked roads, beach/ocean, greenery, and one simple blocky building per rendered curated venue through `curatedVenueNodes`. The old hand-placed market/building/decor layer is no longer called.
+- Static map geometry is generated once into a texture; camera zoom is tuned closer, and dynamic NPC/pickup/traffic/group/wanted sprites are culled off-camera.
 - OSM/Nominatim/Overpass caches are committed under `data/osm/`, including the required raw Overpass extract at `data/osm/berawa.overpass.json`.
 - The generated map is north-up with a uniform projection into the existing `2400 x 1700` world. Orientation sanity in the report confirms beach lower/SW, Nelayan north, and Tegal Sari east of the beach side.
 - Map data attribution is present in README and the Phone Community tab: `Map data © OpenStreetMap contributors`.
@@ -47,7 +51,8 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Phone UI: `src/ui/phone/PhoneShell.ts`
 - Berawa layout data: `src/data/berawaLayout.ts`
 - OSM generator: `scripts/generateLayoutFromOSM.ts`
-- OSM cache/report: `data/osm/berawa.overpass.json`, `data/osm/berawa.anchors.json`, `data/osm/berawa.layout-report.json`
+- OSM cache/report: `data/osm/berawa.overpass.json`, `data/osm/berawa.anchors.json`, `data/osm/berawa.curated-coords.json`, `data/osm/berawa.curated-geocode.json`, `data/osm/berawa.layout-report.json`
+- Curated venue catalog: `src/data/curatedVenues.ts`
 - Berawa coordinate plan: `docs/BERAWA_MAP_PLAN.md`
 - Decisions log: `DECISIONS.md`
 
@@ -66,14 +71,18 @@ Copy/paste this into a new AI session to bring it up to speed.
 - `749bbfb` - `feat: load OSM-generated Berawa layout in game`
 - `ca73198` - `chore: align discovery/fog with OSM layout`
 - `1219cf0` - `docs: OSM attribution and regenerated map plan`
+- `2eb1f04` - `feat: resolve curated venue coordinates (osm-first cascade)`
+- `b787716` - `feat: frame map bbox to curated venues and reproject`
+- `f2c11a1` - `feat: render curated venues as simple buildings at real positions`
+- `6b054bb` - `perf: bake static map and tune camera scale`
 
 ## Current Verification
 
 - `npm run build` passed after every phase above and after the final verification fixes.
-- `npm run generate:layout` runs from the committed cache and rewrites `src/data/berawaLayout.ts`.
+- `npm run generate:layout` runs from the committed cache and rewrites `src/data/berawaLayout.ts`, `data/osm/berawa.curated-coords.json`, and `data/osm/berawa.layout-report.json`.
 - Cache-only generator rerun is deterministic; SHA-256 hashes for `src/data/berawaLayout.ts` and `data/osm/berawa.layout-report.json` matched before/after rerun.
-- OSM report currently shows 1,476 road paths, 7,081 shared OSM road nodes, 7,278 road segments, and 875 POIs in the cached extract.
-- Curated venue matching: 7 matched via anchor/OSM POI, 4 use honest fallback placement (`baked_berawa`, `bali_family_rental_scooter`, `finns_recreation_club`, `mowies_berawa`).
+- OSM report currently shows 923 road paths, 4,417 shared OSM road nodes, 4,562 road segments, and 618 POIs after filtering the larger cache to the curated venue frame.
+- Curated venue coordinate matching: 23 OSM POI matches, 0 Nominatim matches, 15 flagged estimates, and 3 flagged fallbacks. All 41 `shouldRender` venues have generated building nodes.
 - Runtime source check found OSM/Nominatim/Overpass URLs and `fetch` only in `scripts/generateLayoutFromOSM.ts`, not game runtime code.
 - Source grep confirms no code path reads removed flat `playerState.reputation`, `playerState.wantedLevel`, `playerState.bounty`, `playerState.flaggedByVictims`, or `playerState.lastFlagReason` fields.
 - v1/v2 save migration maps old standing fields into schema v3 `WorldState.reputation` and strips legacy flat standing keys from the hydrated local player.
@@ -102,8 +111,8 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Phone UI is functional but still a shell; it is not a polished production phone app.
 - Godmode is simple and development-only.
 - Map discovery is a foundation, not a full minimap.
-- The road network is real OSM geometry, but decorative buildings/collision rectangles are still from the older hand-authored art pass and need a later alignment pass.
-- Four curated venues use generated-area fallback placement because the current Nominatim/OSM cache did not find exact POIs. See `data/osm/berawa.layout-report.json`.
+- The road network is real OSM geometry and the building layer now follows the curated venue coordinates, but the beach/ocean shape is still a stylized static band rather than an OSM coastline geometry.
+- Eighteen curated coordinates still need manual review because they resolved via flagged estimate/fallback rather than OSM/Nominatim. See `data/osm/berawa.curated-coords.json`.
 - Venue rating/review fields are data-only. There is no Google Places API, scraping, live verification, or live venue ranking.
 - Multiplayer is intentionally locked and inert.
 - Venue commerce/check-in/booking/delivery fields are placeholders only.
@@ -118,7 +127,7 @@ Copy/paste this into a new AI session to bring it up to speed.
    - Trigger traffic-bike collision and judge knockback/shake/splash timing.
    - Click all six HUD buttons with the real Mac trackpad/mouse.
    - Try the mobile HUD on an actual phone, especially tall screens.
-   - Drive around and judge whether the OSM road network reads as recognizably Berawa.
+   - Drive around and judge whether the OSM road network plus curated venue buildings read as recognizably Berawa.
    - Open Phone > Venues > Details and inspect discovery filtering plus associated NPCs/items/quests visually.
    - Build NPC affinity through memory and confirm Contacts/dialogue feel readable.
 
@@ -127,7 +136,8 @@ Copy/paste this into a new AI session to bring it up to speed.
    - Add focused tests around `QuestRegistry`, `Persistence`, `InteractionController`, and `ReputationState`.
 
 3. Continue Berawa credibility:
-   - Align building art and collision rectangles more closely to `berawaLayout.ts` nodes.
+   - Manually verify the flagged coordinates in `data/osm/berawa.curated-coords.json`, especially estimate/fallback entries.
+   - Replace the stylized beach band with OSM coastline/beach geometry if it is available in a refreshed extract.
    - Replace old hardcoded traffic lanes with generated road-following paths.
    - Curate a small verified venue file before adding more real-world-name candidates.
    - Add a compact map UI only after discovery state is stable.
@@ -143,27 +153,27 @@ Copy/paste this into a new AI session to bring it up to speed.
 Title:
 
 ```text
-Consolidate reputation and bring Berawa slice alive
+Rebuild Berawa map around curated real-local venues
 ```
 
 Summary:
 
 ```text
-- Initialize local git and checkpoint the pre-sprint baseline.
-- Unify standing data under canonical WorldState.reputation with schema v3 migration from legacy flat player fields.
-- Move starter quest branching into QuestRegistry and extract InputController, InteractionController, and HudController from GameScene.
-- Add Phone venue detail pages, tiered NPC relationship dialogue, and Contacts memory summaries.
-- Reconcile Berawa beach direction as a documented southwest gameplay compression.
-- Scaffold cooking/crafting data and helper system without exposing a full UI/minigame yet.
-- Update STATE.md and DECISIONS.md.
+- Add src/data/curatedVenues.ts as the rendered venue catalog.
+- Resolve curated venue coordinates through an OSM-first generator cascade and commit berawa.curated-coords.json.
+- Frame the generated bbox to the curated venue cloud and filter the larger OSM road cache to the playable frame.
+- Render one simple blocky building per shouldRender venue while preserving existing gameplay venue IDs through layoutLookup.
+- Bake the static map into one texture, tune camera zoom, and cull off-camera dynamic objects.
+- Update README, BERAWA_MAP_PLAN, STATE.md, and DECISIONS.md.
 ```
 
 Test notes:
 
 ```text
 - npm run build after every phase
-- Source checks for removed flat reputation reads
-- Local headless Chrome DevTools fallback verified map load, keyboard phone controls, mouse/touch HUD controls, v1 to v3 migration, both starter quests, reputation/memory rewards, and godmode
+- npm run generate:layout deterministic from committed cache
+- Source/runtime checks for no OSM/Nominatim/Overpass calls outside scripts
+- Browser smoke verified map load, static baked map texture, phone open/close, shops/quests, save migration, and godmode
 ```
 
 ## Do Not Do Next

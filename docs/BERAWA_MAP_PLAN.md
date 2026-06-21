@@ -1,14 +1,17 @@
 # Berawa Map Plan
 
-This playable Berawa slice is now generated from OpenStreetMap data, not hand-invented road coordinates. It is still compressed into the existing `2400 x 1700` world so the current Phaser camera, saves, movement, shops, NPCs, and discovery systems remain stable.
+This playable Berawa slice is now generated from OpenStreetMap data plus a curated Berawa venue catalog, not hand-invented road coordinates. It is still compressed into the existing `2400 x 1700` world so the current Phaser camera, saves, movement, shops, NPCs, and discovery systems remain stable.
 
 Map data © OpenStreetMap contributors.
 
 ## Source Data
 
 - Generator: `scripts/generateLayoutFromOSM.ts`
+- Curated venue catalog: `src/data/curatedVenues.ts`
 - Generated runtime layout: `src/data/berawaLayout.ts`
 - Cached geocoded anchors: `data/osm/berawa.anchors.json`
+- Cached curated geocode attempts: `data/osm/berawa.curated-geocode.json`
+- Resolved curated venue coordinates: `data/osm/berawa.curated-coords.json`
 - Cached Overpass extract: `data/osm/berawa.overpass.json`
 - Generation report: `data/osm/berawa.layout-report.json`
 
@@ -16,13 +19,13 @@ The game never calls OSM, Nominatim, or Overpass at runtime. `npm run build` rea
 
 ## Current Bbox
 
-The generator resolves real anchors through Nominatim, verifies them against the seed bbox, pads the resolved extent, and then queries Overpass once. The current generated bbox is:
+The generator resolves every curated venue through an OSM-first cascade, frames the projection to the resolved venue cloud, and filters the larger committed Overpass extract to that gameplay frame. The current generated bbox is:
 
 ```text
-south = -8.669993906
-west  = 115.131881408
-north = -8.640953394
-east  = 115.156409792
+south = -8.670936365
+west  = 115.129708015
+north = -8.648184935
+east  = 115.150871885
 ```
 
 Seed/fallback bbox if geocoding is incomplete:
@@ -59,10 +62,20 @@ pad = 80
 - `berawaRoads`
 - `berawaAreas`
 - `venueMapNodes`
+- `curatedVenueNodes`
 
 Internally, the generator keys road vertices by OSM node id before emitting path data. That means OSM ways that share a node project to the same game coordinate, so real junctions connect rather than drifting apart.
 
-Curated venue content in `src/data/venues.ts` remains authoritative for names, descriptions, NPC links, items, quests, and quality fields. The generator only supplies map positions. If a curated venue cannot be matched to a geocoded anchor or named OSM POI, it is placed near its generated area and listed in `data/osm/berawa.layout-report.json`.
+Curated venue content in `src/data/venues.ts` remains authoritative for existing gameplay names, descriptions, NPC links, items, quests, and quality fields. `src/data/curatedVenues.ts` supplies the rendered map venue set, quality threshold, and geocode queries. The coordinate cascade is:
+
+1. Match the venue name against cached OSM POIs from `data/osm/berawa.overpass.json`.
+2. Else use cached Nominatim results from `data/osm/berawa.curated-geocode.json`.
+3. Else use `estimatedCoord` and flag it as unverified.
+4. Else place near the venue area and flag it for manual correction.
+
+The current coordinate summary is 41 rendered venues: 23 OSM POI matches, 0 Nominatim matches, 15 flagged estimates, and 3 flagged fallbacks. The manual-check list lives in `data/osm/berawa.curated-coords.json`.
+
+Runtime rendering is intentionally simple: one blocky building per `shouldRender` curated venue, plus baked roads, beach/ocean, and low-cost greenery. The old hand-placed building/market/decor layer is no longer called.
 
 ## Discovery Rules
 
@@ -79,7 +92,7 @@ Use the committed cache for normal deterministic regeneration:
 npm run generate:layout
 ```
 
-The command rewrites `src/data/berawaLayout.ts` and `data/osm/berawa.layout-report.json`. A cache-only rerun should be deterministic.
+The command rewrites `src/data/berawaLayout.ts`, `data/osm/berawa.curated-coords.json`, and `data/osm/berawa.layout-report.json`. A cache-only rerun should be deterministic.
 
 Only refresh from OSM services intentionally:
 
@@ -110,7 +123,6 @@ The runtime should keep consuming generated data catalogs rather than hand-placi
 
 ## Next Map Pass
 
-- Move decorative buildings/collision art closer to generated venue nodes.
+- Manually verify or correct the flagged estimate/fallback coordinates in `data/osm/berawa.curated-coords.json`.
 - Replace old hardcoded traffic lanes with road-following paths.
-- Curate fallback venue placements that were not found by Nominatim/OSM POIs.
 - Add a compact phone map only after discovery state remains stable on the OSM layout.
