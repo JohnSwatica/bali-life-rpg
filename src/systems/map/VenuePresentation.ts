@@ -18,6 +18,7 @@ export interface VenuePresentationPlacement extends VenueFootprint {
   y: number;
   tangent: MapPoint;
   outwardNormal: MapPoint;
+  tangentSlide: number;
   snappedToRoad: boolean;
   roadId: string | null;
   roadName: string | null;
@@ -31,13 +32,16 @@ export const PLAYER_PRESENTATION_FOOTPRINT: VenueFootprint = {
 };
 
 export const BUILDING_SCALE_MULTIPLES = {
-  normal: { width: 2.0, height: 1.5 },
-  wide: { width: 2.3, height: 1.55 },
-  questCritical: { width: 2.45, height: 1.65 },
+  normal: { width: 1.55, height: 1.3 },
+  wide: { width: 1.8, height: 1.4 },
+  questCritical: { width: 2.1, height: 1.5 },
   landmark: { width: 5.0, height: 3.0 },
   beachLandmark: { width: 4.6, height: 2.2 },
   beachMarker: { width: 2.4, height: 1.25 }
 } as const;
+
+export const ROADSIDE_BUILDING_GAP = 8;
+export const MAX_ROADSIDE_TANGENT_SLIDE = 120;
 
 export function getVenueFootprint(node: CuratedVenueMapNode): VenueFootprint {
   if (node.category === "beach") {
@@ -63,7 +67,7 @@ export function computeVenuePresentationLayout(
   nodes: CuratedVenueMapNode[],
   roads: RoadPathDefinition[]
 ): VenuePresentationPlacement[] {
-  return nodes.map((node) => placeVenueBesideRoad(node, roads));
+  return resolveRoadsideOverlaps(nodes.map((node) => placeVenueBesideRoad(node, roads)));
 }
 
 function placeVenueBesideRoad(node: CuratedVenueMapNode, roads: RoadPathDefinition[]): VenuePresentationPlacement {
@@ -99,6 +103,7 @@ function placeVenueBesideRoad(node: CuratedVenueMapNode, roads: RoadPathDefiniti
     y: Math.round(nearest.closest.y + outwardNormal.y * offset),
     tangent: nearest.tangent,
     outwardNormal,
+    tangentSlide: 0,
     snappedToRoad: true,
     roadId: nearest.roadId,
     roadName: nearest.roadName,
@@ -124,12 +129,205 @@ function createUnsnappedPlacement(node: CuratedVenueMapNode, footprint: VenueFoo
     y: node.y,
     tangent: { x: 1, y: 0 },
     outwardNormal: { x: 0, y: 1 },
+    tangentSlide: 0,
     snappedToRoad: false,
     roadId: null,
     roadName: null,
     roadWidth: 0,
     distanceFromRoad: 0
   };
+}
+
+function resolveRoadsideOverlaps(placements: VenuePresentationPlacement[]): VenuePresentationPlacement[] {
+  const resolved = placements.map((placement) => ({ ...placement }));
+  packRoadsideRows(resolved);
+  const passes = 24;
+
+  for (let pass = 0; pass < passes; pass += 1) {
+    let changed = false;
+    for (let aIndex = 0; aIndex < resolved.length; aIndex += 1) {
+      for (let bIndex = aIndex + 1; bIndex < resolved.length; bIndex += 1) {
+        const a = resolved[aIndex];
+        const b = resolved[bIndex];
+        if (a.node.category === "beach" || b.node.category === "beach") {
+          continue;
+        }
+
+        const overlap = getOrientedOverlap(a, b);
+        if (!overlap.overlaps) {
+          continue;
+        }
+
+        const separation = Math.min(42, Math.max(8, overlap.depth + ROADSIDE_BUILDING_GAP));
+        const movedA = slidePlacementAwayFrom(a, b, separation / 2);
+        const movedB = slidePlacementAwayFrom(b, a, separation / 2);
+        changed = movedA || movedB || changed;
+      }
+    }
+
+    if (!changed) {
+      break;
+    }
+  }
+
+  return resolved.map((placement) => ({
+    ...placement,
+    x: Math.round(placement.x),
+    y: Math.round(placement.y)
+  }));
+}
+
+function packRoadsideRows(placements: VenuePresentationPlacement[]): void {
+  const groups = new Map<string, VenuePresentationPlacement[]>();
+  for (const placement of placements) {
+    if (!placement.snappedToRoad || !placement.roadId || placement.node.category === "beach") {
+      continue;
+    }
+    const normalKey = `${Math.round(placement.outwardNormal.x * 5)}:${Math.round(placement.outwardNormal.y * 5)}`;
+    const key = `${placement.roadId}:${normalKey}`;
+    const group = groups.get(key) ?? [];
+    group.push(placement);
+    groups.set(key, group);
+  }
+
+  for (const group of groups.values()) {
+    if (group.length < 2) {
+      continue;
+    }
+    const referenceTangent = group[0].tangent;
+    for (let pass = 0; pass < 8; pass += 1) {
+      let changed = false;
+      group.sort((a, b) => dot(a, referenceTangent) - dot(b, referenceTangent));
+
+      for (let index = 1; index < group.length; index += 1) {
+        const previous = group[index - 1];
+        const current = group[index];
+        const previousScalar = dot(previous, referenceTangent);
+        const currentScalar = dot(current, referenceTangent);
+        const normalDistance = Math.abs(dot({ x: current.x - previous.x, y: current.y - previous.y }, previous.outwardNormal));
+        const normalLimit = (previous.height + current.height) / 2 + ROADSIDE_BUILDING_GAP;
+        if (normalDistance >= normalLimit) {
+          continue;
+        }
+
+        const requiredScalarGap = (previous.width + current.width) / 2 + ROADSIDE_BUILDING_GAP;
+        const overlap = previousScalar + requiredScalarGap - currentScalar;
+        if (overlap <= 0) {
+          continue;
+        }
+
+        const currentMoved = slideAlongReferenceTangent(current, referenceTangent, overlap);
+        const leftover = overlap - currentMoved;
+        if (leftover > 0) {
+          changed = slideAlongReferenceTangent(previous, referenceTangent, -leftover) > 0 || changed;
+        }
+        changed = currentMoved > 0 || changed;
+      }
+
+      if (!changed) {
+        break;
+      }
+    }
+  }
+}
+
+function slidePlacementAwayFrom(
+  placement: VenuePresentationPlacement,
+  other: VenuePresentationPlacement,
+  requestedDistance: number
+): boolean {
+  if (!placement.snappedToRoad) {
+    return false;
+  }
+
+  const remaining = MAX_ROADSIDE_TANGENT_SLIDE - Math.abs(placement.tangentSlide);
+  if (remaining <= 0) {
+    return false;
+  }
+
+  const delta = {
+    x: placement.x - other.x,
+    y: placement.y - other.y
+  };
+  const direction = dot(delta, placement.tangent) >= 0 ? 1 : -1;
+  return applySignedTangentSlide(placement, direction * Math.min(remaining, requestedDistance)) > 0;
+}
+
+function slideAlongReferenceTangent(
+  placement: VenuePresentationPlacement,
+  referenceTangent: MapPoint,
+  signedDistance: number
+): number {
+  const direction = dot(referenceTangent, placement.tangent) >= 0 ? 1 : -1;
+  return applySignedTangentSlide(placement, signedDistance * direction);
+}
+
+function applySignedTangentSlide(placement: VenuePresentationPlacement, signedDistance: number): number {
+  const remaining = MAX_ROADSIDE_TANGENT_SLIDE - Math.abs(placement.tangentSlide);
+  if (remaining <= 0 || signedDistance === 0) {
+    return 0;
+  }
+
+  const distance = Math.sign(signedDistance) * Math.min(remaining, Math.abs(signedDistance));
+  placement.x += placement.tangent.x * distance;
+  placement.y += placement.tangent.y * distance;
+  placement.tangentSlide += distance;
+  return Math.abs(distance);
+}
+
+export function getVenuePlacementCorners(placement: VenuePresentationPlacement): MapPoint[] {
+  const halfWidth = placement.width / 2;
+  const halfHeight = placement.height / 2;
+  return [
+    placementLocalToWorld(placement, -halfWidth, -halfHeight),
+    placementLocalToWorld(placement, halfWidth, -halfHeight),
+    placementLocalToWorld(placement, halfWidth, halfHeight),
+    placementLocalToWorld(placement, -halfWidth, halfHeight)
+  ];
+}
+
+export function venuePlacementsOverlap(a: VenuePresentationPlacement, b: VenuePresentationPlacement): boolean {
+  return getOrientedOverlap(a, b).overlaps;
+}
+
+function getOrientedOverlap(
+  a: VenuePresentationPlacement,
+  b: VenuePresentationPlacement
+): { overlaps: boolean; depth: number } {
+  const aCorners = getVenuePlacementCorners(a);
+  const bCorners = getVenuePlacementCorners(b);
+  const axes = [a.tangent, a.outwardNormal, b.tangent, b.outwardNormal];
+  let minDepth = Number.POSITIVE_INFINITY;
+
+  for (const axis of axes) {
+    const aProjection = projectPolygon(aCorners, axis);
+    const bProjection = projectPolygon(bCorners, axis);
+    const depth = Math.min(aProjection.max, bProjection.max) - Math.max(aProjection.min, bProjection.min);
+    if (depth <= 0) {
+      return { overlaps: false, depth: 0 };
+    }
+    minDepth = Math.min(minDepth, depth);
+  }
+
+  return { overlaps: true, depth: minDepth };
+}
+
+function placementLocalToWorld(placement: VenuePresentationPlacement, localX: number, localY: number): MapPoint {
+  return {
+    x: placement.x + placement.tangent.x * localX + placement.outwardNormal.x * localY,
+    y: placement.y + placement.tangent.y * localX + placement.outwardNormal.y * localY
+  };
+}
+
+function projectPolygon(points: MapPoint[], axis: MapPoint): { min: number; max: number } {
+  let min = dot(points[0], axis);
+  let max = min;
+  for (const point of points.slice(1)) {
+    const projected = dot(point, axis);
+    min = Math.min(min, projected);
+    max = Math.max(max, projected);
+  }
+  return { min, max };
 }
 
 interface NearestRoadSegment {
