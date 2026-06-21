@@ -66,4 +66,8 @@ The generated bbox is now derived from resolved curated venue coordinates with p
 
 ## 2026-06-21 - Simple Curated Buildings Over Box-Soup
 
-The old hand-placed market/building/decor render pass is no longer called. Runtime map art is baked once as roads, stylized beach/ocean, low-cost greenery, and one simple building per rendered curated venue. Existing shops, NPC stops, pickups, and spawn still resolve through `venueMapNodes` and `layoutLookup` so current gameplay IDs remain stable.
+The old hand-placed market/building/decor render pass is no longer called. Runtime map art is baked once as roads, low-cost greenery, and one simple building per rendered curated venue. Existing shops, NPC stops, pickups, and spawn still resolve through `venueMapNodes` and `layoutLookup` so current gameplay IDs remain stable.
+
+## 2026-06-21 - OSM Beach And Coastline Features
+
+The offline Overpass extract now includes bounded POI ways/relations plus specific OSM beach, coastline, and water ways. The generated runtime layout exports `berawaMapFeatures`, and `GameScene` draws the beach/ocean edge from those static features when present. This keeps runtime offline and data-driven while replacing the previous fixed rectangular beach band. Water collision remains a later pass rather than blocking this visual credibility improvement.

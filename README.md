@@ -30,7 +30,7 @@ http://127.0.0.1:5173/
 
 ## Current Vertical Slice
 
-- Top-down neighborhood map: OSM-sourced Berawa road geometry projected into a compressed Jl. Pantai Berawa / FINNS-area slice with Berawa Beach edge and simple blocky buildings for the curated venue set.
+- Top-down neighborhood map: OSM-sourced Berawa road, beach, coastline, and water geometry projected into a compressed Jl. Pantai Berawa / FINNS-area slice with simple blocky buildings for the curated venue set.
 - Player movement with keyboard and touch controls.
 - NPCs with daily routines:
   - Ibu Sari: Canggu Station grocer and restock quest giver.
@@ -55,7 +55,7 @@ http://127.0.0.1:5173/
 
 ## Venue Grounding
 
-The current rendered venue set comes from `src/data/curatedVenues.ts`: 41 Berawa-area venues, including 7 game-anchor venues required for quests/shops. The offline generator resolves coordinates OSM-first from the committed Overpass cache, then cached Nominatim, then explicitly flagged estimates/fallbacks in `data/osm/berawa.curated-coords.json`. The game compresses distances and uses fictional NPCs/items for playability.
+The current rendered venue set comes from `src/data/curatedVenues.ts`: 41 Berawa-area venues, including 7 game-anchor venues required for quests/shops. The offline generator resolves coordinates OSM-first from the committed Overpass cache, then cached Nominatim, then explicitly flagged estimates/fallbacks in `data/osm/berawa.curated-coords.json`. The same cache also supplies static OSM beach/coastline/water features. The game compresses distances and uses fictional NPCs/items for playability.
 
 Map data © OpenStreetMap contributors. The generated layout is derived offline from cached OpenStreetMap/Nominatim/Overpass data in `data/osm/`; the game does not make map network calls at runtime.
 

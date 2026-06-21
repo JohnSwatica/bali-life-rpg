@@ -19,7 +19,7 @@ The game never calls OSM, Nominatim, or Overpass at runtime. `npm run build` rea
 
 ## Current Bbox
 
-The generator resolves every curated venue through an OSM-first cascade, frames the projection to the resolved venue cloud, and filters the larger committed Overpass extract to that gameplay frame. The current generated bbox is:
+The generator resolves every curated venue through an OSM-first cascade, frames the projection to the resolved venue cloud, and filters the larger committed Overpass extract to that gameplay frame. The same projection is used for roads, venues, and OSM beach/coastline/water features. The current generated bbox is:
 
 ```text
 south = -8.670936365
@@ -63,6 +63,7 @@ pad = 80
 - `berawaAreas`
 - `venueMapNodes`
 - `curatedVenueNodes`
+- `berawaMapFeatures`
 
 Internally, the generator keys road vertices by OSM node id before emitting path data. That means OSM ways that share a node project to the same game coordinate, so real junctions connect rather than drifting apart.
 
@@ -75,7 +76,9 @@ Curated venue content in `src/data/venues.ts` remains authoritative for existing
 
 The current coordinate summary is 41 rendered venues: 23 OSM POI matches, 0 Nominatim matches, 15 flagged estimates, and 3 flagged fallbacks. The manual-check list lives in `data/osm/berawa.curated-coords.json`.
 
-Runtime rendering is intentionally simple: one blocky building per `shouldRender` curated venue, plus baked roads, beach/ocean, and low-cost greenery. The old hand-placed building/market/decor layer is no longer called.
+Runtime rendering is intentionally simple: one blocky building per `shouldRender` curated venue, plus baked roads, OSM beach/coastline/water features, and low-cost greenery. The old hand-placed building/market/decor layer and dense road-marker layer are no longer called.
+
+The current expanded Overpass cache contributes 934 road paths and 12 terrain features: 5 beach polygons, 4 coastline paths, and 3 water shapes. Beach/coastline rendering is still stylized, but its shape now follows OSM data rather than a fixed rectangular band.
 
 ## Discovery Rules
 
@@ -125,4 +128,5 @@ The runtime should keep consuming generated data catalogs rather than hand-placi
 
 - Manually verify or correct the flagged estimate/fallback coordinates in `data/osm/berawa.curated-coords.json`.
 - Replace old hardcoded traffic lanes with road-following paths.
+- Add coastline-aware water collision or soft boundaries; the visible coastline is OSM-shaped, but collision remains conservative.
 - Add a compact phone map only after discovery state remains stable on the OSM layout.
