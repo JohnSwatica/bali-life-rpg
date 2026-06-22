@@ -10,6 +10,7 @@ import { setLifestyleTags } from "../../systems/profile/ProfileState";
 import { getAllVenues, getPriorityVenueCandidates, getVisibleVenues } from "../../systems/venues/VenueRegistry";
 import { getOfflineActivities } from "../../systems/offline/OfflineActivityRegistry";
 import { getAffinityPerk, getAffinityTier, summarizeRelationshipMemories } from "../../systems/relationships/RelationshipMemory";
+import { getSettlingInGoalStates } from "../../systems/life/SettlingInGoals";
 import type { GameEvent, RelationshipMemory, Venue, WorldState } from "../../types";
 
 const PHONE_DEPTH = 1500;
@@ -193,10 +194,19 @@ export class PhoneShell {
   }
 
   private questLines(): string[] {
-    const player = this.options.getWorld().players[this.options.getWorld().localPlayerId];
+    const world = this.options.getWorld();
+    const player = world.players[world.localPlayerId];
     const active = player.activeQuestIds.map((id) => `Active: ${questDefinitions[id]?.title ?? id}`);
     const complete = player.completedQuestIds.map((id) => `Done: ${questDefinitions[id]?.title ?? id}`);
-    return [...active, ...complete].length ? [...active, ...complete] : ["No active quests. Talk to Ibu Sari or Kadek."];
+    const quests = [...active, ...complete].length ? [...active, ...complete] : ["No active quests. Talk to Ibu Sari or Kadek."];
+    const goals = getSettlingInGoalStates(world).map((goal) => `${goal.complete ? "Done" : "Goal"}: ${goal.title} - ${goal.description}`);
+    return [
+      ...quests,
+      "",
+      "Settling In",
+      ...goals,
+      world.life.settledIn ? "Status: settled in. Next chapter teaser: deeper friendships and housing." : "Status: still finding your rhythm."
+    ];
   }
 
   private calendarLines(): string[] {

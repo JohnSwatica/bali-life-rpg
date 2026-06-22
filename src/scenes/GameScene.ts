@@ -36,6 +36,7 @@ import {
   getVenueActivityContext,
   type VenueActivityContext
 } from "../systems/life/ActivityEngine";
+import { getSettlingInGoalTitle, updateSettlingInGoals } from "../systems/life/SettlingInGoals";
 import {
   computeVenuePresentationLayout,
   getVenueFootprint,
@@ -1926,6 +1927,7 @@ export class GameScene extends Phaser.Scene {
       }
       this.openDialogue(npc.name, questInteraction.dialogue);
       if (questInteraction.shouldSave) {
+        this.refreshSettlingInGoals();
         saveWorldState(this.world);
       }
       return;
@@ -2133,9 +2135,10 @@ export class GameScene extends Phaser.Scene {
         );
       }
     }
+    const goalMessage = this.refreshSettlingInGoals(false);
     this.updateLighting();
     saveWorldState(this.world);
-    this.showToast(result.message);
+    this.showToast(goalMessage ? `${result.message} ${goalMessage}` : result.message);
     this.openVenueActivityMenu(context.venueId);
   }
 
@@ -3459,6 +3462,20 @@ export class GameScene extends Phaser.Scene {
 
   private getNearestInteraction(): InteractionTarget | undefined {
     return this.interactionController.getNearestInteraction();
+  }
+
+  private refreshSettlingInGoals(showToast = true): string {
+    const completed = updateSettlingInGoals(this.world);
+    if (completed.length > 0) {
+      const titles = completed.map((id) => getSettlingInGoalTitle(id)).join(", ");
+      const suffix = this.world.life.settledIn ? " Settled in status reached." : "";
+      const message = `Goal complete: ${titles}.${suffix}`;
+      if (showToast) {
+        this.showToast(message);
+      }
+      return message;
+    }
+    return "";
   }
 
   private canSleepHere(): boolean {
