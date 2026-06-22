@@ -163,3 +163,7 @@ This keeps the current social-map foundation self-verifying while avoiding human
 A second additive test batch covers the remaining low-risk helper seams: profile lifestyle-tag normalization, scripted dialogue tier/memory references, the local `NetworkAdapter` stub patch shape, simulated offline activity registry filters, inventory add/remove/format behavior, and world-clock phase/format helpers.
 
 The suite remains deliberately Node-level and deterministic. It does not attempt to assert authored map aesthetics, device screenshots, Phaser camera behavior, or local-Berawa judgment while the human is away.
+
+## 2026-06-22 - Catalog Integrity As Regression Guard
+
+The data layer now has a cross-catalog integrity test that validates record key/id alignment, shop/quest/venue/event/offline/recipe references, reward item IDs, NPC routine bounds, pickup bounds, social activity geometry, and duplicate IDs. This is intentionally about internal consistency only; it does not claim real-world venue accuracy or judge whether the authored street feels right.

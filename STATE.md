@@ -18,7 +18,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 ## What Was Added Recently
 
 - Git is now initialized locally. Baseline and every sprint phase are committed.
-- Core automated test suite added with Vitest. Run it with `npm test`; it currently has 61 passing tests plus 2 intentional skips. Coverage includes save migration v1-v4, starter quest registry flows, canonical reputation transitions, authored street/layout invariants, interaction priority, intent dispatch, event scheduling, relationship memory, venue registry helpers, crafting, profile tag normalization, scripted dialogue, the local network adapter stub, offline activity placeholders, inventory helpers, and world-clock helpers.
+- Core automated test suite added with Vitest. Run it with `npm test`; it currently has 66 passing tests plus 2 intentional skips. Coverage includes save migration v1-v4, starter quest registry flows, canonical reputation transitions, authored street/layout invariants, interaction priority, intent dispatch, event scheduling, relationship memory, venue registry helpers, crafting, profile tag normalization, scripted dialogue, the local network adapter stub, offline activity placeholders, inventory helpers, world-clock helpers, and cross-catalog data integrity.
 - Pivoted the active playable map from the full projected OSM road tangle to an authored `32px` tile street template for `Jl. Pantai Berawa`.
 - OSM/generated coordinates are still committed and used as sequencing/reference data, but runtime now imports `src/data/authoredStreetLayout.ts` instead of `src/data/scaledBerawaLayout.ts`.
 - Added `src/systems/map/TileStreetScale.ts`, which defines `TILE_SIZE = 32`, a `120 x 85` tile world (`3840 x 2720` px), generated original tile art, and street camera zoom values (`1.6` desktop / `1.28` mobile).
@@ -209,7 +209,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 
 2. Continue decomposition carefully:
    - Extract world/render drawing only if behavior can stay identical.
-   - Keep extending the focused tests around `QuestRegistry`, `Persistence`, `InteractionController`, `ReputationState`, `IntentDispatcher`, events, relationships, venues, crafting, profile/dialogue, inventory, and world-clock helpers as those seams evolve.
+   - Keep extending the focused tests around `QuestRegistry`, `Persistence`, `InteractionController`, `ReputationState`, `IntentDispatcher`, events, relationships, venues, crafting, profile/dialogue, inventory, world-clock helpers, and catalog integrity as those seams evolve.
    - Remaining skipped test seams: generic quest objective handlers (`collect`, `visit`, `buy`, `talk`) need a public pure helper before they can be unit-tested without exporting private internals; HUD/minimap anchor math needs a pure viewport-layout helper before it can be tested without a live Phaser canvas.
 
 3. Continue Berawa credibility:
