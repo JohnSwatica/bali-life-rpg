@@ -1,5 +1,5 @@
-import { scaleDistance, scalePoint } from "../systems/map/WorldScale";
-import { venueMapNodes } from "./scaledBerawaLayout";
+import { scalePoint } from "../systems/map/WorldScale";
+import { venueMapNodes } from "./authoredStreetLayout";
 
 export interface LayoutPoint {
   x: number;
@@ -13,5 +13,5 @@ export function getVenuePoint(venueId: string, fallback: LayoutPoint): LayoutPoi
 
 export function offsetVenuePoint(venueId: string, fallback: LayoutPoint, dx = 0, dy = 0): LayoutPoint {
   const point = getVenuePoint(venueId, fallback);
-  return { x: point.x + scaleDistance(dx), y: point.y + scaleDistance(dy) };
+  return { x: point.x + dx, y: point.y + dy };
 }

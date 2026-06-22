@@ -22,6 +22,7 @@ const JL_PANTAI_BERAWA_BASE: Omit<StreetTemplate, "slots"> = {
 
 const SLOT_TOP_TILE = 6;
 const SLOT_ROW_STEP = 4;
+const QUEST_CRITICAL_SIDE_STREET_STUB_IDS = new Set(["canggu_station"]);
 const BEACH_TO_INLAND_REFERENCE = {
   beachCuratedId: "berawa_beach",
   inlandCuratedId: "secret_spot_canggu"
@@ -35,14 +36,14 @@ export const jlPantaiBerawaTemplate: StreetTemplate = {
 export const streetTemplates = [jlPantaiBerawaTemplate] as const;
 
 export const deferredStreetVenueIds = curatedVenues
-  .filter((venue) => shouldRender(venue) && !isPantaiBerawaVenue(venue))
+  .filter((venue) => shouldRender(venue) && !isPantaiBerawaVenue(venue) && !QUEST_CRITICAL_SIDE_STREET_STUB_IDS.has(venue.id))
   .map((venue) => venue.id);
 
 function createPantaiBerawaSlotSpecs(): StreetSlotSpec[] {
   const ordered = getPantaiBerawaVenueOrder();
   const rowCount = Math.ceil(ordered.length / 2);
 
-  return ordered.map(({ venue, node }, index): StreetSlotSpec => {
+  const pantaiSpecs = ordered.map(({ venue, node }, index): StreetSlotSpec => {
     const size = slotSizeForVenue(venue);
     const row = rowCount - 1 - Math.floor(index / 2);
     return {
@@ -59,6 +60,9 @@ function createPantaiBerawaSlotSpecs(): StreetSlotSpec[] {
       questCritical: venue.questCritical
     };
   });
+
+  const sideStreetStub = createCangguStationStubSpec();
+  return sideStreetStub ? [...pantaiSpecs, sideStreetStub] : pantaiSpecs;
 }
 
 function getPantaiBerawaVenueOrder(): Array<{ venue: CuratedVenue; node: CuratedVenueMapNode }> {
@@ -96,16 +100,37 @@ function projectBeachToInland(node: CuratedVenueMapNode): number {
 
 function slotSizeForVenue(venue: CuratedVenue): { widthTiles: number; depthTiles: number } {
   if (venue.id === "berawa_beach") {
-    return { widthTiles: 5, depthTiles: 4 };
+    return { widthTiles: 4, depthTiles: 5 };
   }
   if (venue.isLandmark) {
-    return { widthTiles: 6, depthTiles: 6 };
+    return { widthTiles: 4, depthTiles: 7 };
   }
   if (venue.questCritical) {
     return { widthTiles: 4, depthTiles: 5 };
   }
   if (venue.category === "beach_club") {
-    return { widthTiles: 5, depthTiles: 6 };
+    return { widthTiles: 4, depthTiles: 7 };
   }
   return { widthTiles: 3, depthTiles: 4 };
+}
+
+function createCangguStationStubSpec(): StreetSlotSpec | null {
+  const venue = curatedVenues.find((candidate) => candidate.id === "canggu_station");
+  const node = curatedVenueNodes.find((candidate) => candidate.curatedVenueId === "canggu_station");
+  if (!venue || !node) {
+    return null;
+  }
+  return {
+    side: "right",
+    order: -1,
+    tileY: 1,
+    widthTiles: 4,
+    depthTiles: 5,
+    venueId: node.venueId,
+    curatedVenueId: venue.id,
+    label: "Canggu Station",
+    category: venue.category,
+    isLandmark: venue.isLandmark,
+    questCritical: true
+  };
 }

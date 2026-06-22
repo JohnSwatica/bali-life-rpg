@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import {
+  activeStreetTemplate,
   berawaAreas,
   berawaMapFeatures,
   berawaRoads,
@@ -7,7 +8,7 @@ import {
   venueMapNodes,
   type CuratedVenueMapNode,
   type MapFeatureDefinition
-} from "../data/scaledBerawaLayout";
+} from "../data/authoredStreetLayout";
 import { activityDefinitions, interestGroupDefinitions } from "../data/community";
 import { itemDefinitions } from "../data/items";
 import { collisionRects, pickupDefinitions, WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
@@ -23,6 +24,8 @@ import { InputController, type GameKeyMap } from "../systems/input/InputControll
 import { IntentDispatcher, type IntentResult } from "../systems/intents/IntentDispatcher";
 import { PLAYER_UNIT, POKEMON_SCALE } from "../systems/map/PlayerUnitScale";
 import { getPresentedRoads, getVenueSnapRoads } from "../systems/map/RoadPresentation";
+import { renderStreetTemplate } from "../systems/map/StreetRenderer";
+import { STREET_CAMERA } from "../systems/map/TileStreetScale";
 import { scaleDistance, scalePoint } from "../systems/map/WorldScale";
 import {
   computeVenuePresentationLayout,
@@ -403,22 +406,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawNeighborhood(): void {
-    const textureKey = "berawa-static-map";
-    if (this.textures.exists(textureKey)) {
-      this.textures.remove(textureKey);
-    }
-
-    const bakeScale = this.getStaticMapBakeScale();
-    const textureWidth = Math.ceil(WORLD_WIDTH * bakeScale);
-    const textureHeight = Math.ceil(WORLD_HEIGHT * bakeScale);
-    const g = this.add.graphics().setVisible(false);
-    g.save();
-    g.scaleCanvas(bakeScale, bakeScale);
-    this.drawStaticNeighborhood(g);
-    g.restore();
-    g.generateTexture(textureKey, textureWidth, textureHeight);
-    g.destroy();
-    this.add.image(0, 0, textureKey).setOrigin(0).setDepth(-100).setDisplaySize(WORLD_WIDTH, WORLD_HEIGHT);
+    renderStreetTemplate(this, activeStreetTemplate);
     this.addAreaLabels();
   }
 
@@ -982,13 +970,9 @@ export class GameScene extends Phaser.Scene {
     for (const node of curatedVenueNodes) {
       venues.set(node.venueId, node.name);
     }
-    const presentationByVenue = new Map(
-      computeVenuePresentationLayout(curatedVenueNodes, VENUE_SNAP_ROADS).map((placement) => [placement.node.venueId, placement])
-    );
     for (const node of venueMapNodes) {
-      const placement = presentationByVenue.get(node.venueId);
       const label = this.add
-        .text(placement?.x ?? node.x, (placement ? placement.y - placement.height / 2 : node.y) - 28, venues.get(node.venueId) ?? node.venueId, {
+        .text(node.x, node.y - 42, venues.get(node.venueId) ?? node.venueId, {
           ...this.mapLabelStyle(),
           fontSize: "12px",
           backgroundColor: "rgba(16, 24, 32, 0.52)",
@@ -3286,7 +3270,7 @@ export class GameScene extends Phaser.Scene {
 
   private layoutForViewport(): void {
     const { width, height } = this.scale;
-    this.cameras.main.setZoom(width < 720 ? POKEMON_SCALE.camera.mobileZoom : POKEMON_SCALE.camera.desktopZoom);
+    this.cameras.main.setZoom(width < 720 ? STREET_CAMERA.mobileZoom : STREET_CAMERA.desktopZoom);
     this.promptText.setPosition(20, height - 36);
     this.toastText.setPosition(width / 2, Math.max(92, height * 0.17));
     this.hudController.layoutTouchControls();

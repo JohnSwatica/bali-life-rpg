@@ -182,6 +182,10 @@ function paintStreetBase(data: number[][], template: StreetTemplate): void {
 }
 
 function paintBuildingPlots(data: number[][], template: StreetTemplate): void {
+  for (const slot of template.slots) {
+    paintSlotAccess(data, template, slot);
+  }
+
   for (const rect of getStreetBuildingRects(template)) {
     const startX = Math.floor(rect.x / TILE_SIZE);
     const startY = Math.floor(rect.y / TILE_SIZE);
@@ -191,6 +195,23 @@ function paintBuildingPlots(data: number[][], template: StreetTemplate): void {
       for (let x = startX; x < startX + widthTiles; x += 1) {
         setTile(data, x, y, TILE_IDS.plot);
       }
+    }
+  }
+}
+
+function paintSlotAccess(data: number[][], template: StreetTemplate, slot: StreetBuildingSlot): void {
+  if (!isVerticalStreet(template) || (slot.side !== "left" && slot.side !== "right")) {
+    return;
+  }
+  const entranceY = slot.entrance.tileY;
+  const leftEdge = Math.min(slot.entrance.tileX, template.roadLeftTile);
+  const rightEdge = Math.max(slot.entrance.tileX, roadRightTile(template));
+  for (let x = leftEdge; x <= rightEdge; x += 1) {
+    setTile(data, x, entranceY, TILE_IDS.sidewalk);
+  }
+  if (entranceY < template.start.tileY) {
+    for (let x = template.roadLeftTile; x <= roadRightTile(template); x += 1) {
+      setTile(data, x, entranceY, TILE_IDS.road);
     }
   }
 }
