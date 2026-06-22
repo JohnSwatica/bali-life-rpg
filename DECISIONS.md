@@ -157,3 +157,9 @@ Two coverage seams are intentionally skipped until the runtime exposes pure help
 The unsupervised hardening pass continued additively, still without runtime/map/art changes. Tests now also cover `IntentDispatcher` portal/event/reputation/relationship mutations, `EventScheduler` active/upcoming windows, `RelationshipMemory` affinity tiers and summaries, `VenueRegistry` discovery/priority helpers, and `CraftingSystem` recipe lookup plus inventory mutation.
 
 This keeps the current social-map foundation self-verifying while avoiding human-judgment areas such as visual map feel, HUD screenshots, real venue order, or new authored street layout choices.
+
+## 2026-06-22 - Pure Helper Coverage Expanded
+
+A second additive test batch covers the remaining low-risk helper seams: profile lifestyle-tag normalization, scripted dialogue tier/memory references, the local `NetworkAdapter` stub patch shape, simulated offline activity registry filters, inventory add/remove/format behavior, and world-clock phase/format helpers.
+
+The suite remains deliberately Node-level and deterministic. It does not attempt to assert authored map aesthetics, device screenshots, Phaser camera behavior, or local-Berawa judgment while the human is away.
