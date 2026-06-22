@@ -3,6 +3,7 @@ import { playerSpawn } from "../data/map";
 import { createDefaultPortalState } from "./portal/PortalState";
 import { createDefaultPlayerProfile } from "./profile/ProfileState";
 import { createDefaultReputationState } from "./reputation/ReputationState";
+import { createDefaultLifeLoopState } from "./life/LifeLoopState";
 import { createDefaultPlayerMeters, syncLegacyPlayerMeterMirrors } from "./meters/PlayerMeters";
 import type { NpcEntityState, PlayerEntityState, TimePhase, WorldState } from "../types";
 
@@ -53,7 +54,7 @@ export function createInitialWorldState(): WorldState {
   );
 
   const world: WorldState = {
-    schemaVersion: 5,
+    schemaVersion: 6,
     version: 1,
     neighborhoodId: "berawa-finns-club",
     clock: {
@@ -75,6 +76,7 @@ export function createInitialWorldState(): WorldState {
     runtimeEvents: {
       attendedEventIds: []
     },
+    life: createDefaultLifeLoopState(),
     mapDiscovery: {
       discoveredAreaIds: [],
       discoveredVenueIds: [],

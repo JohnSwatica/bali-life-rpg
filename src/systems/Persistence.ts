@@ -3,10 +3,11 @@ import { createDefaultPortalState } from "./portal/PortalState";
 import { createDefaultPlayerProfile } from "./profile/ProfileState";
 import { createDefaultReputationState } from "./reputation/ReputationState";
 import { scaleDistance } from "./map/WorldScale";
+import { migrateLifeLoopState } from "./life/LifeLoopState";
 import { migratePlayerMeters, syncLegacyPlayerMeterMirrors } from "./meters/PlayerMeters";
 import type { GroupEntityState, NpcEntityState, PlayerEntityState, ReputationState, WorldState } from "../types";
 
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;
 const SAVE_KEY = "bali-life-rpg.berawa-finns.save.v1";
 const PAUSED_V2_KEY = "bali-life-rpg.berawa-finns.save.v2";
 
@@ -70,6 +71,7 @@ function migrateWorldState(raw: Partial<WorldState> & Record<string, unknown>): 
     relationships: raw.relationships ?? [],
     portal: raw.portal ?? createDefaultPortalState(),
     runtimeEvents: raw.runtimeEvents ?? { attendedEventIds: [] },
+    life: migrateLifeLoopState(raw.life),
     mapDiscovery: raw.mapDiscovery ?? { discoveredAreaIds: [], discoveredVenueIds: [], revealAll: false },
     questFlags: raw.questFlags ?? {},
     collectedPickups: raw.collectedPickups ?? {}

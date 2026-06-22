@@ -222,6 +222,19 @@ export interface PlayerMeters {
   social: number;
 }
 
+export interface LifeActivityRecord {
+  count: number;
+  lastDay: number;
+  totalCount: number;
+  earnedMoney: number;
+}
+
+export interface LifeLoopState {
+  activityHistory: Record<string, LifeActivityRecord>;
+  completedGoalIds: string[];
+  settledIn: boolean;
+}
+
 export type GameIntent =
   | { kind: "SwitchPortal"; mode: PortalMode }
   | { kind: "AttendEvent"; eventId: string }
@@ -300,6 +313,7 @@ export interface WorldState {
   relationships: RelationshipMemory[];
   portal: PortalState;
   runtimeEvents: RuntimeEventState;
+  life: LifeLoopState;
   mapDiscovery: MapDiscoveryState;
   questFlags: Record<string, number | string | boolean>;
   collectedPickups: Record<string, number>;

@@ -31,6 +31,12 @@ import { scaleDistance, scalePoint } from "../systems/map/WorldScale";
 import { adjustPlayerMeters } from "../systems/meters/PlayerMeters";
 import { canSleepNow, sleepUntilNextMorning } from "../systems/time/DailyClock";
 import {
+  applyActivity,
+  getActivityAvailability,
+  getVenueActivityContext,
+  type VenueActivityContext
+} from "../systems/life/ActivityEngine";
+import {
   computeVenuePresentationLayout,
   getVenueFootprint,
   type MapPoint,
@@ -1843,8 +1849,8 @@ export class GameScene extends Phaser.Scene {
 
     this.interactionController.resolveTarget(target, {
       npc: (id) => this.interactWithNpc(id),
-      shop: (id) => this.openShop(id),
-      venue: (id) => this.visitStreetVenue(id),
+      shop: (id) => this.openVenueActivityMenu(id),
+      venue: (id) => this.openVenueActivityMenu(id),
       activity: (id) => this.openActivity(id),
       offender: (id) => this.confrontWantedOffender(id),
       pickup: (id) => this.collectPickup(id)
@@ -1993,6 +1999,131 @@ export class GameScene extends Phaser.Scene {
       : "\n\nYou have already mapped this stop. It still feels useful as a landmark.";
     this.openDialogue(venue?.name ?? node.name, `${flavor.body}${statLine}`);
     this.showToast(isFirstVisit ? flavor.firstVisitToast : flavor.repeatToast);
+  }
+
+  private openVenueActivityMenu(venueId: string): void {
+    const context = getVenueActivityContext(venueId);
+    const shop = shopDefinitions[venueId];
+    if (!context) {
+      if (shop) {
+        this.openShop(venueId);
+      }
+      return;
+    }
+
+    this.closePanel(false);
+    this.mode = "activity";
+    this.dispatchIntent({ kind: "VisitVenue", venueId });
+
+    const { width, height } = this.scale;
+    const panelWidth = Math.min(760, width - 28);
+    const panelHeight = Math.min(640, height - 44);
+    const x = (width - panelWidth) / 2;
+    const y = (height - panelHeight) / 2;
+    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 12);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x111820, 0.96);
+    bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
+    bg.lineStyle(2, 0xf4d58d, 0.52);
+    bg.strokeRoundedRect(x, y, panelWidth, panelHeight, 8);
+    container.add(bg);
+
+    const availability = getActivityAvailability(this.world, context);
+    container.add(this.add.text(x + 22, y + 18, context.name, this.panelTitleStyle()));
+    container.add(
+      this.add.text(
+        x + 22,
+        y + 54,
+        `${context.category.replace(/_/g, " ")} activities  |  ${formatClock(this.world)}\nEnergy ${this.world.meters.energy}  Wellbeing ${this.world.meters.wellbeing}  Focus ${this.world.meters.focus}  Social ${this.world.meters.social}  Rp ${this.playerState.money}`,
+        { ...this.panelBodyStyle(), wordWrap: { width: panelWidth - 44 } }
+      )
+    );
+
+    let rowY = y + 112;
+    if (shop) {
+      this.addPanelButton(container, x + 22, rowY, 156, 34, "Open buy/sell", () => this.openShop(venueId), 0x253a35);
+      container.add(
+        this.add.text(x + 192, rowY + 7, "Existing shop flow, unchanged.", {
+          ...this.panelBodyStyle(),
+          fontSize: "13px",
+          wordWrap: { width: panelWidth - 214 }
+        })
+      );
+      rowY += 50;
+    }
+
+    if (availability.length === 0) {
+      container.add(
+        this.add.text(x + 22, rowY, "No daily-life activities are defined for this venue category yet.", {
+          ...this.panelBodyStyle(),
+          wordWrap: { width: panelWidth - 44 }
+        })
+      );
+    }
+
+    for (const option of availability.slice(0, 6)) {
+      const activity = option.activity;
+      const moneyCopy = activity.cost
+        ? activity.cost < 0
+          ? `Earn Rp ${Math.abs(activity.cost)}`
+          : `Cost Rp ${activity.cost}`
+        : "Free";
+      const status = option.available ? `${activity.timeCost} min | ${moneyCopy}` : option.reason ?? "Unavailable";
+      container.add(this.add.text(x + 22, rowY, `${activity.label}`, this.panelSectionStyle()));
+      container.add(
+        this.add.text(x + 22, rowY + 23, `${activity.description}\n${status}`, {
+          ...this.panelBodyStyle(),
+          fontSize: "13px",
+          wordWrap: { width: panelWidth - 202 }
+        })
+      );
+      this.addPanelButton(
+        container,
+        x + panelWidth - 154,
+        rowY + 14,
+        132,
+        34,
+        option.available ? "Do" : "Blocked",
+        () => {
+          if (option.available) {
+            this.performVenueActivity(context, activity.id);
+          } else {
+            this.showToast(option.reason ?? "Activity unavailable.");
+          }
+        },
+        option.available ? 0x253a35 : 0x3a3030
+      );
+      rowY += 78;
+      if (rowY > y + panelHeight - 102) {
+        break;
+      }
+    }
+
+    this.addPanelButton(container, x + panelWidth - 160, y + panelHeight - 54, 138, 36, "Close", () => this.closePanel(), 0x4a3331);
+    this.panel = container;
+  }
+
+  private performVenueActivity(context: VenueActivityContext, activityId: string): void {
+    const option = getActivityAvailability(this.world, context).find((candidate) => candidate.activity.id === activityId);
+    const result = applyActivity(this.world, context, activityId);
+    if (!result.ok) {
+      this.showToast(result.message);
+      this.openVenueActivityMenu(context.venueId);
+      return;
+    }
+
+    this.dispatchIntent({ kind: "VisitVenue", venueId: context.venueId });
+    const effect = option?.activity.reputationEffect;
+    if (effect?.delta) {
+      this.dispatchIntent({ kind: "AdjustReputation", delta: effect.delta, reason: effect.reason });
+    }
+    if (effect?.tag) {
+      this.dispatchIntent({ kind: "AwardReputationTag", tag: effect.tag, reason: effect.reason });
+    }
+    this.updateLighting();
+    saveWorldState(this.world);
+    this.showToast(result.message);
+    this.openVenueActivityMenu(context.venueId);
   }
 
   private renderShopPanel(shop: ShopDefinition): void {
