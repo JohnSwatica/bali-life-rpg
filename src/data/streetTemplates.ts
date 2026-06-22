@@ -12,7 +12,12 @@ const JL_PANTAI_BERAWA_BASE: Omit<StreetTemplate, "slots"> = {
   slotDepthTiles: 5,
   start: { tileX: 0, tileY: 5 },
   roadLeftTile: 57,
-  beachTerminus: undefined
+  beachTerminus: {
+    startsAtTile: 73,
+    sandTiles: 5,
+    waterTiles: 7,
+    dockTileX: 59
+  }
 };
 
 const SLOT_TOP_TILE = 6;
