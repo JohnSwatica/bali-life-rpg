@@ -1,9 +1,9 @@
 import type { PickupDefinition, RectDefinition } from "../types";
 import { offsetVenuePoint } from "./layoutLookup";
-import { BASE_WORLD_HEIGHT, BASE_WORLD_WIDTH, scaleDistance } from "../systems/map/WorldScale";
+import { TILE_WORLD } from "../systems/map/TileStreetScale";
 
-export const WORLD_WIDTH = scaleDistance(BASE_WORLD_WIDTH);
-export const WORLD_HEIGHT = scaleDistance(BASE_WORLD_HEIGHT);
+export const WORLD_WIDTH = TILE_WORLD.width;
+export const WORLD_HEIGHT = TILE_WORLD.height;
 
 export const collisionRects: RectDefinition[] = [
 ];
