@@ -141,3 +141,7 @@ No Nintendo/Pokémon/Game Freak assets are used or copied. The art direction bor
 ## 2026-06-22 - Named Shopfronts Over Identical Boxes
 
 The authored street should read as a playable row of places, not a repeated building stamp. Venue buildings now carry compact permanent signboards, road-facing entrances, category-specific props, and deterministic facade color variation. This is presentation-only: venue IDs, source coordinates, slot order, shop definitions, NPC routines, and quest logic remain unchanged.
+
+## 2026-06-22 - Lightweight Storefront Visits
+
+Non-shop named venues on the authored street are now interactable with `E`. The interaction records a `VisitVenue` intent, appends venue relationship memory, and shows a small authored flavor card with a tiny first-visit focus/social/connection adjustment. Shops remain shops, NPCs still win priority, and repeat venue visits do not farm rewards. This keeps the street playful and legible without building a full venue-commerce or event system yet.

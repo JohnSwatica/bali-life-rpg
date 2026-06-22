@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { activityDefinitions } from "../../data/community";
+import { curatedVenueNodes } from "../../data/authoredStreetLayout";
 import { npcDefinitions } from "../../data/npcs";
 import { pickupDefinitions } from "../../data/map";
 import { shopDefinitions } from "../../data/shops";
@@ -9,10 +10,12 @@ import type { PickupDefinition } from "../../types";
 const NPC_INTERACTION_RADIUS = scaleDistance(82);
 const OFFENDER_INTERACTION_RADIUS = scaleDistance(78);
 const PICKUP_INTERACTION_RADIUS = scaleDistance(64);
+const VENUE_INTERACTION_RADIUS = scaleDistance(70);
 
 export type InteractionTarget =
   | { type: "npc"; id: string; label: string; distance: number }
   | { type: "shop"; id: string; label: string; distance: number }
+  | { type: "venue"; id: string; label: string; distance: number }
   | { type: "pickup"; id: string; label: string; distance: number }
   | { type: "activity"; id: string; label: string; distance: number }
   | { type: "offender"; id: string; label: string; distance: number };
@@ -36,6 +39,7 @@ interface InteractionControllerOptions {
 interface InteractionHandlers {
   npc: (id: string) => void;
   shop: (id: string) => void;
+  venue: (id: string) => void;
   pickup: (id: string) => void;
   activity: (id: string) => void;
   offender: (id: string) => void;
@@ -61,6 +65,16 @@ export class InteractionController {
       const distance = Phaser.Math.Distance.Between(px, py, shop.x, shop.y);
       if (distance <= shop.radius) {
         candidates.push({ type: "shop", id: shop.id, label: `Enter ${shop.name}`, distance });
+      }
+    }
+
+    for (const venue of curatedVenueNodes) {
+      if (shopDefinitions[venue.venueId]) {
+        continue;
+      }
+      const distance = Phaser.Math.Distance.Between(px, py, venue.x, venue.y);
+      if (distance <= Math.min(venue.radius, VENUE_INTERACTION_RADIUS)) {
+        candidates.push({ type: "venue", id: venue.venueId, label: `Check out ${venue.name}`, distance });
       }
     }
 
@@ -102,6 +116,8 @@ export class InteractionController {
       handlers.npc(target.id);
     } else if (target.type === "shop") {
       handlers.shop(target.id);
+    } else if (target.type === "venue") {
+      handlers.venue(target.id);
     } else if (target.type === "activity") {
       handlers.activity(target.id);
     } else if (target.type === "offender") {
@@ -117,5 +133,6 @@ function priority(target: InteractionTarget): number {
   if (target.type === "offender") return 1;
   if (target.type === "activity") return 2;
   if (target.type === "shop") return 3;
-  return 4;
+  if (target.type === "venue") return 4;
+  return 5;
 }

@@ -25,6 +25,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Added `src/data/streetTemplates.ts`: `jl_pantai_berawa` is a vertical street with `roadWidthTiles = 6`, `sidewalkTiles = 2`, `slotDepthTiles = 5`, clean left/right building slots, and a grass -> sand -> water terminus.
 - The Pantai Berawa street places 31 Jl. Pantai Berawa/beach venues in generated-coordinate beach-to-inland order, plus one visible quest-critical side-street stub for `canggu_station` so Ibu Sari's starter quest and shop still work.
 - Shopfront readability pass: venue buildings now get permanent compact signboards, category-specific props, road-facing doors, entrance mats, and deterministic color variation so the street no longer reads as identical boxes.
+- Storefront interaction pass: named non-shop venues on the authored street can now be checked with `E`. Visits route through `VisitVenue`, record venue relationship memory, show a short authored flavor card, and give tiny one-time focus/social/connection feedback so the street is more playable without becoming a grind.
 - `layoutLookup.ts` now resolves shops, NPC routine stops, pickups, and spawn from authored street venue nodes. Offsets are literal pixels in the authored tile world rather than OSM presentation-scaled values.
 - `GameScene.drawNeighborhood()` now calls `renderStreetTemplate()`; the old OSM static-map draw helpers remain dormant for fallback/debt but are no longer the active playable surface.
 - Ambient traffic follows the authored street road path; minimap/discovery/water-boundary code reads the authored adapter's road and beach/water features.
@@ -129,6 +130,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Authored tile street phases 1-5 each passed `npm run build` before commit.
 - Current authored street geometry check reports 32 visible/interactable venue slots, 32 authored venue nodes, 0 overlaps, and no duplicate venue IDs.
 - Shopfront detail build passed; signboards/props are presentation-only and do not alter venue IDs, slot placement, quests, shops, or coordinates.
+- Storefront interaction build passed; shops still use shop panels, while non-shop venue interactions sit below NPC/activity/shop priority in `InteractionController`.
 - Active street constants: `TILE_SIZE = 32`, world `120 x 85` tiles (`3840 x 2720` px), road width `6` tiles, sidewalks `2` tiles each side, camera zoom `1.6` desktop / `1.28` mobile.
 - `src/data/curatedVenues.ts`, `src/data/berawaLayout.ts`, and `data/osm/berawa.curated-coords.json` remain intentionally unchanged by the authored-street sprint.
 - Gameplay-critical authored positions resolved in local checks: player spawn near Milk & Madu, Canggu Station stub visible near the inland end, BAKED/Milk & Madu/scooter rental/beach anchors all resolve through `layoutLookup.ts`.

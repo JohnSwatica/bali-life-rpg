@@ -15,6 +15,7 @@ import { collisionRects, pickupDefinitions, WORLD_HEIGHT, WORLD_WIDTH } from "..
 import { npcDefinitions } from "../data/npcs";
 import { questDefinitions } from "../data/quests";
 import { shopDefinitions } from "../data/shops";
+import { getStreetVenueFlavor } from "../data/streetVenueFlavors";
 import { addItem, formatInventory, getQuantity, removeItem } from "../systems/Inventory";
 import { LocalNetworkAdapter, type NetworkAdapter } from "../systems/NetworkAdapter";
 import { clearSave, loadWorldState, saveWorldState } from "../systems/Persistence";
@@ -57,7 +58,7 @@ import { getQuestTrackerLines, isQuestActive, isQuestComplete, startQuest } from
 import { resolveNpcQuestInteraction } from "../systems/quests/QuestRegistry";
 import { HudController } from "../ui/hud/HudController";
 import { PhoneShell } from "../ui/phone/PhoneShell";
-import { getAllVenues } from "../systems/venues/VenueRegistry";
+import { getAllVenues, getVenue } from "../systems/venues/VenueRegistry";
 import type {
   Direction,
   GameIntent,
@@ -255,6 +256,10 @@ function scaleRectDefinition(x: number, y: number, width: number, height: number
 function worldVector(x: number, y: number): Phaser.Math.Vector2 {
   const point = scalePoint({ x, y });
   return new Phaser.Math.Vector2(point.x, point.y);
+}
+
+function formatSigned(value: number): string {
+  return value >= 0 ? `+${value}` : `${value}`;
 }
 
 function buildTrafficJunctionIndex(routes: TrafficRouteDefinition[]): Map<string, TrafficJunctionOption[]> {
@@ -1826,6 +1831,7 @@ export class GameScene extends Phaser.Scene {
     this.interactionController.resolveTarget(target, {
       npc: (id) => this.interactWithNpc(id),
       shop: (id) => this.openShop(id),
+      venue: (id) => this.visitStreetVenue(id),
       activity: (id) => this.openActivity(id),
       offender: (id) => this.confrontWantedOffender(id),
       pickup: (id) => this.collectPickup(id)
@@ -1942,6 +1948,39 @@ export class GameScene extends Phaser.Scene {
     this.mode = "shop";
     this.dispatchIntent({ kind: "VisitVenue", venueId: shopId });
     this.renderShopPanel(shopDefinitions[shopId]);
+  }
+
+  private visitStreetVenue(venueId: string): void {
+    const node = curatedVenueNodes.find((candidate) => candidate.venueId === venueId);
+    if (!node) {
+      return;
+    }
+
+    const existingRelationship = getRelationship(this.world, "venue", venueId);
+    const isFirstVisit = !existingRelationship?.memories.some((memory) => memory.type === "visited");
+    const venue = getVenue(venueId);
+    const flavor = getStreetVenueFlavor({
+      venueId,
+      name: venue?.name ?? node.name,
+      category: node.category,
+      isLandmark: node.isLandmark,
+      minuteOfDay: this.world.clock.minuteOfDay
+    });
+
+    this.dispatchIntent({ kind: "VisitVenue", venueId });
+
+    if (isFirstVisit) {
+      this.playerState.focus = Phaser.Math.Clamp(this.playerState.focus + flavor.focusDelta, 0, 100);
+      this.playerState.socialEnergy = Phaser.Math.Clamp(this.playerState.socialEnergy + flavor.socialEnergyDelta, 0, 100);
+      this.playerState.connections += flavor.connectionDelta;
+    }
+
+    saveWorldState(this.world);
+    const statLine = isFirstVisit
+      ? `\n\nFirst visit: Focus ${formatSigned(flavor.focusDelta)}  |  Social ${formatSigned(flavor.socialEnergyDelta)}  |  Links ${formatSigned(flavor.connectionDelta)}`
+      : "\n\nYou have already mapped this stop. It still feels useful as a landmark.";
+    this.openDialogue(venue?.name ?? node.name, `${flavor.body}${statLine}`);
+    this.showToast(isFirstVisit ? flavor.firstVisitToast : flavor.repeatToast);
   }
 
   private renderShopPanel(shop: ShopDefinition): void {
