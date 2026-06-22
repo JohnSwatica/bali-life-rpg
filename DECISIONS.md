@@ -145,3 +145,9 @@ The authored street should read as a playable row of places, not a repeated buil
 ## 2026-06-22 - Lightweight Storefront Visits
 
 Non-shop named venues on the authored street are now interactable with `E`. The interaction records a `VisitVenue` intent, appends venue relationship memory, and shows a small authored flavor card with a tiny first-visit focus/social/connection adjustment. Shops remain shops, NPCs still win priority, and repeat venue visits do not farm rewards. This keeps the street playful and legible without building a full venue-commerce or event system yet.
+
+## 2026-06-22 - HUD And Minimap Use An Unzoomed UI Camera
+
+The authored street keeps its close world-camera zoom, but HUD objects, panel hit zones, the minimap, and the day/night screen overlay now register as UI objects rendered by a separate zoom-1 camera. The main world camera ignores those UI objects, and the UI camera ignores existing world objects, so screen-space controls do not drift or clip when the playable map zoom changes.
+
+The Phaser Scale Manager no longer uses `devicePixelRatio` as `scale.zoom`. In `RESIZE` mode that path can make the visible canvas and internal UI coordinate system disagree, causing right-side HUD controls and the minimap to render outside the visible viewport. The canvas now fits the viewport through Phaser's normal resize flow; future crispness work should not reintroduce canvas zoom for DPR.
