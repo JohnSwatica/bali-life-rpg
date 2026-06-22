@@ -313,6 +313,8 @@ export class GameScene extends Phaser.Scene {
   private dialogueProvider: DialogueProvider = new ScriptedDialogueProvider();
   private hudController!: HudController;
   private phone?: PhoneShell;
+  private uiCamera?: Phaser.Cameras.Scene2D.Camera;
+  private readonly uiObjects = new Set<Phaser.GameObjects.GameObject>();
   private godmodePanel?: Phaser.GameObjects.Container;
   private movementSpeedMultiplier = 1;
   private discoveryLabels: Array<{ subjectType: "area" | "venue"; id: string; label: Phaser.GameObjects.Text }> = [];
@@ -356,7 +358,8 @@ export class GameScene extends Phaser.Scene {
         if (this.mode === "phone") {
           this.mode = "world";
         }
-      }
+      },
+      registerUiObject: (object) => this.registerUiObject(object)
     });
 
     this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
@@ -369,6 +372,7 @@ export class GameScene extends Phaser.Scene {
     this.createWantedOffenders();
     this.createInteractionController();
     this.createInput();
+    this.createUiCamera();
     this.createHud();
     this.updateMapDiscovery(true);
 
@@ -1181,30 +1185,52 @@ export class GameScene extends Phaser.Scene {
     this.scale.on("resize", () => this.layoutForViewport());
   }
 
-  private createHud(): void {
-    this.hudChrome = this.add.graphics().setScrollFactor(0).setDepth(UI_DEPTH);
-    this.timeText = this.add.text(20, 16, "", this.hudTextStyle(16)).setScrollFactor(0).setDepth(UI_DEPTH + 1);
-    this.moneyText = this.add.text(20, 42, "", this.hudTextStyle(16)).setScrollFactor(0).setDepth(UI_DEPTH + 1);
-    this.questText = this.add.text(20, 92, "", this.hudTextStyle(14)).setScrollFactor(0).setDepth(UI_DEPTH + 1);
-    this.promptText = this.add.text(20, 0, "", this.hudTextStyle(15)).setScrollFactor(0).setDepth(UI_DEPTH + 1);
-    this.toastText = this.add
-      .text(0, 0, "", {
-        fontFamily: "Inter, Arial, sans-serif",
-        fontSize: "16px",
-        color: "#fff8df",
-        align: "center",
-        backgroundColor: "rgba(21, 24, 29, 0.76)",
-        padding: { x: 12, y: 8 },
-        wordWrap: { width: 520 }
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(UI_DEPTH + 3)
-      .setAlpha(0);
-    this.minimapGraphics = this.add.graphics().setScrollFactor(0).setDepth(UI_DEPTH + 1);
+  private createUiCamera(): void {
+    const { width, height } = this.scale;
+    this.uiCamera = this.cameras.add(0, 0, width, height, false, "ui");
+    this.uiCamera.setScroll(0, 0);
+    this.uiCamera.setZoom(1);
+    this.uiCamera.setRoundPixels(false);
+    this.uiCamera.ignore([...this.children.list]);
+  }
 
-    this.nightOverlay = this.add.graphics().setScrollFactor(0).setDepth(900);
-    this.lanternGlow = this.add.graphics().setDepth(905);
+  private registerUiObject<T extends Phaser.GameObjects.GameObject>(object: T): T {
+    this.uiObjects.add(object);
+    this.cameras.main.ignore(object);
+    return object;
+  }
+
+  private registerWorldObject<T extends Phaser.GameObjects.GameObject>(object: T): T {
+    this.uiCamera?.ignore(object);
+    return object;
+  }
+
+  private createHud(): void {
+    this.hudChrome = this.registerUiObject(this.add.graphics().setScrollFactor(0).setDepth(UI_DEPTH));
+    this.timeText = this.registerUiObject(this.add.text(20, 16, "", this.hudTextStyle(16)).setScrollFactor(0).setDepth(UI_DEPTH + 1));
+    this.moneyText = this.registerUiObject(this.add.text(20, 42, "", this.hudTextStyle(16)).setScrollFactor(0).setDepth(UI_DEPTH + 1));
+    this.questText = this.registerUiObject(this.add.text(20, 92, "", this.hudTextStyle(14)).setScrollFactor(0).setDepth(UI_DEPTH + 1));
+    this.promptText = this.registerUiObject(this.add.text(20, 0, "", this.hudTextStyle(15)).setScrollFactor(0).setDepth(UI_DEPTH + 1));
+    this.toastText = this.registerUiObject(
+      this.add
+        .text(0, 0, "", {
+          fontFamily: "Inter, Arial, sans-serif",
+          fontSize: "16px",
+          color: "#fff8df",
+          align: "center",
+          backgroundColor: "rgba(21, 24, 29, 0.76)",
+          padding: { x: 12, y: 8 },
+          wordWrap: { width: 520 }
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(UI_DEPTH + 3)
+        .setAlpha(0)
+    );
+    this.minimapGraphics = this.registerUiObject(this.add.graphics().setScrollFactor(0).setDepth(UI_DEPTH + 1));
+
+    this.nightOverlay = this.registerUiObject(this.add.graphics().setScrollFactor(0).setDepth(900));
+    this.lanternGlow = this.registerWorldObject(this.add.graphics().setDepth(905));
     this.hudController = new HudController(this, UI_DEPTH, {
       action: () => this.handleAction(),
       inventory: () => this.toggleInventory(),
@@ -1212,7 +1238,7 @@ export class GameScene extends Phaser.Scene {
       bike: () => this.toggleBike(),
       phone: () => this.togglePhone(),
       save: () => this.saveGame()
-    });
+    }, (object) => this.registerUiObject(object));
     this.hudController.createTouchControls();
     this.layoutForViewport();
   }
@@ -1926,7 +1952,7 @@ export class GameScene extends Phaser.Scene {
     const panelHeight = Math.min(190, height - 48);
     const x = (width - panelWidth) / 2;
     const y = height - panelHeight - 24;
-    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10);
+    const container = this.registerUiObject(this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10));
     const bg = this.add.graphics();
     bg.fillStyle(0x111820, 0.94);
     bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
@@ -1991,7 +2017,7 @@ export class GameScene extends Phaser.Scene {
     const panelHeight = Math.min(580, height - 44);
     const x = (width - panelWidth) / 2;
     const y = (height - panelHeight) / 2;
-    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10);
+    const container = this.registerUiObject(this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10));
     const bg = this.add.graphics();
     bg.fillStyle(0x111820, 0.95);
     bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
@@ -2118,7 +2144,7 @@ export class GameScene extends Phaser.Scene {
     const panelHeight = Math.min(520, height - 44);
     const x = (width - panelWidth) / 2;
     const y = (height - panelHeight) / 2;
-    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10);
+    const container = this.registerUiObject(this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10));
     const bg = this.add.graphics();
     bg.fillStyle(0x111820, 0.96);
     bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
@@ -2506,7 +2532,7 @@ export class GameScene extends Phaser.Scene {
     const panelHeight = Math.min(660, height - 44);
     const x = (width - panelWidth) / 2;
     const y = (height - panelHeight) / 2;
-    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10);
+    const container = this.registerUiObject(this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10));
     const bg = this.add.graphics();
     bg.fillStyle(0x111820, 0.96);
     bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
@@ -2610,7 +2636,7 @@ export class GameScene extends Phaser.Scene {
     const panelHeight = Math.min(560, height - 44);
     const x = (width - panelWidth) / 2;
     const y = (height - panelHeight) / 2;
-    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10);
+    const container = this.registerUiObject(this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10));
     const bg = this.add.graphics();
     bg.fillStyle(0x111820, 0.95);
     bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
@@ -2978,7 +3004,7 @@ export class GameScene extends Phaser.Scene {
     const panelHeight = Math.min(720, height - 44);
     const x = (width - panelWidth) / 2;
     const y = (height - panelHeight) / 2;
-    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 12);
+    const container = this.registerUiObject(this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 12));
     const bg = this.add.graphics();
     bg.fillStyle(0x111820, 0.96);
     bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
@@ -3167,7 +3193,7 @@ export class GameScene extends Phaser.Scene {
     button.setSize(width, height);
     container.add(button);
 
-    const hitZone = this.add.zone(x + width / 2, y + height / 2, width, height).setScrollFactor(0).setDepth(container.depth + 2);
+    const hitZone = this.registerUiObject(this.add.zone(x + width / 2, y + height / 2, width, height).setScrollFactor(0).setDepth(container.depth + 2));
     hitZone.setInteractive(new Phaser.Geom.Rectangle(0, 0, width, height), Phaser.Geom.Rectangle.Contains);
     if (hitZone.input) {
       hitZone.input.cursor = "pointer";
@@ -3309,11 +3335,16 @@ export class GameScene extends Phaser.Scene {
 
   private layoutForViewport(): void {
     const { width, height } = this.scale;
+    this.cameras.main.setViewport(0, 0, width, height);
     this.cameras.main.setZoom(width < 720 ? STREET_CAMERA.mobileZoom : STREET_CAMERA.desktopZoom);
+    this.uiCamera?.setViewport(0, 0, width, height);
+    this.uiCamera?.setScroll(0, 0);
+    this.uiCamera?.setZoom(1);
     this.promptText.setPosition(20, height - 36);
     this.toastText.setPosition(width / 2, Math.max(92, height * 0.17));
     this.hudController.layoutTouchControls();
     this.redrawHudChrome();
+    this.updateLighting();
   }
 
   private redrawHudChrome(): void {

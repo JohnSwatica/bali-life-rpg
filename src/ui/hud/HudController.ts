@@ -12,6 +12,8 @@ interface HudControllerCallbacks {
   save: () => void;
 }
 
+type RegisterUiObject = <T extends Phaser.GameObjects.GameObject>(object: T) => T;
+
 export class HudController {
   private touchContainer!: Phaser.GameObjects.Container;
   private touchHitZones = new Map<string, Phaser.GameObjects.Zone>();
@@ -25,7 +27,8 @@ export class HudController {
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly depth: number,
-    private readonly callbacks: HudControllerCallbacks
+    private readonly callbacks: HudControllerCallbacks,
+    private readonly registerUiObject: RegisterUiObject = (object) => object
   ) {}
 
   get joystickVector(): Phaser.Math.Vector2 {
@@ -37,7 +40,7 @@ export class HudController {
   }
 
   createTouchControls(): void {
-    this.touchContainer = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(this.depth + 2);
+    this.touchContainer = this.registerUiObject(this.scene.add.container(0, 0).setScrollFactor(0).setDepth(this.depth + 2));
     this.joystickBase = this.scene.add
       .circle(0, 0, TOUCH_JOYSTICK_RADIUS, 0x101820, 0.42)
       .setStrokeStyle(2, 0xf4d58d, 0.55);
@@ -161,7 +164,9 @@ export class HudController {
   }
 
   private registerTouchHitZone(name: string, onClick: () => void): void {
-    const zone = this.scene.add.zone(0, 0, TOUCH_BUTTON_SIZE, TOUCH_BUTTON_SIZE).setName(`${name}-hit-zone`).setScrollFactor(0).setDepth(this.depth + 4);
+    const zone = this.registerUiObject(
+      this.scene.add.zone(0, 0, TOUCH_BUTTON_SIZE, TOUCH_BUTTON_SIZE).setName(`${name}-hit-zone`).setScrollFactor(0).setDepth(this.depth + 4)
+    );
     zone.setInteractive(new Phaser.Geom.Rectangle(0, 0, TOUCH_BUTTON_SIZE, TOUCH_BUTTON_SIZE), Phaser.Geom.Rectangle.Contains);
     if (zone.input) {
       zone.input.cursor = "pointer";

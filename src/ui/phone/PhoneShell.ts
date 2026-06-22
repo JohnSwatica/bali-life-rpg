@@ -24,6 +24,7 @@ interface PhoneShellOptions {
   save: () => void;
   toast: (message: string) => void;
   onClose: () => void;
+  registerUiObject?: <T extends Phaser.GameObjects.GameObject>(object: T) => T;
 }
 
 export class PhoneShell {
@@ -70,7 +71,7 @@ export class PhoneShell {
     const panelHeight = Math.min(690, height - 24);
     const x = (width - panelWidth) / 2;
     const y = (height - panelHeight) / 2;
-    const container = scene.add.container(0, 0).setScrollFactor(0).setDepth(PHONE_DEPTH);
+    const container = this.registerUiObject(scene.add.container(0, 0).setScrollFactor(0).setDepth(PHONE_DEPTH));
     const bg = scene.add.graphics();
     bg.fillStyle(0x101820, 0.97);
     bg.fillRoundedRect(x, y, panelWidth, panelHeight, 10);
@@ -439,7 +440,7 @@ export class PhoneShell {
     button.setSize(width, height);
     container.add(button);
 
-    const hitZone = scene.add.zone(x + width / 2, y + height / 2, width, height).setScrollFactor(0).setDepth(PHONE_DEPTH + 1);
+    const hitZone = this.registerUiObject(scene.add.zone(x + width / 2, y + height / 2, width, height).setScrollFactor(0).setDepth(PHONE_DEPTH + 1));
     hitZone.setInteractive(new Phaser.Geom.Rectangle(0, 0, width, height), Phaser.Geom.Rectangle.Contains);
     if (hitZone.input) {
       hitZone.input.cursor = "pointer";
@@ -452,6 +453,10 @@ export class PhoneShell {
       onClick();
     });
     container.once(Phaser.GameObjects.Events.DESTROY, () => hitZone.destroy());
+  }
+
+  private registerUiObject<T extends Phaser.GameObjects.GameObject>(object: T): T {
+    return this.options.registerUiObject?.(object) ?? object;
   }
 
   private titleStyle(): Phaser.Types.GameObjects.Text.TextStyle {
