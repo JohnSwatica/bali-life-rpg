@@ -47,7 +47,7 @@ import {
   resolveWaterBoundaryPosition,
   type WaterBoundaryGuard
 } from "../systems/map/WaterBoundary";
-import { getRelationship } from "../systems/relationships/RelationshipMemory";
+import { bumpRelationshipAffinity, getRelationship } from "../systems/relationships/RelationshipMemory";
 import {
   clearWantedStanding,
   getBounty,
@@ -2119,6 +2119,19 @@ export class GameScene extends Phaser.Scene {
     }
     if (effect?.tag) {
       this.dispatchIntent({ kind: "AwardReputationTag", tag: effect.tag, reason: effect.reason });
+    }
+    const affinityBump = option?.activity.affinityBump ?? 0;
+    if (affinityBump > 0) {
+      for (const npcId of context.npcIds) {
+        bumpRelationshipAffinity(
+          this.world,
+          "npc",
+          npcId,
+          affinityBump,
+          `${option?.activity.label ?? "Activity"} at ${context.name}`,
+          this.getAbsoluteMinute()
+        );
+      }
     }
     this.updateLighting();
     saveWorldState(this.world);

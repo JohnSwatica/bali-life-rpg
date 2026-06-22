@@ -36,6 +36,32 @@ export function recordRelationshipMemory(
   return relationship;
 }
 
+export function bumpRelationshipAffinity(
+  world: WorldState,
+  subjectType: "npc" | "venue",
+  subjectId: string,
+  affinityBump: number,
+  detail: string | undefined,
+  at: number
+): RelationshipMemory {
+  let relationship = getRelationship(world, subjectType, subjectId);
+  if (!relationship) {
+    relationship = {
+      subjectType,
+      subjectId,
+      affinity: 0,
+      lastInteractionAt: at,
+      memories: []
+    };
+    world.relationships.push(relationship);
+  }
+
+  relationship.memories.push({ type: "visited", at, detail });
+  relationship.lastInteractionAt = at;
+  relationship.affinity += affinityBump;
+  return relationship;
+}
+
 export function getAffinityTier(memory: RelationshipMemory | undefined): AffinityTier {
   if (!memory) {
     return "stranger";
@@ -70,6 +96,23 @@ export function summarizeRelationshipMemories(memory: RelationshipMemory | undef
     .slice(-limit)
     .reverse()
     .map((event) => `${event.type.replace(/_/g, " ")}${event.detail ? `: ${event.detail}` : ""}`);
+}
+
+export function getAffinityPerk(memory: RelationshipMemory | undefined): string {
+  const tier = getAffinityTier(memory);
+  if (tier === "trusted") {
+    return "trusted invite hook unlocked";
+  }
+  if (tier === "regular") {
+    return "regular recognition and future discount hook";
+  }
+  if (tier === "friendly") {
+    return "warmer dialogue unlocked";
+  }
+  if (tier === "acquaintance") {
+    return "recognized on repeat visits";
+  }
+  return "none yet";
 }
 
 function affinityForMemory(memory: MemoryType): number {
