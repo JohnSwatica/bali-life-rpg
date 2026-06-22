@@ -22,6 +22,7 @@ export class HudController {
   private joystickPointerId?: number;
   private joystickOrigin = new Phaser.Math.Vector2();
   private movementVector = new Phaser.Math.Vector2();
+  private joystickVisible = false;
   private touchCallbacks = new Map<string, () => void>();
 
   constructor(
@@ -78,6 +79,10 @@ export class HudController {
       return;
     }
 
+    if (!this.joystickVisible) {
+      return;
+    }
+
     const width = this.scene.scale.width;
     const height = this.scene.scale.height;
     const inJoystickArea = pointer.x < Math.min(260, width * 0.42) && pointer.y > height - 245;
@@ -121,19 +126,21 @@ export class HudController {
       return;
     }
     const { width, height } = this.scene.scale;
-    const showTouch = width < 900 || this.scene.sys.game.device.input.touch;
-    this.touchContainer.setVisible(showTouch);
+    this.joystickVisible = width < 900 || this.scene.sys.game.device.input.touch;
+    this.touchContainer.setVisible(true);
+    this.joystickBase.setVisible(this.joystickVisible);
+    this.joystickKnob.setVisible(this.joystickVisible);
     for (const zone of this.touchHitZones.values()) {
-      zone.setVisible(showTouch);
+      zone.setVisible(true);
       if (zone.input) {
-        zone.input.enabled = showTouch;
+        zone.input.enabled = true;
       }
     }
 
     const baseX = 96;
     const controlHeight = Math.min(height, this.getConfiguredGameHeight());
     const baseY = controlHeight - 96;
-    if (this.joystickPointerId === undefined) {
+    if (this.joystickVisible && this.joystickPointerId === undefined) {
       this.joystickBase.setPosition(baseX, baseY);
       this.joystickKnob.setPosition(baseX, baseY);
       this.joystickOrigin.set(baseX, baseY);
