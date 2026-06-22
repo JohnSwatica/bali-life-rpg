@@ -43,6 +43,8 @@ export interface StreetTemplate {
 export interface StreetSlotSpec {
   side: StreetSide;
   order: number;
+  tileX?: number;
+  tileY?: number;
   widthTiles: number;
   depthTiles?: number;
   venueId?: string;
@@ -72,8 +74,8 @@ export function streetEndTile(template: StreetTemplate): number {
 export function createStreetSlots(template: Omit<StreetTemplate, "slots">, specs: StreetSlotSpec[]): StreetBuildingSlot[] {
   return specs.map((spec) => {
     const depthTiles = spec.depthTiles ?? template.slotDepthTiles;
-    const tileY = template.start.tileY + spec.order * (spec.widthTiles + 1);
-    const tileX = tileXForSide(template, spec.side, spec.widthTiles);
+    const tileY = spec.tileY ?? template.start.tileY + spec.order * (spec.widthTiles + 1);
+    const tileX = spec.tileX ?? tileXForSide(template, spec.side, spec.widthTiles, depthTiles);
     return {
       id: `${template.id}-${spec.side}-${spec.order}`,
       side: spec.side,
@@ -93,12 +95,12 @@ export function createStreetSlots(template: Omit<StreetTemplate, "slots">, specs
   });
 }
 
-function tileXForSide(template: Omit<StreetTemplate, "slots">, side: StreetSide, widthTiles: number): number {
+function tileXForSide(template: Omit<StreetTemplate, "slots">, side: StreetSide, widthTiles: number, depthTiles: number): number {
   if (!isVerticalStreet(template as StreetTemplate)) {
     return template.start.tileX;
   }
   if (side === "left") {
-    return template.roadLeftTile - template.sidewalkTiles - template.slotDepthTiles - 1;
+    return template.roadLeftTile - template.sidewalkTiles - depthTiles - 1;
   }
   if (side === "right") {
     return roadRightTile(template as StreetTemplate) + template.sidewalkTiles + 2;
