@@ -13,12 +13,19 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
-- Current branch for HUD + authored-order work: `fix/hud-dom-and-real-pantai-order`, branched from `feat/authored-tile-street`.
+- Current branch for core daily loop work: `feat/core-life-loop`, branched from the HUD/authored-order head to preserve the fixed DOM HUD and explicit Pantai Berawa order.
 
 ## What Was Added Recently
 
 - Git is now initialized locally. Baseline and every sprint phase are committed.
 - The six action buttons (`PHONE`, `SAVE`, `SOC`, `BIKE`, `BAG`, `ACT`) are now fixed DOM overlay buttons instead of Phaser game objects, so camera zoom/scale cannot push them off-screen. The minimap is now a fixed DOM canvas, also independent of world camera zoom.
+- Core daily life loop added locally: `WorldState.meters` now tracks Energy, Wellbeing, Focus, and Social while Money remains on the local player. The fixed DOM HUD shows Money + all four meters.
+- Save schema is now v6. V1-v5 saves migrate forward with default meters and `life` runtime state while preserving money, quests, inventory, relationships, reputation, discovery, profile, portal, and authored-street position data.
+- Added `src/data/activities.ts` and `src/systems/life/ActivityEngine.ts`: venue category + hours + money + Energy + repeatability determine available activities, activity choices advance time, apply meter/money/item/reputation effects, and persist activity history.
+- `E` at a shop or venue now opens a venue activity menu. Shops retain the original buy/sell panel as an explicit `Open buy/sell` option.
+- Added sleep support through the existing action prompt when it is late or Energy is low: sleep advances to the next morning, restores Energy, bumps Wellbeing/Focus, and saves.
+- Activities at venues with associated NPCs now bump relationship affinity and memory. Contacts shows each NPC tier plus the tier perk; existing tiered scripted dialogue reacts to those tiers.
+- Added a lightweight Settling In arc in the Phone Quests tab: Find your spot, First friend, Earn your keep, Touch grass, and Plug in. Completing all five sets `world.life.settledIn`.
 - HUD/minimap bounds were verified numerically, not by screenshot: `1280x800`, `1440x900`, `1728x1117`, `2560x1440`, `1024x768`, and `390x844` all PASS for button `getBoundingClientRect()` inside `window.innerWidth/innerHeight`, minimap inside canvas bounds, and one click firing per action.
 - Pivoted the active playable map from the full projected OSM road tangle to an authored `32px` tile street template for `Jl. Pantai Berawa`.
 - OSM/generated coordinates are still committed and used as sequencing/reference data, but runtime now imports `src/data/authoredStreetLayout.ts` instead of `src/data/scaledBerawaLayout.ts`.
@@ -183,6 +190,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - `GameScene.ts` is still large. Rendering and broader simulation remain there for a later behavior-preserving split.
 - Phone UI is functional but still a shell; it is not a polished production phone app.
 - Godmode is simple and development-only.
+- Core daily loop is now playable but not fully tuned by human feel; activity deltas are intentionally conservative and should be adjusted after a few real-device day runs.
 - Map discovery now has a compact minimap, but it is still a lightweight orientation aid rather than a full interactive map.
 - The active map is one authored street only. Non-Pantai venues are deferred except for quest-critical Raya Semat stubs (`baked_berawa`, `canggu_station`) and the separate `berawa_beach` anchor.
 - The older OSM/scaled renderer code still exists as dormant fallback/debt in `GameScene.ts` and map modules. It is no longer the active playable surface on `feat/authored-tile-street`.
@@ -199,6 +207,9 @@ Copy/paste this into a new AI session to bring it up to speed.
 ## Next Move
 
 1. Do a human play-feel pass:
+   - Play one full day with the new meters: work, eat/coffee, beach, social/party, then sleep. Confirm the scarcity feels meaningful rather than punishing.
+   - At several venues, press `E` and confirm the activity menu reads clearly; at shops, confirm `Open buy/sell` still opens the old shop panel.
+   - Use Phone > Quests to track the Settling In goals and Phone > Contacts to inspect NPC tier/perk changes after activities.
    - Clear local save or start a fresh run, then verify the authored tile street loads instead of the projected OSM tangle.
    - Walk the full Jl. Pantai Berawa strip from inland to beach and judge whether the tile grid is readable, crisp, and comfortably scaled.
    - Confirm BAKED. Berawa and Canggu Station are acceptable as temporary Raya Semat side-street stubs and that Kadek/Ibu Sari remain easy to interact with.
@@ -251,6 +262,11 @@ Summary:
 Test notes:
 
 ```text
+- npm run build passed after every core-daily-loop phase.
+- Schema v6 smoke: fresh world has Energy 78, Wellbeing 66, Focus 42, Social 36, and Money Rp 70; legacy focus/social mirrors sync from meters.
+- Activity-engine smoke: work at Milk & Madu earns money and advances time; beach activity blocks same-day repeat; venue activities persist in world.life.activityHistory.
+- Balance smoke: two work sessions are possible but a third straight work session fails on Energy; a work/coffee/food/beach daytime route leaves the player short of party money.
+- Settling In smoke: with recovery choices and repeated activity, all five goals complete and set settledIn true.
 - npm run build passed after each authored-street phase.
 - Geometry check: 29 main-strip ordered venues + BAKED/Canggu stubs + Berawa Beach anchor, 0 overlaps, no duplicate venue IDs.
 - HUD bounds check: all six DOM buttons and the DOM minimap are within bounds at 1280x800, 1440x900, 1728x1117, 2560x1440, 1024x768, and 390x844; one click fired per action at each size.

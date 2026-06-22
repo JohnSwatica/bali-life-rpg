@@ -159,3 +159,15 @@ HUD verification is now numeric instead of screenshot-based: for `1280x800`, `14
 Side-street venues are recorded in `pantaiBerawaCrossStreets` instead of being placed on the main strip. `baked_berawa` and `canggu_station` remain reachable as temporary Raya Semat quest stubs, and `berawa_beach` remains as a separate beach anchor marker. Curated venue data and OSM/generated coordinate files were not edited.
 
 Flagged conflicts are intentionally documented rather than silently reconciled: `bakersfield_berawa` is locally marked Raya Semat but Gemini places it on the main strip; `baked_berawa` is locally marked Pantai Berawa but Gemini places it on Raya Semat; `da_romeo_restaurant` is locally marked Pantai Berawa but absent from Gemini's walking order.
+
+## 2026-06-22 - Core Daily Life Loop
+
+The local single-player slice now has canonical daily-life meters in `WorldState.meters`: Energy, Wellbeing, Focus, and Social. Money remains on the local player. Legacy `player.focus` and `player.socialEnergy` remain as compatibility mirrors while old systems are still being decomposed. Save schema is bumped to v6: v1-v5 saves migrate without discarding money, quests, inventory, discovery, reputation, relationships, profile, portal, or map state.
+
+Venue activities are data-driven from `src/data/activities.ts` and evaluated through `ActivityEngine`: venue category, open hours, money, Energy requirements, repeatability, time cost, meter deltas, item rewards, reputation hooks, and activity history. Runtime remains local and simulated; no backend, payments, booking, check-in, or live venue API exists.
+
+The existing authored street interaction now opens a venue activity menu on `E` for shops and non-shop venues. Shops keep the original buy/sell panel as an explicit menu option, so the old shop flow is preserved while the daily loop becomes the primary venue interaction.
+
+Activities at venues with associated NPCs bump relationship memory and affinity. The existing tiered scripted dialogue is the first perk: reaching stronger tiers unlocks warmer authored lines, and the Phone Contacts tab now shows the current tier and perk hook.
+
+The Settling In arc is a lightweight goal layer over runtime state, surfaced in the Phone Quests tab: Find your spot, First friend, Earn your keep, Touch grass, and Plug in. Completing all five marks the local `settledIn` flag and tees up the next chapter without adding a new storyline system.
