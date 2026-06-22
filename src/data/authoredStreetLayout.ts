@@ -76,7 +76,11 @@ export const curatedVenueNodes: CuratedVenueMapNode[] = getStreetBuildingRects(a
     isLandmark: rect.slot.isLandmark ?? false,
     questCritical: rect.slot.questCritical ?? false,
     coordinateSource:
-      rect.slot.curatedVenueId === "canggu_station" ? "authored_side_street_stub" : "authored_tile_sequence",
+      rect.slot.curatedVenueId === "canggu_station" || rect.slot.curatedVenueId === "baked_berawa"
+        ? "authored_side_street_stub"
+        : rect.slot.curatedVenueId === "berawa_beach"
+          ? "authored_beach_anchor"
+          : "authored_tile_sequence",
     x: rect.centerX,
     y: rect.centerY,
     radius: Math.max(TILE_SIZE * 2.2, Math.max(rect.width, rect.height) * 0.72),

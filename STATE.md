@@ -13,17 +13,21 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
-- Current branch for authored tile street work: `feat/authored-tile-street`, branched from the readable-ground/crisp-render head.
+- Current branch for HUD + authored-order work: `fix/hud-dom-and-real-pantai-order`, branched from `feat/authored-tile-street`.
 
 ## What Was Added Recently
 
 - Git is now initialized locally. Baseline and every sprint phase are committed.
+- The six action buttons (`PHONE`, `SAVE`, `SOC`, `BIKE`, `BAG`, `ACT`) are now fixed DOM overlay buttons instead of Phaser game objects, so camera zoom/scale cannot push them off-screen. The minimap is now a fixed DOM canvas, also independent of world camera zoom.
+- HUD/minimap bounds were verified numerically, not by screenshot: `1280x800`, `1440x900`, `1728x1117`, `2560x1440`, `1024x768`, and `390x844` all PASS for button `getBoundingClientRect()` inside `window.innerWidth/innerHeight`, minimap inside canvas bounds, and one click firing per action.
 - Pivoted the active playable map from the full projected OSM road tangle to an authored `32px` tile street template for `Jl. Pantai Berawa`.
 - OSM/generated coordinates are still committed and used as sequencing/reference data, but runtime now imports `src/data/authoredStreetLayout.ts` instead of `src/data/scaledBerawaLayout.ts`.
 - Added `src/systems/map/TileStreetScale.ts`, which defines `TILE_SIZE = 32`, a `120 x 85` tile world (`3840 x 2720` px), generated original tile art, and street camera zoom values (`1.6` desktop / `1.28` mobile).
 - Added `src/systems/map/StreetTemplate.ts` and `src/systems/map/StreetRenderer.ts`: reusable street data model, Phaser tilemap terrain rendering, axis-aligned building/prop drawing, street road paths, and beach/water feature export.
 - Added `src/data/streetTemplates.ts`: `jl_pantai_berawa` is a vertical street with `roadWidthTiles = 6`, `sidewalkTiles = 2`, `slotDepthTiles = 5`, clean left/right building slots, and a grass -> sand -> water terminus.
-- The Pantai Berawa street places 31 Jl. Pantai Berawa/beach venues in generated-coordinate beach-to-inland order, plus one visible quest-critical side-street stub for `canggu_station` so Ibu Sari's starter quest and shop still work.
+- The Pantai Berawa street now uses an explicit Google-Maps/Gemini walking order instead of coordinate-projection sorting: 29 main-strip entries from FINNS/Atlas at the beach end through Bungalow Living inland. Provisional side labels are stored per venue and rebalanced for readable left/right placement without changing order.
+- Side-street venues are recorded in `pantaiBerawaCrossStreets` for future templates and removed from the main strip. `baked_berawa` and `canggu_station` remain reachable as quest-critical Raya Semat stubs; `berawa_beach` remains as a separate beach anchor marker.
+- Flagged authored-order conflicts against `src/data/curatedVenues.ts`: `bakersfield_berawa` is locally marked `Jl. Raya Semat` but Gemini places it on the main strip; `baked_berawa` is locally marked `Jl. Pantai Berawa` but Gemini places it on Raya Semat; `da_romeo_restaurant` is locally marked `Jl. Pantai Berawa` but is absent from Gemini's walking order and deferred for manual placement.
 - Shopfront readability pass: venue buildings now get permanent compact signboards, category-specific props, road-facing doors, entrance mats, and deterministic color variation so the street no longer reads as identical boxes.
 - Storefront interaction pass: named non-shop venues on the authored street can now be checked with `E`. Visits route through `VisitVenue`, record venue relationship memory, show a short authored flavor card, and give tiny one-time focus/social/connection feedback so the street is more playable without becoming a grind.
 - `layoutLookup.ts` now resolves shops, NPC routine stops, pickups, and spawn from authored street venue nodes. Offsets are literal pixels in the authored tile world rather than OSM presentation-scaled values.
@@ -180,7 +184,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Phone UI is functional but still a shell; it is not a polished production phone app.
 - Godmode is simple and development-only.
 - Map discovery now has a compact minimap, but it is still a lightweight orientation aid rather than a full interactive map.
-- The active map is one authored street only. Non-Pantai venues are deferred except for the temporary quest-critical `canggu_station` side-street stub.
+- The active map is one authored street only. Non-Pantai venues are deferred except for quest-critical Raya Semat stubs (`baked_berawa`, `canggu_station`) and the separate `berawa_beach` anchor.
 - The older OSM/scaled renderer code still exists as dormant fallback/debt in `GameScene.ts` and map modules. It is no longer the active playable surface on `feat/authored-tile-street`.
 - Historical OSM road/coastline/building presentation remains useful reference, but the active street now uses authored tile road/beach/water features. Water boundaries are still soft feedback, not full physics collision; a human should judge the beach/water feel in live play.
 - Eighteen curated coordinates still need manual review because they resolved via flagged estimate/fallback rather than OSM/Nominatim. See `data/osm/berawa.curated-coords.json`.
@@ -190,16 +194,16 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Offline activities are explicitly `simulated`.
 - Crafting is data/system scaffold only; it is not exposed in Phone, shops, NPC interactions, or godmode.
 - The repo has local commits but no configured remote, so a GitHub PR cannot be opened from this workspace until a remote/repo is provided.
-- Still worth checking manually by feel: traffic-hit shake/splash timing, real Mac trackpad/mouse clicks on all six buttons, real-phone touch layout, and whether the map reads as Berawa when driving around.
+- Still worth checking manually by feel: traffic-hit shake/splash timing, real Mac trackpad/mouse clicks on the DOM HUD, real-phone touch layout, and whether the authored order reads like Berawa when driving around.
 
 ## Next Move
 
 1. Do a human play-feel pass:
    - Clear local save or start a fresh run, then verify the authored tile street loads instead of the projected OSM tangle.
    - Walk the full Jl. Pantai Berawa strip from inland to beach and judge whether the tile grid is readable, crisp, and comfortably scaled.
-   - Confirm Canggu Station is acceptable as a temporary side-street stub and that Ibu Sari remains easy to interact with.
+   - Confirm BAKED. Berawa and Canggu Station are acceptable as temporary Raya Semat side-street stubs and that Kadek/Ibu Sari remain easy to interact with.
    - Trigger traffic-bike collision and judge knockback/shake/splash timing.
-   - Click all six HUD buttons with the real Mac trackpad/mouse.
+   - Click all six fixed DOM HUD buttons with the real Mac trackpad/mouse.
    - Try the mobile HUD on an actual phone, especially tall screens.
    - Drive along the authored road and judge whether scooter travel matters at the tile scale.
    - Walk into the rendered surf/water edges and judge whether the soft boundary nudge feels natural.
@@ -211,7 +215,9 @@ Copy/paste this into a new AI session to bring it up to speed.
    - Add focused tests around `QuestRegistry`, `Persistence`, `InteractionController`, and `ReputationState`.
 
 3. Continue Berawa credibility:
-   - Add a proper Raya Semat/Canggu Station authored street template, then remove the temporary Canggu Station stub.
+   - Add a proper Raya Semat authored street template, then remove the temporary BAKED/Canggu Station stubs.
+   - Use `pantaiBerawaCrossStreets` as the source for upcoming cross-street templates: Subak Sari, Pemelisan Agung, Taman Tamora, Subak Canggu, Tegal Sari, and Raya Semat.
+   - Resolve flagged street-placement conflicts before treating the authored order as final truth: Bakersfield, BAKED, and Da Romeo.
    - Manually verify flagged coordinates in `data/osm/berawa.curated-coords.json` only as sequencing/reference data.
    - Tune `TileStreetScale`, traffic density/speed, and label reveal distances by phone/trackpad feel before adding more streets.
    - Curate a small verified venue file before adding more real-world-name candidates.
@@ -235,10 +241,10 @@ Summary:
 
 ```text
 - Add an authored `32px` tile street foundation with original generated tiles, reusable `StreetTemplate` data, and `StreetRenderer`.
-- Populate `Jl. Pantai Berawa` from curated venues in generated-coordinate beach-to-inland order while leaving curated/source coordinate files untouched.
+- Populate `Jl. Pantai Berawa` from the explicit Gemini/Google-Maps walking order while leaving curated/source coordinate files untouched.
 - Add a clean grass -> sand -> water beach terminus and keep OSM/generated coordinates as sequencing/reference data, not the active playable surface.
 - Switch runtime layout lookups, traffic, minimap, discovery, shops, NPC routines, pickups, and spawn to `src/data/authoredStreetLayout.ts`.
-- Preserve Canggu Station as a temporary quest-critical side-street stub until a proper Raya Semat template exists.
+- Preserve BAKED. Berawa and Canggu Station as temporary quest-critical Raya Semat stubs until a proper Raya Semat template exists.
 - Update STATE.md and DECISIONS.md.
 ```
 
@@ -246,7 +252,8 @@ Test notes:
 
 ```text
 - npm run build passed after each authored-street phase.
-- Geometry check: 32 visible/interactable venue slots, 0 overlaps, no duplicate venue IDs.
+- Geometry check: 29 main-strip ordered venues + BAKED/Canggu stubs + Berawa Beach anchor, 0 overlaps, no duplicate venue IDs.
+- HUD bounds check: all six DOM buttons and the DOM minimap are within bounds at 1280x800, 1440x900, 1728x1117, 2560x1440, 1024x768, and 390x844; one click fired per action at each size.
 - Scale check: TILE_SIZE 32, world 120 x 85 tiles / 3840 x 2720 px, road width 6 tiles, camera 1.6 desktop / 1.28 mobile.
 - Diff check: no curated venue, generated coordinate, or curated-coordinate cache files changed.
 - Browser smoke still pending for this branch; final visual/readability feel needs human judgment on the real device.

@@ -145,3 +145,17 @@ The authored street should read as a playable row of places, not a repeated buil
 ## 2026-06-22 - Lightweight Storefront Visits
 
 Non-shop named venues on the authored street are now interactable with `E`. The interaction records a `VisitVenue` intent, appends venue relationship memory, and shows a small authored flavor card with a tiny first-visit focus/social/connection adjustment. Shops remain shops, NPCs still win priority, and repeat venue visits do not farm rewards. This keeps the street playful and legible without building a full venue-commerce or event system yet.
+
+## 2026-06-22 - HUD Moved To Fixed DOM Overlay
+
+The six action buttons are fixed DOM buttons rather than Phaser objects. This is a deliberate bug-class removal: DOM `position: fixed` controls are anchored to the viewport and cannot be moved off-screen by Phaser camera zoom, scroll factor, scale manager math, or world-camera changes. The minimap is also a fixed DOM canvas, while the mobile joystick remains in Phaser.
+
+HUD verification is now numeric instead of screenshot-based: for `1280x800`, `1440x900`, `1728x1117`, `2560x1440`, `1024x768`, and `390x844`, every button rect is inside the window, the minimap rect is inside the canvas/window, and one real click fires each action handler.
+
+## 2026-06-22 - Explicit Pantai Berawa Walking Order
+
+`Jl. Pantai Berawa` no longer derives authored slot order from projected coordinates. The street template uses an explicit Gemini/Google-Maps walking order from beach to inland: FINNS/Atlas through Bungalow Living. Side is stored per venue as an easy-to-flip authored field; the long provisional LEFT run was rebalanced across both sides for readable gameplay while preserving the walking order exactly.
+
+Side-street venues are recorded in `pantaiBerawaCrossStreets` instead of being placed on the main strip. `baked_berawa` and `canggu_station` remain reachable as temporary Raya Semat quest stubs, and `berawa_beach` remains as a separate beach anchor marker. Curated venue data and OSM/generated coordinate files were not edited.
+
+Flagged conflicts are intentionally documented rather than silently reconciled: `bakersfield_berawa` is locally marked Raya Semat but Gemini places it on the main strip; `baked_berawa` is locally marked Pantai Berawa but Gemini places it on Raya Semat; `da_romeo_restaurant` is locally marked Pantai Berawa but absent from Gemini's walking order.
