@@ -13,12 +13,12 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
-- Current branch for authored tile street work: `feat/authored-tile-street`, branched from the readable-ground/crisp-render head.
+- Current branch for additive automated hardening: `chore/core-test-suite`, branched from `feat/authored-tile-street`.
 
 ## What Was Added Recently
 
 - Git is now initialized locally. Baseline and every sprint phase are committed.
-- Core automated test suite added with Vitest. Run it with `npm test`; it currently covers save migration v1-v4, starter quest registry flows, canonical reputation transitions, authored street/layout invariants, and interaction priority.
+- Core automated test suite added with Vitest. Run it with `npm test`; it currently covers save migration v1-v4, starter quest registry flows, canonical reputation transitions, authored street/layout invariants, interaction priority, intent dispatch, event scheduling, relationship memory, venue registry helpers, and the crafting system scaffold.
 - Pivoted the active playable map from the full projected OSM road tangle to an authored `32px` tile street template for `Jl. Pantai Berawa`.
 - OSM/generated coordinates are still committed and used as sequencing/reference data, but runtime now imports `src/data/authoredStreetLayout.ts` instead of `src/data/scaledBerawaLayout.ts`.
 - Added `src/systems/map/TileStreetScale.ts`, which defines `TILE_SIZE = 32`, a `120 x 85` tile world (`3840 x 2720` px), generated original tile art, and street camera zoom values (`1.6` desktop / `1.28` mobile).
@@ -209,7 +209,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 
 2. Continue decomposition carefully:
    - Extract world/render drawing only if behavior can stay identical.
-   - Keep extending the new focused tests around `QuestRegistry`, `Persistence`, `InteractionController`, and `ReputationState` as those seams evolve.
+   - Keep extending the new focused tests around `QuestRegistry`, `Persistence`, `InteractionController`, `ReputationState`, `IntentDispatcher`, events, relationships, venues, and crafting as those seams evolve.
    - Remaining skipped test seams: generic quest objective handlers (`collect`, `visit`, `buy`, `talk`) need a public pure helper before they can be unit-tested without exporting private internals; HUD/minimap anchor math needs a pure viewport-layout helper before it can be tested without a live Phaser canvas.
 
 3. Continue Berawa credibility:

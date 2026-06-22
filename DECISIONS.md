@@ -151,3 +151,9 @@ Non-shop named venues on the authored street are now interactable with `E`. The 
 Vitest is now the project test runner (`npm test`) for deterministic core logic. The initial suite covers save migration v1-v4, starter quest registry behavior, canonical `ReputationState` transitions, authored street/layout invariants, and interaction priority. Tests alias `phaser` to a small local stub so pure logic can run in Node without importing Phaser's browser renderer.
 
 Two coverage seams are intentionally skipped until the runtime exposes pure helpers: generic quest objective handlers beyond the current starter `deliver` flows, and HUD/minimap viewport-anchor math. These were not forced during the unsupervised hardening pass because exporting private internals or reshaping UI layout helpers would be runtime surface change rather than additive testing.
+
+## 2026-06-22 - Extended Deterministic Coverage
+
+The unsupervised hardening pass continued additively, still without runtime/map/art changes. Tests now also cover `IntentDispatcher` portal/event/reputation/relationship mutations, `EventScheduler` active/upcoming windows, `RelationshipMemory` affinity tiers and summaries, `VenueRegistry` discovery/priority helpers, and `CraftingSystem` recipe lookup plus inventory mutation.
+
+This keeps the current social-map foundation self-verifying while avoiding human-judgment areas such as visual map feel, HUD screenshots, real venue order, or new authored street layout choices.
