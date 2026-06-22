@@ -3,6 +3,7 @@ import { playerSpawn } from "../data/map";
 import { createDefaultPortalState } from "./portal/PortalState";
 import { createDefaultPlayerProfile } from "./profile/ProfileState";
 import { createDefaultReputationState } from "./reputation/ReputationState";
+import { createDefaultPlayerMeters, syncLegacyPlayerMeterMirrors } from "./meters/PlayerMeters";
 import type { NpcEntityState, PlayerEntityState, TimePhase, WorldState } from "../types";
 
 export const LOCAL_PLAYER_ID = "local-player";
@@ -51,8 +52,8 @@ export function createInitialWorldState(): WorldState {
     })
   );
 
-  return {
-    schemaVersion: 4,
+  const world: WorldState = {
+    schemaVersion: 5,
     version: 1,
     neighborhoodId: "berawa-finns-club",
     clock: {
@@ -68,6 +69,7 @@ export function createInitialWorldState(): WorldState {
     groups: {},
     profile: createDefaultPlayerProfile(),
     reputation: createDefaultReputationState(60),
+    meters: createDefaultPlayerMeters(),
     relationships: [],
     portal: createDefaultPortalState(),
     runtimeEvents: {
@@ -81,6 +83,8 @@ export function createInitialWorldState(): WorldState {
     questFlags: {},
     collectedPickups: {}
   };
+  syncLegacyPlayerMeterMirrors(world);
+  return world;
 }
 
 export function getLocalPlayer(world: WorldState): PlayerEntityState {

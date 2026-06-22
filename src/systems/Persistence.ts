@@ -3,9 +3,10 @@ import { createDefaultPortalState } from "./portal/PortalState";
 import { createDefaultPlayerProfile } from "./profile/ProfileState";
 import { createDefaultReputationState } from "./reputation/ReputationState";
 import { scaleDistance } from "./map/WorldScale";
+import { migratePlayerMeters, syncLegacyPlayerMeterMirrors } from "./meters/PlayerMeters";
 import type { GroupEntityState, NpcEntityState, PlayerEntityState, ReputationState, WorldState } from "../types";
 
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 const SAVE_KEY = "bali-life-rpg.berawa-finns.save.v1";
 const PAUSED_V2_KEY = "bali-life-rpg.berawa-finns.save.v2";
 
@@ -52,6 +53,8 @@ function readRawSave(): { raw: string | null; key: string } {
 function migrateWorldState(raw: Partial<WorldState> & Record<string, unknown>): WorldState {
   const fresh = createInitialWorldState();
   const rawSchemaVersion = typeof raw.schemaVersion === "number" ? raw.schemaVersion : 1;
+  const rawPlayers = raw.players as Record<string, Partial<PlayerEntityState>> | undefined;
+  const rawLocalPlayer = rawPlayers?.[raw.localPlayerId ?? LOCAL_PLAYER_ID];
   const world = {
     ...fresh,
     ...raw,
@@ -63,6 +66,7 @@ function migrateWorldState(raw: Partial<WorldState> & Record<string, unknown>): 
     groups: raw.groups ?? {},
     profile: raw.profile ?? createDefaultPlayerProfile(),
     reputation: migrateReputationState(raw),
+    meters: migratePlayerMeters(raw.meters, rawLocalPlayer),
     relationships: raw.relationships ?? [],
     portal: raw.portal ?? createDefaultPortalState(),
     runtimeEvents: raw.runtimeEvents ?? { attendedEventIds: [] },
@@ -73,6 +77,7 @@ function migrateWorldState(raw: Partial<WorldState> & Record<string, unknown>): 
 
   const player = world.players[world.localPlayerId] ?? world.players[LOCAL_PLAYER_ID] ?? createInitialPlayerState();
   world.players[world.localPlayerId] = hydratePlayerState(player);
+  syncLegacyPlayerMeterMirrors(world);
   if (rawSchemaVersion < 4) {
     scaleLegacyRuntimePositions(world, raw);
   }

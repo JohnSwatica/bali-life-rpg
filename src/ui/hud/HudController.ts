@@ -25,6 +25,14 @@ interface DomMinimapSurface {
 
 type HudActionName = "phone" | "inventory" | "community" | "save" | "bike" | "action";
 
+interface HudMeterReadout {
+  money: number;
+  energy: number;
+  wellbeing: number;
+  focus: number;
+  social: number;
+}
+
 interface HudControllerCallbacks {
   action: () => void;
   inventory: () => void;
@@ -48,6 +56,7 @@ export class HudController {
   private joystickOrigin = new Phaser.Math.Vector2();
   private movementVector = new Phaser.Math.Vector2();
   private buttonOverlay?: HTMLDivElement;
+  private meterOverlay?: HTMLDivElement;
   private minimapFrame?: HTMLDivElement;
   private minimapCanvas?: HTMLCanvasElement;
   private minimapLayout?: DomMinimapLayout;
@@ -172,11 +181,38 @@ export class HudController {
 
   destroy(): void {
     this.buttonOverlay?.remove();
+    this.meterOverlay?.remove();
     this.minimapFrame?.remove();
     this.buttonOverlay = undefined;
+    this.meterOverlay = undefined;
     this.minimapFrame = undefined;
     this.minimapCanvas = undefined;
     this.minimapLayout = undefined;
+  }
+
+  updateMeterReadout(readout: HudMeterReadout): void {
+    if (!this.meterOverlay) {
+      return;
+    }
+    const rows: Array<[string, string]> = [
+      ["Rp", `${readout.money}`],
+      ["Energy", `${readout.energy}`],
+      ["Wellbeing", `${readout.wellbeing}`],
+      ["Focus", `${readout.focus}`],
+      ["Social", `${readout.social}`]
+    ];
+    this.meterOverlay.replaceChildren(
+      ...rows.map(([label, value]) => {
+        const row = document.createElement("div");
+        row.className = "bali-life-meter-row";
+        const name = document.createElement("span");
+        name.textContent = label;
+        const amount = document.createElement("strong");
+        amount.textContent = value;
+        row.append(name, amount);
+        return row;
+      })
+    );
   }
 
   private createDomOverlay(): void {
@@ -185,7 +221,13 @@ export class HudController {
     }
 
     document.getElementById("bali-life-hud-buttons")?.remove();
+    document.getElementById("bali-life-hud-meters")?.remove();
     document.getElementById("bali-life-minimap")?.remove();
+
+    this.meterOverlay = document.createElement("div");
+    this.meterOverlay.id = "bali-life-hud-meters";
+    this.meterOverlay.className = "bali-life-hud-meters";
+    this.meterOverlay.setAttribute("aria-label", "Player meters");
 
     this.buttonOverlay = document.createElement("div");
     this.buttonOverlay.id = "bali-life-hud-buttons";
@@ -230,6 +272,7 @@ export class HudController {
     this.minimapFrame.appendChild(this.minimapCanvas);
 
     document.body.appendChild(this.minimapFrame);
+    document.body.appendChild(this.meterOverlay);
     document.body.appendChild(this.buttonOverlay);
     this.layoutDomOverlay();
   }

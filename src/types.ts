@@ -3,6 +3,7 @@ export type TimePhase = "dawn" | "day" | "dusk" | "night";
 export type GroupTravelMode = "walk" | "bike";
 export type TutorialStep = "earn_bike_money" | "rent_bike" | "join_group" | "free_roam";
 export type PortalMode = "single" | "multiplayer";
+export type Meter = "energy" | "wellbeing" | "focus" | "social";
 export type VenueType =
   | "cafe"
   | "grocery"
@@ -214,6 +215,13 @@ export interface MapDiscoveryState {
   revealAll: boolean;
 }
 
+export interface PlayerMeters {
+  energy: number;
+  wellbeing: number;
+  focus: number;
+  social: number;
+}
+
 export type GameIntent =
   | { kind: "SwitchPortal"; mode: PortalMode }
   | { kind: "AttendEvent"; eventId: string }
@@ -288,6 +296,7 @@ export interface WorldState {
   groups: Record<string, GroupEntityState>;
   profile: PlayerProfile;
   reputation: ReputationState;
+  meters: PlayerMeters;
   relationships: RelationshipMemory[];
   portal: PortalState;
   runtimeEvents: RuntimeEventState;

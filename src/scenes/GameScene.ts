@@ -28,6 +28,7 @@ import { getPresentedRoads, getVenueSnapRoads } from "../systems/map/RoadPresent
 import { renderStreetTemplate } from "../systems/map/StreetRenderer";
 import { STREET_CAMERA } from "../systems/map/TileStreetScale";
 import { scaleDistance, scalePoint } from "../systems/map/WorldScale";
+import { adjustPlayerMeters } from "../systems/meters/PlayerMeters";
 import {
   computeVenuePresentationLayout,
   getVenueFootprint,
@@ -92,6 +93,7 @@ interface BaliLifeDebugSnapshot {
   focus: number;
   socialEnergy: number;
   connections: number;
+  meters: WorldState["meters"];
   reputation: number;
   wantedLevel: number;
   bounty: number;
@@ -1437,7 +1439,7 @@ export class GameScene extends Phaser.Scene {
     this.trafficHitCooldown = TRAFFIC_HIT_COOLDOWN_MS;
     const moneyLoss = Math.min(this.playerState.money, TRAFFIC_HIT_MONEY_LOSS);
     this.playerState.safety = Phaser.Math.Clamp(this.playerState.safety - 12, 0, 100);
-    this.playerState.focus = Phaser.Math.Clamp(this.playerState.focus - 5, 0, 100);
+    adjustPlayerMeters(this.world, { focus: -5 });
     this.playerState.money -= moneyLoss;
     if (this.playerState.onBike) {
       this.playerState.bikeCondition = Phaser.Math.Clamp(this.playerState.bikeCondition - 8, 0, 100);
@@ -1594,7 +1596,7 @@ export class GameScene extends Phaser.Scene {
       repeatFlagBounty: REPEAT_FLAG_BOUNTY
     });
     this.dispatchIntent({ kind: "AdjustReputation", delta: -8, reason: `Flagged by ${victimName} for reckless riding` });
-    this.playerState.focus = Phaser.Math.Clamp(this.playerState.focus - 6, 0, 100);
+    adjustPlayerMeters(this.world, { focus: -6 });
     saveWorldState(this.world);
     this.updatePlayerWantedSign();
     this.showToast(`${victimName} flagged you for reckless bike damage. Wanted level ${standing.wantedLevel}.`);
@@ -1707,6 +1709,13 @@ export class GameScene extends Phaser.Scene {
     this.moneyText.setText(
       `Rp ${this.playerState.money}  Rep ${getReputationScore(this.world.reputation)}  Safety ${this.playerState.safety}  ${wantedLabel}\n${bikeLabel}`
     );
+    this.hudController.updateMeterReadout({
+      money: this.playerState.money,
+      energy: this.world.meters.energy,
+      wellbeing: this.world.meters.wellbeing,
+      focus: this.world.meters.focus,
+      social: this.world.meters.social
+    });
     this.questText.setText([...this.getTutorialLines(), ...getQuestTrackerLines(this.playerState)].join("\n"));
     this.questText.setWordWrapWidth(Math.min(520, this.scale.width - 40));
 
@@ -1967,8 +1976,7 @@ export class GameScene extends Phaser.Scene {
     this.dispatchIntent({ kind: "VisitVenue", venueId });
 
     if (isFirstVisit) {
-      this.playerState.focus = Phaser.Math.Clamp(this.playerState.focus + flavor.focusDelta, 0, 100);
-      this.playerState.socialEnergy = Phaser.Math.Clamp(this.playerState.socialEnergy + flavor.socialEnergyDelta, 0, 100);
+      adjustPlayerMeters(this.world, { focus: flavor.focusDelta, social: flavor.socialEnergyDelta });
       this.playerState.connections += flavor.connectionDelta;
     }
 
@@ -2206,18 +2214,13 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (activity.socialEnergyDelta < 0 && this.playerState.socialEnergy < Math.abs(activity.socialEnergyDelta)) {
+    if (activity.socialEnergyDelta < 0 && this.world.meters.social < Math.abs(activity.socialEnergyDelta)) {
       this.showToast("Your social battery is too low. Try a calmer activity first.");
       return;
     }
 
     this.playerState.money -= activity.moneyCost;
-    this.playerState.focus = Phaser.Math.Clamp(this.playerState.focus + activity.focusReward, 0, 100);
-    this.playerState.socialEnergy = Phaser.Math.Clamp(
-      this.playerState.socialEnergy + activity.socialEnergyDelta,
-      0,
-      100
-    );
+    adjustPlayerMeters(this.world, { focus: activity.focusReward, social: activity.socialEnergyDelta });
     this.playerState.connections += activity.connectionReward;
     if (activity.reputationReward) {
       this.dispatchIntent({
@@ -2619,7 +2622,7 @@ export class GameScene extends Phaser.Scene {
       this.add.text(
         x + 22,
         y + 56,
-        `Money: Rp ${this.playerState.money}  |  Focus ${this.playerState.focus}  |  Social ${this.playerState.socialEnergy}  |  Safety ${this.playerState.safety}\nRep ${getReputationScore(this.world.reputation)}  |  Wanted ${getWantedLevel(this.world.reputation)}  |  Bounty Rp ${getBounty(this.world.reputation)}  |  ${this.getBikeStatusLabel()}`,
+        `Money: Rp ${this.playerState.money}  |  Energy ${this.world.meters.energy}  |  Wellbeing ${this.world.meters.wellbeing}  |  Focus ${this.world.meters.focus}  |  Social ${this.world.meters.social}\nRep ${getReputationScore(this.world.reputation)}  |  Wanted ${getWantedLevel(this.world.reputation)}  |  Bounty Rp ${getBounty(this.world.reputation)}  |  ${this.getBikeStatusLabel()}`,
         {
           ...this.panelBodyStyle(),
           wordWrap: { width: panelWidth - 44 }
@@ -3404,9 +3407,10 @@ export class GameScene extends Phaser.Scene {
         safety: this.playerState.safety
       },
       money: this.playerState.money,
-      focus: this.playerState.focus,
-      socialEnergy: this.playerState.socialEnergy,
+      focus: this.world.meters.focus,
+      socialEnergy: this.world.meters.social,
       connections: this.playerState.connections,
+      meters: { ...this.world.meters },
       reputation: getReputationScore(this.world.reputation),
       wantedLevel: getWantedLevel(this.world.reputation),
       bounty: getBounty(this.world.reputation),
