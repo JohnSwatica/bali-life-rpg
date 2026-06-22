@@ -29,6 +29,7 @@ import { renderStreetTemplate } from "../systems/map/StreetRenderer";
 import { STREET_CAMERA } from "../systems/map/TileStreetScale";
 import { scaleDistance, scalePoint } from "../systems/map/WorldScale";
 import { adjustPlayerMeters } from "../systems/meters/PlayerMeters";
+import { canSleepNow, sleepUntilNextMorning } from "../systems/time/DailyClock";
 import {
   computeVenuePresentationLayout,
   getVenueFootprint,
@@ -1724,6 +1725,8 @@ export class GameScene extends Phaser.Scene {
       this.promptText.setText(`E / ACT: ask ${REQUIRED_BIKE_HELPERS} helpers to drag the bike out`);
     } else if (this.mode === "world" && target) {
       this.promptText.setText(`E / ACT: ${target.label}`);
+    } else if (this.mode === "world" && this.canSleepHere()) {
+      this.promptText.setText("E / ACT: sleep until morning.");
     } else if (this.mode === "world") {
       this.promptText.setText("WASD/arrows move. B bike. P phone. I bag. C community. F5 save.");
     } else if (this.mode === "phone") {
@@ -1830,6 +1833,10 @@ export class GameScene extends Phaser.Scene {
 
     const target = this.getNearestInteraction();
     if (!target) {
+      if (this.canSleepHere()) {
+        this.sleepToMorning();
+        return;
+      }
       this.showToast("No one is close enough to talk, trade, or join an activity with.");
       return;
     }
@@ -3308,6 +3315,19 @@ export class GameScene extends Phaser.Scene {
 
   private getNearestInteraction(): InteractionTarget | undefined {
     return this.interactionController.getNearestInteraction();
+  }
+
+  private canSleepHere(): boolean {
+    return canSleepNow(this.world.clock, this.world.meters);
+  }
+
+  private sleepToMorning(): void {
+    sleepUntilNextMorning(this.world);
+    this.world.meters.energy = 100;
+    adjustPlayerMeters(this.world, { wellbeing: 8, focus: 6, social: -4 });
+    this.updateLighting();
+    saveWorldState(this.world);
+    this.showToast(`Slept until ${formatClock(this.world)}. Energy restored.`);
   }
 
   private getRoutineStop(npc: NpcDefinition) {
