@@ -145,3 +145,9 @@ The authored street should read as a playable row of places, not a repeated buil
 ## 2026-06-22 - Lightweight Storefront Visits
 
 Non-shop named venues on the authored street are now interactable with `E`. The interaction records a `VisitVenue` intent, appends venue relationship memory, and shows a small authored flavor card with a tiny first-visit focus/social/connection adjustment. Shops remain shops, NPCs still win priority, and repeat venue visits do not farm rewards. This keeps the street playful and legible without building a full venue-commerce or event system yet.
+
+## 2026-06-22 - Core Logic Test Suite
+
+Vitest is now the project test runner (`npm test`) for deterministic core logic. The initial suite covers save migration v1-v4, starter quest registry behavior, canonical `ReputationState` transitions, authored street/layout invariants, and interaction priority. Tests alias `phaser` to a small local stub so pure logic can run in Node without importing Phaser's browser renderer.
+
+Two coverage seams are intentionally skipped until the runtime exposes pure helpers: generic quest objective handlers beyond the current starter `deliver` flows, and HUD/minimap viewport-anchor math. These were not forced during the unsupervised hardening pass because exporting private internals or reshaping UI layout helpers would be runtime surface change rather than additive testing.

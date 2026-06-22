@@ -18,6 +18,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 ## What Was Added Recently
 
 - Git is now initialized locally. Baseline and every sprint phase are committed.
+- Core automated test suite added with Vitest. Run it with `npm test`; it currently covers save migration v1-v4, starter quest registry flows, canonical reputation transitions, authored street/layout invariants, and interaction priority.
 - Pivoted the active playable map from the full projected OSM road tangle to an authored `32px` tile street template for `Jl. Pantai Berawa`.
 - OSM/generated coordinates are still committed and used as sequencing/reference data, but runtime now imports `src/data/authoredStreetLayout.ts` instead of `src/data/scaledBerawaLayout.ts`.
 - Added `src/systems/map/TileStreetScale.ts`, which defines `TILE_SIZE = 32`, a `120 x 85` tile world (`3840 x 2720` px), generated original tile art, and street camera zoom values (`1.6` desktop / `1.28` mobile).
@@ -208,7 +209,8 @@ Copy/paste this into a new AI session to bring it up to speed.
 
 2. Continue decomposition carefully:
    - Extract world/render drawing only if behavior can stay identical.
-   - Add focused tests around `QuestRegistry`, `Persistence`, `InteractionController`, and `ReputationState`.
+   - Keep extending the new focused tests around `QuestRegistry`, `Persistence`, `InteractionController`, and `ReputationState` as those seams evolve.
+   - Remaining skipped test seams: generic quest objective handlers (`collect`, `visit`, `buy`, `talk`) need a public pure helper before they can be unit-tested without exporting private internals; HUD/minimap anchor math needs a pure viewport-layout helper before it can be tested without a live Phaser canvas.
 
 3. Continue Berawa credibility:
    - Add a proper Raya Semat/Canggu Station authored street template, then remove the temporary Canggu Station stub.
