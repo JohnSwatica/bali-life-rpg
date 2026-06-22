@@ -137,3 +137,7 @@ No Nintendo/Pokémon/Game Freak assets are used or copied. The art direction bor
 ## 2026-06-22 - Quest-Critical Side-Street Stub
 
 `canggu_station` is not on `Jl. Pantai Berawa`, but it backs the Ibu Sari starter quest and shop. Until a proper Raya Semat/Canggu Station authored street exists, it is represented as one visible quest-critical side-street stub near the inland end of the template. Other non-Pantai venues remain deferred rather than forced into this street.
+
+## 2026-06-22 - Named Shopfronts Over Identical Boxes
+
+The authored street should read as a playable row of places, not a repeated building stamp. Venue buildings now carry compact permanent signboards, road-facing entrances, category-specific props, and deterministic facade color variation. This is presentation-only: venue IDs, source coordinates, slot order, shop definitions, NPC routines, and quest logic remain unchanged.

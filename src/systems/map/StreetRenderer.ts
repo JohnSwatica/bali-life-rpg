@@ -23,6 +23,7 @@ export interface StreetRenderHandle {
   layer: Phaser.Tilemaps.TilemapLayer;
   buildings: Phaser.GameObjects.Graphics;
   props: Phaser.GameObjects.Graphics;
+  signs: Phaser.GameObjects.Text[];
 }
 
 export interface StreetBuildingRect {
@@ -33,6 +34,15 @@ export interface StreetBuildingRect {
   height: number;
   centerX: number;
   centerY: number;
+}
+
+interface BuildingPalette {
+  roof: number;
+  roofLight: number;
+  wall: number;
+  trim: number;
+  sign: number;
+  accent: number;
 }
 
 export function renderStreetTemplate(scene: Phaser.Scene, template: StreetTemplate): StreetRenderHandle {
@@ -55,7 +65,9 @@ export function renderStreetTemplate(scene: Phaser.Scene, template: StreetTempla
   const buildings = scene.add.graphics().setDepth(-90);
   drawStreetBuildings(buildings, template);
 
-  return { map, layer, buildings, props };
+  const signs = createStreetSigns(scene, template);
+
+  return { map, layer, buildings, props, signs };
 }
 
 export function buildStreetTileData(template: StreetTemplate): number[][] {
@@ -244,8 +256,9 @@ function drawStreetBuildings(g: Phaser.GameObjects.Graphics, template: StreetTem
     if (!rect.slot.venueId) {
       continue;
     }
-    const palette = buildingPalette(rect.slot.category, rect.slot.isLandmark);
+    const palette = buildingPalette(rect.slot.category, rect.slot.isLandmark, hashString(rect.slot.venueId));
     const shadowOffset = 4;
+    drawEntranceMat(g, rect, palette);
     g.fillStyle(0x24312a, 0.22);
     g.fillRoundedRect(rect.x + shadowOffset, rect.y + shadowOffset, rect.width, rect.height, 3);
     g.fillStyle(palette.wall, 1);
@@ -254,14 +267,202 @@ function drawStreetBuildings(g: Phaser.GameObjects.Graphics, template: StreetTem
     g.fillRoundedRect(rect.x - 3, rect.y, rect.width + 6, rect.height * 0.48, 4);
     g.fillStyle(palette.roofLight, 0.72);
     g.fillRect(rect.x + 6, rect.y + 7, Math.max(8, rect.width - 12), 5);
-    g.fillStyle(0x5e3f2d, 0.82);
-    const doorWidth = Math.max(10, Math.min(22, rect.width * 0.18));
-    g.fillRoundedRect(rect.centerX - doorWidth / 2, rect.y + rect.height - 21, doorWidth, 20, 2);
-    g.fillStyle(0xf7eac1, 0.9);
-    const windowWidth = Math.max(10, Math.min(18, rect.width * 0.18));
-    g.fillRoundedRect(rect.x + 9, rect.y + rect.height * 0.48, windowWidth, 13, 2);
-    g.fillRoundedRect(rect.x + rect.width - windowWidth - 9, rect.y + rect.height * 0.48, windowWidth, 13, 2);
+    drawRoadFacingFacade(g, rect, palette);
+    drawCategoryDetails(g, rect, palette);
   }
+}
+
+function createStreetSigns(scene: Phaser.Scene, template: StreetTemplate): Phaser.GameObjects.Text[] {
+  return getStreetBuildingRects(template)
+    .filter((rect) => rect.slot.venueId && rect.slot.label)
+    .map((rect) => {
+      const palette = buildingPalette(rect.slot.category, rect.slot.isLandmark, hashString(rect.slot.venueId ?? rect.slot.id));
+      const sign = signPosition(rect);
+      return scene.add
+        .text(sign.x, sign.y, compactVenueName(rect.slot.label ?? rect.slot.venueId ?? ""), {
+          fontFamily: "Inter, Arial, sans-serif",
+          fontSize: rect.slot.isLandmark ? "10px" : "9px",
+          fontStyle: "800",
+          color: "#fff8de",
+          align: "center",
+          backgroundColor: colorToCss(palette.sign),
+          padding: { x: 4, y: 2 },
+          wordWrap: { width: Math.max(46, Math.min(92, rect.width - 12)), useAdvancedWrap: true }
+        })
+        .setOrigin(0.5)
+        .setDepth(-82)
+        .setResolution(2);
+    });
+}
+
+function drawEntranceMat(g: Phaser.GameObjects.Graphics, rect: StreetBuildingRect, palette: BuildingPalette): void {
+  const side = rect.slot.side;
+  const matWidth = 22;
+  const matHeight = 34;
+  const matX = side === "left" ? rect.x + rect.width + 4 : rect.x - matWidth - 4;
+  const matY = rect.centerY - matHeight / 2;
+  g.fillStyle(palette.accent, 0.38);
+  g.fillRoundedRect(matX, matY, matWidth, matHeight, 3);
+  g.lineStyle(2, palette.trim, 0.45);
+  g.strokeRoundedRect(matX, matY, matWidth, matHeight, 3);
+}
+
+function drawRoadFacingFacade(g: Phaser.GameObjects.Graphics, rect: StreetBuildingRect, palette: BuildingPalette): void {
+  const side = rect.slot.side;
+  const isLeftSide = side === "left";
+  const frontX = isLeftSide ? rect.x + rect.width : rect.x;
+  const facadeX = isLeftSide ? frontX - 13 : frontX;
+  const awningX = isLeftSide ? frontX - 38 : frontX + 2;
+  const doorX = isLeftSide ? frontX - 16 : frontX + 6;
+  const windowX = isLeftSide ? frontX - 18 : frontX + 8;
+
+  g.fillStyle(palette.trim, 0.7);
+  g.fillRect(facadeX, rect.y + 6, 13, rect.height - 12);
+
+  g.fillStyle(palette.sign, 1);
+  g.fillRoundedRect(awningX, rect.centerY - 45, 36, 15, 3);
+  for (let index = 0; index < 4; index += 1) {
+    g.fillStyle(index % 2 === 0 ? palette.roofLight : 0xfff1c6, 0.82);
+    g.fillRect(awningX + index * 9, rect.centerY - 30, 8, 9);
+  }
+
+  g.fillStyle(0x5e3f2d, 0.86);
+  g.fillRoundedRect(doorX, rect.centerY + 6, 10, 25, 2);
+  g.fillStyle(0xf7eac1, 0.9);
+  g.fillRoundedRect(windowX, rect.centerY - 12, 10, 12, 2);
+  g.fillRoundedRect(windowX, rect.centerY + 38, 10, 12, 2);
+}
+
+function drawCategoryDetails(g: Phaser.GameObjects.Graphics, rect: StreetBuildingRect, palette: BuildingPalette): void {
+  const category = rect.slot.category;
+  const side = rect.slot.side;
+  const outsideX = side === "left" ? rect.x + rect.width + 34 : rect.x - 34;
+  const direction = side === "left" ? 1 : -1;
+  const baseY = rect.centerY;
+
+  if (rect.slot.venueId?.includes("scooter") || rect.slot.label?.toLowerCase().includes("scooter")) {
+    drawParkedScooter(g, outsideX, baseY - 18, direction, 0xe35d4f);
+    drawParkedScooter(g, outsideX, baseY + 16, direction, 0x4e9fd6);
+    return;
+  }
+
+  if (category === "cafe" || category === "coffee" || category === "bakery") {
+    drawCafeTable(g, outsideX, baseY - 14, palette);
+    drawMenuBoard(g, outsideX + direction * 16, baseY + 22, palette);
+    return;
+  }
+
+  if (category === "grocery" || category === "shop") {
+    drawCrates(g, outsideX, baseY, palette);
+    return;
+  }
+
+  if (category === "beach_club" || category === "beach") {
+    drawUmbrella(g, outsideX, baseY - 20, palette);
+    drawSurfboards(g, outsideX + direction * 18, baseY + 20, palette);
+    return;
+  }
+
+  if (category === "bar" || category === "restaurant") {
+    drawLanterns(g, outsideX, baseY - 24, palette);
+    drawMenuBoard(g, outsideX, baseY + 26, palette);
+    return;
+  }
+
+  drawPlanter(g, outsideX, baseY, palette);
+}
+
+function drawCafeTable(g: Phaser.GameObjects.Graphics, x: number, y: number, palette: BuildingPalette): void {
+  g.fillStyle(0x000000, 0.13);
+  g.fillEllipse(x, y + 4, 32, 12, 24);
+  g.fillStyle(palette.sign, 1);
+  g.fillCircle(x, y, 9);
+  g.fillStyle(0xf7eac1, 1);
+  g.fillCircle(x - 16, y, 5);
+  g.fillCircle(x + 16, y, 5);
+  g.fillCircle(x, y - 16, 5);
+  g.fillCircle(x, y + 16, 5);
+}
+
+function drawMenuBoard(g: Phaser.GameObjects.Graphics, x: number, y: number, palette: BuildingPalette): void {
+  g.fillStyle(0x5b3c2c, 1);
+  g.fillRoundedRect(x - 9, y - 13, 18, 26, 2);
+  g.fillStyle(palette.roofLight, 0.9);
+  g.fillRect(x - 5, y - 7, 10, 2);
+  g.fillRect(x - 5, y, 9, 2);
+  g.fillRect(x - 5, y + 7, 7, 2);
+}
+
+function drawCrates(g: Phaser.GameObjects.Graphics, x: number, y: number, palette: BuildingPalette): void {
+  const colors = [0xf2c35d, 0xd95b43, 0x7fc56b];
+  colors.forEach((color, index) => {
+    g.fillStyle(0x76533a, 1);
+    g.fillRoundedRect(x - 20 + index * 15, y + (index % 2) * 9, 14, 12, 2);
+    g.fillStyle(color, 1);
+    g.fillCircle(x - 13 + index * 15, y + 5 + (index % 2) * 9, 4);
+  });
+  drawPlanter(g, x + 22, y - 14, palette);
+}
+
+function drawUmbrella(g: Phaser.GameObjects.Graphics, x: number, y: number, palette: BuildingPalette): void {
+  g.fillStyle(palette.roof, 1);
+  g.beginPath();
+  g.moveTo(x, y - 18);
+  g.lineTo(x - 26, y + 6);
+  g.lineTo(x + 26, y + 6);
+  g.closePath();
+  g.fillPath();
+  g.lineStyle(2, 0xfff1c6, 0.75);
+  g.lineBetween(x, y - 18, x, y + 18);
+  g.lineBetween(x, y - 18, x - 17, y + 6);
+  g.lineBetween(x, y - 18, x + 17, y + 6);
+}
+
+function drawSurfboards(g: Phaser.GameObjects.Graphics, x: number, y: number, palette: BuildingPalette): void {
+  g.fillStyle(palette.accent, 1);
+  g.fillRoundedRect(x - 14, y - 18, 8, 36, 5);
+  g.fillStyle(0xfff1c6, 1);
+  g.fillRoundedRect(x, y - 20, 8, 40, 5);
+  g.lineStyle(2, palette.sign, 0.8);
+  g.lineBetween(x + 4, y - 15, x + 4, y + 15);
+}
+
+function drawLanterns(g: Phaser.GameObjects.Graphics, x: number, y: number, palette: BuildingPalette): void {
+  g.lineStyle(2, 0x5b3c2c, 0.85);
+  g.lineBetween(x - 18, y, x + 18, y);
+  for (const dx of [-14, 0, 14]) {
+    g.fillStyle(palette.accent, 1);
+    g.fillCircle(x + dx, y + 8, 6);
+    g.fillStyle(0xfff1c6, 0.8);
+    g.fillCircle(x + dx - 1, y + 6, 2);
+  }
+}
+
+function drawParkedScooter(g: Phaser.GameObjects.Graphics, x: number, y: number, direction: number, color: number): void {
+  g.fillStyle(0x1f2930, 1);
+  g.fillCircle(x - direction * 13, y + 6, 5);
+  g.fillCircle(x + direction * 14, y + 6, 5);
+  g.fillStyle(color, 1);
+  g.fillRoundedRect(x - 11, y - 4, 22, 9, 5);
+  g.fillStyle(0xfff1c6, 0.8);
+  g.fillCircle(x + direction * 19, y - 4, 2.5);
+}
+
+function drawPlanter(g: Phaser.GameObjects.Graphics, x: number, y: number, palette: BuildingPalette): void {
+  g.fillStyle(0x8b5f2f, 1);
+  g.fillRoundedRect(x - 14, y + 5, 28, 12, 3);
+  g.fillStyle(palette.accent, 1);
+  g.fillCircle(x - 8, y + 3, 6);
+  g.fillCircle(x + 1, y, 7);
+  g.fillCircle(x + 9, y + 4, 6);
+}
+
+function signPosition(rect: StreetBuildingRect): { x: number; y: number } {
+  const x = rect.slot.side === "left" ? rect.x + rect.width - 39 : rect.x + 39;
+  return {
+    x,
+    y: rect.centerY - 37
+  };
 }
 
 function drawStreetProps(g: Phaser.GameObjects.Graphics, template: StreetTemplate): void {
@@ -299,20 +500,77 @@ function drawPalm(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
   }
 }
 
-function buildingPalette(category: CuratedCategory | undefined, isLandmark = false): { roof: number; roofLight: number; wall: number } {
+function compactVenueName(name: string): string {
+  const manual: Record<string, string> = {
+    "Behind The Green Door": "GREEN\nDOOR",
+    "Golden Monkey Chinese Restaurant": "GOLDEN\nMONKEY",
+    "L'Osteria Funiculì Funiculà Canggu": "L'OSTERIA",
+    "Satu-Satu Coffee Company": "SATU\nSATU",
+    "Bali Family Rental Scooter": "SCOOTER\nRENTAL",
+    "Milk & Madu Berawa": "MILK &\nMADU",
+    "FINNS Recreation Club": "FINNS\nREC",
+    "FINNS Beach Club": "FINNS\nBEACH",
+    "Atlas Beach Fest": "ATLAS",
+    "Berawa Beach": "BERAWA\nBEACH",
+    "Bungalow Living Bali": "BUNGALOW",
+    "Monsieur Spoon Berawa": "MONSIEUR\nSPOON",
+    "Canggu Station": "CANGGU\nSTATION"
+  };
+  if (manual[name]) {
+    return manual[name];
+  }
+  return name
+    .replace(/\b(Berawa|Canggu|Bali|Cafe|Restaurant)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase()
+    .slice(0, 18);
+}
+
+function colorToCss(color: number): string {
+  return `#${color.toString(16).padStart(6, "0")}`;
+}
+
+function hashString(value: string | undefined): number {
+  let hash = 0;
+  for (const char of value ?? "") {
+    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }
+  return hash;
+}
+
+function buildingPalette(category: CuratedCategory | undefined, isLandmark = false, seed = 0): BuildingPalette {
   if (isLandmark || category === "beach_club") {
-    return { roof: 0x40a7b2, roofLight: 0x87d8d4, wall: 0xf0dfb9 };
+    const options: BuildingPalette[] = [
+      { roof: 0x40a7b2, roofLight: 0x87d8d4, wall: 0xf0dfb9, trim: 0x2a7f8a, sign: 0x145c66, accent: 0xf6c85f },
+      { roof: 0x2f87c2, roofLight: 0x8ed3f5, wall: 0xf2dfb8, trim: 0x236a9a, sign: 0x1b5274, accent: 0xffd77a }
+    ];
+    return options[seed % options.length];
   }
   if (category === "coffee" || category === "cafe" || category === "bakery") {
-    return { roof: 0xc96f4f, roofLight: 0xf1a16f, wall: 0xf2dfb8 };
+    const options: BuildingPalette[] = [
+      { roof: 0xc96f4f, roofLight: 0xf1a16f, wall: 0xf2dfb8, trim: 0x8d4f3a, sign: 0x693a2e, accent: 0x2e7d78 },
+      { roof: 0xd89a42, roofLight: 0xffc56f, wall: 0xf5e4bd, trim: 0xa96f3e, sign: 0x6f4529, accent: 0x3f8f5f },
+      { roof: 0x7fa7c7, roofLight: 0xb8d9ec, wall: 0xf0dfb9, trim: 0x517995, sign: 0x2f5568, accent: 0xd66f5c }
+    ];
+    return options[seed % options.length];
   }
   if (category === "grocery" || category === "shop") {
-    return { roof: 0x669b5a, roofLight: 0xa4d47d, wall: 0xf0dfb9 };
+    const options: BuildingPalette[] = [
+      { roof: 0x669b5a, roofLight: 0xa4d47d, wall: 0xf0dfb9, trim: 0x3f7544, sign: 0x2f6238, accent: 0xf2c35d },
+      { roof: 0x4f9b88, roofLight: 0x8dd2be, wall: 0xf2dfb8, trim: 0x2f7468, sign: 0x23594f, accent: 0xf28b5d }
+    ];
+    return options[seed % options.length];
   }
   if (category === "bar" || category === "restaurant") {
-    return { roof: 0x8d6ac8, roofLight: 0xc0a9e8, wall: 0xeedcb8 };
+    const options: BuildingPalette[] = [
+      { roof: 0x8d6ac8, roofLight: 0xc0a9e8, wall: 0xeedcb8, trim: 0x644d96, sign: 0x4b3a75, accent: 0xf0b35f },
+      { roof: 0x2f6f78, roofLight: 0x73b7bc, wall: 0xf0dfb9, trim: 0x23565d, sign: 0x1f454b, accent: 0xd95b43 },
+      { roof: 0xb95f61, roofLight: 0xea9393, wall: 0xf2dfb8, trim: 0x7a4243, sign: 0x633031, accent: 0xffd166 }
+    ];
+    return options[seed % options.length];
   }
-  return { roof: 0xb96d52, roofLight: 0xe39b72, wall: 0xf0dfb9 };
+  return { roof: 0xb96d52, roofLight: 0xe39b72, wall: 0xf0dfb9, trim: 0x81513d, sign: 0x65402f, accent: 0x7fc56b };
 }
 
 function setTile(data: number[][], x: number, y: number, tileId: number): void {
