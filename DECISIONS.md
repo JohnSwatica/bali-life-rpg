@@ -125,3 +125,15 @@ Road-tangent de-overlap remains the first placement strategy. A final residual a
 The current presentation constants are documented for future tuning: `WORLD_SCALE = 1.6`; player unit `34 x 43`; avatar scale `0.84`; player/group bike scale `0.82`; traffic bike scale `0.88`; road widths main/secondary/lane `155 / 95 / 69` px; camera zoom desktop/mobile `1.86 / 1.52`.
 
 Building multiples are normal `4.2 x 3.6`, wide `4.6 x 3.8`, quest-critical `5.0 x 4.0`, landmark `8.8 x 7.2`, beach landmark `9.2 x 5.8`, and beach marker `5.0 x 3.8`. These are deliberately stylized Pokémon-like proportions, not literal metres.
+
+## 2026-06-22 - Authored Tile Street Pivot
+
+The active playable map is now an authored tile street template for `Jl. Pantai Berawa`, not the full projected OSM road tangle. OpenStreetMap/generated coordinates remain committed and reviewable, but they are demoted to sequencing/reference data: they decide which venues belong on the street and their beach-to-inland order, while the playable surface is hand-authored on a `32px` tile grid.
+
+The active adapter is `src/data/authoredStreetLayout.ts`, with template data in `src/data/streetTemplates.ts`, original generated tile art in `src/systems/map/TileStreetScale.ts`, and rendering in `src/systems/map/StreetRenderer.ts`. Runtime still exports the same broad map shapes (`berawaRoads`, `venueMapNodes`, `curatedVenueNodes`, `berawaMapFeatures`) so existing discovery, shops, NPCs, quests, minimap, and traffic can keep their seams.
+
+No Nintendo/Pokémon/Game Freak assets are used or copied. The art direction borrows only the general clarity principle of tile-based top-down games: readable terrain, axis-aligned buildings, chunky proportions, and explicit walkable roads.
+
+## 2026-06-22 - Quest-Critical Side-Street Stub
+
+`canggu_station` is not on `Jl. Pantai Berawa`, but it backs the Ibu Sari starter quest and shop. Until a proper Raya Semat/Canggu Station authored street exists, it is represented as one visible quest-critical side-street stub near the inland end of the template. Other non-Pantai venues remain deferred rather than forced into this street.

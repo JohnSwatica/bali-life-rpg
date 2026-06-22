@@ -1,6 +1,8 @@
 # Berawa Map Plan
 
-This playable Berawa slice is now generated from OpenStreetMap data plus a curated Berawa venue catalog, not hand-invented road coordinates. The generated source layout remains compressed into a `2400 x 1700` coordinate space, while runtime presentation scales that layout through `src/data/scaledBerawaLayout.ts` so the playable map has more breathing room without editing source pins.
+The active playable Berawa slice is now an authored tile-based street template for `Jl. Pantai Berawa`. OpenStreetMap/generated coordinates are retained as the sequencing reference for venue order, but the runtime surface is a clean grid-made street rather than the full projected OSM road tangle.
+
+The old OSM-generated layout remains in the repo as reviewable source/reference data. It is not the active playable surface on the current branch.
 
 Map data © OpenStreetMap contributors.
 
@@ -9,6 +11,10 @@ Map data © OpenStreetMap contributors.
 - Generator: `scripts/generateLayoutFromOSM.ts`
 - Curated venue catalog: `src/data/curatedVenues.ts`
 - Generated runtime layout: `src/data/berawaLayout.ts`
+- Active authored street adapter: `src/data/authoredStreetLayout.ts`
+- Active street template: `src/data/streetTemplates.ts`
+- Tile scale and original tileset: `src/systems/map/TileStreetScale.ts`
+- Street renderer: `src/systems/map/StreetRenderer.ts`
 - Cached geocoded anchors: `data/osm/berawa.anchors.json`
 - Cached curated geocode attempts: `data/osm/berawa.curated-geocode.json`
 - Resolved curated venue coordinates: `data/osm/berawa.curated-coords.json`
@@ -16,6 +22,38 @@ Map data © OpenStreetMap contributors.
 - Generation report: `data/osm/berawa.layout-report.json`
 
 The game never calls OSM, Nominatim, or Overpass at runtime. `npm run build` reads only committed source files.
+
+## Active Runtime: Authored Tile Street
+
+The first authored street is:
+
+```text
+id = jl_pantai_berawa
+name = Jl. Pantai Berawa
+tile = 32 px
+world = 120 x 85 tiles = 3840 x 2720 px
+axis = vertical
+roadWidthTiles = 6
+sidewalkTiles = 2
+slotDepthTiles = 5
+camera zoom = 1.6 desktop / 1.28 mobile
+```
+
+`src/data/streetTemplates.ts` populates the street by filtering rendered curated venues whose `street` is `Jl. Pantai Berawa` plus the beach anchor. It projects each venue's generated coordinate onto a beach-to-inland axis and then maps that order onto evenly spaced left/right tile slots. Beach-end venues sit at the seaward end; inland venues move toward the top of the strip.
+
+The current template renders 31 Jl. Pantai Berawa/beach venues plus one temporary quest-critical side-street stub for `canggu_station`. That exception preserves the Ibu Sari starter quest and Canggu Station shop until a future Raya Semat/Canggu Station street template exists.
+
+Terrain is original generated tile art: grass, road, sidewalk, sand, water, water edge, dock planks, trees, bushes, flowers, roof/wall tiles, and plots. It is intentionally original and asset-light; it follows clarity principles from top-down games without copying any Nintendo/Pokémon/Game Freak assets.
+
+Gameplay uses `src/data/authoredStreetLayout.ts`, which exports the same runtime shapes the old generated layout exposed:
+
+- `berawaRoads`
+- `berawaAreas`
+- `venueMapNodes`
+- `curatedVenueNodes`
+- `berawaMapFeatures`
+
+`layoutLookup.ts` now resolves shops, NPC routine stops, pickups, and spawn from those authored venue nodes. Existing IDs stay stable.
 
 ## Current Bbox
 
@@ -64,9 +102,9 @@ runtime world = 3840 x 2720
 
 Pre-v4 saved runtime positions are migrated into this enlarged world during save load. Source OSM/curated coordinates, `src/data/berawaLayout.ts`, `src/data/curatedVenues.ts`, and `data/osm/berawa.curated-coords.json` stay untouched by presentation scaling.
 
-## Runtime Shape
+## OSM Reference Shape
 
-`src/data/berawaLayout.ts` still exports the shapes the game already consumes:
+`src/data/berawaLayout.ts` still exports the generated shapes used as reference data:
 
 - `berawaRoads`
 - `berawaAreas`
@@ -74,7 +112,7 @@ Pre-v4 saved runtime positions are migrated into this enlarged world during save
 - `curatedVenueNodes`
 - `berawaMapFeatures`
 
-Internally, the generator keys road vertices by OSM node id before emitting path data. That means OSM ways that share a node project to the same game coordinate, so real junctions connect rather than drifting apart.
+Internally, the generator keys road vertices by OSM node id before emitting path data. That means OSM ways that share a node project to the same game coordinate, so real junctions connect rather than drifting apart. On the authored-street branch this remains useful for review, coordinate debugging, and venue sequencing, not for active road rendering.
 
 Curated venue content in `src/data/venues.ts` remains authoritative for existing gameplay names, descriptions, NPC links, items, quests, and quality fields. `src/data/curatedVenues.ts` supplies the rendered map venue set, quality threshold, and geocode queries. The coordinate cascade is:
 
@@ -85,7 +123,7 @@ Curated venue content in `src/data/venues.ts` remains authoritative for existing
 
 The current coordinate summary is 41 rendered venues: 23 OSM POI matches, 0 Nominatim matches, 15 flagged estimates, and 3 flagged fallbacks. The manual-check list lives in `data/osm/berawa.curated-coords.json`.
 
-Runtime rendering is intentionally simple: one blocky building per `shouldRender` curated venue, plus baked roads, OSM beach/coastline/water features, and low-cost greenery. The old hand-placed building/market/decor layer and dense road-marker layer are no longer called.
+Previous runtime rendering used one blocky building per `shouldRender` curated venue, plus baked roads, OSM beach/coastline/water features, and low-cost greenery. That projected renderer is now demoted in favor of the authored tile street. The generator and caches remain committed so venue coordinates and ordering can be audited/regenerated.
 
 Presentation scale is intentionally stylized. Real positions stay OSM/curated-coordinate driven, while roads, buildings, and camera zoom are sized from `src/systems/map/PlayerUnitScale.ts` in player-units so the top-down view reads more like a Pokémon-scale life sim than a literal metre map. `src/systems/map/RoadPresentation.ts` renders a decluttered road skeleton for readability while venue buildings snap against a richer local road graph for believable shopfront placement.
 
@@ -100,7 +138,7 @@ Current presentation constants:
 
 Venue buildings are road-snapped but rendered axis-aligned for readability. Dense clusters de-overlap first along road tangents, then use a final small axis-aligned presentation spacing pass if tangent movement cannot clear a cross-street overlap. This keeps source positions reviewable while making individual buildings tappable/readable.
 
-The game now includes a lightweight top-left minimap using the same road skeleton, discovered venue dots, water/beach edge, camera viewport, and player heading. Ambient traffic scooters follow eligible real road polylines, can turn at shared generated nodes, and respawn at route edges.
+The game still includes a lightweight top-left minimap. On the authored street it shows the simplified street strip, beach/water edge, camera viewport, player heading, and discovered venue dots. Ambient traffic scooters now follow the authored street road path rather than the projected OSM road graph.
 
 The current expanded Overpass cache contributes 934 road paths and 12 terrain features: 5 beach polygons, 4 coastline paths, and 3 water shapes. Beach/coastline rendering is still stylized, but its shape now follows OSM data rather than a fixed rectangular band.
 
@@ -148,11 +186,24 @@ Do not build another neighborhood in this sprint. The generator is already shape
 - output path
 - the same `{ w, h }` world target or a deliberate new one
 
-The runtime should keep consuming generated data catalogs rather than hand-placing roads.
+Future neighborhoods should keep using generated/curated coordinates for ordering and auditability, but playable street surfaces should be authored templates unless a generated layout is proven readable.
+
+## Adding The Next Street Template
+
+Add another readable street by data, not by rewriting `GameScene`:
+
+1. Keep venue identities in `src/data/curatedVenues.ts` and `src/data/venues.ts`.
+2. Add a new `StreetTemplate` instance in `src/data/streetTemplates.ts`.
+3. Filter/sequence the relevant venue set using generated coordinates as the ordering reference.
+4. Assign those venues to left/right slots with stable `venueId`s.
+5. Export the desired active template through `src/data/authoredStreetLayout.ts`, or extend that adapter to expose multiple connected street templates.
+6. Keep shops/NPCs/pickups using `layoutLookup.ts` so gameplay follows the selected authored venue nodes.
+
+The next likely candidate is a Raya Semat/Canggu Station side street, which would let the temporary `canggu_station` stub move into its proper authored street.
 
 ## Next Map Pass
 
-- Manually verify or correct the flagged estimate/fallback coordinates in `data/osm/berawa.curated-coords.json`.
-- Tune the Pokémon-scale table, camera zoom, minimap size, and road-following traffic density/speeds by phone and trackpad play-feel.
-- Play-feel test and tune the coastline soft-boundary nudge distance/message if it feels too abrupt.
-- Add a richer phone map only after the lightweight minimap and discovery state remain stable on the OSM layout.
+- Human-test the authored street on the real screen and phone: walkability, labels, building proportions, shop approach, and traffic feel.
+- Add a proper Raya Semat/Canggu Station street template and remove the temporary Canggu Station side-street stub.
+- Add explicit tile collision for water/buildings only after the authored street feel is stable; current water boundary remains soft feedback.
+- Use the OSM/curated coordinates for sequencing and audits, not as the active playable renderer.
