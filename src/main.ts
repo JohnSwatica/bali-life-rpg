@@ -7,7 +7,6 @@ const viewport = {
   width: Math.max(320, window.innerWidth || 1280),
   height: Math.max(320, window.innerHeight || 720)
 };
-const devicePixelRatio = Math.max(1, Math.min(window.devicePixelRatio || 1, 3));
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -29,8 +28,7 @@ const config: Phaser.Types.Core.GameConfig = {
   scale: {
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    autoRound: false,
-    zoom: devicePixelRatio
+    autoRound: false
   },
   scene: [BootScene, GameScene]
 };
