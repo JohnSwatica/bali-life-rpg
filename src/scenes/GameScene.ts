@@ -326,7 +326,6 @@ export class GameScene extends Phaser.Scene {
   private questText!: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
   private toastText!: Phaser.GameObjects.Text;
-  private minimapGraphics?: Phaser.GameObjects.Graphics;
   private toastTimer = 0;
   private panel?: Phaser.GameObjects.Container;
   private nightOverlay!: Phaser.GameObjects.Graphics;
@@ -1201,8 +1200,6 @@ export class GameScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(UI_DEPTH + 3)
       .setAlpha(0);
-    this.minimapGraphics = this.add.graphics().setScrollFactor(0).setDepth(UI_DEPTH + 1);
-
     this.nightOverlay = this.add.graphics().setScrollFactor(0).setDepth(900);
     this.lanternGlow = this.add.graphics().setDepth(905);
     this.hudController = new HudController(this, UI_DEPTH, {
@@ -2781,74 +2778,48 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawMinimap(): void {
-    if (!this.minimapGraphics) {
+    const surface = this.hudController.getMinimapSurface(WORLD_WIDTH, WORLD_HEIGHT);
+    if (!surface) {
       return;
     }
 
-    const g = this.minimapGraphics;
-    const layout = this.getMinimapLayout();
-    g.clear();
-    g.fillStyle(0x0f1820, 0.74);
-    g.fillRoundedRect(layout.x, layout.y, layout.width, layout.height, 7);
-    g.lineStyle(1, 0xf4d58d, 0.32);
-    g.strokeRoundedRect(layout.x, layout.y, layout.width, layout.height, 7);
+    const { ctx, layout } = surface;
+    this.fillRoundedRect(ctx, layout.x, layout.y, layout.width, layout.height, 7, 0x0f1820, 0.74);
+    this.strokeRoundedRect(ctx, layout.x, layout.y, layout.width, layout.height, 7, 1, 0xf4d58d, 0.32);
 
-    g.fillStyle(0x497f55, 0.92);
-    g.fillRoundedRect(
+    this.fillRoundedRect(
+      ctx,
       layout.offsetX,
       layout.offsetY,
       WORLD_WIDTH * layout.scale,
       WORLD_HEIGHT * layout.scale,
-      4
+      4,
+      0x497f55,
+      0.92
     );
 
     for (const feature of berawaMapFeatures) {
       if (feature.kind === "water") {
-        this.fillMinimapFeature(g, feature, layout, 0x2d9ab0, 0.7);
+        this.fillMinimapFeature(ctx, feature, layout, 0x2d9ab0, 0.7);
       } else if (feature.kind === "beach") {
-        this.fillMinimapFeature(g, feature, layout, 0xd9b875, 0.88);
+        this.fillMinimapFeature(ctx, feature, layout, 0xd9b875, 0.88);
       } else if (feature.kind === "coastline") {
-        g.lineStyle(1.5, 0x9ee6df, 0.75);
-        this.strokeMinimapPath(g, feature.points, layout);
+        this.strokeMinimapPath(ctx, feature.points, layout, 1.5, 0x9ee6df, 0.75);
       }
     }
 
     for (const entry of PRESENTED_BERAWA_ROADS) {
       const width = entry.visualClass === "main" ? 2.3 : entry.visualClass === "secondary" ? 1.5 : 0.9;
       const color = entry.visualClass === "main" ? 0xe5d08f : entry.visualClass === "secondary" ? 0xb9b49d : 0x7c897b;
-      g.lineStyle(width, color, entry.visualClass === "lane" ? 0.58 : 0.86);
-      this.strokeMinimapPath(g, entry.road.points, layout);
+      this.strokeMinimapPath(ctx, entry.road.points, layout, width, color, entry.visualClass === "lane" ? 0.58 : 0.86);
     }
 
-    this.drawMinimapDiscoveredVenues(g, layout);
-    this.drawMinimapCameraView(g, layout);
-    this.drawMinimapPlayer(g, layout);
+    this.drawMinimapDiscoveredVenues(ctx, layout);
+    this.drawMinimapCameraView(ctx, layout);
+    this.drawMinimapPlayer(ctx, layout);
   }
 
-  private getMinimapLayout(): MinimapLayout {
-    const widthRatio = this.scale.width < 720 ? 0.26 : 0.23;
-    const width = Phaser.Math.Clamp(Math.round(this.scale.width * widthRatio), MINIMAP_MIN_WIDTH, MINIMAP_MAX_WIDTH);
-    const height = Math.round(width * (WORLD_HEIGHT / WORLD_WIDTH));
-    const x = 16;
-    const y = 170;
-    const innerWidth = width - MINIMAP_PADDING * 2;
-    const innerHeight = height - MINIMAP_PADDING * 2;
-    const scale = Math.min(innerWidth / WORLD_WIDTH, innerHeight / WORLD_HEIGHT);
-    const drawWidth = WORLD_WIDTH * scale;
-    const drawHeight = WORLD_HEIGHT * scale;
-
-    return {
-      x,
-      y,
-      width,
-      height,
-      offsetX: x + MINIMAP_PADDING + (innerWidth - drawWidth) / 2,
-      offsetY: y + MINIMAP_PADDING + (innerHeight - drawHeight) / 2,
-      scale
-    };
-  }
-
-  private drawMinimapDiscoveredVenues(g: Phaser.GameObjects.Graphics, layout: MinimapLayout): void {
+  private drawMinimapDiscoveredVenues(ctx: CanvasRenderingContext2D, layout: MinimapLayout): void {
     const discovery = this.world.mapDiscovery;
     for (const node of curatedVenueNodes) {
       if (!discovery.revealAll && !discovery.discoveredVenueIds.includes(node.venueId)) {
@@ -2857,40 +2828,40 @@ export class GameScene extends Phaser.Scene {
       const point = this.projectMinimapPoint(node, layout);
       const palette = this.venuePalette(node.category);
       const radius = node.isLandmark ? 3.2 : 2.2;
-      g.fillStyle(palette.roof, 0.95);
-      g.fillCircle(point.x, point.y, radius);
-      g.lineStyle(1, 0xfff0bd, node.isLandmark ? 0.7 : 0.34);
-      g.strokeCircle(point.x, point.y, radius + 1);
+      this.fillCircle(ctx, point.x, point.y, radius, palette.roof, 0.95);
+      this.strokeCircle(ctx, point.x, point.y, radius + 1, 1, 0xfff0bd, node.isLandmark ? 0.7 : 0.34);
     }
   }
 
-  private drawMinimapCameraView(g: Phaser.GameObjects.Graphics, layout: MinimapLayout): void {
+  private drawMinimapCameraView(ctx: CanvasRenderingContext2D, layout: MinimapLayout): void {
     const view = this.cameras.main.worldView;
     const topLeft = this.projectMinimapPoint({ x: view.x, y: view.y }, layout);
-    g.lineStyle(1, 0xffffff, 0.44);
-    g.strokeRect(topLeft.x, topLeft.y, view.width * layout.scale, view.height * layout.scale);
+    ctx.strokeStyle = this.canvasColor(0xffffff, 0.44);
+    ctx.lineWidth = 1;
+    ctx.strokeRect(topLeft.x, topLeft.y, view.width * layout.scale, view.height * layout.scale);
   }
 
-  private drawMinimapPlayer(g: Phaser.GameObjects.Graphics, layout: MinimapLayout): void {
+  private drawMinimapPlayer(ctx: CanvasRenderingContext2D, layout: MinimapLayout): void {
     const point = this.projectMinimapPoint(this.player, layout);
     const heading = this.getDirectionVector(this.playerState.direction);
     const left = { x: -heading.y, y: heading.x };
     const tip = { x: point.x + heading.x * 8, y: point.y + heading.y * 8 };
     const back = { x: point.x - heading.x * 4, y: point.y - heading.y * 4 };
 
-    g.fillStyle(0xfff0bd, 1);
-    g.beginPath();
-    g.moveTo(tip.x, tip.y);
-    g.lineTo(back.x + left.x * 4.5, back.y + left.y * 4.5);
-    g.lineTo(back.x - left.x * 4.5, back.y - left.y * 4.5);
-    g.closePath();
-    g.fillPath();
-    g.lineStyle(1, 0x2b1d17, 0.8);
-    g.strokePath();
+    ctx.fillStyle = this.canvasColor(0xfff0bd, 1);
+    ctx.beginPath();
+    ctx.moveTo(tip.x, tip.y);
+    ctx.lineTo(back.x + left.x * 4.5, back.y + left.y * 4.5);
+    ctx.lineTo(back.x - left.x * 4.5, back.y - left.y * 4.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = this.canvasColor(0x2b1d17, 0.8);
+    ctx.lineWidth = 1;
+    ctx.stroke();
   }
 
   private fillMinimapFeature(
-    g: Phaser.GameObjects.Graphics,
+    ctx: CanvasRenderingContext2D,
     feature: MapFeatureDefinition,
     layout: MinimapLayout,
     color: number,
@@ -2901,34 +2872,39 @@ export class GameScene extends Phaser.Scene {
     }
 
     const first = this.projectMinimapPoint(feature.points[0], layout);
-    g.fillStyle(color, alpha);
-    g.beginPath();
-    g.moveTo(first.x, first.y);
+    ctx.fillStyle = this.canvasColor(color, alpha);
+    ctx.beginPath();
+    ctx.moveTo(first.x, first.y);
     for (const point of feature.points.slice(1)) {
       const next = this.projectMinimapPoint(point, layout);
-      g.lineTo(next.x, next.y);
+      ctx.lineTo(next.x, next.y);
     }
-    g.closePath();
-    g.fillPath();
+    ctx.closePath();
+    ctx.fill();
   }
 
   private strokeMinimapPath(
-    g: Phaser.GameObjects.Graphics,
+    ctx: CanvasRenderingContext2D,
     points: Array<{ x: number; y: number }>,
-    layout: MinimapLayout
+    layout: MinimapLayout,
+    width: number,
+    color: number,
+    alpha: number
   ): void {
     if (points.length < 2) {
       return;
     }
 
     const first = this.projectMinimapPoint(points[0], layout);
-    g.beginPath();
-    g.moveTo(first.x, first.y);
+    ctx.strokeStyle = this.canvasColor(color, alpha);
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(first.x, first.y);
     for (const point of points.slice(1)) {
       const next = this.projectMinimapPoint(point, layout);
-      g.lineTo(next.x, next.y);
+      ctx.lineTo(next.x, next.y);
     }
-    g.strokePath();
+    ctx.stroke();
   }
 
   private projectMinimapPoint(point: { x: number; y: number }, layout: MinimapLayout): MapPoint {
@@ -2950,6 +2926,83 @@ export class GameScene extends Phaser.Scene {
       default:
         return { x: 0, y: 1 };
     }
+  }
+
+  private fillRoundedRect(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number,
+    color: number,
+    alpha: number
+  ): void {
+    this.roundedRectPath(ctx, x, y, width, height, radius);
+    ctx.fillStyle = this.canvasColor(color, alpha);
+    ctx.fill();
+  }
+
+  private strokeRoundedRect(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number,
+    lineWidth: number,
+    color: number,
+    alpha: number
+  ): void {
+    this.roundedRectPath(ctx, x, y, width, height, radius);
+    ctx.strokeStyle = this.canvasColor(color, alpha);
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+  }
+
+  private roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number): void {
+    const r = Math.min(radius, width / 2, height / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + width - r, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+    ctx.lineTo(x + width, y + height - r);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+    ctx.lineTo(x + r, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  private fillCircle(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, color: number, alpha: number): void {
+    ctx.fillStyle = this.canvasColor(color, alpha);
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  private strokeCircle(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    radius: number,
+    lineWidth: number,
+    color: number,
+    alpha: number
+  ): void {
+    ctx.strokeStyle = this.canvasColor(color, alpha);
+    ctx.lineWidth = lineWidth;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  private canvasColor(color: number, alpha: number): string {
+    const red = (color >> 16) & 0xff;
+    const green = (color >> 8) & 0xff;
+    const blue = color & 0xff;
+    return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
   }
 
   private toggleGodmodePanel(): void {

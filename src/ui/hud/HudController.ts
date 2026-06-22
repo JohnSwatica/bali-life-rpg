@@ -1,7 +1,29 @@
 import Phaser from "phaser";
 
-const TOUCH_BUTTON_SIZE = 64;
 const TOUCH_JOYSTICK_RADIUS = 56;
+const MINIMAP_MAX_WIDTH = 280;
+const MINIMAP_MIN_WIDTH = 104;
+const MINIMAP_PADDING = 7;
+const MINIMAP_MARGIN = 16;
+const MINIMAP_DESKTOP_TOP = 170;
+const MINIMAP_COMPACT_TOP = 132;
+
+export interface DomMinimapLayout {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  offsetX: number;
+  offsetY: number;
+  scale: number;
+}
+
+interface DomMinimapSurface {
+  ctx: CanvasRenderingContext2D;
+  layout: DomMinimapLayout;
+}
+
+type HudActionName = "phone" | "inventory" | "community" | "save" | "bike" | "action";
 
 interface HudControllerCallbacks {
   action: () => void;
@@ -12,15 +34,24 @@ interface HudControllerCallbacks {
   save: () => void;
 }
 
+declare global {
+  interface Window {
+    __BALI_LIFE_HUD_ACTIONS__?: Partial<Record<HudActionName, number>>;
+  }
+}
+
 export class HudController {
   private touchContainer!: Phaser.GameObjects.Container;
-  private touchHitZones = new Map<string, Phaser.GameObjects.Zone>();
   private joystickBase!: Phaser.GameObjects.Arc;
   private joystickKnob!: Phaser.GameObjects.Arc;
   private joystickPointerId?: number;
   private joystickOrigin = new Phaser.Math.Vector2();
   private movementVector = new Phaser.Math.Vector2();
-  private touchCallbacks = new Map<string, () => void>();
+  private buttonOverlay?: HTMLDivElement;
+  private minimapFrame?: HTMLDivElement;
+  private minimapCanvas?: HTMLCanvasElement;
+  private minimapLayout?: DomMinimapLayout;
+  private minimapDpr = 1;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -43,35 +74,13 @@ export class HudController {
       .setStrokeStyle(2, 0xf4d58d, 0.55);
     this.joystickKnob = this.scene.add.circle(0, 0, 22, 0xf4d58d, 0.75).setStrokeStyle(2, 0x101820, 0.45);
     this.touchContainer.add([this.joystickBase, this.joystickKnob]);
-
-    const actionButton = this.makeTouchButton("ACT");
-    const bagButton = this.makeTouchButton("BAG");
-    const communityButton = this.makeTouchButton("SOC");
-    const bikeButton = this.makeTouchButton("BIKE");
-    const phoneButton = this.makeTouchButton("PHONE");
-    const saveButton = this.makeTouchButton("SAVE");
-    actionButton.setName("action-button");
-    bagButton.setName("bag-button");
-    communityButton.setName("community-button");
-    bikeButton.setName("bike-button");
-    phoneButton.setName("phone-button");
-    saveButton.setName("save-button");
-    this.touchContainer.add([actionButton, bagButton, communityButton, bikeButton, phoneButton, saveButton]);
-
-    this.registerTouchHitZone("action-button", this.callbacks.action);
-    this.registerTouchHitZone("bag-button", this.callbacks.inventory);
-    this.registerTouchHitZone("community-button", this.callbacks.community);
-    this.registerTouchHitZone("bike-button", this.callbacks.bike);
-    this.registerTouchHitZone("phone-button", this.callbacks.phone);
-    this.registerTouchHitZone("save-button", this.callbacks.save);
+    this.createDomOverlay();
+    this.scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
+    this.scene.events.once(Phaser.Scenes.Events.DESTROY, () => this.destroy());
   }
 
   handlePointerDown(pointer: Phaser.Input.Pointer, mode: string): void {
     if (mode !== "world") {
-      return;
-    }
-
-    if (this.dispatchTouchButton(pointer)) {
       return;
     }
 
@@ -120,12 +129,6 @@ export class HudController {
     const { width, height } = this.scene.scale;
     const showTouch = width < 900 || this.scene.sys.game.device.input.touch;
     this.touchContainer.setVisible(showTouch);
-    for (const zone of this.touchHitZones.values()) {
-      zone.setVisible(showTouch);
-      if (zone.input) {
-        zone.input.enabled = showTouch;
-      }
-    }
 
     const baseX = 96;
     const controlHeight = Math.min(height, this.getConfiguredGameHeight());
@@ -136,44 +139,99 @@ export class HudController {
       this.joystickOrigin.set(baseX, baseY);
     }
 
-    this.positionButton("action-button", width - 86, controlHeight - 92);
-    this.positionButton("bag-button", width - 166, controlHeight - 88);
-    this.positionButton("community-button", width - 166, controlHeight - 168);
-    this.positionButton("bike-button", width - 86, controlHeight - 172);
-    this.positionButton("phone-button", width - 166, controlHeight - 248);
-    this.positionButton("save-button", width - 86, controlHeight - 252);
+    this.layoutDomOverlay();
   }
 
-  private makeTouchButton(label: string): Phaser.GameObjects.Container {
-    const button = this.scene.add.container(0, 0);
-    const bg = this.scene.add.circle(0, 0, TOUCH_BUTTON_SIZE / 2, 0x101820, 0.62).setStrokeStyle(2, 0xf4d58d, 0.65);
-    const text = this.scene.add
-      .text(0, 0, label, {
-        fontFamily: "Inter, Arial, sans-serif",
-        fontSize: label.length > 3 ? "12px" : "15px",
-        color: "#fff8df",
-        fontStyle: "700"
-      })
-      .setOrigin(0.5);
-    button.add([bg, text]);
-    button.setSize(TOUCH_BUTTON_SIZE, TOUCH_BUTTON_SIZE);
-    return button;
-  }
-
-  private registerTouchHitZone(name: string, onClick: () => void): void {
-    const zone = this.scene.add.zone(0, 0, TOUCH_BUTTON_SIZE, TOUCH_BUTTON_SIZE).setName(`${name}-hit-zone`).setScrollFactor(0).setDepth(this.depth + 4);
-    zone.setInteractive(new Phaser.Geom.Rectangle(0, 0, TOUCH_BUTTON_SIZE, TOUCH_BUTTON_SIZE), Phaser.Geom.Rectangle.Contains);
-    if (zone.input) {
-      zone.input.cursor = "pointer";
+  getMinimapSurface(worldWidth: number, worldHeight: number): DomMinimapSurface | null {
+    if (!this.minimapCanvas || !this.minimapLayout) {
+      return null;
     }
-    this.touchCallbacks.set(name, onClick);
-    this.touchHitZones.set(name, zone);
+    const ctx = this.minimapCanvas.getContext("2d");
+    if (!ctx) {
+      return null;
+    }
+
+    const innerWidth = this.minimapLayout.width - MINIMAP_PADDING * 2;
+    const innerHeight = this.minimapLayout.height - MINIMAP_PADDING * 2;
+    const scale = Math.min(innerWidth / worldWidth, innerHeight / worldHeight);
+    const drawWidth = worldWidth * scale;
+    const drawHeight = worldHeight * scale;
+    const layout = {
+      ...this.minimapLayout,
+      x: 0,
+      y: 0,
+      offsetX: MINIMAP_PADDING + (innerWidth - drawWidth) / 2,
+      offsetY: MINIMAP_PADDING + (innerHeight - drawHeight) / 2,
+      scale
+    };
+
+    ctx.setTransform(this.minimapDpr, 0, 0, this.minimapDpr, 0, 0);
+    ctx.clearRect(0, 0, layout.width, layout.height);
+    return { ctx, layout };
   }
 
-  private positionButton(name: string, x: number, y: number): void {
-    const button = this.touchContainer.getByName(name) as Phaser.GameObjects.Container | null;
-    button?.setPosition(x, y);
-    this.touchHitZones.get(name)?.setPosition(x, y);
+  destroy(): void {
+    this.buttonOverlay?.remove();
+    this.minimapFrame?.remove();
+    this.buttonOverlay = undefined;
+    this.minimapFrame = undefined;
+    this.minimapCanvas = undefined;
+    this.minimapLayout = undefined;
+  }
+
+  private createDomOverlay(): void {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    document.getElementById("bali-life-hud-buttons")?.remove();
+    document.getElementById("bali-life-minimap")?.remove();
+
+    this.buttonOverlay = document.createElement("div");
+    this.buttonOverlay.id = "bali-life-hud-buttons";
+    this.buttonOverlay.className = "bali-life-hud-buttons";
+    this.buttonOverlay.setAttribute("aria-label", "Game actions");
+
+    const buttons: Array<{ action: HudActionName; label: string; callback: () => void }> = [
+      { action: "phone", label: "PHONE", callback: this.callbacks.phone },
+      { action: "save", label: "SAVE", callback: this.callbacks.save },
+      { action: "community", label: "SOC", callback: this.callbacks.community },
+      { action: "bike", label: "BIKE", callback: this.callbacks.bike },
+      { action: "inventory", label: "BAG", callback: this.callbacks.inventory },
+      { action: "action", label: "ACT", callback: this.callbacks.action }
+    ];
+
+    for (const config of buttons) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "bali-life-hud-button";
+      button.dataset.hudAction = config.action;
+      button.textContent = config.label;
+      button.setAttribute("aria-label", config.label);
+      button.addEventListener("pointerdown", (event) => {
+        event.stopPropagation();
+      });
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        config.callback();
+        button.dataset.clickCount = `${Number(button.dataset.clickCount ?? 0) + 1}`;
+        this.recordDomButtonClick(config.action);
+      });
+      this.buttonOverlay.appendChild(button);
+    }
+
+    this.minimapFrame = document.createElement("div");
+    this.minimapFrame.id = "bali-life-minimap";
+    this.minimapFrame.className = "bali-life-minimap";
+    this.minimapFrame.setAttribute("aria-label", "Minimap");
+    this.minimapCanvas = document.createElement("canvas");
+    this.minimapCanvas.className = "bali-life-minimap-canvas";
+    this.minimapFrame.appendChild(this.minimapCanvas);
+
+    document.body.appendChild(this.minimapFrame);
+    document.body.appendChild(this.buttonOverlay);
+    this.layoutDomOverlay();
   }
 
   private getConfiguredGameHeight(): number {
@@ -181,20 +239,66 @@ export class HudController {
     return typeof configuredHeight === "number" ? configuredHeight : this.scene.scale.height;
   }
 
-  private dispatchTouchButton(pointer: Phaser.Input.Pointer): boolean {
-    if (!this.touchControlsVisible) {
-      return false;
+  private layoutDomOverlay(): void {
+    if (!this.minimapFrame || !this.minimapCanvas) {
+      return;
     }
-    for (const [name, zone] of this.touchHitZones) {
-      if (!zone.visible || !zone.input?.enabled) {
-        continue;
-      }
-      const distance = Phaser.Math.Distance.Between(pointer.x, pointer.y, zone.x, zone.y);
-      if (distance <= TOUCH_BUTTON_SIZE / 2) {
-        this.touchCallbacks.get(name)?.();
-        return true;
-      }
+
+    const viewport = this.getViewportSize();
+    const availableWidth = Math.max(MINIMAP_MIN_WIDTH, viewport.width - MINIMAP_MARGIN * 2);
+    const baseWidth = Phaser.Math.Clamp(
+      Math.round(viewport.width * (viewport.width < 720 ? 0.26 : 0.23)),
+      MINIMAP_MIN_WIDTH,
+      Math.min(MINIMAP_MAX_WIDTH, availableWidth)
+    );
+    const baseHeight = Math.round(baseWidth * (viewport.height < 760 ? 0.72 : 0.708));
+    const minimapWidth = Math.min(baseWidth, Math.max(80, viewport.width - MINIMAP_MARGIN * 2));
+    const minimapHeight = Math.min(baseHeight, Math.max(64, viewport.height - MINIMAP_MARGIN * 2));
+    const preferredTop = viewport.height < 760 ? MINIMAP_COMPACT_TOP : MINIMAP_DESKTOP_TOP;
+    const x = Phaser.Math.Clamp(MINIMAP_MARGIN, 0, Math.max(0, viewport.width - minimapWidth - MINIMAP_MARGIN));
+    const y = Phaser.Math.Clamp(preferredTop, MINIMAP_MARGIN, Math.max(MINIMAP_MARGIN, viewport.height - minimapHeight - MINIMAP_MARGIN));
+    this.minimapDpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 3));
+
+    this.minimapFrame.style.left = `${x}px`;
+    this.minimapFrame.style.top = `${y}px`;
+    this.minimapFrame.style.width = `${minimapWidth}px`;
+    this.minimapFrame.style.height = `${minimapHeight}px`;
+    this.minimapCanvas.style.width = `${minimapWidth}px`;
+    this.minimapCanvas.style.height = `${minimapHeight}px`;
+    this.minimapCanvas.width = Math.round(minimapWidth * this.minimapDpr);
+    this.minimapCanvas.height = Math.round(minimapHeight * this.minimapDpr);
+    this.minimapLayout = {
+      x: 0,
+      y: 0,
+      width: minimapWidth,
+      height: minimapHeight,
+      offsetX: MINIMAP_PADDING,
+      offsetY: MINIMAP_PADDING,
+      scale: 1
+    };
+  }
+
+  private getViewportSize(): { width: number; height: number } {
+    if (typeof window === "undefined") {
+      return { width: this.scene.scale.width, height: this.scene.scale.height };
     }
-    return false;
+    return {
+      width: Math.max(1, window.innerWidth || this.scene.scale.width),
+      height: Math.max(1, window.innerHeight || this.scene.scale.height)
+    };
+  }
+
+  private recordDomButtonClick(action: HudActionName): void {
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      window.__BALI_LIFE_HUD_ACTIONS__ = window.__BALI_LIFE_HUD_ACTIONS__ ?? {};
+      window.__BALI_LIFE_HUD_ACTIONS__[action] = (window.__BALI_LIFE_HUD_ACTIONS__[action] ?? 0) + 1;
+      window.dispatchEvent(new CustomEvent("bali-life:hud-action", { detail: { action } }));
+    } catch {
+      // Some automation contexts disallow adding globals to window. The per-button data-click-count
+      // attribute remains the source of truth for bounds/click verification.
+    }
   }
 }
