@@ -151,6 +151,22 @@ export const venueDefinitions: Record<string, Venue> = {
     venueCategory: "landmark",
     mapVisibility: "road_visible"
   },
+  finns_beach_club: {
+    id: "finns_beach_club",
+    name: "FINNS Beach Club",
+    type: "beach_club",
+    description: "Beach-club anchor for sunset socials, nightlife trade-offs, and future venue-hosted events.",
+    openHours: dailyDaytime,
+    npcIds: ["ari"],
+    itemIds: ["coconut", "kopi_bali"],
+    questIds: [],
+    realWorldRef: { mapName: "FINNS Beach Club" },
+    ...placeholderSeams,
+    implementationStatus: "stub",
+    ...baseVenueMeta,
+    venueCategory: "beach_club",
+    mapVisibility: "road_visible"
+  },
   nude_cafe_berawa: {
     id: "nude_cafe_berawa",
     name: "Nude Cafe Berawa",
