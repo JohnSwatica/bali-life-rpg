@@ -59,7 +59,7 @@ function baseRawSave(schemaVersion?: number): Record<string, unknown> {
       displayName: "Migration Tester",
       avatar: { body: "teal", hair: "dark", outfit: "linen" },
       lifestyleTags: ["founder", "surfer"],
-      bio: "Testing the v8 chain.",
+      bio: "Testing the v9 chain.",
       homeArea: "Berawa",
       createdAt: 111,
       remoteAccountId: "should-be-nulled"
@@ -100,7 +100,7 @@ function expectCommonMigrationFields(world: WorldState): void {
 }
 
 describe("Persistence migration", () => {
-  it("migrates a raw v1 save to v8 without losing legacy state", () => {
+  it("migrates a raw v1 save to v9 without losing legacy state", () => {
     writeRawSave(baseRawSave());
 
     const world = loadWorldState();
@@ -127,9 +127,16 @@ describe("Persistence migration", () => {
       relationshipArcProgress: {},
       settledIn: false
     });
+    expect(world.opportunities).toMatchObject({
+      live: [],
+      completedTemplateIds: [],
+      missedTemplateIds: [],
+      messages: [],
+      trackedOpportunityId: null
+    });
   });
 
-  it("migrates v4, v6, and v7 saves into the v8 life shape", () => {
+  it("migrates v4, v6, v7, and v8 saves into the v9 life/opportunity shape", () => {
     const cases = [
       {
         version: 4,
@@ -161,6 +168,40 @@ describe("Persistence migration", () => {
             settledIn: false
           }
         }
+      },
+      {
+        version: 8,
+        extra: {
+          opportunities: {
+            live: [
+              {
+                id: "milk_madu_lunch_rush_shift:100:1",
+                templateId: "milk_madu_lunch_rush_shift",
+                status: "accepted",
+                spawnedAt: 100,
+                expiresAt: 190,
+                locationVenueId: "milk_madu_berawa",
+                acceptedAt: 110
+              }
+            ],
+            completedTemplateIds: ["satu_satu_receipt_sort"],
+            missedTemplateIds: ["ari_sunset_ping"],
+            messages: [
+              {
+                id: "msg-1",
+                at: 100,
+                from: "Gig Radar",
+                body: "Testing opportunity feed.",
+                opportunityId: "milk_madu_lunch_rush_shift:100:1",
+                venueId: "milk_madu_berawa",
+                read: false
+              }
+            ],
+            trackedOpportunityId: "milk_madu_lunch_rush_shift:100:1",
+            lastSpawnAt: 100,
+            templateCooldownUntil: { satu_satu_receipt_sort: 250 }
+          }
+        }
       }
     ];
 
@@ -173,10 +214,18 @@ describe("Persistence migration", () => {
       expect(world.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
       expect(world.life.joinedClubIds).toEqual(testCase.version === 7 ? ["berawa_run_crew"] : []);
       expect(world.life.relationshipArcProgress).toEqual({});
+      if (testCase.version === 8) {
+        expect(world.opportunities.live[0]).toMatchObject({ templateId: "milk_madu_lunch_rush_shift", status: "accepted" });
+        expect(world.opportunities.completedTemplateIds).toEqual(["satu_satu_receipt_sort"]);
+        expect(world.opportunities.missedTemplateIds).toEqual(["ari_sunset_ping"]);
+        expect(world.opportunities.messages[0]).toMatchObject({ from: "Gig Radar", read: false });
+        expect(world.opportunities.trackedOpportunityId).toBe("milk_madu_lunch_rush_shift:100:1");
+        expect(world.opportunities.templateCooldownUntil.satu_satu_receipt_sort).toBe(250);
+      }
     }
   });
 
-  it("round-trips a v8 payload through save and load on meaningful fields", () => {
+  it("round-trips a v9 payload through save and load on meaningful fields", () => {
     const world = createInitialWorldState();
     const player = world.players[world.localPlayerId];
     player.money = 999;
@@ -198,6 +247,35 @@ describe("Persistence migration", () => {
       }
     ];
     world.mapDiscovery.discoveredVenueIds = ["berawa_beach"];
+    world.opportunities = {
+      live: [
+        {
+          id: "canggu_station_dropped_cart:200:1",
+          templateId: "canggu_station_dropped_cart",
+          status: "accepted",
+          spawnedAt: 200,
+          expiresAt: 270,
+          acceptedAt: 205,
+          locationVenueId: "canggu_station"
+        }
+      ],
+      completedTemplateIds: ["milk_madu_lunch_rush_shift"],
+      missedTemplateIds: ["ari_sunset_ping"],
+      messages: [
+        {
+          id: "msg-round-trip",
+          at: 210,
+          from: "Local Help",
+          body: "Round trip message.",
+          opportunityId: "canggu_station_dropped_cart:200:1",
+          venueId: "canggu_station",
+          read: false
+        }
+      ],
+      trackedOpportunityId: "canggu_station_dropped_cart:200:1",
+      lastSpawnAt: 200,
+      templateCooldownUntil: { milk_madu_lunch_rush_shift: 900 }
+    };
 
     saveWorldState(world);
     const loaded = loadWorldState();
@@ -214,5 +292,6 @@ describe("Persistence migration", () => {
     expect(loaded.runtimeEvents.attendedEventIds).toEqual(["berawa_beach_run_morning"]);
     expect(loaded.relationships).toEqual(world.relationships);
     expect(loaded.mapDiscovery.discoveredVenueIds).toEqual(["berawa_beach"]);
+    expect(loaded.opportunities).toEqual(world.opportunities);
   });
 });

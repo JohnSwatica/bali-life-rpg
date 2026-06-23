@@ -8,7 +8,7 @@ import { migratePlayerMeters, syncLegacyPlayerMeterMirrors } from "./meters/Play
 import { migrateOpportunityState } from "./opportunities/OpportunityEngine";
 import type { GroupEntityState, NpcEntityState, PlayerEntityState, ReputationState, WorldState } from "../types";
 
-export const CURRENT_SCHEMA_VERSION = 8;
+export const CURRENT_SCHEMA_VERSION = 9;
 const SAVE_KEY = "bali-life-rpg.berawa-finns.save.v1";
 const PAUSED_V2_KEY = "bali-life-rpg.berawa-finns.save.v2";
 

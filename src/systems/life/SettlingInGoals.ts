@@ -54,7 +54,7 @@ function isGoalComplete(world: WorldState, goalId: string): boolean {
     return Object.keys(world.life.activityHistory).some((key) => key.endsWith(":surf_beach_time"));
   }
   if (goalId === "plug_in") {
-    return world.runtimeEvents.attendedEventIds.length > 0;
+    return world.runtimeEvents.attendedEventIds.length > 0 || world.opportunities.completedTemplateIds.length > 0;
   }
   if (goalId === "find_your_crew") {
     return world.life.joinedClubIds.length > 0;

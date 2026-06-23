@@ -55,7 +55,7 @@ export function createInitialWorldState(): WorldState {
   );
 
   const world: WorldState = {
-    schemaVersion: 8,
+    schemaVersion: 9,
     version: 1,
     neighborhoodId: "berawa-finns-club",
     clock: {
