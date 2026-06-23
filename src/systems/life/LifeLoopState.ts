@@ -4,6 +4,7 @@ export function createDefaultLifeLoopState(): LifeLoopState {
   return {
     activityHistory: {},
     completedGoalIds: [],
+    joinedClubIds: [],
     settledIn: false
   };
 }
@@ -17,6 +18,7 @@ export function migrateLifeLoopState(rawLife: unknown): LifeLoopState {
   return {
     activityHistory: partial.activityHistory ?? {},
     completedGoalIds: partial.completedGoalIds ?? [],
+    joinedClubIds: partial.joinedClubIds ?? [],
     settledIn: partial.settledIn ?? false
   };
 }

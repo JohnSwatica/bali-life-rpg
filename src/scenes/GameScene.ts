@@ -23,6 +23,7 @@ import { ScriptedDialogueProvider, type DialogueProvider } from "../systems/dial
 import { InteractionController, type InteractionTarget } from "../systems/interaction/InteractionController";
 import { InputController, type GameKeyMap } from "../systems/input/InputController";
 import { IntentDispatcher, type IntentResult } from "../systems/intents/IntentDispatcher";
+import { getSocialGroupsForVenue, isSocialGroupJoined } from "../systems/groups/GroupRegistry";
 import { PLAYER_UNIT, POKEMON_SCALE } from "../systems/map/PlayerUnitScale";
 import { getPresentedRoads, getVenueSnapRoads } from "../systems/map/RoadPresentation";
 import { renderStreetTemplate } from "../systems/map/StreetRenderer";
@@ -2064,7 +2065,7 @@ export class GameScene extends Phaser.Scene {
       rowY += 50;
     }
 
-    const activeEvents = getActiveEventsAtVenue(this.world.clock, venueId);
+    const activeEvents = getActiveEventsAtVenue(this.world.clock, venueId, this.world);
     if (activeEvents.length > 0) {
       container.add(this.add.text(x + 22, rowY, "Happening now", this.panelSectionStyle()));
       rowY += 28;
@@ -2110,6 +2111,40 @@ export class GameScene extends Phaser.Scene {
           canAfford ? 0x2c4650 : 0x3a3030
         );
         rowY += 82;
+      }
+      rowY += 6;
+    }
+
+    const venueGroups = getSocialGroupsForVenue(venueId);
+    const joinableGroups = venueGroups.filter((group) => !isSocialGroupJoined(this.world, group.id));
+    if (joinableGroups.length > 0) {
+      container.add(this.add.text(x + 22, rowY, "Local clubs", this.panelSectionStyle()));
+      rowY += 28;
+      for (const group of joinableGroups.slice(0, 2)) {
+        const eventCopy = group.recurringEventIds?.length ? `Recurring events: ${group.recurringEventIds.length}` : "Recurring event hooks reserved";
+        container.add(
+          this.add.text(x + 22, rowY, `${group.name} (${group.purpose})\n${group.joinHook}\n${eventCopy}`, {
+            ...this.panelBodyStyle(),
+            fontSize: "13px",
+            wordWrap: { width: panelWidth - 202 }
+          })
+        );
+        this.addPanelButton(
+          container,
+          x + panelWidth - 154,
+          rowY + 14,
+          132,
+          34,
+          "Join",
+          () => {
+            const result = this.dispatchIntent({ kind: "JoinClub", groupId: group.id });
+            saveWorldState(this.world);
+            this.showToast(result.message);
+            this.openVenueActivityMenu(venueId);
+          },
+          0x253a35
+        );
+        rowY += 74;
       }
       rowY += 6;
     }

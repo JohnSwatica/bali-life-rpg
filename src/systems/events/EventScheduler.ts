@@ -1,16 +1,19 @@
 import { gameEventDefinitions } from "../../data/events";
-import type { GameEvent, PortalState, WorldClockState } from "../../types";
+import type { GameEvent, PortalState, WorldClockState, WorldState } from "../../types";
 
-export function getActiveEvents(clock: WorldClockState, _portal?: PortalState): GameEvent[] {
-  return gameEventDefinitions.filter((event) => isEventActive(event, clock));
+type EventVisibilityContext = PortalState | WorldState | undefined;
+
+export function getActiveEvents(clock: WorldClockState, context?: EventVisibilityContext): GameEvent[] {
+  return gameEventDefinitions.filter((event) => isEventVisible(event, context) && isEventActive(event, clock));
 }
 
-export function getActiveEventsAtVenue(clock: WorldClockState, venueId: string): GameEvent[] {
-  return getActiveEvents(clock).filter((event) => event.locationVenueId === venueId);
+export function getActiveEventsAtVenue(clock: WorldClockState, venueId: string, context?: EventVisibilityContext): GameEvent[] {
+  return getActiveEvents(clock, context).filter((event) => event.locationVenueId === venueId);
 }
 
-export function getUpcomingEvents(clock: WorldClockState, _portal?: PortalState, windowMinutes = 720): GameEvent[] {
+export function getUpcomingEvents(clock: WorldClockState, context?: EventVisibilityContext, windowMinutes = 720): GameEvent[] {
   return gameEventDefinitions
+    .filter((event) => isEventVisible(event, context))
     .map((event) => ({ event, distance: minutesUntilNextStart(clock, event) }))
     .filter(({ distance }) => distance > 0 && distance <= windowMinutes)
     .sort((a, b) => a.distance - b.distance)
@@ -37,6 +40,21 @@ export function isEventActive(event: GameEvent, clock: WorldClockState): boolean
     return false;
   }
   return isMinuteInWindow(clock.minuteOfDay, startMinute(event), endMinute(event));
+}
+
+export function getEventsForGroup(groupId: string): GameEvent[] {
+  return gameEventDefinitions.filter((event) => event.host.type === "group" && event.host.id === groupId);
+}
+
+function isEventVisible(event: GameEvent, context?: EventVisibilityContext): boolean {
+  const requiredGroupId = event.visibility?.requiresJoinedGroupId;
+  if (!requiredGroupId) {
+    return true;
+  }
+  if (!context || !("life" in context)) {
+    return false;
+  }
+  return context.life.joinedClubIds.includes(requiredGroupId);
 }
 
 function isEventOnDay(event: GameEvent, day: number): boolean {

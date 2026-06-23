@@ -1,4 +1,5 @@
 import { getEvent } from "../events/EventScheduler";
+import { joinSocialGroup } from "../groups/GroupRegistry";
 import { switchPortalMode } from "../portal/PortalState";
 import { adjustReputation, awardReputationTag } from "../reputation/ReputationState";
 import { recordRelationshipMemory } from "../relationships/RelationshipMemory";
@@ -58,6 +59,8 @@ export class IntentDispatcher {
       }
       return { ok: true, message: `Attended ${event.title}.` };
     });
+
+    this.register("JoinClub", (intent, world, at) => joinSocialGroup(world, intent.groupId, at));
   }
 
   dispatch(intent: GameIntent, world: WorldState, at: number): IntentResult {

@@ -4,7 +4,8 @@ import { lifestyleTagSuggestions } from "../../data/lifestyleTags";
 import { npcDefinitions } from "../../data/npcs";
 import { questDefinitions } from "../../data/quests";
 import { gameEventDefinitions } from "../../data/events";
-import { getActiveEvents, getUpcomingEvents, formatEventSchedule, formatEventTime } from "../../systems/events/EventScheduler";
+import { getActiveEvents, getUpcomingEvents, formatEventSchedule, formatEventTime, getEventsForGroup } from "../../systems/events/EventScheduler";
+import { getAllSocialGroups, isSocialGroupJoined } from "../../systems/groups/GroupRegistry";
 import type { IntentDispatcher } from "../../systems/intents/IntentDispatcher";
 import { setLifestyleTags } from "../../systems/profile/ProfileState";
 import { getAllVenues, getPriorityVenueCandidates, getVenue, getVisibleVenues } from "../../systems/venues/VenueRegistry";
@@ -151,7 +152,7 @@ export class PhoneShell {
     } else if (this.activeTab === "Venues") {
       this.renderVenues(container, bodyX, textY, bodyWidth);
     } else {
-      this.renderTextList(container, bodyX, textY, bodyWidth, this.communityLines());
+      this.renderCommunity(container, bodyX, textY, bodyWidth);
     }
   }
 
@@ -211,8 +212,8 @@ export class PhoneShell {
 
   private calendarLines(): string[] {
     const world = this.options.getWorld();
-    const active = getActiveEvents(world.clock, world.portal).map((event) => `Now: ${event.title} @ ${getVenue(event.locationVenueId)?.name ?? event.locationVenueId} (${formatEventTime(event)})`);
-    const upcoming = getUpcomingEvents(world.clock, world.portal).map((event) => `Soon: ${event.title} @ ${getVenue(event.locationVenueId)?.name ?? event.locationVenueId} (${formatEventTime(event)})`);
+    const active = getActiveEvents(world.clock, world).map((event) => `Now: ${event.title} @ ${getVenue(event.locationVenueId)?.name ?? event.locationVenueId} (${formatEventTime(event)})`);
+    const upcoming = getUpcomingEvents(world.clock, world).map((event) => `Soon: ${event.title} @ ${getVenue(event.locationVenueId)?.name ?? event.locationVenueId} (${formatEventTime(event)})`);
     return [...active, ...upcoming].length ? [...active, ...upcoming] : ["No events in the next window."];
   }
 
@@ -259,7 +260,12 @@ export class PhoneShell {
 
   private renderEvents(container: Phaser.GameObjects.Container, x: number, y: number, width: number): void {
     let rowY = y;
-    for (const event of gameEventDefinitions) {
+    const world = this.options.getWorld();
+    const visibleEvents = gameEventDefinitions.filter((event) => {
+      const requiredGroupId = event.visibility?.requiresJoinedGroupId;
+      return !requiredGroupId || world.life.joinedClubIds.includes(requiredGroupId);
+    });
+    for (const event of visibleEvents) {
       this.renderTextList(container, x, rowY, width - 150, [
         `${event.title} @ ${getVenue(event.locationVenueId)?.name ?? event.locationVenueId}`,
         `${formatEventSchedule(event)} | ${event.type}`,
@@ -277,6 +283,9 @@ export class PhoneShell {
       );
       rowY += 78;
       if (rowY > y + 350) break;
+    }
+    if (visibleEvents.length < gameEventDefinitions.length) {
+      this.renderTextList(container, x, rowY + 6, width, [`${gameEventDefinitions.length - visibleEvents.length} club event(s) unlock after joining their club.`]);
     }
   }
 
@@ -382,21 +391,50 @@ export class PhoneShell {
       .join(" / ");
   }
 
-  private communityLines(): string[] {
+  private renderCommunity(container: Phaser.GameObjects.Container, x: number, y: number, width: number): void {
     const world = this.options.getWorld();
     const offline = getOfflineActivities().map(
       (activity) => `- ${activity.onlinePreview} [${activity.status}${activity.requiresMultiplayer ? ", multiplayer locked" : ""}]`
     );
-    return [
+    this.renderTextList(container, x, y, width, [
       `Reputation score: ${world.reputation.score}`,
       `Visible tags: ${world.reputation.tags.length ? world.reputation.tags.join(", ") : "none yet"}`,
       "Community Council - coming soon. No live moderation in this slice.",
       `Priority venue candidates: ${getPriorityVenueCandidates().length} seeded, all manual/needs verification.`,
-      "Map data © OpenStreetMap contributors. Cached offline for this slice.",
-      "",
-      "Simulated Offline Activity Previews",
-      ...offline
-    ];
+      "Map data © OpenStreetMap contributors. Cached offline for this slice."
+    ]);
+
+    let rowY = y + 102;
+    this.renderTextList(container, x, rowY, width, ["Clubs / Groups"]);
+    rowY += 30;
+    for (const group of getAllSocialGroups()) {
+      const joined = isSocialGroupJoined(world, group.id);
+      const home = group.homeVenueId ? getVenue(group.homeVenueId)?.name ?? group.homeVenueId : "roaming";
+      const members = group.memberIds.map((id) => npcDefinitions[id]?.name ?? id).join(", ");
+      const events = (group.recurringEventIds ?? getEventsForGroup(group.id).map((event) => event.id))
+        .map((eventId) => gameEventDefinitions.find((event) => event.id === eventId)?.title ?? eventId)
+        .join(", ");
+      this.renderTextList(container, x, rowY, width - 138, [
+        `${joined ? "Joined: " : ""}${group.name} (${group.purpose}) @ ${home}`,
+        `${group.description} Members: ${members || "none yet"}. Events: ${events || "none yet"}.`
+      ]);
+      this.addButton(
+        container,
+        x + width - 118,
+        rowY + 2,
+        98,
+        30,
+        joined ? "Joined" : "Join",
+        () => this.dispatchAndRefresh({ kind: "JoinClub", groupId: group.id }),
+        joined ? 0x2d3036 : 0x253a35
+      );
+      rowY += 72;
+      if (rowY > y + 368) break;
+    }
+
+    if (rowY <= y + 390) {
+      this.renderTextList(container, x, rowY + 4, width, ["Simulated Offline Activity Previews", ...offline.slice(0, 2)]);
+    }
   }
 
   private renderTextList(

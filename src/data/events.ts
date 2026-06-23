@@ -106,5 +106,65 @@ export const gameEventDefinitions: GameEvent[] = [
       meetNpcs: ["made"],
       reputationTag: "venue_regular"
     }
+  },
+  {
+    id: "berawa_run_crew_loop",
+    title: "Run Crew Sunrise Loop",
+    type: "run",
+    host: { type: "group", id: "berawa_run_crew" },
+    locationVenueId: "berawa_beach",
+    visibility: { requiresJoinedGroupId: "berawa_run_crew" },
+    schedule: { recurringDays: [2, 4], startHour: 6.25, endHour: 7.75 },
+    description: "A members' loop from the beach edge back toward the cafe strip, easy pace, names remembered.",
+    participation: {
+      timeCost: 70,
+      cost: 0,
+      meterDeltas: { energy: -16, wellbeing: 16, social: 12, focus: 3 },
+      affinityBumps: [
+        { npcId: "ari", amount: 4 },
+        { npcId: "kadek", amount: 2 }
+      ],
+      meetNpcs: ["ari", "kadek"],
+      reputationTag: "reliable"
+    }
+  },
+  {
+    id: "focus_collective_sprint",
+    title: "Focus Table Sprint",
+    type: "coworking",
+    host: { type: "group", id: "focus_table_collective" },
+    locationVenueId: "satu_satu_coffee",
+    visibility: { requiresJoinedGroupId: "focus_table_collective" },
+    schedule: { recurringDays: [2, 4], startHour: 13, endHour: 15 },
+    description: "A closed-table work sprint: quiet first hour, intro swap second hour.",
+    participation: {
+      timeCost: 120,
+      cost: 45,
+      meterDeltas: { energy: -18, wellbeing: -2, focus: 22, social: 8 },
+      affinityBumps: [
+        { npcId: "made", amount: 3 },
+        { npcId: "kadek", amount: 3 }
+      ],
+      meetNpcs: ["made", "kadek"],
+      reputationTag: "reliable"
+    }
+  },
+  {
+    id: "sunset_surf_check",
+    title: "Sunset Tide Check",
+    type: "meetup",
+    host: { type: "group", id: "berawa_surf_circle" },
+    locationVenueId: "berawa_beach",
+    visibility: { requiresJoinedGroupId: "berawa_surf_circle" },
+    schedule: { recurringDays: [3, 6], startHour: 16.5, endHour: 18 },
+    description: "A small beach-circle check-in before sunset, half surf notes, half life notes.",
+    participation: {
+      timeCost: 80,
+      cost: 0,
+      meterDeltas: { energy: -8, wellbeing: 14, social: 14, focus: -2 },
+      affinityBumps: [{ npcId: "ari", amount: 5 }],
+      meetNpcs: ["ari"],
+      reputationTag: "social"
+    }
   }
 ];

@@ -44,6 +44,7 @@ export type EventType =
   | "meetup"
   | "live_music"
   | "coworking";
+export type GroupPurpose = "social" | "run" | "coworking" | "surf" | "food" | "housing";
 export type ReputationTag =
   | "helpful"
   | "reliable"
@@ -134,6 +135,7 @@ export interface GameEvent {
   type: EventType;
   host: { type: "venue" | "npc" | "group" | "player"; id: string };
   locationVenueId: string;
+  visibility?: { requiresJoinedGroupId?: string };
   schedule: { day?: number; recurringDays?: number[]; startHour: number; endHour: number };
   description: string;
   participation: {
@@ -146,6 +148,18 @@ export interface GameEvent {
     reputationDelta?: number;
     itemIds?: string[];
   };
+}
+
+export interface SocialGroupDefinition {
+  id: string;
+  name: string;
+  purpose: GroupPurpose;
+  owner: { type: "npc" | "venue" | "group" | "player"; id: string };
+  homeVenueId?: string;
+  memberIds: string[];
+  recurringEventIds?: string[];
+  description: string;
+  joinHook: string;
 }
 
 export interface TrustFlag {
@@ -247,12 +261,14 @@ export interface LifeActivityRecord {
 export interface LifeLoopState {
   activityHistory: Record<string, LifeActivityRecord>;
   completedGoalIds: string[];
+  joinedClubIds: string[];
   settledIn: boolean;
 }
 
 export type GameIntent =
   | { kind: "SwitchPortal"; mode: PortalMode }
   | { kind: "AttendEvent"; eventId: string }
+  | { kind: "JoinClub"; groupId: string }
   | { kind: "VisitVenue"; venueId: string }
   | { kind: "RecordMemory"; subjectType: "npc" | "venue"; subjectId: string; memory: MemoryType; detail?: string }
   | { kind: "AwardReputationTag"; tag: ReputationTag; reason: string }
