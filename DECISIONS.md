@@ -181,3 +181,11 @@ Groups/clubs are now first-class, purpose-generic entities through `SocialGroupD
 Relationship arcs are data-driven, account-portable runtime state under `world.life.relationshipArcProgress`. Ari, Made, and Ibu Sari have sequential beats gated by affinity, attended events, joined clubs, or starter-quest completion. Payoffs are local hooks/text only unless they join an existing club; discount and housing-lead beats deliberately remain future-facing teasers.
 
 Save schema is bumped to v8. Migration adds `life.joinedClubIds` and `life.relationshipArcProgress` with empty defaults while preserving existing money, quests, inventory, reputation, relationships, profile, portal, discovery, and activity history.
+
+## 2026-06-23 - Core Test Suite
+
+Vitest is now the core deterministic test runner. `npm test` covers the v1-v8 save migration chain, daily meters/time/activity balance, first-class events/clubs/relationship arcs, starter quests, Settling In goals, reputation transitions, interaction priority, and authored street layout invariants. The suite is intentionally focused on pure/local systems so it can run without human visual judgment or a browser.
+
+The tests revealed one unambiguous data-seam bug: `finns_sunset_social` referenced `finns_beach_club`, but that venue id was missing from `VenueRegistry`. The fix was to add a first-class `finns_beach_club` venue record matching the already-authored curated venue id; no coordinates, map render code, or gameplay systems changed.
+
+Three requested checks remain documented skips instead of speculative refactors: sleep meter restoration and full on-site event participation effects still live in private `GameScene` methods, and generic non-deliver quest objective handlers need either scripted fixtures or an exported pure evaluator before they can be tested honestly.
