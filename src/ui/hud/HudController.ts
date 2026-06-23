@@ -229,6 +229,10 @@ export class HudController {
     }
   }
 
+  setMinimapHidden(hidden: boolean): void {
+    this.minimapFrame?.classList.toggle("is-hidden", hidden);
+  }
+
   private createDomOverlay(): void {
     if (typeof document === "undefined") {
       return;

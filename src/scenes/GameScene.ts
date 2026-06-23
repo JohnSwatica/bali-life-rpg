@@ -1760,6 +1760,7 @@ export class GameScene extends Phaser.Scene {
       social: this.world.meters.social
     });
     this.hudController.updatePhoneBadge(getUnreadOpportunityMessageCount(this.world.opportunities), this.phoneBuzzTimer > 0);
+    this.hudController.setMinimapHidden(this.mode !== "world");
     this.questText.setText([...this.getTutorialLines(), ...getQuestTrackerLines(this.playerState)].join("\n"));
     this.questText.setWordWrapWidth(Math.min(520, this.scale.width - 40));
 

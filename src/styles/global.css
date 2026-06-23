@@ -162,7 +162,16 @@ canvas {
   border-radius: 7px;
   background: rgba(15, 24, 32, 0.74);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+  opacity: 0.65;
   pointer-events: none;
+  transition:
+    opacity 160ms ease,
+    visibility 160ms ease;
+}
+
+.bali-life-minimap.is-hidden {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .bali-life-minimap-canvas {
