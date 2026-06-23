@@ -26,6 +26,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Live opportunities render as world pins and minimap dots with type colors/icons. Clicking a world pin or approaching its venue can track it; accepted opportunities resolve on-site from the existing venue activity menu before the timer expires.
 - Stakes are local and non-combat: missed social pings record a small `missed_opportunity` relationship memory, reputation gates unlock better pings, and flash deals are explicitly simulated/dev-authored promotion seeds with no real commerce integration.
 - Save schema is now v9. V1-v8 saves migrate forward with default opportunity runtime state while preserving money, quests, inventory, relationships, reputation, discovery, profile, portal, authored-street position data, meters, joined clubs, relationship arc progress, and `life` runtime state.
+- UI overlay patch added: the fixed DOM minimap is now semi-transparent in world mode and auto-hides under overlays; dialogue moved to a fixed DOM panel that stays fully within the viewport and clear of the HUD button cluster; one shared `overlayOpen` flag now controls minimap hiding, HUD muting, and the body overlay class for dialogue/phone/inventory/community/activity/shop-style modal states.
 - Added `src/data/events.ts` and `src/systems/events/EventScheduler.ts`: dev-authored events reference venues/NPCs/groups by id, appear in Calendar/Events, and can be attended on-site from the venue activity menu.
 - Added `src/data/groups.ts` and `src/systems/groups/GroupRegistry.ts`: clubs can be joined from Phone > Community or at their home venue; joining unlocks membership-gated recurring events on the calendar.
 - Added `src/data/relationshipArcs.ts` and `src/systems/relationships/RelationshipArcs.ts`: Ari, Made, and Ibu Sari have sequential local relationship beats gated by affinity, events, clubs, or starter-quest completion, with text/perk hooks only.
@@ -161,6 +162,9 @@ Copy/paste this into a new AI session to bring it up to speed.
 - `7cc95d0` - `feat: live opportunity markers on map and minimap`
 - `beccf37` - `feat: opportunity stakes and venue resolution`
 - `997a9f2` - `feat: persist opportunities with tests`
+- `241cf5d` - `fix: minimap transparency + auto-hide under overlays`
+- `f8fc528` - `fix: dialogue panel fully on-screen and clear of HUD`
+- `9dde308` - `refactor: unified overlay-open state for HUD/minimap visibility`
 
 ## Current Verification
 
