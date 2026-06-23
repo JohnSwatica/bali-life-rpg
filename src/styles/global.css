@@ -286,6 +286,73 @@ canvas {
   font: 800 13px/1 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+.bali-life-minigame {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(244, 213, 141, 0.38);
+  border-radius: 8px;
+  background: rgba(255, 248, 223, 0.08);
+}
+
+.bali-life-minigame-title {
+  color: #fff0bd;
+  font: 850 14px/1.2 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.bali-life-minigame-prompt,
+.bali-life-minigame-feedback {
+  margin-top: 6px;
+  color: rgba(255, 248, 223, 0.82);
+  font: 700 12px/1.35 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.bali-life-minigame-lane {
+  position: relative;
+  height: 22px;
+  margin: 12px 0 10px;
+  overflow: hidden;
+  border: 1px solid rgba(244, 213, 141, 0.42);
+  border-radius: 999px;
+  background: rgba(16, 24, 32, 0.72);
+}
+
+.bali-life-minigame-target {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  background: rgba(98, 196, 143, 0.54);
+}
+
+.bali-life-minigame-marker {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: 5px;
+  border-radius: 999px;
+  background: #fff8df;
+  box-shadow: 0 0 0 2px rgba(16, 24, 32, 0.65);
+  transform: translateX(-50%);
+}
+
+.bali-life-minigame-action,
+.bali-life-minigame-choice {
+  min-height: 34px;
+  border: 1px solid rgba(244, 213, 141, 0.52);
+  border-radius: 7px;
+  background: rgba(37, 58, 53, 0.96);
+  color: #fff8df;
+  cursor: pointer;
+  font: 800 12px/1 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.bali-life-minigame-choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
 @media (max-width: 420px) {
   .bali-life-hud-buttons {
     right: max(10px, env(safe-area-inset-right));
@@ -326,5 +393,9 @@ canvas {
   .bali-life-dialogue-body {
     max-height: calc(100vh - 324px);
     font-size: 14px;
+  }
+
+  .bali-life-minigame-choices {
+    grid-template-columns: 1fr;
   }
 }

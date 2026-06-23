@@ -31,6 +31,15 @@ import { renderStreetTemplate } from "../systems/map/StreetRenderer";
 import { STREET_CAMERA } from "../systems/map/TileStreetScale";
 import { scaleDistance, scalePoint } from "../systems/map/WorldScale";
 import { adjustPlayerMeters } from "../systems/meters/PlayerMeters";
+import {
+  createActiveMinigame,
+  getActivityMinigameDefinition,
+  getOpportunityMinigameDefinition,
+  resolvePerformanceScore,
+  rewardMultiplier,
+  scoreChoice,
+  scoreTimingAttempt
+} from "../systems/minigames/ActivityMinigames";
 import { getActiveEvents, getActiveEventsAtVenue, isEventActive } from "../systems/events/EventScheduler";
 import { advanceWorldMinutes, canSleepNow, sleepUntilNextMorning } from "../systems/time/DailyClock";
 import {
@@ -373,6 +382,8 @@ export class GameScene extends Phaser.Scene {
   private committedActivityOverlay?: HTMLElement;
   private committedActivityProgress?: HTMLDivElement;
   private committedActivityStatus?: HTMLDivElement;
+  private committedMinigameMarker?: HTMLDivElement;
+  private committedMinigameFeedback?: HTMLDivElement;
   private nightOverlay!: Phaser.GameObjects.Graphics;
   private lanternGlow!: Phaser.GameObjects.Graphics;
   private discoveryToastCooldown = 0;
@@ -2328,9 +2339,9 @@ export class GameScene extends Phaser.Scene {
     this.startCommittedActivity(context, option.activity.id);
   }
 
-  private resolveVenueActivity(context: VenueActivityContext, activityId: string): void {
+  private resolveVenueActivity(context: VenueActivityContext, activityId: string, performanceScore?: number): void {
     const option = getActivityAvailability(this.world, context).find((candidate) => candidate.activity.id === activityId);
-    const result = applyActivity(this.world, context, activityId);
+    const result = applyActivity(this.world, context, activityId, { performanceScore });
     if (!result.ok) {
       this.showToast(result.message);
       return;
@@ -2346,12 +2357,13 @@ export class GameScene extends Phaser.Scene {
     }
     const affinityBump = option?.activity.affinityBump ?? 0;
     if (affinityBump > 0) {
+      const scaledAffinity = Math.max(1, Math.round(affinityBump * rewardMultiplier(performanceScore)));
       for (const npcId of context.npcIds) {
         bumpRelationshipAffinity(
           this.world,
           "npc",
           npcId,
-          affinityBump,
+          scaledAffinity,
           `${option?.activity.label ?? "Activity"} at ${context.name}`,
           this.getAbsoluteMinute()
         );
@@ -2385,7 +2397,8 @@ export class GameScene extends Phaser.Scene {
       durationMin: option.activity.timeCost,
       elapsedMs: 0,
       realDurationMs: Phaser.Math.Clamp(option.activity.timeCost * 24, 2800, 6500),
-      startedAt: this.getAbsoluteMinute()
+      startedAt: this.getAbsoluteMinute(),
+      minigame: createActiveMinigame(getActivityMinigameDefinition(option.activity.id))
     };
     this.world.activeActivity = { ...this.committedActivity };
     this.createCommittedActivityOverlay(this.committedActivity);
@@ -2443,7 +2456,8 @@ export class GameScene extends Phaser.Scene {
       durationMin: template.timeCostMin,
       elapsedMs: 0,
       realDurationMs: Phaser.Math.Clamp(template.timeCostMin * 28, 2800, 7200),
-      startedAt: this.getAbsoluteMinute()
+      startedAt: this.getAbsoluteMinute(),
+      minigame: createActiveMinigame(getOpportunityMinigameDefinition(template.type))
     };
     this.world.activeActivity = { ...this.committedActivity };
     this.createCommittedActivityOverlay(this.committedActivity);
@@ -2467,6 +2481,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     active.elapsedMs = Math.min(active.realDurationMs, active.elapsedMs + delta);
+    this.updateCommittedMinigame(delta);
     this.world.activeActivity = { ...active };
     const progress = active.elapsedMs / active.realDurationMs;
     const elapsedMinutes = Math.round(active.durationMin * progress);
@@ -2490,20 +2505,22 @@ export class GameScene extends Phaser.Scene {
     this.world.activeActivity = null;
     this.destroyCommittedActivityOverlay();
     this.mode = "world";
+    const performanceScore = resolvePerformanceScore(active.minigame);
+    active.performanceScore = performanceScore;
     if (active.source === "activity") {
       const context = getVenueActivityContext(active.venueId);
       if (!context) {
         this.showToast("Activity finished, but the venue context was missing.");
         return;
       }
-      this.resolveVenueActivity(context, active.activityId);
+      this.resolveVenueActivity(context, active.activityId, performanceScore);
       return;
     }
-    this.finishCommittedOpportunity(active.opportunityId);
+    this.finishCommittedOpportunity(active.opportunityId, performanceScore);
   }
 
-  private finishCommittedOpportunity(opportunityId: string): void {
-    const result = resolveOpportunity(this.world.opportunities, this.world, opportunityId);
+  private finishCommittedOpportunity(opportunityId: string, performanceScore?: number): void {
+    const result = resolveOpportunity(this.world.opportunities, this.world, opportunityId, undefined, performanceScore);
     const goalMessage = this.refreshSettlingInGoals(false);
     this.updateLighting();
     saveWorldState(this.world);
@@ -2533,6 +2550,69 @@ export class GameScene extends Phaser.Scene {
     const node = venueMapNodes.find((candidate) => candidate.venueId === this.committedActivity?.venueId);
     this.placePlayerAtCommittedVenue(node);
     this.createCommittedActivityOverlay(this.committedActivity);
+  }
+
+  private updateCommittedMinigame(delta: number): void {
+    const minigame = this.committedActivity?.minigame;
+    if (!minigame || minigame.kind === "choice") {
+      return;
+    }
+    const speed = minigame.kind === "balance" ? 1300 : 1050;
+    minigame.markerPhase = (minigame.markerPhase + delta / speed) % 1;
+    this.updateCommittedMinigameUi();
+  }
+
+  private recordCommittedMinigameTimingAttempt(): void {
+    const active = this.committedActivity;
+    const minigame = active?.minigame;
+    if (!active || !minigame || minigame.kind === "choice") {
+      return;
+    }
+    const score = scoreTimingAttempt(minigame.markerPhase, minigame.targetStart, minigame.targetEnd);
+    minigame.attempts += 1;
+    minigame.bestScore = Math.max(minigame.bestScore, score);
+    minigame.feedback = score >= 0.92 ? "Clean hit. Rewards will land stronger." : score >= 0.55 ? "Good enough. You kept it together." : "Messy beat. You can try again before it ends.";
+    active.performanceScore = resolvePerformanceScore(minigame);
+    this.world.activeActivity = { ...active };
+    this.updateCommittedMinigameUi();
+  }
+
+  private recordCommittedMinigameChoice(choiceId: string): void {
+    const active = this.committedActivity;
+    const minigame = active?.minigame;
+    if (!active || !minigame || minigame.kind !== "choice") {
+      return;
+    }
+    const choice = scoreChoice(minigame.choices, choiceId);
+    if (!choice) {
+      return;
+    }
+    minigame.selectedChoiceId = choice.id;
+    minigame.attempts = Math.max(1, minigame.attempts + 1);
+    minigame.bestScore = Math.max(minigame.bestScore, choice.score);
+    minigame.feedback = choice.feedback;
+    active.performanceScore = resolvePerformanceScore(minigame);
+    this.world.activeActivity = { ...active };
+    this.updateCommittedMinigameUi();
+  }
+
+  private updateCommittedMinigameUi(): void {
+    const minigame = this.committedActivity?.minigame;
+    if (!minigame) {
+      return;
+    }
+    if (this.committedMinigameMarker) {
+      this.committedMinigameMarker.style.left = `${Math.round(minigame.markerPhase * 100)}%`;
+    }
+    if (this.committedMinigameFeedback) {
+      const score = resolvePerformanceScore(minigame);
+      const performance = score == null ? "" : ` Best ${Math.round(score * 100)}%.`;
+      this.committedMinigameFeedback.textContent =
+        minigame.feedback ?? `Optional skill beat. Ignore it for a steady result.${performance}`;
+      if (minigame.feedback) {
+        this.committedMinigameFeedback.textContent += performance;
+      }
+    }
   }
 
   private createCommittedActivityOverlay(active: ActiveActivityState): void {
@@ -2566,6 +2646,8 @@ export class GameScene extends Phaser.Scene {
     status.className = "bali-life-activity-progress-status";
     status.textContent = `Fast-forwarding 0/${active.durationMin} in-game minutes`;
 
+    const minigame = this.createCommittedMinigameElement(active);
+
     const cancel = document.createElement("button");
     cancel.type = "button";
     cancel.className = "bali-life-activity-progress-cancel";
@@ -2576,11 +2658,85 @@ export class GameScene extends Phaser.Scene {
       this.cancelCommittedActivity();
     });
 
-    overlay.append(title, subtitle, track, status, cancel);
+    overlay.append(title, subtitle, track, status);
+    if (minigame) {
+      overlay.appendChild(minigame);
+    }
+    overlay.appendChild(cancel);
     document.body.appendChild(overlay);
     this.committedActivityOverlay = overlay;
     this.committedActivityProgress = fill;
     this.committedActivityStatus = status;
+  }
+
+  private createCommittedMinigameElement(active: ActiveActivityState): HTMLElement | null {
+    const minigame = active.minigame;
+    if (!minigame || typeof document === "undefined") {
+      return null;
+    }
+
+    const wrap = document.createElement("div");
+    wrap.className = "bali-life-minigame";
+
+    const title = document.createElement("div");
+    title.className = "bali-life-minigame-title";
+    title.textContent = minigame.title;
+
+    const prompt = document.createElement("div");
+    prompt.className = "bali-life-minigame-prompt";
+    prompt.textContent = minigame.prompt;
+
+    const feedback = document.createElement("div");
+    feedback.className = "bali-life-minigame-feedback";
+    feedback.textContent = minigame.feedback ?? "Optional skill beat. Ignore it for a steady result.";
+
+    wrap.append(title, prompt);
+
+    if (minigame.kind === "choice") {
+      const choiceGrid = document.createElement("div");
+      choiceGrid.className = "bali-life-minigame-choices";
+      for (const choice of minigame.choices ?? []) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "bali-life-minigame-choice";
+        button.textContent = choice.label;
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          this.recordCommittedMinigameChoice(choice.id);
+        });
+        choiceGrid.appendChild(button);
+      }
+      wrap.appendChild(choiceGrid);
+    } else {
+      const lane = document.createElement("div");
+      lane.className = "bali-life-minigame-lane";
+      const target = document.createElement("div");
+      target.className = "bali-life-minigame-target";
+      target.style.left = `${Math.round(minigame.targetStart * 100)}%`;
+      target.style.width = `${Math.round((minigame.targetEnd - minigame.targetStart) * 100)}%`;
+      const marker = document.createElement("div");
+      marker.className = "bali-life-minigame-marker";
+      lane.append(target, marker);
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "bali-life-minigame-action";
+      button.textContent = minigame.actionLabel;
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.recordCommittedMinigameTimingAttempt();
+      });
+
+      this.committedMinigameMarker = marker;
+      wrap.append(lane, button);
+    }
+
+    wrap.appendChild(feedback);
+    this.committedMinigameFeedback = feedback;
+    this.updateCommittedMinigameUi();
+    return wrap;
   }
 
   private destroyCommittedActivityOverlay(): void {
@@ -2588,6 +2744,8 @@ export class GameScene extends Phaser.Scene {
     this.committedActivityOverlay = undefined;
     this.committedActivityProgress = undefined;
     this.committedActivityStatus = undefined;
+    this.committedMinigameMarker = undefined;
+    this.committedMinigameFeedback = undefined;
   }
 
   private attendVenueEvent(event: GameEvent): void {
