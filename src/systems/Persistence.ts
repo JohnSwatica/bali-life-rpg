@@ -6,7 +6,16 @@ import { scaleDistance } from "./map/WorldScale";
 import { migrateLifeLoopState } from "./life/LifeLoopState";
 import { migratePlayerMeters, syncLegacyPlayerMeterMirrors } from "./meters/PlayerMeters";
 import { migrateOpportunityState } from "./opportunities/OpportunityEngine";
-import type { ActiveActivityState, GroupEntityState, NpcEntityState, PlayerEntityState, ReputationState, WorldState } from "../types";
+import type {
+  ActiveActivityState,
+  ActiveMinigameChoice,
+  ActiveMinigameState,
+  GroupEntityState,
+  NpcEntityState,
+  PlayerEntityState,
+  ReputationState,
+  WorldState
+} from "../types";
 
 export const CURRENT_SCHEMA_VERSION = 10;
 const SAVE_KEY = "bali-life-rpg.berawa-finns.save.v1";
@@ -118,7 +127,9 @@ function migrateActiveActivityState(raw: unknown): ActiveActivityState | null {
     durationMin: value.durationMin,
     elapsedMs: Math.max(0, value.elapsedMs),
     realDurationMs: Math.max(1, value.realDurationMs),
-    startedAt: value.startedAt
+    startedAt: value.startedAt,
+    performanceScore: readOptionalUnit(value.performanceScore),
+    minigame: migrateActiveMinigameState(value.minigame)
   };
   if (value.source === "activity" && typeof value.activityId === "string") {
     return { ...base, source: "activity", activityId: value.activityId };
@@ -127,6 +138,63 @@ function migrateActiveActivityState(raw: unknown): ActiveActivityState | null {
     return { ...base, source: "opportunity", opportunityId: value.opportunityId };
   }
   return null;
+}
+
+function migrateActiveMinigameState(raw: unknown): ActiveMinigameState | undefined {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+  const value = raw as Partial<ActiveMinigameState>;
+  if (
+    (value.kind !== "timing" && value.kind !== "balance" && value.kind !== "choice") ||
+    typeof value.title !== "string" ||
+    typeof value.prompt !== "string" ||
+    typeof value.actionLabel !== "string"
+  ) {
+    return undefined;
+  }
+  return {
+    kind: value.kind,
+    title: value.title,
+    prompt: value.prompt,
+    actionLabel: value.actionLabel,
+    attempts: readFiniteNumber(value.attempts, 0),
+    bestScore: readUnit(value.bestScore, 0),
+    markerPhase: readUnit(value.markerPhase, 0),
+    targetStart: readUnit(value.targetStart, 0.42),
+    targetEnd: readUnit(value.targetEnd, 0.58),
+    selectedChoiceId: typeof value.selectedChoiceId === "string" ? value.selectedChoiceId : undefined,
+    feedback: typeof value.feedback === "string" ? value.feedback : undefined,
+    choices: Array.isArray(value.choices)
+      ? value.choices.filter(
+          (choice): choice is ActiveMinigameChoice =>
+            Boolean(choice) &&
+            typeof choice === "object" &&
+            typeof (choice as { id?: unknown }).id === "string" &&
+            typeof (choice as { label?: unknown }).label === "string" &&
+            typeof (choice as { score?: unknown }).score === "number" &&
+            typeof (choice as { feedback?: unknown }).feedback === "string"
+        )
+      : undefined
+  };
+}
+
+function readOptionalUnit(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return undefined;
+  }
+  return readUnit(value, 0);
+}
+
+function readFiniteNumber(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function readUnit(value: unknown, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback;
+  }
+  return Math.max(0, Math.min(1, value));
 }
 
 function scaleLegacyRuntimePositions(world: WorldState, raw: Partial<WorldState> & Record<string, unknown>): void {

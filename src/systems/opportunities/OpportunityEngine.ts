@@ -1,6 +1,11 @@
 import { opportunityTemplates } from "../../data/opportunities";
 import { addItem } from "../Inventory";
 import { adjustPlayerMeters } from "../meters/PlayerMeters";
+import {
+  formatPerformanceSummary,
+  scaleMeterDeltasForPerformance,
+  scaleMoneyDeltaForPerformance
+} from "../minigames/ActivityMinigames";
 import { bumpRelationshipAffinity, getAffinityTier, getRelationship, recordRelationshipMemory } from "../relationships/RelationshipMemory";
 import { adjustReputation, awardReputationTag } from "../reputation/ReputationState";
 import { advanceWorldMinutes } from "../time/DailyClock";
@@ -270,7 +275,8 @@ export function resolveOpportunity(
   state: OpportunityRuntimeState,
   world: WorldState,
   opportunityId: string,
-  now = getAbsoluteMinute(world.clock)
+  now = getAbsoluteMinute(world.clock),
+  performanceScore?: number
 ): OpportunityResolveResult {
   const live = state.live.find((entry) => entry.id === opportunityId);
   if (!live) {
@@ -284,13 +290,13 @@ export function resolveOpportunity(
   if (!template) {
     return { ok: false, message: "Opportunity content is missing." };
   }
-  const moneyDelta = template.reward.money ?? 0;
+  const moneyDelta = scaleMoneyDeltaForPerformance(template.reward.money ?? 0, performanceScore);
   const player = world.players[world.localPlayerId];
   if (moneyDelta < 0 && player.money + moneyDelta < 0) {
     return { ok: false, message: `Need Rp ${Math.abs(moneyDelta)} to take that opportunity.` };
   }
 
-  applyOpportunityReward(world, template, now);
+  applyOpportunityReward(world, template, now, performanceScore);
   live.status = "completed";
   live.completedAt = now;
   state.completedTemplateIds.push(template.id);
@@ -303,7 +309,7 @@ export function resolveOpportunity(
     id: createMessageId("completed", live.id, now),
     at: now,
     from: "Bali Life Phone",
-    body: `Completed: ${template.title}. ${formatRewardSummary(template)}`,
+    body: `Completed: ${template.title}. ${formatRewardSummary(template, performanceScore)}`,
     opportunityId: live.id,
     venueId: live.locationVenueId,
     read: false
@@ -319,7 +325,7 @@ export function resolveOpportunity(
 
   return {
     ok: true,
-    message: `Completed ${template.title}. ${formatRewardSummary(template)}`,
+    message: `Completed ${template.title}. ${formatRewardSummary(template, performanceScore)}`,
     opportunity: live,
     spawnedChain
   };
@@ -366,11 +372,11 @@ export function getLiveOpportunityCountdown(live: LiveOpportunity, clock: WorldC
   return Math.max(0, live.expiresAt - getAbsoluteMinute(clock));
 }
 
-function applyOpportunityReward(world: WorldState, template: OpportunityTemplate, now: number): void {
+function applyOpportunityReward(world: WorldState, template: OpportunityTemplate, now: number, performanceScore?: number): void {
   const player = world.players[world.localPlayerId];
-  player.money = Math.max(0, player.money + (template.reward.money ?? 0));
+  player.money = Math.max(0, player.money + scaleMoneyDeltaForPerformance(template.reward.money ?? 0, performanceScore));
   if (template.reward.meterDeltas) {
-    adjustPlayerMeters(world, template.reward.meterDeltas);
+    adjustPlayerMeters(world, scaleMeterDeltasForPerformance(template.reward.meterDeltas, performanceScore));
   }
   for (const item of template.reward.items ?? []) {
     addItem(player, item.itemId, item.quantity);
@@ -458,19 +464,20 @@ function messageSender(type: OpportunityType): string {
   return "Trade Board";
 }
 
-function formatRewardSummary(template: OpportunityTemplate): string {
+function formatRewardSummary(template: OpportunityTemplate, performanceScore?: number): string {
   const parts: string[] = [];
-  const money = template.reward.money ?? 0;
+  const money = scaleMoneyDeltaForPerformance(template.reward.money ?? 0, performanceScore);
   if (money > 0) parts.push(`Rp +${money}`);
   if (money < 0) parts.push(`Rp ${money}`);
-  const meterParts = Object.entries(template.reward.meterDeltas ?? {}).map(
+  const meterParts = Object.entries(scaleMeterDeltasForPerformance(template.reward.meterDeltas ?? {}, performanceScore)).map(
     ([meter, delta]) => `${meter} ${Number(delta) >= 0 ? "+" : ""}${delta}`
   );
   parts.push(...meterParts);
   if (template.reward.items?.length) {
     parts.push(`items ${template.reward.items.map((item) => item.itemId).join(", ")}`);
   }
-  return parts.length ? parts.join(" | ") : "No immediate reward.";
+  const summary = parts.length ? parts.join(" | ") : "No immediate reward.";
+  return `${summary}${formatPerformanceSummary(performanceScore)}`;
 }
 
 function readStringArray(value: unknown): string[] {

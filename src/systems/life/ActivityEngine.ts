@@ -4,6 +4,11 @@ import { curatedVenueNodes } from "../../data/authoredStreetLayout";
 import { venueDefinitions } from "../../data/venues";
 import { addItem } from "../Inventory";
 import { adjustPlayerMeters } from "../meters/PlayerMeters";
+import {
+  formatPerformanceSummary,
+  scaleMeterDeltasForPerformance,
+  scaleMoneyDeltaForPerformance
+} from "../minigames/ActivityMinigames";
 import { advanceWorldMinutes, formatClockTime, isOpenAt } from "../time/DailyClock";
 import type { OpenHours, WorldState } from "../../types";
 
@@ -27,6 +32,10 @@ export interface ActivityResult {
   message: string;
   meterSummary: string;
   moneyDelta: number;
+}
+
+export interface ApplyActivityOptions {
+  performanceScore?: number;
 }
 
 export function getVenueActivityContext(venueId: string): VenueActivityContext | null {
@@ -53,7 +62,12 @@ export function getActivityAvailability(world: WorldState, context: VenueActivit
     .map((activity) => evaluateActivity(world, context, activity));
 }
 
-export function applyActivity(world: WorldState, context: VenueActivityContext, activityId: string): ActivityResult {
+export function applyActivity(
+  world: WorldState,
+  context: VenueActivityContext,
+  activityId: string,
+  options: ApplyActivityOptions = {}
+): ActivityResult {
   const availability = getActivityAvailability(world, context).find((candidate) => candidate.activity.id === activityId);
   if (!availability) {
     return { ok: false, message: "No activity found here.", meterSummary: "", moneyDelta: 0 };
@@ -65,9 +79,10 @@ export function applyActivity(world: WorldState, context: VenueActivityContext, 
   const player = world.players[world.localPlayerId];
   const activity = availability.activity;
   const cost = activity.cost ?? 0;
-  const moneyDelta = -cost;
+  const moneyDelta = scaleMoneyDeltaForPerformance(-cost, options.performanceScore);
+  const meterDeltas = scaleMeterDeltasForPerformance(activity.meterDeltas, options.performanceScore);
   player.money += moneyDelta;
-  adjustPlayerMeters(world, activity.meterDeltas);
+  adjustPlayerMeters(world, meterDeltas);
   advanceWorldMinutes(world, activity.timeCost);
 
   for (const itemId of activity.itemRewards ?? []) {
@@ -90,8 +105,8 @@ export function applyActivity(world: WorldState, context: VenueActivityContext, 
 
   return {
     ok: true,
-    message: `${activity.label}: ${formatClockTime(world.clock.minuteOfDay)}. ${formatMoneyDelta(moneyDelta)}${meterSummary(activity)}`,
-    meterSummary: meterSummary(activity),
+    message: `${activity.label}: ${formatClockTime(world.clock.minuteOfDay)}. ${formatMoneyDelta(moneyDelta)}${meterSummary(meterDeltas)}${formatPerformanceSummary(options.performanceScore)}`,
+    meterSummary: meterSummary(meterDeltas),
     moneyDelta
   };
 }
@@ -174,8 +189,8 @@ function openHoursFromTypicalHours(typicalHours: string | null | undefined): Ope
   };
 }
 
-function meterSummary(activity: Activity): string {
-  const parts = Object.entries(activity.meterDeltas).map(([meter, delta]) => `${meter} ${Number(delta) >= 0 ? "+" : ""}${delta}`);
+function meterSummary(deltas: Partial<Record<string, number>>): string {
+  const parts = Object.entries(deltas).map(([meter, delta]) => `${meter} ${Number(delta) >= 0 ? "+" : ""}${delta}`);
   return parts.length ? ` | ${parts.join(", ")}` : "";
 }
 

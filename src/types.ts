@@ -47,6 +47,7 @@ export type EventType =
 export type GroupPurpose = "social" | "run" | "coworking" | "surf" | "food" | "housing";
 export type OpportunityType = "gig" | "social" | "help_out" | "flash_deal" | "rumor" | "trade";
 export type OpportunityStatus = "live" | "accepted" | "completed" | "missed";
+export type ActivityMinigameKind = "timing" | "balance" | "choice";
 export type ReputationTag =
   | "helpful"
   | "reliable"
@@ -232,6 +233,28 @@ export interface OpportunityRuntimeState {
   templateCooldownUntil: Record<string, number>;
 }
 
+export interface ActiveMinigameChoice {
+  id: string;
+  label: string;
+  score: number;
+  feedback: string;
+}
+
+export interface ActiveMinigameState {
+  kind: ActivityMinigameKind;
+  title: string;
+  prompt: string;
+  actionLabel: string;
+  attempts: number;
+  bestScore: number;
+  markerPhase: number;
+  targetStart: number;
+  targetEnd: number;
+  selectedChoiceId?: string;
+  feedback?: string;
+  choices?: ActiveMinigameChoice[];
+}
+
 interface ActiveActivityBaseState {
   venueId: string;
   venueName: string;
@@ -240,6 +263,8 @@ interface ActiveActivityBaseState {
   elapsedMs: number;
   realDurationMs: number;
   startedAt: number;
+  performanceScore?: number;
+  minigame?: ActiveMinigameState;
 }
 
 export type ActiveActivityState =
