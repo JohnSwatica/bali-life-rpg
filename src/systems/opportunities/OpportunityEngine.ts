@@ -1,7 +1,7 @@
 import { opportunityTemplates } from "../../data/opportunities";
 import { addItem } from "../Inventory";
 import { adjustPlayerMeters } from "../meters/PlayerMeters";
-import { bumpRelationshipAffinity, getAffinityTier, getRelationship } from "../relationships/RelationshipMemory";
+import { bumpRelationshipAffinity, getAffinityTier, getRelationship, recordRelationshipMemory } from "../relationships/RelationshipMemory";
 import { adjustReputation, awardReputationTag } from "../reputation/ReputationState";
 import { advanceWorldMinutes } from "../time/DailyClock";
 import type {
@@ -277,7 +277,7 @@ export function resolveOpportunity(
     return { ok: false, message: "That opportunity is gone." };
   }
   if (live.expiresAt <= now) {
-    expireOpportunity(state, live, now);
+    expireOpportunity(state, live, now, world);
     return { ok: false, message: "That opportunity expired." };
   }
   const template = getOpportunityTemplate(live.templateId);
@@ -329,7 +329,7 @@ export function expireOpportunities(state: OpportunityRuntimeState, world: World
   const expired: LiveOpportunity[] = [];
   for (const live of [...state.live]) {
     if (live.expiresAt <= now) {
-      expired.push(expireOpportunity(state, live, now));
+      expired.push(expireOpportunity(state, live, now, world));
     }
   }
   return expired;
@@ -387,7 +387,7 @@ function applyOpportunityReward(world: WorldState, template: OpportunityTemplate
   advanceWorldMinutes(world, template.timeCostMin);
 }
 
-function expireOpportunity(state: OpportunityRuntimeState, live: LiveOpportunity, now: number): LiveOpportunity {
+function expireOpportunity(state: OpportunityRuntimeState, live: LiveOpportunity, now: number, world?: WorldState): LiveOpportunity {
   live.status = "missed";
   live.missedAt = now;
   state.missedTemplateIds.push(live.templateId);
@@ -397,6 +397,12 @@ function expireOpportunity(state: OpportunityRuntimeState, live: LiveOpportunity
     state.trackedOpportunityId = null;
   }
   const template = getOpportunityTemplate(live.templateId);
+  if (world && template?.type === "social") {
+    const npcIds = new Set((template.reward.affinityBumps ?? []).map((bump) => bump.npcId));
+    for (const npcId of npcIds) {
+      recordRelationshipMemory(world, "npc", npcId, "missed_opportunity", `Missed ${template.title}`, now);
+    }
+  }
   appendOpportunityMessage(state, {
     id: createMessageId("missed", live.id, now),
     at: now,

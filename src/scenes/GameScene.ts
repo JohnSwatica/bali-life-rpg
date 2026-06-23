@@ -44,10 +44,12 @@ import {
   appendOpportunityMessage,
   generateOpportunityPhoneTexts,
   getAbsoluteMinute as getOpportunityAbsoluteMinute,
+  getLiveOpportunityCountdown,
   getOpportunityTemplate,
   getUnreadOpportunityMessageCount,
   maintainOpportunityPool,
-  markOpportunityMessagesRead
+  markOpportunityMessagesRead,
+  resolveOpportunity
 } from "../systems/opportunities/OpportunityEngine";
 import {
   computeVenuePresentationLayout,
@@ -2147,6 +2149,50 @@ export class GameScene extends Phaser.Scene {
       rowY += 6;
     }
 
+    const liveVenueOpportunities = this.world.opportunities.live.filter((opportunity) => opportunity.locationVenueId === venueId);
+    if (liveVenueOpportunities.length > 0) {
+      container.add(this.add.text(x + 22, rowY, "Phone pings here", this.panelSectionStyle()));
+      rowY += 28;
+      for (const opportunity of liveVenueOpportunities.slice(0, 2)) {
+        const template = getOpportunityTemplate(opportunity.templateId);
+        const countdown = getLiveOpportunityCountdown(opportunity, this.world.clock);
+        const canResolve = opportunity.status === "accepted";
+        container.add(
+          this.add.text(
+            x + 22,
+            rowY,
+            `${template?.title ?? opportunity.templateId}\n${template?.blurb ?? "Resolve this before the timer runs out."}\n${opportunity.status} | ${Math.ceil(countdown)} min left`,
+            {
+              ...this.panelBodyStyle(),
+              fontSize: "13px",
+              wordWrap: { width: panelWidth - 202 }
+            }
+          )
+        );
+        this.addPanelButton(
+          container,
+          x + panelWidth - 154,
+          rowY + 18,
+          132,
+          34,
+          canResolve ? "Resolve" : "Accept",
+          () => {
+            if (canResolve) {
+              this.resolveVenueOpportunity(opportunity.id, venueId);
+            } else {
+              const result = acceptOpportunity(this.world.opportunities, opportunity.id, getOpportunityAbsoluteMinute(this.world.clock));
+              saveWorldState(this.world);
+              this.showToast(result.message);
+              this.openVenueActivityMenu(venueId);
+            }
+          },
+          canResolve ? 0x2c4650 : 0x253a35
+        );
+        rowY += 78;
+      }
+      rowY += 6;
+    }
+
     const venueGroups = getSocialGroupsForVenue(venueId);
     const joinableGroups = venueGroups.filter((group) => !isSocialGroupJoined(this.world, group.id));
     if (joinableGroups.length > 0) {
@@ -3852,6 +3898,21 @@ export class GameScene extends Phaser.Scene {
     const result = acceptOpportunity(this.world.opportunities, opportunityId, getOpportunityAbsoluteMinute(this.world.clock));
     this.showToast(result.message);
     saveWorldState(this.world);
+  }
+
+  private resolveVenueOpportunity(opportunityId: string, venueId: string): void {
+    const live = this.world.opportunities.live.find((candidate) => candidate.id === opportunityId);
+    if (!live || live.locationVenueId !== venueId) {
+      this.showToast("That opportunity is not here anymore.");
+      this.openVenueActivityMenu(venueId);
+      return;
+    }
+    const result = resolveOpportunity(this.world.opportunities, this.world, opportunityId);
+    const goalMessage = this.refreshSettlingInGoals(false);
+    this.updateLighting();
+    saveWorldState(this.world);
+    this.showToast(goalMessage && result.ok ? `${result.message} ${goalMessage}` : result.message);
+    this.openVenueActivityMenu(venueId);
   }
 
   private trackPhoneOpportunity(opportunityId: string): void {
