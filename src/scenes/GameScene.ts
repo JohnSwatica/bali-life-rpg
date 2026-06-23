@@ -100,7 +100,7 @@ import type {
   WorldState
 } from "../types";
 
-type Mode = "world" | "dialogue" | "shop" | "inventory" | "activity" | "community" | "phone" | "godmode";
+type Mode = "world" | "dialogue" | "shop" | "inventory" | "activity" | "committedActivity" | "community" | "phone" | "godmode";
 
 interface BaliLifeDebugSnapshot {
   schemaVersion: number;
@@ -204,6 +204,17 @@ interface WantedOffenderRuntime {
   route: Phaser.Math.Vector2[];
   routeIndex: number;
   speed: number;
+}
+
+interface CommittedActivityRuntime {
+  source: "activity";
+  venueId: string;
+  activityId: string;
+  venueName: string;
+  label: string;
+  durationMin: number;
+  elapsedMs: number;
+  realDurationMs: number;
 }
 
 interface MinimapLayout {
@@ -367,6 +378,10 @@ export class GameScene extends Phaser.Scene {
   private toastTimer = 0;
   private panel?: Phaser.GameObjects.Container;
   private dialogueOverlay?: HTMLElement;
+  private committedActivity?: CommittedActivityRuntime;
+  private committedActivityOverlay?: HTMLElement;
+  private committedActivityProgress?: HTMLDivElement;
+  private committedActivityStatus?: HTMLDivElement;
   private nightOverlay!: Phaser.GameObjects.Graphics;
   private lanternGlow!: Phaser.GameObjects.Graphics;
   private discoveryToastCooldown = 0;
@@ -445,6 +460,7 @@ export class GameScene extends Phaser.Scene {
     this.updateNpcRoutines(delta);
     this.updatePickups();
     this.updateOpportunityFeed(delta);
+    this.updateCommittedActivity(delta);
     this.updateHud(delta);
     this.updateLighting();
     this.updateDynamicObjectCulling();
@@ -452,6 +468,7 @@ export class GameScene extends Phaser.Scene {
 
   destroy(): void {
     this.destroyDialogueOverlay();
+    this.destroyCommittedActivityOverlay();
     this.unsubscribeNetwork?.();
     this.network.disconnect();
   }
@@ -1198,6 +1215,8 @@ export class GameScene extends Phaser.Scene {
       escape: () => {
         if (this.godmodePanel) {
           this.closeGodmodePanel();
+        } else if (this.mode === "committedActivity") {
+          this.cancelCommittedActivity();
         } else if (this.phone?.isOpen) {
           this.phone.close();
         } else {
@@ -1778,6 +1797,8 @@ export class GameScene extends Phaser.Scene {
       this.promptText.setText("WASD/arrows move. B bike. P phone. I bag. C community. F5 save.");
     } else if (this.mode === "phone") {
       this.promptText.setText("ESC closes the phone.");
+    } else if (this.mode === "committedActivity") {
+      this.promptText.setText("Activity in progress. ESC cancels early.");
     } else {
       this.promptText.setText("ESC closes the current panel.");
     }
@@ -2301,10 +2322,25 @@ export class GameScene extends Phaser.Scene {
 
   private performVenueActivity(context: VenueActivityContext, activityId: string): void {
     const option = getActivityAvailability(this.world, context).find((candidate) => candidate.activity.id === activityId);
+    if (!option) {
+      this.showToast("No activity found here.");
+      this.openVenueActivityMenu(context.venueId);
+      return;
+    }
+    if (!option.available) {
+      this.showToast(option.reason ?? "Activity unavailable.");
+      this.openVenueActivityMenu(context.venueId);
+      return;
+    }
+
+    this.startCommittedActivity(context, option.activity.id);
+  }
+
+  private resolveVenueActivity(context: VenueActivityContext, activityId: string): void {
+    const option = getActivityAvailability(this.world, context).find((candidate) => candidate.activity.id === activityId);
     const result = applyActivity(this.world, context, activityId);
     if (!result.ok) {
       this.showToast(result.message);
-      this.openVenueActivityMenu(context.venueId);
       return;
     }
 
@@ -2333,7 +2369,140 @@ export class GameScene extends Phaser.Scene {
     this.updateLighting();
     saveWorldState(this.world);
     this.showToast(goalMessage ? `${result.message} ${goalMessage}` : result.message);
-    this.openVenueActivityMenu(context.venueId);
+  }
+
+  private startCommittedActivity(context: VenueActivityContext, activityId: string): void {
+    const option = getActivityAvailability(this.world, context).find((candidate) => candidate.activity.id === activityId);
+    if (!option?.available) {
+      this.showToast(option?.reason ?? "Activity unavailable.");
+      this.openVenueActivityMenu(context.venueId);
+      return;
+    }
+
+    const node = venueMapNodes.find((candidate) => candidate.venueId === context.venueId);
+    if (node) {
+      this.playerState.x = node.x;
+      this.playerState.y = node.y + Math.min(node.radius * 0.32, scaleDistance(42));
+      this.player.setPosition(this.playerState.x, this.playerState.y);
+      this.player.body?.reset(this.playerState.x, this.playerState.y);
+    }
+
+    this.closePanel(false);
+    this.mode = "committedActivity";
+    this.committedActivity = {
+      source: "activity",
+      venueId: context.venueId,
+      activityId,
+      venueName: context.name,
+      label: option.activity.label,
+      durationMin: option.activity.timeCost,
+      elapsedMs: 0,
+      realDurationMs: Phaser.Math.Clamp(option.activity.timeCost * 24, 2800, 6500)
+    };
+    this.createCommittedActivityOverlay(this.committedActivity);
+    this.showToast(`${option.activity.label} started. ESC cancels early.`);
+  }
+
+  private updateCommittedActivity(delta: number): void {
+    const active = this.committedActivity;
+    if (!active || this.mode !== "committedActivity") {
+      return;
+    }
+    active.elapsedMs = Math.min(active.realDurationMs, active.elapsedMs + delta);
+    const progress = active.elapsedMs / active.realDurationMs;
+    const elapsedMinutes = Math.round(active.durationMin * progress);
+    if (this.committedActivityProgress) {
+      this.committedActivityProgress.style.width = `${Math.round(progress * 100)}%`;
+    }
+    if (this.committedActivityStatus) {
+      this.committedActivityStatus.textContent = `Fast-forwarding ${elapsedMinutes}/${active.durationMin} in-game minutes`;
+    }
+    if (progress >= 1) {
+      this.completeCommittedActivity();
+    }
+  }
+
+  private completeCommittedActivity(): void {
+    const active = this.committedActivity;
+    if (!active) {
+      return;
+    }
+    this.committedActivity = undefined;
+    this.destroyCommittedActivityOverlay();
+    this.mode = "world";
+    const context = getVenueActivityContext(active.venueId);
+    if (!context) {
+      this.showToast("Activity finished, but the venue context was missing.");
+      return;
+    }
+    this.resolveVenueActivity(context, active.activityId);
+  }
+
+  private cancelCommittedActivity(): void {
+    if (!this.committedActivity) {
+      this.closePanel();
+      return;
+    }
+    const label = this.committedActivity.label;
+    this.committedActivity = undefined;
+    this.destroyCommittedActivityOverlay();
+    this.mode = "world";
+    this.showToast(`${label} cancelled. No reward earned.`);
+  }
+
+  private createCommittedActivityOverlay(active: CommittedActivityRuntime): void {
+    this.destroyCommittedActivityOverlay();
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const overlay = document.createElement("section");
+    overlay.className = "bali-life-activity-progress";
+    overlay.dataset.activityProgress = "true";
+    overlay.setAttribute("role", "status");
+    overlay.addEventListener("pointerdown", (event) => event.stopPropagation());
+    overlay.addEventListener("click", (event) => event.stopPropagation());
+
+    const title = document.createElement("h2");
+    title.className = "bali-life-activity-progress-title";
+    title.textContent = active.label;
+
+    const subtitle = document.createElement("div");
+    subtitle.className = "bali-life-activity-progress-subtitle";
+    subtitle.textContent = `${active.venueName} | committed moment`;
+
+    const track = document.createElement("div");
+    track.className = "bali-life-activity-progress-track";
+    const fill = document.createElement("div");
+    fill.className = "bali-life-activity-progress-fill";
+    track.appendChild(fill);
+
+    const status = document.createElement("div");
+    status.className = "bali-life-activity-progress-status";
+    status.textContent = `Fast-forwarding 0/${active.durationMin} in-game minutes`;
+
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "bali-life-activity-progress-cancel";
+    cancel.textContent = "Cancel";
+    cancel.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.cancelCommittedActivity();
+    });
+
+    overlay.append(title, subtitle, track, status, cancel);
+    document.body.appendChild(overlay);
+    this.committedActivityOverlay = overlay;
+    this.committedActivityProgress = fill;
+    this.committedActivityStatus = status;
+  }
+
+  private destroyCommittedActivityOverlay(): void {
+    this.committedActivityOverlay?.remove();
+    this.committedActivityOverlay = undefined;
+    this.committedActivityProgress = undefined;
+    this.committedActivityStatus = undefined;
   }
 
   private attendVenueEvent(event: GameEvent): void {
