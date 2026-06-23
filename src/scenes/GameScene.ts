@@ -7,6 +7,7 @@ import {
   curatedVenueNodes,
   venueMapNodes,
   type CuratedVenueMapNode,
+  type VenueMapNode,
   type MapFeatureDefinition
 } from "../data/authoredStreetLayout";
 import { activityDefinitions, interestGroupDefinitions } from "../data/community";
@@ -85,6 +86,7 @@ import { PhoneShell } from "../ui/phone/PhoneShell";
 import { getAllVenues, getVenue } from "../systems/venues/VenueRegistry";
 import type {
   Direction,
+  ActiveActivityState,
   GameEvent,
   GameIntent,
   GroupTravelMode,
@@ -204,17 +206,6 @@ interface WantedOffenderRuntime {
   route: Phaser.Math.Vector2[];
   routeIndex: number;
   speed: number;
-}
-
-interface CommittedActivityRuntime {
-  source: "activity";
-  venueId: string;
-  activityId: string;
-  venueName: string;
-  label: string;
-  durationMin: number;
-  elapsedMs: number;
-  realDurationMs: number;
 }
 
 interface MinimapLayout {
@@ -378,7 +369,7 @@ export class GameScene extends Phaser.Scene {
   private toastTimer = 0;
   private panel?: Phaser.GameObjects.Container;
   private dialogueOverlay?: HTMLElement;
-  private committedActivity?: CommittedActivityRuntime;
+  private committedActivity?: ActiveActivityState;
   private committedActivityOverlay?: HTMLElement;
   private committedActivityProgress?: HTMLDivElement;
   private committedActivityStatus?: HTMLDivElement;
@@ -429,6 +420,7 @@ export class GameScene extends Phaser.Scene {
     this.createInput();
     this.createHud();
     this.updateMapDiscovery(true);
+    this.resumeCommittedActivityIfNeeded();
     this.updateOpportunityFeed(0, true);
 
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
@@ -2220,7 +2212,7 @@ export class GameScene extends Phaser.Scene {
           canResolve ? "Resolve" : "Accept",
           () => {
             if (canResolve) {
-              this.resolveVenueOpportunity(opportunity.id, venueId);
+              this.startCommittedOpportunity(opportunity.id, venueId);
             } else {
               const result = acceptOpportunity(this.world.opportunities, opportunity.id, getOpportunityAbsoluteMinute(this.world.clock));
               saveWorldState(this.world);
@@ -2380,12 +2372,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     const node = venueMapNodes.find((candidate) => candidate.venueId === context.venueId);
-    if (node) {
-      this.playerState.x = node.x;
-      this.playerState.y = node.y + Math.min(node.radius * 0.32, scaleDistance(42));
-      this.player.setPosition(this.playerState.x, this.playerState.y);
-      this.player.body?.reset(this.playerState.x, this.playerState.y);
-    }
+    this.placePlayerAtCommittedVenue(node);
 
     this.closePanel(false);
     this.mode = "committedActivity";
@@ -2397,10 +2384,81 @@ export class GameScene extends Phaser.Scene {
       label: option.activity.label,
       durationMin: option.activity.timeCost,
       elapsedMs: 0,
-      realDurationMs: Phaser.Math.Clamp(option.activity.timeCost * 24, 2800, 6500)
+      realDurationMs: Phaser.Math.Clamp(option.activity.timeCost * 24, 2800, 6500),
+      startedAt: this.getAbsoluteMinute()
     };
+    this.world.activeActivity = { ...this.committedActivity };
     this.createCommittedActivityOverlay(this.committedActivity);
+    saveWorldState(this.world);
     this.showToast(`${option.activity.label} started. ESC cancels early.`);
+  }
+
+  private startCommittedOpportunity(opportunityId: string, venueId: string): void {
+    const live = this.world.opportunities.live.find((candidate) => candidate.id === opportunityId);
+    if (!live || live.locationVenueId !== venueId) {
+      this.showToast("That opportunity is not here anymore.");
+      this.openVenueActivityMenu(venueId);
+      return;
+    }
+    if (live.status !== "accepted") {
+      this.showToast("Accept that phone ping before committing to it.");
+      this.openVenueActivityMenu(venueId);
+      return;
+    }
+
+    const countdown = getLiveOpportunityCountdown(live, this.world.clock);
+    if (countdown <= 0) {
+      const result = resolveOpportunity(this.world.opportunities, this.world, opportunityId);
+      saveWorldState(this.world);
+      this.showToast(result.message);
+      this.openVenueActivityMenu(venueId);
+      return;
+    }
+
+    const template = getOpportunityTemplate(live.templateId);
+    if (!template) {
+      this.showToast("Opportunity content is missing.");
+      this.openVenueActivityMenu(venueId);
+      return;
+    }
+    const moneyDelta = template.reward.money ?? 0;
+    if (moneyDelta < 0 && this.playerState.money + moneyDelta < 0) {
+      this.showToast(`Need Rp ${Math.abs(moneyDelta)} to take that opportunity.`);
+      this.openVenueActivityMenu(venueId);
+      return;
+    }
+
+    const context = getVenueActivityContext(venueId);
+    const node = venueMapNodes.find((candidate) => candidate.venueId === venueId);
+    this.placePlayerAtCommittedVenue(node);
+
+    this.closePanel(false);
+    this.mode = "committedActivity";
+    this.committedActivity = {
+      source: "opportunity",
+      venueId,
+      opportunityId,
+      venueName: context?.name ?? template.locationVenueId,
+      label: template.title,
+      durationMin: template.timeCostMin,
+      elapsedMs: 0,
+      realDurationMs: Phaser.Math.Clamp(template.timeCostMin * 28, 2800, 7200),
+      startedAt: this.getAbsoluteMinute()
+    };
+    this.world.activeActivity = { ...this.committedActivity };
+    this.createCommittedActivityOverlay(this.committedActivity);
+    saveWorldState(this.world);
+    this.showToast(`${template.title} started. ESC cancels early.`);
+  }
+
+  private placePlayerAtCommittedVenue(node: VenueMapNode | undefined): void {
+    if (!node) {
+      return;
+    }
+    this.playerState.x = node.x;
+    this.playerState.y = node.y + Math.min(node.radius * 0.32, scaleDistance(42));
+    this.player.setPosition(this.playerState.x, this.playerState.y);
+    this.player.body?.reset(this.playerState.x, this.playerState.y);
   }
 
   private updateCommittedActivity(delta: number): void {
@@ -2409,6 +2467,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     active.elapsedMs = Math.min(active.realDurationMs, active.elapsedMs + delta);
+    this.world.activeActivity = { ...active };
     const progress = active.elapsedMs / active.realDurationMs;
     const elapsedMinutes = Math.round(active.durationMin * progress);
     if (this.committedActivityProgress) {
@@ -2428,14 +2487,27 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.committedActivity = undefined;
+    this.world.activeActivity = null;
     this.destroyCommittedActivityOverlay();
     this.mode = "world";
-    const context = getVenueActivityContext(active.venueId);
-    if (!context) {
-      this.showToast("Activity finished, but the venue context was missing.");
+    if (active.source === "activity") {
+      const context = getVenueActivityContext(active.venueId);
+      if (!context) {
+        this.showToast("Activity finished, but the venue context was missing.");
+        return;
+      }
+      this.resolveVenueActivity(context, active.activityId);
       return;
     }
-    this.resolveVenueActivity(context, active.activityId);
+    this.finishCommittedOpportunity(active.opportunityId);
+  }
+
+  private finishCommittedOpportunity(opportunityId: string): void {
+    const result = resolveOpportunity(this.world.opportunities, this.world, opportunityId);
+    const goalMessage = this.refreshSettlingInGoals(false);
+    this.updateLighting();
+    saveWorldState(this.world);
+    this.showToast(goalMessage && result.ok ? `${result.message} ${goalMessage}` : result.message);
   }
 
   private cancelCommittedActivity(): void {
@@ -2445,12 +2517,25 @@ export class GameScene extends Phaser.Scene {
     }
     const label = this.committedActivity.label;
     this.committedActivity = undefined;
+    this.world.activeActivity = null;
     this.destroyCommittedActivityOverlay();
     this.mode = "world";
+    saveWorldState(this.world);
     this.showToast(`${label} cancelled. No reward earned.`);
   }
 
-  private createCommittedActivityOverlay(active: CommittedActivityRuntime): void {
+  private resumeCommittedActivityIfNeeded(): void {
+    if (!this.world.activeActivity) {
+      return;
+    }
+    this.committedActivity = { ...this.world.activeActivity };
+    this.mode = "committedActivity";
+    const node = venueMapNodes.find((candidate) => candidate.venueId === this.committedActivity?.venueId);
+    this.placePlayerAtCommittedVenue(node);
+    this.createCommittedActivityOverlay(this.committedActivity);
+  }
+
+  private createCommittedActivityOverlay(active: ActiveActivityState): void {
     this.destroyCommittedActivityOverlay();
     if (typeof document === "undefined") {
       return;
@@ -4097,21 +4182,6 @@ export class GameScene extends Phaser.Scene {
     const result = acceptOpportunity(this.world.opportunities, opportunityId, getOpportunityAbsoluteMinute(this.world.clock));
     this.showToast(result.message);
     saveWorldState(this.world);
-  }
-
-  private resolveVenueOpportunity(opportunityId: string, venueId: string): void {
-    const live = this.world.opportunities.live.find((candidate) => candidate.id === opportunityId);
-    if (!live || live.locationVenueId !== venueId) {
-      this.showToast("That opportunity is not here anymore.");
-      this.openVenueActivityMenu(venueId);
-      return;
-    }
-    const result = resolveOpportunity(this.world.opportunities, this.world, opportunityId);
-    const goalMessage = this.refreshSettlingInGoals(false);
-    this.updateLighting();
-    saveWorldState(this.world);
-    this.showToast(goalMessage && result.ok ? `${result.message} ${goalMessage}` : result.message);
-    this.openVenueActivityMenu(venueId);
   }
 
   private trackPhoneOpportunity(opportunityId: string): void {

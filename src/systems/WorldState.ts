@@ -55,7 +55,7 @@ export function createInitialWorldState(): WorldState {
   );
 
   const world: WorldState = {
-    schemaVersion: 9,
+    schemaVersion: 10,
     version: 1,
     neighborhoodId: "berawa-finns-club",
     clock: {
@@ -79,6 +79,7 @@ export function createInitialWorldState(): WorldState {
     },
     life: createDefaultLifeLoopState(),
     opportunities: createDefaultOpportunityState(),
+    activeActivity: null,
     mapDiscovery: {
       discoveredAreaIds: [],
       discoveredVenueIds: [],

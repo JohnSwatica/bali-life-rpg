@@ -232,6 +232,28 @@ export interface OpportunityRuntimeState {
   templateCooldownUntil: Record<string, number>;
 }
 
+interface ActiveActivityBaseState {
+  venueId: string;
+  venueName: string;
+  label: string;
+  durationMin: number;
+  elapsedMs: number;
+  realDurationMs: number;
+  startedAt: number;
+}
+
+export type ActiveActivityState =
+  | (ActiveActivityBaseState & {
+      source: "activity";
+      activityId: string;
+      opportunityId?: never;
+    })
+  | (ActiveActivityBaseState & {
+      source: "opportunity";
+      opportunityId: string;
+      activityId?: never;
+    });
+
 export type RelationshipArcPayoffKind = "club_invite" | "recurring_hangout" | "discount_hook" | "housing_lead_tease";
 
 export interface RelationshipArcBeat {
@@ -446,6 +468,7 @@ export interface WorldState {
   runtimeEvents: RuntimeEventState;
   life: LifeLoopState;
   opportunities: OpportunityRuntimeState;
+  activeActivity: ActiveActivityState | null;
   mapDiscovery: MapDiscoveryState;
   questFlags: Record<string, number | string | boolean>;
   collectedPickups: Record<string, number>;

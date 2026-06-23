@@ -6,9 +6,9 @@ import { scaleDistance } from "./map/WorldScale";
 import { migrateLifeLoopState } from "./life/LifeLoopState";
 import { migratePlayerMeters, syncLegacyPlayerMeterMirrors } from "./meters/PlayerMeters";
 import { migrateOpportunityState } from "./opportunities/OpportunityEngine";
-import type { GroupEntityState, NpcEntityState, PlayerEntityState, ReputationState, WorldState } from "../types";
+import type { ActiveActivityState, GroupEntityState, NpcEntityState, PlayerEntityState, ReputationState, WorldState } from "../types";
 
-export const CURRENT_SCHEMA_VERSION = 9;
+export const CURRENT_SCHEMA_VERSION = 10;
 const SAVE_KEY = "bali-life-rpg.berawa-finns.save.v1";
 const PAUSED_V2_KEY = "bali-life-rpg.berawa-finns.save.v2";
 
@@ -74,6 +74,7 @@ function migrateWorldState(raw: Partial<WorldState> & Record<string, unknown>): 
     runtimeEvents: raw.runtimeEvents ?? { attendedEventIds: [] },
     life: migrateLifeLoopState(raw.life),
     opportunities: migrateOpportunityState(raw.opportunities),
+    activeActivity: migrateActiveActivityState(raw.activeActivity),
     mapDiscovery: raw.mapDiscovery ?? { discoveredAreaIds: [], discoveredVenueIds: [], revealAll: false },
     questFlags: raw.questFlags ?? {},
     collectedPickups: raw.collectedPickups ?? {}
@@ -91,6 +92,41 @@ function migrateWorldState(raw: Partial<WorldState> & Record<string, unknown>): 
   world.mapDiscovery.discoveredVenueIds = world.mapDiscovery.discoveredVenueIds ?? [];
   world.mapDiscovery.revealAll = world.mapDiscovery.revealAll ?? false;
   return world;
+}
+
+function migrateActiveActivityState(raw: unknown): ActiveActivityState | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const value = raw as Partial<ActiveActivityState>;
+  if (
+    (value.source !== "activity" && value.source !== "opportunity") ||
+    typeof value.venueId !== "string" ||
+    typeof value.venueName !== "string" ||
+    typeof value.label !== "string" ||
+    typeof value.durationMin !== "number" ||
+    typeof value.elapsedMs !== "number" ||
+    typeof value.realDurationMs !== "number" ||
+    typeof value.startedAt !== "number"
+  ) {
+    return null;
+  }
+  const base = {
+    venueId: value.venueId,
+    venueName: value.venueName,
+    label: value.label,
+    durationMin: value.durationMin,
+    elapsedMs: Math.max(0, value.elapsedMs),
+    realDurationMs: Math.max(1, value.realDurationMs),
+    startedAt: value.startedAt
+  };
+  if (value.source === "activity" && typeof value.activityId === "string") {
+    return { ...base, source: "activity", activityId: value.activityId };
+  }
+  if (value.source === "opportunity" && typeof value.opportunityId === "string") {
+    return { ...base, source: "opportunity", opportunityId: value.opportunityId };
+  }
+  return null;
 }
 
 function scaleLegacyRuntimePositions(world: WorldState, raw: Partial<WorldState> & Record<string, unknown>): void {

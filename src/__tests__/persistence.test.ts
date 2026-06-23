@@ -59,7 +59,7 @@ function baseRawSave(schemaVersion?: number): Record<string, unknown> {
       displayName: "Migration Tester",
       avatar: { body: "teal", hair: "dark", outfit: "linen" },
       lifestyleTags: ["founder", "surfer"],
-      bio: "Testing the v9 chain.",
+      bio: "Testing the v10 chain.",
       homeArea: "Berawa",
       createdAt: 111,
       remoteAccountId: "should-be-nulled"
@@ -93,6 +93,7 @@ function expectCommonMigrationFields(world: WorldState): void {
   expect(world.profile.profileId).toBe("local-test-profile");
   expect(world.profile.remoteAccountId).toBeNull();
   expect(world.portal).toEqual({ current: "single", multiplayerStatus: "locked" });
+  expect(world.activeActivity).toBeNull();
   expect(player.x).toBeGreaterThan(0);
   expect(player.x).toBeLessThanOrEqual(WORLD_WIDTH);
   expect(player.y).toBeGreaterThan(0);
@@ -100,7 +101,7 @@ function expectCommonMigrationFields(world: WorldState): void {
 }
 
 describe("Persistence migration", () => {
-  it("migrates a raw v1 save to v9 without losing legacy state", () => {
+  it("migrates a raw v1 save to v10 without losing legacy state", () => {
     writeRawSave(baseRawSave());
 
     const world = loadWorldState();
@@ -136,7 +137,7 @@ describe("Persistence migration", () => {
     });
   });
 
-  it("migrates v4, v6, v7, and v8 saves into the v9 life/opportunity shape", () => {
+  it("migrates v4, v6, v7, and v8 saves into the v10 life/opportunity shape", () => {
     const cases = [
       {
         version: 4,
@@ -225,7 +226,7 @@ describe("Persistence migration", () => {
     }
   });
 
-  it("round-trips a v9 payload through save and load on meaningful fields", () => {
+  it("round-trips a v10 payload through save and load on meaningful fields", () => {
     const world = createInitialWorldState();
     const player = world.players[world.localPlayerId];
     player.money = 999;
@@ -276,6 +277,17 @@ describe("Persistence migration", () => {
       lastSpawnAt: 200,
       templateCooldownUntil: { milk_madu_lunch_rush_shift: 900 }
     };
+    world.activeActivity = {
+      source: "opportunity",
+      venueId: "canggu_station",
+      opportunityId: "canggu_station_dropped_cart:200:1",
+      venueName: "Canggu Station",
+      label: "Dropped grocery cart",
+      durationMin: 30,
+      elapsedMs: 1200,
+      realDurationMs: 3200,
+      startedAt: 210
+    };
 
     saveWorldState(world);
     const loaded = loadWorldState();
@@ -293,5 +305,6 @@ describe("Persistence migration", () => {
     expect(loaded.relationships).toEqual(world.relationships);
     expect(loaded.mapDiscovery.discoveredVenueIds).toEqual(["berawa_beach"]);
     expect(loaded.opportunities).toEqual(world.opportunities);
+    expect(loaded.activeActivity).toEqual(world.activeActivity);
   });
 });
