@@ -105,6 +105,7 @@ type Mode = "world" | "dialogue" | "shop" | "inventory" | "activity" | "communit
 interface BaliLifeDebugSnapshot {
   schemaVersion: number;
   mode: Mode;
+  overlayOpen: boolean;
   player: {
     x: number;
     y: number;
@@ -1762,8 +1763,7 @@ export class GameScene extends Phaser.Scene {
       social: this.world.meters.social
     });
     this.hudController.updatePhoneBadge(getUnreadOpportunityMessageCount(this.world.opportunities), this.phoneBuzzTimer > 0);
-    this.hudController.setMinimapHidden(this.mode !== "world");
-    this.hudController.setActionButtonsMuted(this.mode === "dialogue");
+    this.updateOverlayChrome();
     this.questText.setText([...this.getTutorialLines(), ...getQuestTrackerLines(this.playerState)].join("\n"));
     this.questText.setWordWrapWidth(Math.min(520, this.scale.width - 40));
 
@@ -3896,6 +3896,14 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private isOverlayOpen(): boolean {
+    return this.mode !== "world";
+  }
+
+  private updateOverlayChrome(): void {
+    this.hudController.setOverlayOpen(this.isOverlayOpen());
+  }
+
   private appendActiveEventMessages(): number {
     const now = getOpportunityAbsoluteMinute(this.world.clock);
     let added = 0;
@@ -4024,6 +4032,7 @@ export class GameScene extends Phaser.Scene {
     const snapshot: BaliLifeDebugSnapshot = {
       schemaVersion: this.world.schemaVersion,
       mode: this.mode,
+      overlayOpen: this.isOverlayOpen(),
       player: {
         x: Math.round(this.player.x),
         y: Math.round(this.player.y),

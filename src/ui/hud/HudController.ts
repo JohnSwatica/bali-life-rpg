@@ -237,6 +237,14 @@ export class HudController {
     this.buttonOverlay?.classList.toggle("is-muted", muted);
   }
 
+  setOverlayOpen(open: boolean): void {
+    this.setMinimapHidden(open);
+    this.setActionButtonsMuted(open);
+    if (typeof document !== "undefined") {
+      document.body.classList.toggle("bali-life-overlay-open", open);
+    }
+  }
+
   private createDomOverlay(): void {
     if (typeof document === "undefined") {
       return;
