@@ -189,3 +189,13 @@ Vitest is now the core deterministic test runner. `npm test` covers the v1-v8 sa
 The tests revealed one unambiguous data-seam bug: `finns_sunset_social` referenced `finns_beach_club`, but that venue id was missing from `VenueRegistry`. The fix was to add a first-class `finns_beach_club` venue record matching the already-authored curated venue id; no coordinates, map render code, or gameplay systems changed.
 
 Three requested checks remain documented skips instead of speculative refactors: sleep meter restoration and full on-site event participation effects still live in private `GameScene` methods, and generic non-deliver quest objective handlers need either scripted fixtures or an exported pure evaluator before they can be tested honestly.
+
+## 2026-06-23 - Dynamic Opportunity Engine
+
+The liveliness layer is modeled as dev-authored, single-player `OpportunityTemplate` data plus local rule-based runtime state. Opportunities reference existing venues, NPCs, groups, meters, reputation, and items by id; there are no AI calls, backend calls, multiplayer sockets, live check-ins, payments, bookings, or owner-authored feeds. This keeps VISION seam #6 intact: content remains data and future networking stays behind the existing adapter path.
+
+The Phone Feed is now the active stimulation surface: live opportunities, countdowns, event-start pings, NPC/club texts, accept/track actions, and unread badge/buzz all route through local state. This deliberately seeds the future metaverse/Nomad Nest surface without building remote identity, player-authored events, or real notifications yet.
+
+Flash deals are intentionally treated as simulated, dev-authored promotion seeds. They use the same opportunity model as gigs/social/help/rumor/trade pings, but make no live commerce or coupon claims. Later living-commerce work can replace or augment these templates with owner-authored venue promotion data.
+
+Save schema is bumped to v9. V1-v8 saves migrate without wiping existing money, inventory, quests, reputation, relationships, discovery, profile, portal, meters, clubs, relationship arc progress, or life-loop state. Missing opportunity runtime state defaults to an empty feed/live pool; v8 saves that already contain opportunity data preserve live/accepted/completed/missed/feed state.

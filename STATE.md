@@ -13,7 +13,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
-- Current branch for Phase B social work: `feat/social-events-clubs`, branched from the Phase A daily-life loop head.
+- Current branch for the liveliness/opportunity sprint: `feat/opportunity-engine`, branched from `chore/core-test-suite`.
 
 ## What Was Added Recently
 
@@ -21,7 +21,11 @@ Copy/paste this into a new AI session to bring it up to speed.
 - The six action buttons (`PHONE`, `SAVE`, `SOC`, `BIKE`, `BAG`, `ACT`) are now fixed DOM overlay buttons instead of Phaser game objects, so camera zoom/scale cannot push them off-screen. The minimap is now a fixed DOM canvas, also independent of world camera zoom.
 - Core daily life loop added locally: `WorldState.meters` now tracks Energy, Wellbeing, Focus, and Social while Money remains on the local player. The fixed DOM HUD shows Money + all four meters.
 - Phase B social layer added locally: events are first-class and host-agnostic, clubs/groups are first-class and purpose-generic, relationship arcs deepen key NPC friendships, and the Settling In goals now include event attendance, joining a crew, and completing a bond beat.
-- Save schema is now v8. V1-v7 saves migrate forward with default meters, joined clubs, relationship arc progress, and `life` runtime state while preserving money, quests, inventory, relationships, reputation, discovery, profile, portal, and authored-street position data.
+- Dynamic opportunity engine added locally: `src/data/opportunities.ts` defines dev-authored gigs, social pings, help-outs, flash deals, rumors, and trades; `src/systems/opportunities/OpportunityEngine.ts` maintains a deterministic 2-4 live pool, timers, expiry, cooldowns, rewards, chaining, and a no-dead-day fallback.
+- The Phone now has a live Feed tab with newest messages, countdown opportunities, accept/track actions, event-start pings, authored NPC/club texts, and a fixed DOM unread badge/buzz on the `PHONE` button.
+- Live opportunities render as world pins and minimap dots with type colors/icons. Clicking a world pin or approaching its venue can track it; accepted opportunities resolve on-site from the existing venue activity menu before the timer expires.
+- Stakes are local and non-combat: missed social pings record a small `missed_opportunity` relationship memory, reputation gates unlock better pings, and flash deals are explicitly simulated/dev-authored promotion seeds with no real commerce integration.
+- Save schema is now v9. V1-v8 saves migrate forward with default opportunity runtime state while preserving money, quests, inventory, relationships, reputation, discovery, profile, portal, authored-street position data, meters, joined clubs, relationship arc progress, and `life` runtime state.
 - Added `src/data/events.ts` and `src/systems/events/EventScheduler.ts`: dev-authored events reference venues/NPCs/groups by id, appear in Calendar/Events, and can be attended on-site from the venue activity menu.
 - Added `src/data/groups.ts` and `src/systems/groups/GroupRegistry.ts`: clubs can be joined from Phone > Community or at their home venue; joining unlocks membership-gated recurring events on the calendar.
 - Added `src/data/relationshipArcs.ts` and `src/systems/relationships/RelationshipArcs.ts`: Ari, Made, and Ibu Sari have sequential local relationship beats gated by affinity, events, clubs, or starter-quest completion, with text/perk hooks only.
@@ -152,6 +156,11 @@ Copy/paste this into a new AI session to bring it up to speed.
 - `1d937e3` - `test: events clubs relationship arcs`
 - `3147360` - `test: quests goals reputation interaction`
 - `ca788f2` - `test: authored street layout invariants`
+- `70a4929` - `feat: dynamic opportunity engine and templates`
+- `8356528` - `feat: active phone feed and opportunity buzz`
+- `7cc95d0` - `feat: live opportunity markers on map and minimap`
+- `beccf37` - `feat: opportunity stakes and venue resolution`
+- `997a9f2` - `feat: persist opportunities with tests`
 
 ## Current Verification
 
@@ -159,7 +168,8 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Phase B social phases 1-4 each passed `npm run build` before commit.
 - Phase B smoke checks passed: Berawa Beach Run is active at Berawa Beach on the expected day/time; joining Berawa Run Crew stores `world.life.joinedClubIds` and reveals its recurring member event; Ari's first relationship beat completes from affinity and persists to `world.life.relationshipArcProgress`; `plug_in`, `find_your_crew`, and `deepen_a_bond` complete from event/club/arc state.
 - Core test suite is now installed with Vitest and runs through `npm test`.
-- Current suite result: 26 passing tests, 3 documented skips across save migration, daily loop, social layer, quests/goals/reputation/interaction, and authored street layout invariants.
+- Current suite result: 31 passing tests, 3 documented skips across save migration, daily loop, social layer, opportunities, quests/goals/reputation/interaction, and authored street layout invariants.
+- Opportunity tests cover time/reputation/club/affinity eligibility gates, deterministic 2-4 live pool maintenance, expiry/missed tracking, accept/resolve rewards, chain spawning, relationship cooling from missed social pings, and v8-to-v9 persistence of live/completed/missed/feed state.
 - `npm run build` passed after every core-test-suite phase.
 - The test suite fixed one unambiguous data-seam bug: `finns_beach_club` is now present in `VenueRegistry` so the FINNS Sunset Social event host/location resolves.
 - Current authored street geometry check reports 32 visible/interactable venue slots, 32 authored venue nodes, 0 overlaps, and no duplicate venue IDs.
