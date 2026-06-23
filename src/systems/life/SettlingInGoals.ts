@@ -54,7 +54,13 @@ function isGoalComplete(world: WorldState, goalId: string): boolean {
     return Object.keys(world.life.activityHistory).some((key) => key.endsWith(":surf_beach_time"));
   }
   if (goalId === "plug_in") {
-    return world.runtimeEvents.attendedEventIds.length > 0 || Object.keys(world.life.activityHistory).some((key) => key.endsWith(":remote_work_session"));
+    return world.runtimeEvents.attendedEventIds.length > 0;
+  }
+  if (goalId === "find_your_crew") {
+    return world.life.joinedClubIds.length > 0;
+  }
+  if (goalId === "deepen_a_bond") {
+    return Object.values(world.life.relationshipArcProgress).some((progress) => progress.completedBeatIds.length > 0);
   }
   return false;
 }

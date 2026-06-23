@@ -28,6 +28,16 @@ export const settlingInGoalDefinitions: SettlingInGoalDefinition[] = [
   {
     id: "plug_in",
     title: "Plug in",
-    description: "Attend an event or complete a focused work session."
+    description: "Attend a scheduled event."
+  },
+  {
+    id: "find_your_crew",
+    title: "Find your crew",
+    description: "Join any local club or group."
+  },
+  {
+    id: "deepen_a_bond",
+    title: "Deepen a bond",
+    description: "Complete a relationship arc beat with an NPC."
   }
 ];
