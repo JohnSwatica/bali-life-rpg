@@ -44,6 +44,7 @@ import {
   appendOpportunityMessage,
   generateOpportunityPhoneTexts,
   getAbsoluteMinute as getOpportunityAbsoluteMinute,
+  getOpportunityTemplate,
   getUnreadOpportunityMessageCount,
   maintainOpportunityPool,
   markOpportunityMessagesRead
@@ -92,6 +93,7 @@ import type {
   PlayerEntityState,
   ReputationTag,
   ShopDefinition,
+  OpportunityType,
   VenueActivityDefinition,
   WorldState
 } from "../types";
@@ -369,6 +371,8 @@ export class GameScene extends Phaser.Scene {
     width: WORLD_WIDTH,
     height: WORLD_HEIGHT
   });
+  private opportunityMarkerLayer!: Phaser.GameObjects.Graphics;
+  private opportunityMarkerZones: Phaser.GameObjects.Zone[] = [];
 
   constructor() {
     super("GameScene");
@@ -449,6 +453,7 @@ export class GameScene extends Phaser.Scene {
 
   private drawNeighborhood(): void {
     renderStreetTemplate(this, activeStreetTemplate);
+    this.opportunityMarkerLayer = this.add.graphics().setDepth(210);
     this.addAreaLabels();
   }
 
@@ -1779,6 +1784,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.redrawHudChrome();
+    this.drawOpportunityMarkers();
     this.drawMinimap();
     this.publishDebugSnapshot(target);
   }
@@ -3099,6 +3105,104 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private getOpportunityTemplateSafe(templateId: string) {
+    return getOpportunityTemplate(templateId);
+  }
+
+  private opportunityPalette(type: OpportunityType): { fill: number; icon: number } {
+    if (type === "gig") return { fill: 0x2f7dd1, icon: 0xfff8df };
+    if (type === "social") return { fill: 0xd95c8a, icon: 0xfff8df };
+    if (type === "help_out") return { fill: 0x3aa66f, icon: 0xfff8df };
+    if (type === "flash_deal") return { fill: 0xe0a928, icon: 0x1b2430 };
+    if (type === "rumor") return { fill: 0x8b68d8, icon: 0xfff8df };
+    return { fill: 0x43a6a8, icon: 0x101820 };
+  }
+
+  private drawOpportunityIcon(g: Phaser.GameObjects.Graphics, x: number, y: number, type: OpportunityType, color: number): void {
+    const s = scaleDistance(1);
+    g.fillStyle(color, 0.98);
+    g.lineStyle(Math.max(1, scaleDistance(2)), color, 0.98);
+    if (type === "gig") {
+      g.fillRect(x - 5 * s, y - 5 * s, 10 * s, 10 * s);
+    } else if (type === "social") {
+      g.fillCircle(x - 4 * s, y - 2 * s, 4 * s);
+      g.fillCircle(x + 4 * s, y - 2 * s, 4 * s);
+      g.fillTriangle(x - 8 * s, y, x + 8 * s, y, x, y + 8 * s);
+    } else if (type === "help_out") {
+      g.fillRect(x - 2 * s, y - 8 * s, 4 * s, 16 * s);
+      g.fillRect(x - 8 * s, y - 2 * s, 16 * s, 4 * s);
+    } else if (type === "flash_deal") {
+      g.fillTriangle(x - 7 * s, y - 1 * s, x + 2 * s, y - 9 * s, x - 1 * s, y - 1 * s);
+      g.fillTriangle(x + 7 * s, y + 1 * s, x - 2 * s, y + 9 * s, x + 1 * s, y + 1 * s);
+    } else if (type === "rumor") {
+      g.strokeCircle(x, y - 2 * s, 6 * s);
+      g.fillCircle(x, y + 8 * s, 2 * s);
+    } else {
+      g.beginPath();
+      g.moveTo(x - 8 * s, y - 2 * s);
+      g.lineTo(x + 6 * s, y - 2 * s);
+      g.strokePath();
+      g.fillTriangle(x + 6 * s, y - 7 * s, x + 12 * s, y - 2 * s, x + 6 * s, y + 3 * s);
+      g.beginPath();
+      g.moveTo(x + 8 * s, y + 4 * s);
+      g.lineTo(x - 6 * s, y + 4 * s);
+      g.strokePath();
+      g.fillTriangle(x - 6 * s, y - 1 * s, x - 12 * s, y + 4 * s, x - 6 * s, y + 9 * s);
+    }
+  }
+
+  private drawOpportunityMarkers(): void {
+    if (!this.opportunityMarkerLayer) {
+      return;
+    }
+    this.opportunityMarkerLayer.clear();
+    for (const zone of this.opportunityMarkerZones) {
+      zone.destroy();
+    }
+    this.opportunityMarkerZones = [];
+
+    for (const opportunity of this.world.opportunities.live) {
+      const node = venueMapNodes.find((candidate) => candidate.venueId === opportunity.locationVenueId);
+      const template = opportunity.templateId ? this.getOpportunityTemplateSafe(opportunity.templateId) : undefined;
+      if (!node || !template) {
+        continue;
+      }
+      const tracked = this.world.opportunities.trackedOpportunityId === opportunity.id;
+      const markerX = node.x;
+      const markerY = node.y - Math.min(node.radius + scaleDistance(28), scaleDistance(86));
+      const palette = this.opportunityPalette(template.type);
+      const radius = tracked ? scaleDistance(18) : scaleDistance(15);
+
+      this.opportunityMarkerLayer.fillStyle(0x101820, 0.72);
+      this.opportunityMarkerLayer.fillCircle(markerX, markerY + scaleDistance(3), radius + scaleDistance(4));
+      this.opportunityMarkerLayer.fillStyle(palette.fill, 0.96);
+      this.opportunityMarkerLayer.fillCircle(markerX, markerY, radius);
+      this.opportunityMarkerLayer.lineStyle(tracked ? scaleDistance(4) : scaleDistance(2), 0xfff0bd, tracked ? 0.95 : 0.65);
+      this.opportunityMarkerLayer.strokeCircle(markerX, markerY, radius);
+      this.opportunityMarkerLayer.fillTriangle(
+        markerX - scaleDistance(6),
+        markerY + radius - scaleDistance(2),
+        markerX + scaleDistance(6),
+        markerY + radius - scaleDistance(2),
+        markerX,
+        markerY + radius + scaleDistance(12)
+      );
+      this.drawOpportunityIcon(this.opportunityMarkerLayer, markerX, markerY, template.type, palette.icon);
+
+      if (!this.world.opportunities.trackedOpportunityId && Phaser.Math.Distance.Between(this.player.x, this.player.y, node.x, node.y) < node.radius + scaleDistance(64)) {
+        this.world.opportunities.trackedOpportunityId = opportunity.id;
+      }
+
+      const zone = this.add.zone(markerX, markerY, scaleDistance(46), scaleDistance(46)).setDepth(211);
+      zone.setInteractive({ useHandCursor: true });
+      zone.on("pointerdown", (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event?: Phaser.Types.Input.EventData) => {
+        event?.stopPropagation();
+        this.trackPhoneOpportunity(opportunity.id);
+      });
+      this.opportunityMarkerZones.push(zone);
+    }
+  }
+
   private drawMinimap(): void {
     const surface = this.hudController.getMinimapSurface(WORLD_WIDTH, WORLD_HEIGHT);
     if (!surface) {
@@ -3137,6 +3241,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.drawMinimapDiscoveredVenues(ctx, layout);
+    this.drawMinimapOpportunityMarkers(ctx, layout);
     this.drawMinimapCameraView(ctx, layout);
     this.drawMinimapPlayer(ctx, layout);
   }
@@ -3152,6 +3257,22 @@ export class GameScene extends Phaser.Scene {
       const radius = node.isLandmark ? 3.2 : 2.2;
       this.fillCircle(ctx, point.x, point.y, radius, palette.roof, 0.95);
       this.strokeCircle(ctx, point.x, point.y, radius + 1, 1, 0xfff0bd, node.isLandmark ? 0.7 : 0.34);
+    }
+  }
+
+  private drawMinimapOpportunityMarkers(ctx: CanvasRenderingContext2D, layout: MinimapLayout): void {
+    for (const opportunity of this.world.opportunities.live) {
+      const node = venueMapNodes.find((candidate) => candidate.venueId === opportunity.locationVenueId);
+      const template = getOpportunityTemplate(opportunity.templateId);
+      if (!node || !template) {
+        continue;
+      }
+      const point = this.projectMinimapPoint(node, layout);
+      const tracked = this.world.opportunities.trackedOpportunityId === opportunity.id;
+      const palette = this.opportunityPalette(template.type);
+      const radius = tracked ? 4.8 : 3.6;
+      this.fillCircle(ctx, point.x, point.y, radius, palette.fill, 0.98);
+      this.strokeCircle(ctx, point.x, point.y, radius + 1.5, tracked ? 2 : 1, 0xfff0bd, tracked ? 0.94 : 0.58);
     }
   }
 
