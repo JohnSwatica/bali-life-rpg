@@ -7,7 +7,7 @@ import { migrateLifeLoopState } from "./life/LifeLoopState";
 import { migratePlayerMeters, syncLegacyPlayerMeterMirrors } from "./meters/PlayerMeters";
 import type { GroupEntityState, NpcEntityState, PlayerEntityState, ReputationState, WorldState } from "../types";
 
-export const CURRENT_SCHEMA_VERSION = 7;
+export const CURRENT_SCHEMA_VERSION = 8;
 const SAVE_KEY = "bali-life-rpg.berawa-finns.save.v1";
 const PAUSED_V2_KEY = "bali-life-rpg.berawa-finns.save.v2";
 

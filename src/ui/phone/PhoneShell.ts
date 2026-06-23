@@ -11,6 +11,7 @@ import { setLifestyleTags } from "../../systems/profile/ProfileState";
 import { getAllVenues, getPriorityVenueCandidates, getVenue, getVisibleVenues } from "../../systems/venues/VenueRegistry";
 import { getOfflineActivities } from "../../systems/offline/OfflineActivityRegistry";
 import { getAffinityPerk, getAffinityTier, summarizeRelationshipMemories } from "../../systems/relationships/RelationshipMemory";
+import { getRelationshipArcStatesForNpc } from "../../systems/relationships/RelationshipArcs";
 import { getSettlingInGoalStates } from "../../systems/life/SettlingInGoals";
 import type { GameEvent, RelationshipMemory, Venue, WorldState } from "../../types";
 
@@ -186,9 +187,15 @@ export class PhoneShell {
       const npc = npcDefinitions[memory.subjectId];
       const tier = getAffinityTier(memory);
       const memories = summarizeRelationshipMemories(memory, 2);
+      const arcStates = getRelationshipArcStatesForNpc(world, memory.subjectId);
+      const completeArcCount = arcStates.filter((state) => state.complete).length;
+      const nextArc = arcStates.find((state) => !state.complete);
       return [
         `${npc?.name ?? memory.subjectId}: ${tier} (affinity ${memory.affinity})`,
         `  Perk: ${getAffinityPerk(memory)}`,
+        arcStates.length
+          ? `  Arc: ${completeArcCount}/${arcStates.length}${nextArc ? ` next ${nextArc.beat.title}${nextArc.blockedReason ? ` (${nextArc.blockedReason})` : ""}` : " complete"}`
+          : "  Arc: none authored yet",
         memories.length ? `  Known: ${memories.join(" / ")}` : "  Known: no specific memories yet"
       ];
     });

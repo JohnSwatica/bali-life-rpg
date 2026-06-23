@@ -5,6 +5,7 @@ export function createDefaultLifeLoopState(): LifeLoopState {
     activityHistory: {},
     completedGoalIds: [],
     joinedClubIds: [],
+    relationshipArcProgress: {},
     settledIn: false
   };
 }
@@ -19,6 +20,7 @@ export function migrateLifeLoopState(rawLife: unknown): LifeLoopState {
     activityHistory: partial.activityHistory ?? {},
     completedGoalIds: partial.completedGoalIds ?? [],
     joinedClubIds: partial.joinedClubIds ?? [],
+    relationshipArcProgress: partial.relationshipArcProgress ?? {},
     settledIn: partial.settledIn ?? false
   };
 }

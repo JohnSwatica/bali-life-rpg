@@ -51,6 +51,7 @@ import {
   type WaterBoundaryGuard
 } from "../systems/map/WaterBoundary";
 import { bumpRelationshipAffinity, getRelationship } from "../systems/relationships/RelationshipMemory";
+import { completeNextRelationshipArcBeat } from "../systems/relationships/RelationshipArcs";
 import {
   clearWantedStanding,
   getBounty,
@@ -1944,9 +1945,17 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    const arcBeat = completeNextRelationshipArcBeat(this.world, npcId, this.getAbsoluteMinute());
+    if (arcBeat) {
+      this.refreshSettlingInGoals(false);
+      saveWorldState(this.world);
+    }
+    const arcCopy = arcBeat
+      ? `\n\n${arcBeat.arc.title} - ${arcBeat.beat.title}\n${arcBeat.beat.description}\nPerk: ${arcBeat.payoffMessage}`
+      : "";
     this.openDialogue(
       npc.name,
-      `${this.dialogueProvider.getLine(npcId, { memory: getRelationship(this.world, "npc", npcId) })}\n\nRight now ${npc.name} is ${routine?.label ?? "taking in the neighborhood"}.`
+      `${this.dialogueProvider.getLine(npcId, { memory: getRelationship(this.world, "npc", npcId) })}\n\nRight now ${npc.name} is ${routine?.label ?? "taking in the neighborhood"}.${arcCopy}`
     );
   }
 

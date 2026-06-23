@@ -162,6 +162,35 @@ export interface SocialGroupDefinition {
   joinHook: string;
 }
 
+export type RelationshipArcPayoffKind = "club_invite" | "recurring_hangout" | "discount_hook" | "housing_lead_tease";
+
+export interface RelationshipArcBeat {
+  id: string;
+  title: string;
+  description: string;
+  minAffinity: number;
+  requiresEventIds?: string[];
+  requiresJoinedClubIds?: string[];
+  requiresCompletedQuestIds?: string[];
+  payoff: {
+    kind: RelationshipArcPayoffKind;
+    text: string;
+    groupId?: string;
+  };
+}
+
+export interface RelationshipArcDefinition {
+  id: string;
+  npcId: string;
+  title: string;
+  beats: RelationshipArcBeat[];
+}
+
+export interface RelationshipArcProgress {
+  completedBeatIds: string[];
+  lastAdvancedAt: number;
+}
+
 export interface TrustFlag {
   type: "green" | "red";
   reason: string;
@@ -262,6 +291,7 @@ export interface LifeLoopState {
   activityHistory: Record<string, LifeActivityRecord>;
   completedGoalIds: string[];
   joinedClubIds: string[];
+  relationshipArcProgress: Record<string, RelationshipArcProgress>;
   settledIn: boolean;
 }
 
