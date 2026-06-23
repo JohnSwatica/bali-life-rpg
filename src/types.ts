@@ -36,7 +36,14 @@ export type EventType =
   | "market_walk"
   | "community_route"
   | "venue_challenge"
-  | "crew_meetup";
+  | "crew_meetup"
+  | "party"
+  | "market"
+  | "class"
+  | "run"
+  | "meetup"
+  | "live_music"
+  | "coworking";
 export type ReputationTag =
   | "helpful"
   | "reliable"
@@ -125,12 +132,20 @@ export interface GameEvent {
   id: string;
   title: string;
   type: EventType;
-  venueId: string | null;
-  startsAt: number;
-  endsAt: number;
-  mode: "single" | "multi" | "both";
-  requiresMultiplayer: boolean;
-  reward: RewardSpec | null;
+  host: { type: "venue" | "npc" | "group" | "player"; id: string };
+  locationVenueId: string;
+  schedule: { day?: number; recurringDays?: number[]; startHour: number; endHour: number };
+  description: string;
+  participation: {
+    timeCost: number;
+    cost?: number;
+    meterDeltas: Partial<Record<Meter, number>>;
+    affinityBumps?: { npcId: string; amount: number }[];
+    meetNpcs?: string[];
+    reputationTag?: ReputationTag;
+    reputationDelta?: number;
+    itemIds?: string[];
+  };
 }
 
 export interface TrustFlag {

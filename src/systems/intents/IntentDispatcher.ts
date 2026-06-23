@@ -46,20 +46,15 @@ export class IntentDispatcher {
       if (!event) {
         return { ok: false, message: "Event not found." };
       }
-      if (event.requiresMultiplayer && world.portal.multiplayerStatus === "locked") {
-        return { ok: false, message: "This event requires locked multiplayer." };
-      }
       if (!world.runtimeEvents.attendedEventIds.includes(event.id)) {
         world.runtimeEvents.attendedEventIds.push(event.id);
       }
-      if (event.venueId) {
-        recordRelationshipMemory(world, "venue", event.venueId, "attended_event", event.title, at);
+      recordRelationshipMemory(world, "venue", event.locationVenueId, "attended_event", event.title, at);
+      if (event.participation.reputationTag) {
+        awardReputationTag(world.reputation, event.participation.reputationTag as ReputationTag, `Attended ${event.title}`, at);
       }
-      if (event.reward?.reputationTag) {
-        awardReputationTag(world.reputation, event.reward.reputationTag as ReputationTag, `Attended ${event.title}`, at);
-      }
-      if (event.reward?.money) {
-        world.players[world.localPlayerId].money += event.reward.money;
+      if (event.participation.reputationDelta) {
+        adjustReputation(world.reputation, event.participation.reputationDelta, `Attended ${event.title}`, at);
       }
       return { ok: true, message: `Attended ${event.title}.` };
     });

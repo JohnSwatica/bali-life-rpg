@@ -4,10 +4,10 @@ import { lifestyleTagSuggestions } from "../../data/lifestyleTags";
 import { npcDefinitions } from "../../data/npcs";
 import { questDefinitions } from "../../data/quests";
 import { gameEventDefinitions } from "../../data/events";
-import { getActiveEvents, getUpcomingEvents, formatEventTime } from "../../systems/events/EventScheduler";
+import { getActiveEvents, getUpcomingEvents, formatEventSchedule, formatEventTime } from "../../systems/events/EventScheduler";
 import type { IntentDispatcher } from "../../systems/intents/IntentDispatcher";
 import { setLifestyleTags } from "../../systems/profile/ProfileState";
-import { getAllVenues, getPriorityVenueCandidates, getVisibleVenues } from "../../systems/venues/VenueRegistry";
+import { getAllVenues, getPriorityVenueCandidates, getVenue, getVisibleVenues } from "../../systems/venues/VenueRegistry";
 import { getOfflineActivities } from "../../systems/offline/OfflineActivityRegistry";
 import { getAffinityPerk, getAffinityTier, summarizeRelationshipMemories } from "../../systems/relationships/RelationshipMemory";
 import { getSettlingInGoalStates } from "../../systems/life/SettlingInGoals";
@@ -211,8 +211,8 @@ export class PhoneShell {
 
   private calendarLines(): string[] {
     const world = this.options.getWorld();
-    const active = getActiveEvents(world.clock, world.portal).map((event) => `Now: ${event.title} (${formatEventTime(event)})`);
-    const upcoming = getUpcomingEvents(world.clock, world.portal).map((event) => `Soon: ${event.title} (${formatEventTime(event)})${event.requiresMultiplayer ? " - multiplayer locked" : ""}`);
+    const active = getActiveEvents(world.clock, world.portal).map((event) => `Now: ${event.title} @ ${getVenue(event.locationVenueId)?.name ?? event.locationVenueId} (${formatEventTime(event)})`);
+    const upcoming = getUpcomingEvents(world.clock, world.portal).map((event) => `Soon: ${event.title} @ ${getVenue(event.locationVenueId)?.name ?? event.locationVenueId} (${formatEventTime(event)})`);
     return [...active, ...upcoming].length ? [...active, ...upcoming] : ["No events in the next window."];
   }
 
@@ -260,10 +260,10 @@ export class PhoneShell {
   private renderEvents(container: Phaser.GameObjects.Container, x: number, y: number, width: number): void {
     let rowY = y;
     for (const event of gameEventDefinitions) {
-      const locked = event.requiresMultiplayer && this.options.getWorld().portal.multiplayerStatus === "locked";
       this.renderTextList(container, x, rowY, width - 150, [
-        `${event.title} (${formatEventTime(event)})`,
-        `${event.type}${locked ? " - multiplayer locked" : ""}`
+        `${event.title} @ ${getVenue(event.locationVenueId)?.name ?? event.locationVenueId}`,
+        `${formatEventSchedule(event)} | ${event.type}`,
+        event.description
       ]);
       this.addButton(
         container,
@@ -271,11 +271,11 @@ export class PhoneShell {
         rowY + 2,
         116,
         30,
-        locked ? "Locked" : "Attend",
-        () => this.dispatchAndRefresh({ kind: "AttendEvent", eventId: event.id }),
-        locked ? 0x2d3036 : 0x253a35
+        "On-site E",
+        () => this.options.toast("Go to the venue during the event window and press E."),
+        0x2d3036
       );
-      rowY += 58;
+      rowY += 78;
       if (rowY > y + 350) break;
     }
   }

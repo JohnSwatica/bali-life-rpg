@@ -29,7 +29,8 @@ import { renderStreetTemplate } from "../systems/map/StreetRenderer";
 import { STREET_CAMERA } from "../systems/map/TileStreetScale";
 import { scaleDistance, scalePoint } from "../systems/map/WorldScale";
 import { adjustPlayerMeters } from "../systems/meters/PlayerMeters";
-import { canSleepNow, sleepUntilNextMorning } from "../systems/time/DailyClock";
+import { getActiveEventsAtVenue, isEventActive } from "../systems/events/EventScheduler";
+import { advanceWorldMinutes, canSleepNow, sleepUntilNextMorning } from "../systems/time/DailyClock";
 import {
   applyActivity,
   getActivityAvailability,
@@ -70,8 +71,10 @@ import { PhoneShell } from "../ui/phone/PhoneShell";
 import { getAllVenues, getVenue } from "../systems/venues/VenueRegistry";
 import type {
   Direction,
+  GameEvent,
   GameIntent,
   GroupTravelMode,
+  Meter,
   MemoryType,
   NpcDefinition,
   PickupDefinition,
@@ -270,6 +273,13 @@ function worldVector(x: number, y: number): Phaser.Math.Vector2 {
 
 function formatSigned(value: number): string {
   return value >= 0 ? `+${value}` : `${value}`;
+}
+
+function formatMeterDeltaSummary(deltas: Partial<Record<Meter, number>>): string {
+  const parts = Object.entries(deltas)
+    .filter(([, value]) => typeof value === "number" && value !== 0)
+    .map(([meter, value]) => `${meter} ${formatSigned(Number(value))}`);
+  return parts.join(", ");
 }
 
 function buildTrafficJunctionIndex(routes: TrafficRouteDefinition[]): Map<string, TrafficJunctionOption[]> {
@@ -2054,6 +2064,56 @@ export class GameScene extends Phaser.Scene {
       rowY += 50;
     }
 
+    const activeEvents = getActiveEventsAtVenue(this.world.clock, venueId);
+    if (activeEvents.length > 0) {
+      container.add(this.add.text(x + 22, rowY, "Happening now", this.panelSectionStyle()));
+      rowY += 28;
+      for (const event of activeEvents.slice(0, 2)) {
+        const cost = event.participation.cost ?? 0;
+        const canAfford = cost <= 0 || this.playerState.money >= cost;
+        const moneyCopy = cost < 0 ? `Earn Rp ${Math.abs(cost)}` : cost > 0 ? `Cost Rp ${cost}` : "Free";
+        const meterCopy = formatMeterDeltaSummary(event.participation.meterDeltas);
+        container.add(
+          this.add.text(x + 22, rowY, `${event.title}`, {
+            ...this.panelBodyStyle(),
+            fontSize: "14px",
+            color: "#ffe9a6",
+            wordWrap: { width: panelWidth - 202 }
+          })
+        );
+        container.add(
+          this.add.text(
+            x + 22,
+            rowY + 22,
+            `${event.description}\n${event.participation.timeCost} min | ${moneyCopy}${meterCopy ? ` | ${meterCopy}` : ""}`,
+            {
+              ...this.panelBodyStyle(),
+              fontSize: "12px",
+              wordWrap: { width: panelWidth - 202 }
+            }
+          )
+        );
+        this.addPanelButton(
+          container,
+          x + panelWidth - 154,
+          rowY + 18,
+          132,
+          34,
+          canAfford ? "Attend" : "Need Rp",
+          () => {
+            if (canAfford) {
+              this.attendVenueEvent(event);
+            } else {
+              this.showToast(`Need Rp ${cost} for ${event.title}.`);
+            }
+          },
+          canAfford ? 0x2c4650 : 0x3a3030
+        );
+        rowY += 82;
+      }
+      rowY += 6;
+    }
+
     if (availability.length === 0) {
       container.add(
         this.add.text(x + 22, rowY, "No daily-life activities are defined for this venue category yet.", {
@@ -2140,6 +2200,50 @@ export class GameScene extends Phaser.Scene {
     saveWorldState(this.world);
     this.showToast(goalMessage ? `${result.message} ${goalMessage}` : result.message);
     this.openVenueActivityMenu(context.venueId);
+  }
+
+  private attendVenueEvent(event: GameEvent): void {
+    if (!isEventActive(event, this.world.clock)) {
+      this.showToast("That event is not active right now.");
+      this.openVenueActivityMenu(event.locationVenueId);
+      return;
+    }
+
+    const cost = event.participation.cost ?? 0;
+    if (cost > 0 && this.playerState.money < cost) {
+      this.showToast(`Need Rp ${cost} for ${event.title}.`);
+      return;
+    }
+
+    this.playerState.money -= cost;
+    adjustPlayerMeters(this.world, event.participation.meterDeltas);
+    advanceWorldMinutes(this.world, event.participation.timeCost);
+
+    for (const itemId of event.participation.itemIds ?? []) {
+      addItem(this.playerState, itemId, 1);
+    }
+
+    const npcAffinity = new Map<string, number>();
+    for (const npcId of event.participation.meetNpcs ?? []) {
+      npcAffinity.set(npcId, (npcAffinity.get(npcId) ?? 0) + 1);
+    }
+    for (const bump of event.participation.affinityBumps ?? []) {
+      npcAffinity.set(bump.npcId, (npcAffinity.get(bump.npcId) ?? 0) + bump.amount);
+    }
+    for (const [npcId, amount] of npcAffinity) {
+      bumpRelationshipAffinity(this.world, "npc", npcId, amount, `Attended ${event.title}`, this.getAbsoluteMinute());
+    }
+
+    const intentResult = this.dispatchIntent({ kind: "AttendEvent", eventId: event.id });
+    const goalMessage = this.refreshSettlingInGoals(false);
+    this.updateLighting();
+    saveWorldState(this.world);
+
+    const moneyCopy = cost < 0 ? `Rp ${Math.abs(cost)} earned` : cost > 0 ? `Rp ${cost} spent` : "free";
+    const meterCopy = formatMeterDeltaSummary(event.participation.meterDeltas);
+    const details = `${moneyCopy}${meterCopy ? ` | ${meterCopy}` : ""}`;
+    this.showToast(goalMessage ? `${intentResult.message} ${details}. ${goalMessage}` : `${intentResult.message} ${details}.`);
+    this.openVenueActivityMenu(event.locationVenueId);
   }
 
   private renderShopPanel(shop: ShopDefinition): void {
