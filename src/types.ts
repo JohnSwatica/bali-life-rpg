@@ -45,6 +45,8 @@ export type EventType =
   | "live_music"
   | "coworking";
 export type GroupPurpose = "social" | "run" | "coworking" | "surf" | "food" | "housing";
+export type OpportunityType = "gig" | "social" | "help_out" | "flash_deal" | "rumor" | "trade";
+export type OpportunityStatus = "live" | "accepted" | "completed" | "missed";
 export type ReputationTag =
   | "helpful"
   | "reliable"
@@ -160,6 +162,74 @@ export interface SocialGroupDefinition {
   recurringEventIds?: string[];
   description: string;
   joinHook: string;
+}
+
+export interface OpportunityTrigger {
+  timeWindow?: { startHour: number; endHour: number };
+  venueIds?: string[];
+  areas?: string[];
+  minReputation?: number;
+  requiresClubId?: string;
+  requiresAffinity?: { npcId: string; tier: "stranger" | "acquaintance" | "friendly" | "regular" | "trusted" };
+}
+
+export interface OpportunityReward {
+  money?: number;
+  meterDeltas?: Partial<Record<Meter, number>>;
+  reputation?: {
+    delta?: number;
+    tag?: ReputationTag;
+    reason: string;
+  };
+  affinityBumps?: { npcId: string; amount: number }[];
+  items?: InventoryEntry[];
+}
+
+export interface OpportunityTemplate {
+  id: string;
+  type: OpportunityType;
+  title: string;
+  blurb: string;
+  trigger: OpportunityTrigger;
+  locationVenueId: string;
+  durationMin: number;
+  timeCostMin: number;
+  reward: OpportunityReward;
+  chainTo?: string;
+  weight?: number;
+  cooldownMin?: number;
+}
+
+export interface LiveOpportunity {
+  id: string;
+  templateId: string;
+  status: OpportunityStatus;
+  spawnedAt: number;
+  expiresAt: number;
+  locationVenueId: string;
+  acceptedAt?: number;
+  completedAt?: number;
+  missedAt?: number;
+}
+
+export interface OpportunityMessage {
+  id: string;
+  at: number;
+  from: string;
+  body: string;
+  opportunityId?: string;
+  venueId?: string;
+  read: boolean;
+}
+
+export interface OpportunityRuntimeState {
+  live: LiveOpportunity[];
+  completedTemplateIds: string[];
+  missedTemplateIds: string[];
+  messages: OpportunityMessage[];
+  trackedOpportunityId: string | null;
+  lastSpawnAt: number;
+  templateCooldownUntil: Record<string, number>;
 }
 
 export type RelationshipArcPayoffKind = "club_invite" | "recurring_hangout" | "discount_hook" | "housing_lead_tease";
