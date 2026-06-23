@@ -233,6 +233,10 @@ export class HudController {
     this.minimapFrame?.classList.toggle("is-hidden", hidden);
   }
 
+  setActionButtonsMuted(muted: boolean): void {
+    this.buttonOverlay?.classList.toggle("is-muted", muted);
+  }
+
   private createDomOverlay(): void {
     if (typeof document === "undefined") {
       return;

@@ -365,6 +365,7 @@ export class GameScene extends Phaser.Scene {
   private toastText!: Phaser.GameObjects.Text;
   private toastTimer = 0;
   private panel?: Phaser.GameObjects.Container;
+  private dialogueOverlay?: HTMLElement;
   private nightOverlay!: Phaser.GameObjects.Graphics;
   private lanternGlow!: Phaser.GameObjects.Graphics;
   private discoveryToastCooldown = 0;
@@ -449,6 +450,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   destroy(): void {
+    this.destroyDialogueOverlay();
     this.unsubscribeNetwork?.();
     this.network.disconnect();
   }
@@ -1761,6 +1763,7 @@ export class GameScene extends Phaser.Scene {
     });
     this.hudController.updatePhoneBadge(getUnreadOpportunityMessageCount(this.world.opportunities), this.phoneBuzzTimer > 0);
     this.hudController.setMinimapHidden(this.mode !== "world");
+    this.hudController.setActionButtonsMuted(this.mode === "dialogue");
     this.questText.setText([...this.getTutorialLines(), ...getQuestTrackerLines(this.playerState)].join("\n"));
     this.questText.setWordWrapWidth(Math.min(520, this.scale.width - 40));
 
@@ -1988,27 +1991,44 @@ export class GameScene extends Phaser.Scene {
   private openDialogue(title: string, body: string): void {
     this.closePanel();
     this.mode = "dialogue";
-    const { width, height } = this.scale;
-    const panelWidth = Math.min(760, width - 32);
-    const panelHeight = Math.min(190, height - 48);
-    const x = (width - panelWidth) / 2;
-    const y = height - panelHeight - 24;
-    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10);
-    const bg = this.add.graphics();
-    bg.fillStyle(0x111820, 0.94);
-    bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
-    bg.lineStyle(2, 0xf4d58d, 0.58);
-    bg.strokeRoundedRect(x, y, panelWidth, panelHeight, 8);
-    const titleText = this.add.text(x + 22, y + 18, title, this.panelTitleStyle());
-    const bodyText = this.add.text(x + 22, y + 54, body, {
-      ...this.panelBodyStyle(),
-      wordWrap: { width: panelWidth - 44 }
-    });
-    const closeText = this.add
-      .text(x + panelWidth - 22, y + panelHeight - 26, "E / ESC", this.panelHintStyle())
-      .setOrigin(1, 0.5);
-    container.add([bg, titleText, bodyText, closeText]);
-    this.panel = container;
+    this.createDialogueOverlay(title, body);
+  }
+
+  private createDialogueOverlay(title: string, body: string): void {
+    this.destroyDialogueOverlay();
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const overlay = document.createElement("section");
+    overlay.className = "bali-life-dialogue";
+    overlay.dataset.dialoguePanel = "true";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-label", title);
+    overlay.addEventListener("pointerdown", (event) => event.stopPropagation());
+    overlay.addEventListener("click", (event) => event.stopPropagation());
+
+    const titleEl = document.createElement("h2");
+    titleEl.className = "bali-life-dialogue-title";
+    titleEl.textContent = title;
+
+    const bodyEl = document.createElement("div");
+    bodyEl.className = "bali-life-dialogue-body";
+    bodyEl.dataset.dialogueBody = "true";
+    bodyEl.textContent = body;
+
+    const hint = document.createElement("div");
+    hint.className = "bali-life-dialogue-hint";
+    hint.textContent = "E / ESC";
+
+    overlay.append(titleEl, bodyEl, hint);
+    document.body.appendChild(overlay);
+    this.dialogueOverlay = overlay;
+  }
+
+  private destroyDialogueOverlay(): void {
+    this.dialogueOverlay?.remove();
+    this.dialogueOverlay = undefined;
   }
 
   private openShop(shopId: string): void {
@@ -3035,6 +3055,7 @@ export class GameScene extends Phaser.Scene {
   private closePanel(setWorldMode = true): void {
     this.panel?.destroy(true);
     this.panel = undefined;
+    this.destroyDialogueOverlay();
     if (setWorldMode) {
       this.mode = "world";
     }
