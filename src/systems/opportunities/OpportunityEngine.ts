@@ -93,6 +93,75 @@ export function markOpportunityMessagesRead(state: OpportunityRuntimeState): voi
   }
 }
 
+export function appendOpportunityMessage(state: OpportunityRuntimeState, message: OpportunityMessage): boolean {
+  if (state.messages.some((existing) => existing.id === message.id)) {
+    return false;
+  }
+  pushOpportunityMessage(state, message);
+  return true;
+}
+
+export function generateOpportunityPhoneTexts(state: OpportunityRuntimeState, world: WorldState): OpportunityMessage[] {
+  const now = getAbsoluteMinute(world.clock);
+  const hour = world.clock.minuteOfDay / 60;
+  const dayKey = world.clock.day;
+  const created: OpportunityMessage[] = [];
+  const candidates: OpportunityMessage[] = [];
+
+  const ariMemory = getRelationship(world, "npc", "ari");
+  if (AFFINITY_TIER_RANK[getAffinityTier(ariMemory)] >= AFFINITY_TIER_RANK.acquaintance && isHourInWindow(hour, 16, 18.5)) {
+    candidates.push({
+      id: `npc-text:ari-sunset:${dayKey}`,
+      at: now,
+      from: "Ari",
+      body: "Sunset crowd is mellow today. If the phone pings a beach thing, come through before the light changes.",
+      venueId: "berawa_beach",
+      read: false
+    });
+  }
+
+  const madeMemory = getRelationship(world, "npc", "made");
+  if (AFFINITY_TIER_RANK[getAffinityTier(madeMemory)] >= AFFINITY_TIER_RANK.friendly && isHourInWindow(hour, 9, 11.5)) {
+    candidates.push({
+      id: `npc-text:made-focus:${dayKey}`,
+      at: now,
+      from: "Made",
+      body: "I saved you a focus-table seat if you want a productive morning instead of drifting.",
+      venueId: "satu_satu_coffee",
+      read: false
+    });
+  }
+
+  if (world.life.joinedClubIds.includes("berawa_run_crew") && isHourInWindow(hour, 5.75, 7.25)) {
+    candidates.push({
+      id: `club-text:run-crew:${dayKey}`,
+      at: now,
+      from: "Berawa Run Crew",
+      body: "Shoes on? Sunrise loop window is tiny, and breakfast tastes better after you earn it.",
+      venueId: "berawa_beach",
+      read: false
+    });
+  }
+
+  if (world.reputation.score >= 62 && isHourInWindow(hour, 13, 15)) {
+    candidates.push({
+      id: `npc-text:ibu-market:${dayKey}`,
+      at: now,
+      from: "Ibu Sari",
+      body: "Afternoon errands are easier before the rush. If you are nearby, check the market board.",
+      venueId: "canggu_station",
+      read: false
+    });
+  }
+
+  for (const message of candidates) {
+    if (appendOpportunityMessage(state, message)) {
+      created.push(message);
+    }
+  }
+  return created;
+}
+
 export function getAbsoluteMinute(clock: WorldClockState): number {
   return Math.floor((Math.max(1, clock.day) - 1) * 1440 + clock.minuteOfDay);
 }
@@ -185,7 +254,7 @@ export function acceptOpportunity(state: OpportunityRuntimeState, opportunityId:
   live.acceptedAt = now;
   state.trackedOpportunityId = live.id;
   const template = getOpportunityTemplate(live.templateId);
-  pushOpportunityMessage(state, {
+  appendOpportunityMessage(state, {
     id: createMessageId("accepted", live.id, now),
     at: now,
     from: "Bali Life Phone",
@@ -230,7 +299,7 @@ export function resolveOpportunity(
   if (state.trackedOpportunityId === live.id) {
     state.trackedOpportunityId = null;
   }
-  pushOpportunityMessage(state, {
+  appendOpportunityMessage(state, {
     id: createMessageId("completed", live.id, now),
     at: now,
     from: "Bali Life Phone",
@@ -281,7 +350,7 @@ export function spawnOpportunity(
   };
   state.live.push(live);
   state.lastSpawnAt = now;
-  pushOpportunityMessage(state, {
+  appendOpportunityMessage(state, {
     id: createMessageId("spawned", live.id, now),
     at: now,
     from: messageSender(template.type),
@@ -328,7 +397,7 @@ function expireOpportunity(state: OpportunityRuntimeState, live: LiveOpportunity
     state.trackedOpportunityId = null;
   }
   const template = getOpportunityTemplate(live.templateId);
-  pushOpportunityMessage(state, {
+  appendOpportunityMessage(state, {
     id: createMessageId("missed", live.id, now),
     at: now,
     from: "Bali Life Phone",

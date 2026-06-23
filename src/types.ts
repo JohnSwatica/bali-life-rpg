@@ -445,6 +445,7 @@ export interface WorldState {
   portal: PortalState;
   runtimeEvents: RuntimeEventState;
   life: LifeLoopState;
+  opportunities: OpportunityRuntimeState;
   mapDiscovery: MapDiscoveryState;
   questFlags: Record<string, number | string | boolean>;
   collectedPickups: Record<string, number>;

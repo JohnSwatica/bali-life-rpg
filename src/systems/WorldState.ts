@@ -5,6 +5,7 @@ import { createDefaultPlayerProfile } from "./profile/ProfileState";
 import { createDefaultReputationState } from "./reputation/ReputationState";
 import { createDefaultLifeLoopState } from "./life/LifeLoopState";
 import { createDefaultPlayerMeters, syncLegacyPlayerMeterMirrors } from "./meters/PlayerMeters";
+import { createDefaultOpportunityState } from "./opportunities/OpportunityEngine";
 import type { NpcEntityState, PlayerEntityState, TimePhase, WorldState } from "../types";
 
 export const LOCAL_PLAYER_ID = "local-player";
@@ -77,6 +78,7 @@ export function createInitialWorldState(): WorldState {
       attendedEventIds: []
     },
     life: createDefaultLifeLoopState(),
+    opportunities: createDefaultOpportunityState(),
     mapDiscovery: {
       discoveredAreaIds: [],
       discoveredVenueIds: [],

@@ -30,7 +30,7 @@ import { renderStreetTemplate } from "../systems/map/StreetRenderer";
 import { STREET_CAMERA } from "../systems/map/TileStreetScale";
 import { scaleDistance, scalePoint } from "../systems/map/WorldScale";
 import { adjustPlayerMeters } from "../systems/meters/PlayerMeters";
-import { getActiveEventsAtVenue, isEventActive } from "../systems/events/EventScheduler";
+import { getActiveEvents, getActiveEventsAtVenue, isEventActive } from "../systems/events/EventScheduler";
 import { advanceWorldMinutes, canSleepNow, sleepUntilNextMorning } from "../systems/time/DailyClock";
 import {
   applyActivity,
@@ -39,6 +39,15 @@ import {
   type VenueActivityContext
 } from "../systems/life/ActivityEngine";
 import { getSettlingInGoalTitle, updateSettlingInGoals } from "../systems/life/SettlingInGoals";
+import {
+  acceptOpportunity,
+  appendOpportunityMessage,
+  generateOpportunityPhoneTexts,
+  getAbsoluteMinute as getOpportunityAbsoluteMinute,
+  getUnreadOpportunityMessageCount,
+  maintainOpportunityPool,
+  markOpportunityMessagesRead
+} from "../systems/opportunities/OpportunityEngine";
 import {
   computeVenuePresentationLayout,
   getVenueFootprint,
@@ -341,6 +350,8 @@ export class GameScene extends Phaser.Scene {
   private unsubscribeNetwork?: () => void;
   private networkPushTimer = 0;
   private autosaveTimer = 0;
+  private opportunityUpdateTimer = 0;
+  private phoneBuzzTimer = 0;
 
   private hudChrome!: Phaser.GameObjects.Graphics;
   private timeText!: Phaser.GameObjects.Text;
@@ -373,6 +384,9 @@ export class GameScene extends Phaser.Scene {
       getNow: () => this.getAbsoluteMinute(),
       save: () => saveWorldState(this.world),
       toast: (message) => this.showToast(message),
+      onOpportunityAccept: (opportunityId) => this.acceptPhoneOpportunity(opportunityId),
+      onOpportunityTrack: (opportunityId) => this.trackPhoneOpportunity(opportunityId),
+      onFeedViewed: () => this.markPhoneFeedRead(),
       onClose: () => {
         if (this.mode === "phone") {
           this.mode = "world";
@@ -392,6 +406,7 @@ export class GameScene extends Phaser.Scene {
     this.createInput();
     this.createHud();
     this.updateMapDiscovery(true);
+    this.updateOpportunityFeed(0, true);
 
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
@@ -421,6 +436,7 @@ export class GameScene extends Phaser.Scene {
     this.updateGroupLine(delta);
     this.updateNpcRoutines(delta);
     this.updatePickups();
+    this.updateOpportunityFeed(delta);
     this.updateHud(delta);
     this.updateLighting();
     this.updateDynamicObjectCulling();
@@ -1736,6 +1752,7 @@ export class GameScene extends Phaser.Scene {
       focus: this.world.meters.focus,
       social: this.world.meters.social
     });
+    this.hudController.updatePhoneBadge(getUnreadOpportunityMessageCount(this.world.opportunities), this.phoneBuzzTimer > 0);
     this.questText.setText([...this.getTutorialLines(), ...getQuestTrackerLines(this.playerState)].join("\n"));
     this.questText.setWordWrapWidth(Math.min(520, this.scale.width - 40));
 
@@ -3657,6 +3674,84 @@ export class GameScene extends Phaser.Scene {
 
   private getAbsoluteMinute(): number {
     return Math.floor(this.world.clock.day * 1440 + this.world.clock.minuteOfDay);
+  }
+
+  private updateOpportunityFeed(delta: number, force = false): void {
+    this.phoneBuzzTimer = Math.max(0, this.phoneBuzzTimer - delta);
+    this.opportunityUpdateTimer += delta;
+    if (!force && this.opportunityUpdateTimer < 5000) {
+      return;
+    }
+    this.opportunityUpdateTimer = 0;
+
+    const beforeUnread = getUnreadOpportunityMessageCount(this.world.opportunities);
+    const maintenance = maintainOpportunityPool(this.world.opportunities, this.world);
+    const authoredTexts = generateOpportunityPhoneTexts(this.world.opportunities, this.world);
+    const eventMessages = this.appendActiveEventMessages();
+    const afterUnread = getUnreadOpportunityMessageCount(this.world.opportunities);
+    const changed =
+      maintenance.spawned.length > 0 ||
+      maintenance.expired.length > 0 ||
+      authoredTexts.length > 0 ||
+      eventMessages > 0;
+
+    if (afterUnread > beforeUnread) {
+      this.phoneBuzzTimer = 1800;
+      if (!force && this.mode === "world") {
+        this.showToast("Phone buzz: something nearby just opened up.");
+      }
+    }
+    if (changed) {
+      saveWorldState(this.world);
+      this.phone?.refresh();
+    }
+  }
+
+  private appendActiveEventMessages(): number {
+    const now = getOpportunityAbsoluteMinute(this.world.clock);
+    let added = 0;
+    for (const event of getActiveEvents(this.world.clock, this.world)) {
+      const venue = getVenue(event.locationVenueId);
+      const ok = appendOpportunityMessage(this.world.opportunities, {
+        id: `event-start:${event.id}:${this.world.clock.day}`,
+        at: now,
+        from: "Calendar",
+        body: `${event.title} is happening now at ${venue?.name ?? event.locationVenueId}. Go on-site and press E to join.`,
+        venueId: event.locationVenueId,
+        read: false
+      });
+      if (ok) {
+        added += 1;
+      }
+    }
+    return added;
+  }
+
+  private acceptPhoneOpportunity(opportunityId: string): void {
+    const result = acceptOpportunity(this.world.opportunities, opportunityId, getOpportunityAbsoluteMinute(this.world.clock));
+    this.showToast(result.message);
+    saveWorldState(this.world);
+  }
+
+  private trackPhoneOpportunity(opportunityId: string): void {
+    const live = this.world.opportunities.live.find((candidate) => candidate.id === opportunityId);
+    if (!live) {
+      this.showToast("That opportunity is no longer available.");
+      return;
+    }
+    this.world.opportunities.trackedOpportunityId = opportunityId;
+    this.showToast("Opportunity tracked on the phone feed.");
+    saveWorldState(this.world);
+  }
+
+  private markPhoneFeedRead(): void {
+    if (getUnreadOpportunityMessageCount(this.world.opportunities) === 0) {
+      return;
+    }
+    markOpportunityMessagesRead(this.world.opportunities);
+    this.phoneBuzzTimer = 0;
+    this.hudController.updatePhoneBadge(0, false);
+    saveWorldState(this.world);
   }
 
   private saveGame(): void {

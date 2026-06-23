@@ -61,6 +61,7 @@ export class HudController {
   private minimapCanvas?: HTMLCanvasElement;
   private minimapLayout?: DomMinimapLayout;
   private minimapDpr = 1;
+  private phoneButton?: HTMLButtonElement;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -215,6 +216,19 @@ export class HudController {
     );
   }
 
+  updatePhoneBadge(count: number, buzzing = false): void {
+    if (!this.phoneButton) {
+      return;
+    }
+    if (count > 0) {
+      this.phoneButton.dataset.badge = count > 9 ? "9+" : `${count}`;
+      this.phoneButton.classList.toggle("is-buzzing", buzzing);
+    } else {
+      delete this.phoneButton.dataset.badge;
+      this.phoneButton.classList.remove("is-buzzing");
+    }
+  }
+
   private createDomOverlay(): void {
     if (typeof document === "undefined") {
       return;
@@ -260,6 +274,9 @@ export class HudController {
         button.dataset.clickCount = `${Number(button.dataset.clickCount ?? 0) + 1}`;
         this.recordDomButtonClick(config.action);
       });
+      if (config.action === "phone") {
+        this.phoneButton = button;
+      }
       this.buttonOverlay.appendChild(button);
     }
 

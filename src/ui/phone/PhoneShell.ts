@@ -10,13 +10,14 @@ import type { IntentDispatcher } from "../../systems/intents/IntentDispatcher";
 import { setLifestyleTags } from "../../systems/profile/ProfileState";
 import { getAllVenues, getPriorityVenueCandidates, getVenue, getVisibleVenues } from "../../systems/venues/VenueRegistry";
 import { getOfflineActivities } from "../../systems/offline/OfflineActivityRegistry";
+import { getLiveOpportunityCountdown, getOpportunityTemplate } from "../../systems/opportunities/OpportunityEngine";
 import { getAffinityPerk, getAffinityTier, summarizeRelationshipMemories } from "../../systems/relationships/RelationshipMemory";
 import { getRelationshipArcStatesForNpc } from "../../systems/relationships/RelationshipArcs";
 import { getSettlingInGoalStates } from "../../systems/life/SettlingInGoals";
 import type { GameEvent, RelationshipMemory, Venue, WorldState } from "../../types";
 
 const PHONE_DEPTH = 1500;
-const TABS = ["Map", "Contacts", "Quests", "Calendar", "Profile", "Events", "Venues", "Community"] as const;
+const TABS = ["Feed", "Map", "Contacts", "Quests", "Calendar", "Profile", "Events", "Venues", "Community"] as const;
 type PhoneTab = (typeof TABS)[number];
 
 interface PhoneShellOptions {
@@ -26,12 +27,15 @@ interface PhoneShellOptions {
   getNow: () => number;
   save: () => void;
   toast: (message: string) => void;
+  onOpportunityAccept: (opportunityId: string) => void;
+  onOpportunityTrack: (opportunityId: string) => void;
+  onFeedViewed: () => void;
   onClose: () => void;
 }
 
 export class PhoneShell {
   private container?: Phaser.GameObjects.Container;
-  private activeTab: PhoneTab = "Map";
+  private activeTab: PhoneTab = "Feed";
   private selectedVenueId?: string;
 
   constructor(private readonly options: PhoneShellOptions) {}
@@ -138,7 +142,9 @@ export class PhoneShell {
     const title = this.options.scene.add.text(bodyX, bodyY, this.activeTab, this.sectionStyle());
     container.add(title);
     const textY = bodyY + 30;
-    if (this.activeTab === "Map") {
+    if (this.activeTab === "Feed") {
+      this.renderFeed(container, bodyX, textY, bodyWidth);
+    } else if (this.activeTab === "Map") {
       this.renderTextList(container, bodyX, textY, bodyWidth, this.mapLines());
     } else if (this.activeTab === "Contacts") {
       this.renderTextList(container, bodyX, textY, bodyWidth, this.contactLines());
@@ -175,6 +181,69 @@ export class PhoneShell {
         : ["- None yet. Walk or ride closer to venues."]),
       hiddenCount > 0 ? `${hiddenCount} venue details still hidden.` : "All seeded venue details revealed."
     ];
+  }
+
+  private renderFeed(container: Phaser.GameObjects.Container, x: number, y: number, width: number): void {
+    const world = this.options.getWorld();
+    const state = world.opportunities;
+    let rowY = y;
+    const live = [...state.live].sort((a, b) => a.expiresAt - b.expiresAt);
+    if (live.length === 0) {
+      this.renderTextList(container, x, rowY, width, [
+        "No live pings right now.",
+        "The phone will buzz when a gig, social invite, help-out, rumor, trade, or simulated deal opens."
+      ]);
+      rowY += 72;
+    } else {
+      for (const opportunity of live.slice(0, 4)) {
+        const template = getOpportunityTemplate(opportunity.templateId);
+        const venue = getVenue(opportunity.locationVenueId);
+        const countdown = this.formatCountdown(getLiveOpportunityCountdown(opportunity, world.clock));
+        const tracked = state.trackedOpportunityId === opportunity.id;
+        this.renderTextList(container, x, rowY, width - 196, [
+          `${template?.title ?? opportunity.templateId} (${template?.type.replace(/_/g, " ") ?? "opportunity"})`,
+          `${venue?.name ?? opportunity.locationVenueId} | ${opportunity.status} | expires in ${countdown}`,
+          template?.blurb ?? "Go to the venue before the timer runs out."
+        ]);
+        this.addButton(
+          container,
+          x + width - 180,
+          rowY + 2,
+          78,
+          30,
+          opportunity.status === "accepted" ? "Accepted" : "Accept",
+          () => {
+            this.options.onOpportunityAccept(opportunity.id);
+            this.open("Feed");
+          },
+          opportunity.status === "accepted" ? 0x2d3036 : 0x253a35
+        );
+        this.addButton(
+          container,
+          x + width - 94,
+          rowY + 2,
+          74,
+          30,
+          tracked ? "Tracked" : "Track",
+          () => {
+            this.options.onOpportunityTrack(opportunity.id);
+            this.open("Feed");
+          },
+          tracked ? 0x2d3036 : 0x2c4650
+        );
+        rowY += 86;
+        if (rowY > y + 320) break;
+      }
+    }
+
+    const messages = [...state.messages].sort((a, b) => b.at - a.at).slice(0, 5);
+    this.renderTextList(container, x, rowY + 6, width, [
+      "Messages",
+      ...(messages.length
+        ? messages.map((message) => `${message.read ? "" : "* "}${message.from}: ${message.body}`)
+        : ["No messages yet."])
+    ]);
+    this.options.onFeedViewed();
   }
 
   private contactLines(): string[] {
@@ -442,6 +511,16 @@ export class PhoneShell {
     if (rowY <= y + 390) {
       this.renderTextList(container, x, rowY + 4, width, ["Simulated Offline Activity Previews", ...offline.slice(0, 2)]);
     }
+  }
+
+  private formatCountdown(minutes: number): string {
+    const rounded = Math.max(0, Math.ceil(minutes));
+    if (rounded >= 60) {
+      const hours = Math.floor(rounded / 60);
+      const mins = rounded % 60;
+      return `${hours}h${mins ? ` ${mins}m` : ""}`;
+    }
+    return `${rounded}m`;
   }
 
   private renderTextList(

@@ -5,6 +5,7 @@ import { createDefaultReputationState } from "./reputation/ReputationState";
 import { scaleDistance } from "./map/WorldScale";
 import { migrateLifeLoopState } from "./life/LifeLoopState";
 import { migratePlayerMeters, syncLegacyPlayerMeterMirrors } from "./meters/PlayerMeters";
+import { migrateOpportunityState } from "./opportunities/OpportunityEngine";
 import type { GroupEntityState, NpcEntityState, PlayerEntityState, ReputationState, WorldState } from "../types";
 
 export const CURRENT_SCHEMA_VERSION = 8;
@@ -72,6 +73,7 @@ function migrateWorldState(raw: Partial<WorldState> & Record<string, unknown>): 
     portal: raw.portal ?? createDefaultPortalState(),
     runtimeEvents: raw.runtimeEvents ?? { attendedEventIds: [] },
     life: migrateLifeLoopState(raw.life),
+    opportunities: migrateOpportunityState(raw.opportunities),
     mapDiscovery: raw.mapDiscovery ?? { discoveredAreaIds: [], discoveredVenueIds: [], revealAll: false },
     questFlags: raw.questFlags ?? {},
     collectedPickups: raw.collectedPickups ?? {}
