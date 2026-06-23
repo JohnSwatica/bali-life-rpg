@@ -199,3 +199,15 @@ The Phone Feed is now the active stimulation surface: live opportunities, countd
 Flash deals are intentionally treated as simulated, dev-authored promotion seeds. They use the same opportunity model as gigs/social/help/rumor/trade pings, but make no live commerce or coupon claims. Later living-commerce work can replace or augment these templates with owner-authored venue promotion data.
 
 Save schema is bumped to v9. V1-v8 saves migrate without wiping existing money, inventory, quests, reputation, relationships, discovery, profile, portal, meters, clubs, relationship arc progress, or life-loop state. Missing opportunity runtime state defaults to an empty feed/live pool; v8 saves that already contain opportunity data preserve live/accepted/completed/missed/feed state.
+
+## 2026-06-23 - Committed Activity Flow
+
+Venue activities should be legible moments, not invisible accounting. Regular activities and accepted opportunities now enter a shared committed state with constrained movement, visible progress, cancel support, and a single completion path into the existing local reward systems. This preserves the local/simulated Phase A/B architecture while making the player's choice feel like something they actually do at the venue.
+
+`world.activeActivity` is runtime state, not static content. Save schema v10 migrates older saves to `activeActivity: null` and preserves current committed activity/opportunity state for safe mid-activity saves.
+
+## 2026-06-23 - Hybrid Minigames As Optional Performance Layer
+
+The activity-real sprint uses the Hybrid approach: the committed state is universal, and minigames are layered onto high-impact activity types only. Work/gig/help-out use a timing tap, surf/beach uses a balance tap, and social/hangout uses a tiny authored choice. This avoids turning every routine into a minigame while giving the core loop varied verbs.
+
+Performance is intentionally optional and bounded. Skipping a minigame resolves at a steady default score; explicit scores scale only positive rewards with a conservative `0.72x..1.28x` multiplier. Costs and negative meter deltas remain unchanged so minigames do not remove the daily-life trade-offs.

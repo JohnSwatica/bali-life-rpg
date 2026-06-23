@@ -327,3 +327,32 @@ Test notes:
 - Do not add runtime map network calls; OSM services are generator-only.
 - Do not turn this into a combat RPG.
 - Do not refactor all old gameplay flows into intents yet.
+
+## 2026-06-23 - Activities Are Committed Moments
+
+Branch `feat/activities-real` makes the Hybrid approach active: every venue activity now enters a committed "doing this" state instead of silently applying meter deltas while the player keeps walking. The player is placed at the venue, movement is constrained by the existing non-world mode path, an in-world-time progress overlay appears, and completion resolves through the existing activity/opportunity reward systems. `ESC` or the overlay Cancel button exits early with no reward.
+
+Committed activity runtime state is persisted as `world.activeActivity`; save schema is now v10. Older saves migrate with `activeActivity: null`, while a current save can round-trip an in-progress committed activity or opportunity without wiping money, inventory, quests, relationships, reputation, discovery, meters, clubs, arcs, or opportunity state.
+
+Opportunity pings no longer resolve instantly from the venue menu. Accepted venue opportunities now reuse the same committed activity flow, then call the existing `resolveOpportunity` path at completion. This gives gigs/help-outs/social pings the same legible start -> progress -> reward beat as regular venue activities.
+
+Hybrid minigames are active on selected high-impact types:
+
+- Work/gig/help-out: timing-window tap.
+- Surf/beach: balance-window tap.
+- Social/hangout/night-out: small authored choice beat.
+
+The minigame framework is pure and tested in `src/systems/minigames/ActivityMinigames.ts`. Scores are `0..1`; no input resolves to a steady default score, and performance scales only upside rewards through a conservative `0.72x..1.28x` multiplier. Costs and negative meter consequences remain unscaled so minigames do not erase trade-offs.
+
+Verification:
+
+- `npm test -- --run`: 8 files passed, 35 tests passed, 3 skipped.
+- `npm run build`: passed.
+- New coverage verifies timing scoring, choice scoring, activity reward scaling, opportunity reward scaling, and v10 active-activity persistence.
+
+Still needs human feel:
+
+- Whether the progress duration feels satisfying rather than too fast/slow.
+- Whether the timing/balance targets feel fun on real phone touch.
+- Whether social choices are readable enough in the committed overlay.
+- Whether the reward multiplier feels noticeable without becoming exploitable.
