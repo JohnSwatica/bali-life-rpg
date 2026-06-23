@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-06-22
+Last updated: 2026-06-23
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -13,14 +13,18 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
-- Current branch for core daily loop work: `feat/core-life-loop`, branched from the HUD/authored-order head to preserve the fixed DOM HUD and explicit Pantai Berawa order.
+- Current branch for Phase B social work: `feat/social-events-clubs`, branched from the Phase A daily-life loop head.
 
 ## What Was Added Recently
 
 - Git is now initialized locally. Baseline and every sprint phase are committed.
 - The six action buttons (`PHONE`, `SAVE`, `SOC`, `BIKE`, `BAG`, `ACT`) are now fixed DOM overlay buttons instead of Phaser game objects, so camera zoom/scale cannot push them off-screen. The minimap is now a fixed DOM canvas, also independent of world camera zoom.
 - Core daily life loop added locally: `WorldState.meters` now tracks Energy, Wellbeing, Focus, and Social while Money remains on the local player. The fixed DOM HUD shows Money + all four meters.
-- Save schema is now v6. V1-v5 saves migrate forward with default meters and `life` runtime state while preserving money, quests, inventory, relationships, reputation, discovery, profile, portal, and authored-street position data.
+- Phase B social layer added locally: events are first-class and host-agnostic, clubs/groups are first-class and purpose-generic, relationship arcs deepen key NPC friendships, and the Settling In goals now include event attendance, joining a crew, and completing a bond beat.
+- Save schema is now v8. V1-v7 saves migrate forward with default meters, joined clubs, relationship arc progress, and `life` runtime state while preserving money, quests, inventory, relationships, reputation, discovery, profile, portal, and authored-street position data.
+- Added `src/data/events.ts` and `src/systems/events/EventScheduler.ts`: dev-authored events reference venues/NPCs/groups by id, appear in Calendar/Events, and can be attended on-site from the venue activity menu.
+- Added `src/data/groups.ts` and `src/systems/groups/GroupRegistry.ts`: clubs can be joined from Phone > Community or at their home venue; joining unlocks membership-gated recurring events on the calendar.
+- Added `src/data/relationshipArcs.ts` and `src/systems/relationships/RelationshipArcs.ts`: Ari, Made, and Ibu Sari have sequential local relationship beats gated by affinity, events, clubs, or starter-quest completion, with text/perk hooks only.
 - Added `src/data/activities.ts` and `src/systems/life/ActivityEngine.ts`: venue category + hours + money + Energy + repeatability determine available activities, activity choices advance time, apply meter/money/item/reputation effects, and persist activity history.
 - `E` at a shop or venue now opens a venue activity menu. Shops retain the original buy/sell panel as an explicit `Open buy/sell` option.
 - Added sleep support through the existing action prompt when it is late or Energy is low: sleep advances to the next morning, restores Energy, bumps Wellbeing/Focus, and saves.
@@ -84,6 +88,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Quest registry: `src/systems/quests/QuestRegistry.ts`
 - Controllers: `src/systems/input/InputController.ts`, `src/systems/interaction/InteractionController.ts`, `src/ui/hud/HudController.ts`
 - Phone UI: `src/ui/phone/PhoneShell.ts`
+- Social Phase B: `src/data/events.ts`, `src/data/groups.ts`, `src/data/relationshipArcs.ts`, `src/systems/events/EventScheduler.ts`, `src/systems/groups/GroupRegistry.ts`, `src/systems/relationships/RelationshipArcs.ts`
 - Berawa layout data: `src/data/berawaLayout.ts`; runtime-scaled historical presentation copy: `src/data/scaledBerawaLayout.ts`; active authored street adapter: `src/data/authoredStreetLayout.ts`
 - Active street template/data: `src/data/streetTemplates.ts`, `src/systems/map/StreetTemplate.ts`, `src/systems/map/StreetRenderer.ts`, `src/systems/map/TileStreetScale.ts`
 - Map presentation/boundaries: `src/systems/map/WorldScale.ts`, `src/systems/map/PlayerUnitScale.ts`, `src/systems/map/VenuePresentation.ts`, `src/systems/map/WaterBoundary.ts`
@@ -135,10 +140,18 @@ Copy/paste this into a new AI session to bring it up to speed.
 - `d722157` - `feat: populate Jl Pantai Berawa from real venue order`
 - `014b6ae` - `feat: beach-and-water street terminus`
 - `5dfe673` - `feat: wire shops npcs quests traffic discovery to street`
+- `84d93a1` - `docs: record core daily life loop`
+- `c7ace83` - `feat: first-class events with calendar and attendance`
+- `1a1c4ea` - `feat: first-class clubs with joinable recurring events`
+- `4b9bf65` - `feat: relationship arcs for key NPCs`
+- `43177e9` - `feat: integrate social compounding goals`
 
 ## Current Verification
 
 - Authored tile street phases 1-5 each passed `npm run build` before commit.
+- Phase B social phases 1-4 each passed `npm run build` before commit.
+- Phase B smoke checks passed: Berawa Beach Run is active at Berawa Beach on the expected day/time; joining Berawa Run Crew stores `world.life.joinedClubIds` and reveals its recurring member event; Ari's first relationship beat completes from affinity and persists to `world.life.relationshipArcProgress`; `plug_in`, `find_your_crew`, and `deepen_a_bond` complete from event/club/arc state.
+- There is currently no `npm test` script in `package.json`; verification for this sprint is `npm run build` plus deterministic `tsx` smoke checks.
 - Current authored street geometry check reports 32 visible/interactable venue slots, 32 authored venue nodes, 0 overlaps, and no duplicate venue IDs.
 - Shopfront detail build passed; signboards/props are presentation-only and do not alter venue IDs, slot placement, quests, shops, or coordinates.
 - Storefront interaction build passed; shops still use shop panels, while non-shop venue interactions sit below NPC/activity/shop priority in `InteractionController`.
@@ -191,6 +204,8 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Phone UI is functional but still a shell; it is not a polished production phone app.
 - Godmode is simple and development-only.
 - Core daily loop is now playable but not fully tuned by human feel; activity deltas are intentionally conservative and should be adjusted after a few real-device day runs.
+- Phase B social content is dev-authored only. Players can attend events and join clubs, but cannot create/host events, create clubs, author promotions, hatch housing groups, or use real-world integrations yet.
+- Relationship arc payoffs are local hooks/text plus small state changes. Discount and housing-lead payoffs are intentionally teasers, not live commerce or housing systems.
 - Map discovery now has a compact minimap, but it is still a lightweight orientation aid rather than a full interactive map.
 - The active map is one authored street only. Non-Pantai venues are deferred except for quest-critical Raya Semat stubs (`baked_berawa`, `canggu_station`) and the separate `berawa_beach` anchor.
 - The older OSM/scaled renderer code still exists as dormant fallback/debt in `GameScene.ts` and map modules. It is no longer the active playable surface on `feat/authored-tile-street`.
@@ -207,6 +222,8 @@ Copy/paste this into a new AI session to bring it up to speed.
 ## Next Move
 
 1. Do a human play-feel pass:
+   - Play two or three days with the Phase B social layer: attend a public event, join a club, watch the club-only event appear, and talk to Ari/Made/Ibu Sari after building affinity.
+   - Confirm the social loop compounds in a fun way: events introduce people, relationships unlock invites/perks, clubs create recurring calendar reasons, and the chores-vs-social tension remains meaningful.
    - Play one full day with the new meters: work, eat/coffee, beach, social/party, then sleep. Confirm the scarcity feels meaningful rather than punishing.
    - At several venues, press `E` and confirm the activity menu reads clearly; at shops, confirm `Open buy/sell` still opens the old shop panel.
    - Use Phone > Quests to track the Settling In goals and Phone > Contacts to inspect NPC tier/perk changes after activities.

@@ -171,3 +171,13 @@ The existing authored street interaction now opens a venue activity menu on `E` 
 Activities at venues with associated NPCs bump relationship memory and affinity. The existing tiered scripted dialogue is the first perk: reaching stronger tiers unlocks warmer authored lines, and the Phone Contacts tab now shows the current tier and perk hook.
 
 The Settling In arc is a lightweight goal layer over runtime state, surfaced in the Phone Quests tab: Find your spot, First friend, Earn your keep, Touch grass, and Plug in. Completing all five marks the local `settledIn` flag and tees up the next chapter without adding a new storyline system.
+
+## 2026-06-23 - Phase B Social Layer: Events, Clubs, Arcs
+
+Events are now first-class, host-agnostic local entities. A `GameEvent` can be hosted by a venue, NPC, group, or future player id, but this step only uses dev-authored single-player content. Attendance happens on-site through the existing venue activity menu and applies local time, meter, money, NPC-affinity, reputation, and item effects. There are still no backend, multiplayer, live check-in, booking, payment, or venue API calls.
+
+Groups/clubs are now first-class, purpose-generic entities through `SocialGroupDefinition`. `purpose` includes ordinary social/run/coworking/surf/food values plus reserved `housing`, so a future Nomad Nest hatch can use the same shape without rewriting the group model. Players can join existing dev-authored clubs from Phone > Community or a club home venue; players cannot create clubs or host events yet.
+
+Relationship arcs are data-driven, account-portable runtime state under `world.life.relationshipArcProgress`. Ari, Made, and Ibu Sari have sequential beats gated by affinity, attended events, joined clubs, or starter-quest completion. Payoffs are local hooks/text only unless they join an existing club; discount and housing-lead beats deliberately remain future-facing teasers.
+
+Save schema is bumped to v8. Migration adds `life.joinedClubIds` and `life.relationshipArcProgress` with empty defaults while preserving existing money, quests, inventory, reputation, relationships, profile, portal, discovery, and activity history.
