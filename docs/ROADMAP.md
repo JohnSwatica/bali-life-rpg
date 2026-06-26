@@ -1,31 +1,54 @@
 # Expansion Roadmap
 
+## Progression Spine
+
+The current product spine is documented in [STORY_ARC.md](../STORY_ARC.md). The game should give the player a concrete dream to chase:
+
+```text
+hustle -> people -> build -> community
+```
+
+Act milestones:
+
+- **Act 0 — 新手村 / Arrival:** Ibu Sari guides the first day, teaches movement, phone, scooter, first delivery, money/meters, and sleep.
+- **Act 1 — The Hustle:** delivery/gig app loop, star rating, scooter upkeep/upgrades, budget pressure, first recurring NPC relationships.
+- **Act 2 — Finding Your People:** events, clubs, relationship arcs, social standing, and crew formation become the emotional heart.
+- **Act 3 — Building Something:** the player opens a warung/café, saves for a villa, and upgrades to a real bike.
+- **Act 4 — The Good Life:** solo win condition: villa + business + bike.
+- **Act 5 — The Open World:** multiplayer and Nomad Nest unlock after the solo win; community becomes the endgame.
+
+Locked direction from [ACT3_BUSINESS_DESIGN.md](../ACT3_BUSINESS_DESIGN.md):
+
+- Mentor: **Ibu Sari**.
+- Tone: grounded aspiration with affectionate/gentle Canggu satire.
+- Romance: friendship-first for now.
+- Solo win condition: **all three** — villa + business + bike.
+- Pacing target: roughly **two hours per act**.
+- Act 3 first implementation: light stock-and-serve management, deepen later.
+
 ## Next Gameplay Steps
 
-- Add interiors for Canggu Station, Milk & Madu Berawa, BAKED. Berawa, Bungalow Living Bali, and Satu-Satu Coffee Company.
-- Convert quest logic into data-driven objective handlers.
-- Expand relationship/friendship values per NPC and venue.
-- Expand the phone calendar with more Berawa surf mornings, cafe busy hours, and FINNS-area events.
-- Add cooking or crafting using grocery and cafe ingredients.
-- Add selectable venue detail pages and richer profile editing inside the phone.
+- Build the Act 0 guided 新手村 tutorial around Ibu Sari, the cheap kos, first scooter, first BAKED delivery, first meal/coffee, and sleep.
+- Add a delivery/gig loop with accept -> pickup -> dropoff -> paid -> star rating, reusing the committed activity/opportunity flow where possible.
+- Add the rating/upgrades economy that makes Act 1 hustle progression visible: better gigs, scooter repair/upgrade, rent pressure, and first move-out milestone.
+- Rewire existing events/clubs/relationship arcs so they sit clearly as Act 2 payoffs rather than disconnected side content.
+- Keep Act 3 business hooks in data/state only until Act 0/1/2 are fun and proven: crew candidates from relationship arcs, venue rating/reputation compatibility, and future player-owned venue seams.
+- Add interiors for Canggu Station, Milk & Madu Berawa, BAKED. Berawa, Bungalow Living Bali, and Satu-Satu Coffee Company when they directly support the tutorial/hustle/social beats.
 
 ## Future Opening Tutorial
 
-Do not build a full tutorial system until the core slice stabilizes. The intended tutorial is a Pokemon-style opening walkthrough led by a local NPC who introduces the player to Berawa as a daily-life loop, not a combat loop.
+The intended tutorial is now Act 0 / 新手村: a guided first day led by Ibu Sari. It should feel like a Pokemon-style opening walkthrough for a daily-life hustle sim, not a combat loop.
 
 Planned beats:
 
-- Movement: WASD/arrows, touch joystick, and the idea that walking is intentionally inefficient across Berawa.
-- Interaction: `E` / `ACT` with NPCs, shops, pickups, venues, activities, and flagged-only community enforcement.
-- Phone: `P` / mobile `PHONE`, including Map, Quests, Profile/lifestyle tags, Venues, Events, and Community.
-- Shops: buy/sell basics at Canggu Station or a cafe, with money shown as a local-life resource.
-- Starter quests: restock/help errands that teach pickups, buying, and quest turn-ins.
-- Scooter rental: earn enough money, rent a scooter, toggle with `B`, and understand road speed vs. mud/sand risk.
-- Save/load: teach `F5`, autosave expectations, and localStorage persistence.
-- Map discovery: reveal areas and venue names by visiting them rather than seeing a complete named map from minute one.
-- Social/event systems: join a low-stakes interest group and see line-following/group movement as the bridge to future real-world events.
+- Start at the cheap kos at dusk with very little money.
+- Walk to Ibu Sari's warung: movement, waypoint/objective arrow, first relationship anchor.
+- Borrow the beat-up scooter and sign onto the gig app: riding, phone, and the premise that hustle is the verb.
+- First delivery: BAKED pickup -> villa dropoff -> payment + first star rating.
+- Spend first earnings on food/coffee: money, Energy, Wellbeing, and opportunity cost.
+- Ride home and sleep: day cycle, save expectations, and "first day survived" milestone.
 
-Current placeholder: a first-run hint panel lists only the basic controls. It is intentionally not a quest/tutorial engine.
+The old first-run hint panel can remain as a temporary control reminder, but it should not replace this guided Act 0.
 
 ## Art and UX
 
@@ -44,3 +67,4 @@ Current placeholder: a first-run hint panel lists only the basic controls. It is
 - Add server-authoritative multiplayer following `MULTIPLAYER_ROADMAP.md`.
 - Back `PlayerProfile` with a shared remote account when the companion co-living app exists.
 - Replace placeholder venue commerce/check-in/booking/delivery fields with real service integrations only after venue ownership and trust rules exist.
+- Keep Act 3 business data compatible with existing venue/reputation/rating shapes, but do not build the management layer before the tutorial, hustle loop, and social layer are proven.

@@ -211,3 +211,33 @@ Venue activities should be legible moments, not invisible accounting. Regular ac
 The activity-real sprint uses the Hybrid approach: the committed state is universal, and minigames are layered onto high-impact activity types only. Work/gig/help-out use a timing tap, surf/beach uses a balance tap, and social/hangout uses a tiny authored choice. This avoids turning every routine into a minigame while giving the core loop varied verbs.
 
 Performance is intentionally optional and bounded. Skipping a minigame resolves at a steady default score; explicit scores scale only positive rewards with a conservative `0.72x..1.28x` multiplier. Costs and negative meter deltas remain unchanged so minigames do not remove the daily-life trade-offs.
+
+## 2026-06-26 - Progression Spine: Hustle -> People -> Build -> Community
+
+The project now has a canonical act structure in `STORY_ARC.md`. The player fantasy is no longer just wandering a Berawa social map; it is arriving broke, surviving through hustle, finding people, building something, reaching a solo life milestone, and then opening the gates to multiplayer/community.
+
+The act order is:
+
+- Act 0: 新手村 / Arrival tutorial with Ibu Sari.
+- Act 1: The Hustle, centered on deliveries/gigs, rating, scooter survival, and rent pressure.
+- Act 2: Finding Your People, centered on events, clubs, relationship arcs, and social standing.
+- Act 3: Building Something, centered on a player-owned warung/café, villa savings, and a real bike.
+- Act 4: The Good Life, the solo win state.
+- Act 5: The Open World, multiplayer plus Nomad Nest.
+
+This means the immediate build priority should move toward Act 0/Act 1 clarity: first-day tutorial, delivery loop, star rating, and upgrades. Existing social systems should be reframed as Act 2 payoffs rather than more disconnected side content.
+
+## 2026-06-26 - Act 3 Business Is Designed Now, Built Later
+
+`ACT3_BUSINESS_DESIGN.md` defines the Act 3 ambition layer: the player opens a tiny warung that can grow into a café. The design is deliberately deferred until the tutorial, hustle loop, and social layer are fun and proven.
+
+Locked product calls:
+
+- Mentor remains Ibu Sari.
+- Tone is grounded aspiration with affectionate, gentle Canggu satire.
+- Romance stays friendship-first for now.
+- Solo win requires all three: villa + business + bike.
+- Pacing target is roughly two hours per act.
+- First business implementation should be light stock-and-serve management, with deeper supply/crew/pricing/random-event systems later.
+
+Near-term code should leave hooks for Act 3 rather than implement the full business sim: relationship arcs should be able to feed crew candidates, player-owned venues should reuse existing venue/rating/reputation shapes, and win-condition state should eventually track villa/business/bike completion.

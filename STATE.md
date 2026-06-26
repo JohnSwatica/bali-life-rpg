@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-06-23
+Last updated: 2026-06-26
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -13,11 +13,14 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
-- Current branch for the liveliness/opportunity sprint: `feat/opportunity-engine`, branched from `chore/core-test-suite`.
+- Current branch: `feat/activities-real`.
 
 ## What Was Added Recently
 
 - Git is now initialized locally. Baseline and every sprint phase are committed.
+- Added [STORY_ARC.md](STORY_ARC.md), the canonical progression spine: Act 0 新手村 tutorial, Act 1 hustle, Act 2 people/social, Act 3 build your warung/café + villa + bike, Act 4 solo win, Act 5 multiplayer/Nomad Nest open world.
+- Added [ACT3_BUSINESS_DESIGN.md](ACT3_BUSINESS_DESIGN.md), the deferred Act 3 ambition-layer design. It locks Ibu Sari as mentor, friendship-first tone, gentle Canggu satire, villa + business + bike as the solo win condition, and roughly two hours per act. Act 3 should be designed for hooks now but built after the tutorial/hustle/social layers are proven.
+- Updated [docs/ROADMAP.md](docs/ROADMAP.md) so near-term gameplay points toward Act 0/Act 1: guided Ibu Sari first day, scooter/gig app, first BAKED delivery, first meal/coffee, sleep, then the delivery/star-rating/upgrades economy.
 - The six action buttons (`PHONE`, `SAVE`, `SOC`, `BIKE`, `BAG`, `ACT`) are now fixed DOM overlay buttons instead of Phaser game objects, so camera zoom/scale cannot push them off-screen. The minimap is now a fixed DOM canvas, also independent of world camera zoom.
 - Core daily life loop added locally: `WorldState.meters` now tracks Energy, Wellbeing, Focus, and Social while Money remains on the local player. The fixed DOM HUD shows Money + all four meters.
 - Phase B social layer added locally: events are first-class and host-agnostic, clubs/groups are first-class and purpose-generic, relationship arcs deepen key NPC friendships, and the Settling In goals now include event attendance, joining a crew, and completing a bond beat.
@@ -247,7 +250,21 @@ Copy/paste this into a new AI session to bring it up to speed.
 
 ## Next Move
 
-1. Do a human play-feel pass:
+1. Build the Act 0 / Act 1 spine:
+   - Add the guided 新手村 first-day tutorial with Ibu Sari: kos start, walk to warung, borrow beat-up scooter, phone/gig app intro, first BAKED delivery, first meal/coffee, ride home, sleep.
+   - Add a real delivery/gig loop: accept -> pickup -> dropoff -> paid -> star rating, reusing committed activities/opportunities where possible.
+   - Add driver/gig rating and simple scooter/rent pressure so Act 1 has visible survival progression.
+   - Use the existing opportunity engine as the source of rush jobs, weather-ish curveballs, fragile-cargo runs, and better gigs unlocked by rating/reputation.
+
+2. Reframe the existing social layer as Act 2:
+   - Events, clubs, relationship arcs, and the Settling In goals should read as the payoff after the player has basic income and breathing room.
+   - Social standing should unlock premium gigs/perks and eventually crew support for Act 3.
+
+3. Keep Act 3 as hooks only for now:
+   - Do not build the business-management sim until Act 0/1/2 feel fun.
+   - Preserve hooks for future business ownership: crew candidates from relationship arcs, player-owned venue state, rating/review compatibility, and villa/bike/business win-condition flags.
+
+4. Do a human play-feel pass:
    - Play two or three days with the Phase B social layer: attend a public event, join a club, watch the club-only event appear, and talk to Ari/Made/Ibu Sari after building affinity.
    - Confirm the social loop compounds in a fun way: events introduce people, relationships unlock invites/perks, clubs create recurring calendar reasons, and the chores-vs-social tension remains meaningful.
    - Play one full day with the new meters: work, eat/coffee, beach, social/party, then sleep. Confirm the scarcity feels meaningful rather than punishing.
@@ -264,11 +281,11 @@ Copy/paste this into a new AI session to bring it up to speed.
    - Open Phone > Venues > Details and inspect discovery filtering plus associated NPCs/items/quests visually.
    - Build NPC affinity through memory and confirm Contacts/dialogue feel readable.
 
-2. Continue decomposition carefully:
+5. Continue decomposition carefully:
    - Extract world/render drawing only if behavior can stay identical.
    - Add focused tests around `QuestRegistry`, `Persistence`, `InteractionController`, and `ReputationState`.
 
-3. Continue Berawa credibility:
+6. Continue Berawa credibility:
    - Add a proper Raya Semat authored street template, then remove the temporary BAKED/Canggu Station stubs.
    - Use `pantaiBerawaCrossStreets` as the source for upcoming cross-street templates: Subak Sari, Pemelisan Agung, Taman Tamora, Subak Canggu, Tegal Sari, and Raya Semat.
    - Resolve flagged street-placement conflicts before treating the authored order as final truth: Bakersfield, BAKED, and Da Romeo.
@@ -277,11 +294,11 @@ Copy/paste this into a new AI session to bring it up to speed.
    - Curate a small verified venue file before adding more real-world-name candidates.
    - Add a compact map UI only after discovery state is stable on the authored street.
 
-4. Expose crafting later:
+7. Expose crafting later:
    - Add a small Phone/Home/godmode action for `CraftingSystem`.
    - Keep it a routine/social system, not a combat or heavy minigame.
 
-5. Add a remote and open PR when repository access exists.
+8. Add a remote and open PR when repository access exists.
 
 ## PR-Ready Summary
 
