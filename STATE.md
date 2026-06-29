@@ -19,6 +19,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 
 - Act 0 / Act 1 hustle spine is now underway on `feat/act0-hustle-loop`: new local state tracks `world.life.actProgress` and `world.life.hustle`, including Act 0 tutorial step, first-day completion, active delivery, driver rating, delivery earnings, scooter tier, rent target, and move-out readiness.
 - Save schema is now v11. Older saves migrate by adding Act 0 progress and hustle defaults without wiping money, quests, inventory, relationships, reputation, discovery, profile, portal, meters, clubs, arcs, opportunities, or committed activities.
+- Save migration now infers Act 0 as complete for older saves that already have life-loop/social progress (`activityHistory`, completed goals, joined clubs, relationship arcs, or settled-in state), so established local test saves are not forced back into the new first-day tutorial.
 - Added `src/data/deliveries.ts` and `src/systems/hustle/DeliverySystem.ts` for deterministic local delivery flow: accept -> pickup -> dropoff -> payout -> driver rating/reputation/relationship rewards. The first scripted delivery is Ibu Sari's BAKED villa drop.
 - The Phone Feed now includes a local Hustle Board. After the first day is complete and the player has a scooter, it offers repeatable delivery jobs with driver-rating and completed-delivery gates; locked jobs show the reason rather than pretending to be available.
 - Current delivery jobs: first BAKED villa drop, Milk & Madu brunch bag, Satu-Satu invoice pouch, and FINNS linen bundle.

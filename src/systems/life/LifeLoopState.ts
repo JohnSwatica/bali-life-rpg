@@ -50,20 +50,35 @@ export function migrateLifeLoopState(rawLife: unknown): LifeLoopState {
     return base;
   }
   const partial = rawLife as Partial<LifeLoopState> & Record<string, unknown>;
+  const legacyLifeProgress = hasLegacyLifeProgress(partial);
   return {
     activityHistory: partial.activityHistory ?? {},
     completedGoalIds: partial.completedGoalIds ?? [],
     joinedClubIds: partial.joinedClubIds ?? [],
     relationshipArcProgress: partial.relationshipArcProgress ?? {},
     settledIn: partial.settledIn ?? false,
-    actProgress: migrateActProgressState(partial.actProgress),
+    actProgress: migrateActProgressState(partial.actProgress, legacyLifeProgress, partial.settledIn ?? false),
     hustle: migrateHustleState(partial.hustle)
   };
 }
 
-function migrateActProgressState(raw: unknown): ActProgressState {
+function migrateActProgressState(raw: unknown, legacyLifeProgress = false, settledIn = false): ActProgressState {
   const base = createDefaultActProgressState();
   if (!raw || typeof raw !== "object") {
+    if (legacyLifeProgress) {
+      return {
+        currentAct: settledIn ? 2 : 1,
+        act0Step: "complete",
+        completedAct0StepIds: [
+          "meet_ibu_sari",
+          "pickup_first_delivery",
+          "dropoff_first_delivery",
+          "buy_meal_and_coffee",
+          "sleep_first_night"
+        ],
+        firstDayComplete: true
+      };
+    }
     return base;
   }
   const value = raw as Partial<ActProgressState>;
@@ -74,6 +89,18 @@ function migrateActProgressState(raw: unknown): ActProgressState {
     completedAct0StepIds: Array.isArray(value.completedAct0StepIds) ? value.completedAct0StepIds.filter(isAct0Step) : [],
     firstDayComplete: value.firstDayComplete ?? act0Step === "complete"
   };
+}
+
+function hasLegacyLifeProgress(value: Partial<LifeLoopState> & Record<string, unknown>): boolean {
+  return Boolean(
+    value.settledIn ||
+      (Array.isArray(value.completedGoalIds) && value.completedGoalIds.length > 0) ||
+      (Array.isArray(value.joinedClubIds) && value.joinedClubIds.length > 0) ||
+      (value.activityHistory && typeof value.activityHistory === "object" && Object.keys(value.activityHistory).length > 0) ||
+      (value.relationshipArcProgress &&
+        typeof value.relationshipArcProgress === "object" &&
+        Object.keys(value.relationshipArcProgress).length > 0)
+  );
 }
 
 function migrateHustleState(raw: unknown): HustleState {

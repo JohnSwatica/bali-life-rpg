@@ -245,7 +245,9 @@ describe("Persistence migration", () => {
       expectCommonMigrationFields(world);
       expect(world.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
       expect(world.life.joinedClubIds).toEqual(testCase.version === 7 || testCase.version === 10 ? ["berawa_run_crew"] : []);
-      expect(world.life.actProgress.act0Step).toBe("meet_ibu_sari");
+      const shouldInferAct0Complete = testCase.version === 6 || testCase.version === 7 || testCase.version === 10;
+      expect(world.life.actProgress.act0Step).toBe(shouldInferAct0Complete ? "complete" : "meet_ibu_sari");
+      expect(world.life.actProgress.firstDayComplete).toBe(shouldInferAct0Complete);
       expect(world.life.hustle.driverRating).toBe(3.2);
       expect(world.life.hustle.activeDelivery).toBeNull();
       expect(world.life.relationshipArcProgress).toEqual(
