@@ -260,12 +260,12 @@ export class PhoneShell {
     const world = this.options.getWorld();
     const activeDelivery = world.life.hustle.activeDelivery;
     const rentPressure = getRentPressureState(world);
+    const player = world.players[world.localPlayerId];
     this.renderTextList(container, x, y, width, [
       `Hustle Board: ${world.life.hustle.completedDeliveryCount} runs | Rp ${world.life.hustle.deliveryEarnings} earned | ${world.life.hustle.driverRating.toFixed(1)}★`,
-      `Rent target: Rp ${world.life.hustle.rentAmount} by Day ${world.life.hustle.rentDueDay} (${rentPressure.shortLabel}) | Scooter: ${world.life.hustle.scooterTier.replace(/_/g, " ")}`
+      `Rent target: Rp ${world.life.hustle.rentAmount} by Day ${world.life.hustle.rentDueDay} (${rentPressure.shortLabel}) | Scooter: ${world.life.hustle.scooterTier.replace(/_/g, " ")} ${player.bikeCondition}%`
     ]);
     let rowY = y + 50;
-    const player = world.players[world.localPlayerId];
     const rentReady = player.money >= world.life.hustle.rentAmount;
     const repairStatus = getScooterRepairStatus(world);
     const scooterUpgrade = getScooterUpgradeStatus(world);
@@ -315,7 +315,7 @@ export class PhoneShell {
       repairY,
       compactActions ? actionWidth : 132,
       28,
-      repairStatus.available ? "Repair" : "Repair Locked",
+      repairStatus.available ? `Repair Rp ${repairStatus.cost}` : "Repair Locked",
       () => {
         if (repairStatus.available) {
           this.options.onRepairScooter();
