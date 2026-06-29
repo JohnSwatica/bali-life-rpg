@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getQuantity } from "../systems/Inventory";
 import { acceptDelivery, completeDelivery, getDeliveryOfferAvailability, pickupDelivery } from "../systems/hustle/DeliverySystem";
 import { getScooterUpgradeStatus, payHustleRent, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
+import { getHustleGoalStates } from "../systems/hustle/HustleGoals";
 import { completeAct0Step, markAct0MealProgress } from "../systems/life/ActProgression";
 import { getRelationship } from "../systems/relationships/RelationshipMemory";
 import { createInitialWorldState } from "../systems/WorldState";
@@ -133,5 +134,33 @@ describe("Act 0 hustle and deliveries", () => {
     expect(player.bikeCondition).toBe(100);
     expect(world.life.hustle.scooterTier).toBe("daily_rental");
     expect(getQuantity(player, "scooter_key")).toBe(1);
+  });
+
+  it("derives Act 1 hustle goals from delivery, rent, scooter, and move-out state", () => {
+    const world = createInitialWorldState();
+    let states = Object.fromEntries(getHustleGoalStates(world).map((goal) => [goal.id, goal.complete]));
+    expect(states).toEqual({
+      first_delivery: false,
+      steady_runner: false,
+      daily_scooter: false,
+      cover_first_rent: false,
+      move_out_ready: false
+    });
+
+    world.life.hustle.completedDeliveryCount = 5;
+    world.life.hustle.deliveryEarnings = 720;
+    world.life.hustle.driverRating = 4.3;
+    world.life.hustle.scooterTier = "daily_rental";
+    world.life.hustle.rentDueDay = 7;
+    world.life.hustle.moveOutReady = true;
+
+    states = Object.fromEntries(getHustleGoalStates(world).map((goal) => [goal.id, goal.complete]));
+    expect(states).toEqual({
+      first_delivery: true,
+      steady_runner: true,
+      daily_scooter: true,
+      cover_first_rent: true,
+      move_out_ready: true
+    });
   });
 });

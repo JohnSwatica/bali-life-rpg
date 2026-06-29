@@ -17,6 +17,7 @@ import { getSettlingInGoalStates } from "../../systems/life/SettlingInGoals";
 import { getDeliveryDefinition } from "../../data/deliveries";
 import { getDeliveryOfferAvailability } from "../../systems/hustle/DeliverySystem";
 import { getScooterUpgradeStatus } from "../../systems/hustle/HustleEconomy";
+import { getHustleGoalStates } from "../../systems/hustle/HustleGoals";
 import type { GameEvent, RelationshipMemory, Venue, WorldState } from "../../types";
 
 const PHONE_DEPTH = 1500;
@@ -380,8 +381,12 @@ export class PhoneShell {
     const complete = player.completedQuestIds.map((id) => `Done: ${questDefinitions[id]?.title ?? id}`);
     const quests = [...active, ...complete].length ? [...active, ...complete] : ["No active quests. Talk to Ibu Sari or Kadek."];
     const goals = getSettlingInGoalStates(world).map((goal) => `${goal.complete ? "Done" : "Goal"}: ${goal.title} - ${goal.description}`);
+    const hustleGoals = getHustleGoalStates(world).map((goal) => `${goal.complete ? "Done" : "Hustle"}: ${goal.title} - ${goal.description}`);
     return [
       ...quests,
+      "",
+      "Act 1 Hustle",
+      ...hustleGoals,
       "",
       "Settling In",
       ...goals,
