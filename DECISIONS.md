@@ -297,3 +297,9 @@ This adds survival texture to Act 1 without making the game punitive: there is n
 When a delivery crosses the move-out threshold, `world.life.actProgress.currentAct` advances to `2`. The HUD then points the player toward the existing events, clubs, and relationship arcs as the "Finding Your People" chapter.
 
 This intentionally reframes already-built Phase B systems as the Act 2 payoff instead of adding another social layer. Act 3 business/villa mechanics remain documented hooks only.
+
+## 2026-06-29 - Act 2 Handoff Uses Existing Social Systems
+
+The move from Act 1 into Act 2 is deliberately a bridge, not another new subsystem. If the player has reached Act 2 but has not joined a club, Ari can send one local daily phone invite nudging them toward the beach crew/focus-table loop.
+
+The map/minimap guide layer now surfaces `Find beach crew` at Berawa Beach and `Find focus table` at Satu-Satu Coffee while the player is clubless in Act 2. This keeps the next step visible and uses the existing events, clubs, and relationship arcs as the social payoff.
