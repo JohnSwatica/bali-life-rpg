@@ -1857,7 +1857,7 @@ export class GameScene extends Phaser.Scene {
       return [
         this.world.life.actProgress.currentAct >= 2 ? "Act 2: finding your people." : "Act 1 milestone: move-out ready.",
         this.world.life.actProgress.currentAct >= 2
-          ? "You have breathing room. Attend events, join a crew, and turn familiar faces into real friends."
+          ? "You have breathing room. Follow the social markers, join a crew, and turn familiar faces into real friends."
           : "You have the runs, rating, and cash record to leave the cramped kos. Next chapter: people, crew, and a better room."
       ];
     }
@@ -4507,6 +4507,15 @@ export class GameScene extends Phaser.Scene {
           radius: playerHomeBase.radius
         }
       ];
+    }
+    if (this.world.life.actProgress.currentAct >= 2 && this.world.life.joinedClubIds.length === 0) {
+      return ["berawa_beach", "satu_satu_coffee"]
+        .map((venueId) => {
+          const node = venueMapNodes.find((candidate) => candidate.venueId === venueId);
+          const label = venueId === "berawa_beach" ? "Find beach crew" : "Find focus table";
+          return node ? { id: `act2_${venueId}`, label, x: node.x, y: node.y, radius: Math.min(node.radius, scaleDistance(118)) } : null;
+        })
+        .filter((target): target is { id: string; label: string; x: number; y: number; radius: number } => Boolean(target));
     }
     return [];
   }

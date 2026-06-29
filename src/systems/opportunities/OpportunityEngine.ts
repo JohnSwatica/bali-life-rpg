@@ -171,6 +171,17 @@ export function generateOpportunityPhoneTexts(state: OpportunityRuntimeState, wo
     });
   }
 
+  if (world.life.actProgress.currentAct >= 2 && world.life.joinedClubIds.length === 0 && isHourInWindow(hour, 7, 22)) {
+    candidates.push({
+      id: `act2-invite:ari:${dayKey}`,
+      at: now,
+      from: "Ari",
+      body: "Heard you finally got breathing room. Beach crew is an easy first circle: run, surf, or just show up and learn names.",
+      venueId: "berawa_beach",
+      read: false
+    });
+  }
+
   const rentPressure = getRentPressureState(world);
   if (world.life.actProgress.firstDayComplete && rentPressure.status !== "comfortable" && isHourInWindow(hour, 7, 21)) {
     candidates.push({

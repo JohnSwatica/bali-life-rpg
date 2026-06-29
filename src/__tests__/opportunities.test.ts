@@ -174,4 +174,23 @@ describe("opportunity engine", () => {
     );
     expect(generateOpportunityPhoneTexts(state, world).filter((message) => message.id.startsWith("rent-reminder"))).toEqual([]);
   });
+
+  it("sends an Act 2 social invite until the player joins a club", () => {
+    const world = createInitialWorldState();
+    const state = createDefaultOpportunityState();
+    world.life.actProgress.firstDayComplete = true;
+    world.life.actProgress.currentAct = 2;
+    world.life.hustle.moveOutReady = true;
+    setHour(world, 12);
+
+    const created = generateOpportunityPhoneTexts(state, world);
+    expect(created).toContainEqual(
+      expect.objectContaining({ id: "act2-invite:ari:1", from: "Ari", venueId: "berawa_beach" })
+    );
+    expect(generateOpportunityPhoneTexts(state, world).filter((message) => message.id.startsWith("act2-invite"))).toEqual([]);
+
+    world.clock.day = 2;
+    world.life.joinedClubIds.push("berawa_run_crew");
+    expect(generateOpportunityPhoneTexts(state, world).some((message) => message.id.startsWith("act2-invite"))).toBe(false);
+  });
 });
