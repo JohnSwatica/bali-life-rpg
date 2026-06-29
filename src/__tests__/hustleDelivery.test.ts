@@ -114,9 +114,35 @@ describe("Act 0 hustle and deliveries", () => {
     offers = getDeliveryOfferAvailability(world);
     expect(offers.find((offer) => offer.delivery.id === "milk_madu_brunch_bag")).toMatchObject({ available: true });
     expect(offers.find((offer) => offer.delivery.id === "satu_satu_invoice_pouch")).toMatchObject({ available: true });
+    expect(offers.find((offer) => offer.delivery.id === "nude_cold_bag_run")).toMatchObject({
+      available: false,
+      reason: "Need 2 completed deliveries."
+    });
+    expect(offers.find((offer) => offer.delivery.id === "beach_wristband_pouch")).toMatchObject({
+      available: false,
+      reason: "Need 3 completed deliveries."
+    });
     expect(offers.find((offer) => offer.delivery.id === "finns_linen_bundle")).toMatchObject({
       available: false,
       reason: "Need 3 completed deliveries."
+    });
+
+    world.life.hustle.completedDeliveryCount = 2;
+    world.life.hustle.driverRating = 3.8;
+    offers = getDeliveryOfferAvailability(world);
+    expect(offers.find((offer) => offer.delivery.id === "nude_cold_bag_run")).toMatchObject({ available: true });
+    expect(offers.find((offer) => offer.delivery.id === "beach_wristband_pouch")).toMatchObject({
+      available: false,
+      reason: "Need 3 completed deliveries."
+    });
+
+    world.life.hustle.completedDeliveryCount = 3;
+    world.life.hustle.driverRating = 4;
+    offers = getDeliveryOfferAvailability(world);
+    expect(offers.find((offer) => offer.delivery.id === "beach_wristband_pouch")).toMatchObject({ available: true });
+    expect(offers.find((offer) => offer.delivery.id === "finns_linen_bundle")).toMatchObject({
+      available: false,
+      reason: "Need 4.1★ driver rating."
     });
 
     const accepted = acceptDelivery(world, "milk_madu_brunch_bag", 2 * 1440 + 9 * 60);

@@ -153,6 +153,94 @@ export const deliveryDefinitions: DeliveryDefinition[] = [
     ]
   },
   {
+    id: "nude_cold_bag_run",
+    title: "Nude cold bag run",
+    description: "An insulated cafe bag from Nude to a regular near Bungalow Living. Good rhythm practice.",
+    pickupVenueId: "nude_cafe_berawa",
+    pickupLabel: "Pick up the sealed cold bag at Nude.",
+    dropoffId: "bungalow_regular_drop",
+    dropoffName: "Bungalow Regular",
+    dropoffLabel: "Hand the cold bag to the Bungalow-side regular.",
+    dropoffPoint: {
+      ...offsetVenuePoint("bungalow_living", { x: 1500, y: 640 }, -88, 96),
+      radius: 76
+    },
+    itemId: "delivery_cold_bag",
+    timeLimitMin: 72,
+    payout: 138,
+    meterDeltas: { energy: -11, focus: 4, social: 2 },
+    affinityBumps: [{ npcId: "made", amount: 2 }],
+    reputation: { delta: 1, tag: "reliable", reason: "Completed a cafe cold-bag delivery" },
+    ratingWeight: 0.8,
+    boardAvailable: true,
+    repeatable: true,
+    minDriverRating: 3.7,
+    minCompletedDeliveries: 2,
+    conditions: [
+      {
+        id: "keep_it_cold",
+        label: "Keep it cold",
+        description: "The bag needs a clean, direct ride before the ice sweats through.",
+        payoutBonus: 24,
+        timeLimitDeltaMin: -8,
+        meterDeltas: { focus: 2 },
+        ratingModifier: -0.05
+      },
+      {
+        id: "regular_tip",
+        label: "Regular tip",
+        description: "A familiar regular is tipping for a smooth drop with no fuss.",
+        payoutBonus: 20,
+        meterDeltas: { social: 1 },
+        ratingModifier: 0.1
+      }
+    ]
+  },
+  {
+    id: "beach_wristband_pouch",
+    title: "Beach wristband pouch",
+    description: "A higher-trust wristband pouch from the rental side down toward the beach-club gate.",
+    pickupVenueId: "bali_family_rental_scooter",
+    pickupLabel: "Pick up the sealed wristband pouch at the rental counter.",
+    dropoffId: "finns_beach_wristband_gate",
+    dropoffName: "FINNS Wristband Gate",
+    dropoffLabel: "Drop the wristband pouch by the beach-club gate.",
+    dropoffPoint: {
+      ...offsetVenuePoint("finns_beach_club", { x: 1120, y: 1680 }, -92, -54),
+      radius: 80
+    },
+    itemId: "wristband_pouch",
+    timeLimitMin: 82,
+    payout: 168,
+    meterDeltas: { energy: -14, wellbeing: 1, focus: 5, social: 2 },
+    affinityBumps: [{ npcId: "ari", amount: 1 }],
+    reputation: { delta: 2, tag: "venue_regular", reason: "Completed a trusted wristband delivery" },
+    ratingWeight: 0.9,
+    boardAvailable: true,
+    repeatable: true,
+    minDriverRating: 4,
+    minCompletedDeliveries: 3,
+    conditions: [
+      {
+        id: "gate_queue",
+        label: "Gate queue",
+        description: "The gate line is building. Faster arrival earns better trust.",
+        payoutBonus: 34,
+        timeLimitDeltaMin: -10,
+        meterDeltas: { energy: -2, focus: 2 },
+        ratingModifier: -0.1
+      },
+      {
+        id: "security_expectation",
+        label: "Security expects you",
+        description: "A clean handoff through the service lane pays a little better.",
+        payoutBonus: 22,
+        meterDeltas: { social: 1, focus: 1 },
+        ratingModifier: 0.1
+      }
+    ]
+  },
+  {
     id: "finns_linen_bundle",
     title: "FINNS linen bundle",
     description: "A higher-trust run toward the beach end. Better payout, less room for sloppy riding.",

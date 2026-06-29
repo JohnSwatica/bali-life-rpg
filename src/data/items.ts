@@ -85,6 +85,20 @@ export const itemDefinitions: Record<string, ItemDefinition> = {
     buyPrice: 0,
     sellPrice: 0
   },
+  delivery_cold_bag: {
+    id: "delivery_cold_bag",
+    name: "Delivery Cold Bag",
+    description: "A sealed insulated bag for a cafe delivery. The customer is waiting, so no peeking.",
+    buyPrice: 0,
+    sellPrice: 0
+  },
+  wristband_pouch: {
+    id: "wristband_pouch",
+    name: "Wristband Pouch",
+    description: "A small sealed pouch of venue wristbands for a trusted beach-side run.",
+    buyPrice: 0,
+    sellPrice: 0
+  },
   linen_bundle: {
     id: "linen_bundle",
     name: "Linen Bundle",

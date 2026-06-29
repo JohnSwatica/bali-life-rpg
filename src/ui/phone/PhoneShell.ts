@@ -348,7 +348,7 @@ export class PhoneShell {
       return rowY + 42;
     }
 
-    for (const offer of offers.slice(0, 3)) {
+    for (const offer of offers.slice(0, 5)) {
       const delivery = offer.delivery;
       const condition = offer.available ? previewDeliveryCondition(world, delivery, this.options.getNow()) : undefined;
       const terms = getEffectiveDeliveryTerms(delivery, condition);
