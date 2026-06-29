@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { getQuantity } from "../systems/Inventory";
-import { acceptDelivery, completeDelivery, getDeliveryOfferAvailability, pickupDelivery } from "../systems/hustle/DeliverySystem";
+import {
+  acceptDelivery,
+  calculateDeliveryPayout,
+  completeDelivery,
+  getDeliveryOfferAvailability,
+  getEffectiveDeliveryTerms,
+  pickupDelivery,
+  previewDeliveryCondition
+} from "../systems/hustle/DeliverySystem";
 import { getScooterUpgradeStatus, payHustleRent, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
 import { getHustleGoalStates } from "../systems/hustle/HustleGoals";
 import { completeAct0Step, markAct0MealProgress } from "../systems/life/ActProgression";
@@ -108,6 +116,36 @@ describe("Act 0 hustle and deliveries", () => {
     expect(accepted.ok).toBe(true);
     expect(world.life.hustle.activeDelivery?.deliveryId).toBe("milk_madu_brunch_bag");
     expect(getDeliveryOfferAvailability(world).every((offer) => !offer.available)).toBe(true);
+  });
+
+  it("applies deterministic delivery board conditions to deadline and payout", () => {
+    const world = createInitialWorldState();
+    world.players[world.localPlayerId].hasBike = true;
+    world.life.actProgress.firstDayComplete = true;
+    world.life.actProgress.currentAct = 1;
+    world.life.hustle.completedDeliveryCount = 1;
+    world.life.hustle.driverRating = 3.6;
+    const now = 2 * 1440 + 9 * 60;
+    const delivery = getDeliveryOfferAvailability(world).find((offer) => offer.delivery.id === "milk_madu_brunch_bag")?.delivery;
+    expect(delivery).toBeDefined();
+    const condition = previewDeliveryCondition(world, delivery!, now);
+    expect(condition).toBeDefined();
+    const terms = getEffectiveDeliveryTerms(delivery!, condition);
+
+    const accepted = acceptDelivery(world, delivery!.id, now);
+    expect(accepted).toMatchObject({ ok: true });
+    expect(world.life.hustle.activeDelivery).toMatchObject({
+      deliveryId: delivery!.id,
+      conditionId: condition!.id,
+      dueAt: now + terms.timeLimitMin
+    });
+
+    expect(pickupDelivery(world, now + 8)).toMatchObject({ ok: true });
+    const completed = completeDelivery(world, now + 32, 0.9);
+    expect(completed.ok).toBe(true);
+    expect(completed.starRating).toBeDefined();
+    expect(completed.payout).toBe(calculateDeliveryPayout(terms.payout, completed.starRating!));
+    expect(world.life.hustle.deliveryEarnings).toBe(completed.payout);
   });
 
   it("lets hustle earnings pay rent and upgrade the borrowed scooter", () => {

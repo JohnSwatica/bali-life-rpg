@@ -15,7 +15,7 @@ import { getAffinityPerk, getAffinityTier, summarizeRelationshipMemories } from 
 import { getRelationshipArcStatesForNpc } from "../../systems/relationships/RelationshipArcs";
 import { getSettlingInGoalStates } from "../../systems/life/SettlingInGoals";
 import { getDeliveryDefinition } from "../../data/deliveries";
-import { getDeliveryOfferAvailability } from "../../systems/hustle/DeliverySystem";
+import { getDeliveryOfferAvailability, getEffectiveDeliveryTerms, previewDeliveryCondition } from "../../systems/hustle/DeliverySystem";
 import { getScooterUpgradeStatus } from "../../systems/hustle/HustleEconomy";
 import { getHustleGoalStates } from "../../systems/hustle/HustleGoals";
 import type { GameEvent, RelationshipMemory, Venue, WorldState } from "../../types";
@@ -305,8 +305,9 @@ export class PhoneShell {
     if (activeDelivery) {
       const delivery = getDeliveryDefinition(activeDelivery.deliveryId);
       const timeLeft = Math.max(0, Math.ceil(activeDelivery.dueAt - this.options.getNow()));
+      const condition = delivery?.conditions?.find((candidate) => candidate.id === activeDelivery.conditionId);
       this.renderTextList(container, x, rowY, width - 150, [
-        `Active: ${delivery?.title ?? activeDelivery.deliveryId}`,
+        `Active: ${delivery?.title ?? activeDelivery.deliveryId}${condition ? ` — ${condition.label}` : ""}`,
         `${activeDelivery.stage === "accepted" ? delivery?.pickupLabel ?? "Go to pickup." : delivery?.dropoffLabel ?? "Go to dropoff."} ${timeLeft} min left.`
       ]);
       this.addButton(container, x + width - 132, rowY + 2, 112, 30, "Tracked", () => {
@@ -323,10 +324,14 @@ export class PhoneShell {
 
     for (const offer of offers.slice(0, 3)) {
       const delivery = offer.delivery;
-      const gate = offer.available ? `Rp ${delivery.payout} base | ${delivery.timeLimitMin} min` : offer.reason ?? "Locked";
+      const condition = offer.available ? previewDeliveryCondition(world, delivery, this.options.getNow()) : undefined;
+      const terms = getEffectiveDeliveryTerms(delivery, condition);
+      const gate = offer.available
+        ? `Rp ${terms.payout} | ${terms.timeLimitMin} min${condition ? ` | ${condition.label}` : ""}`
+        : offer.reason ?? "Locked";
       this.renderTextList(container, x, rowY, width - 150, [
         `${delivery.title}${offer.available ? "" : " (locked)"}`,
-        `${gate}. ${delivery.description}`
+        `${gate}. ${condition?.description ?? delivery.description}`
       ]);
       this.addButton(
         container,

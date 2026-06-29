@@ -145,6 +145,7 @@ function migrateActiveDelivery(raw: unknown): ActiveDeliveryState | null {
     stage: value.stage,
     acceptedAt: value.acceptedAt,
     dueAt: value.dueAt,
+    conditionId: typeof value.conditionId === "string" ? value.conditionId : undefined,
     pickedUpAt: typeof value.pickedUpAt === "number" ? value.pickedUpAt : undefined,
     completedAt: typeof value.completedAt === "number" ? value.completedAt : undefined,
     starRating: typeof value.starRating === "number" ? clamp(value.starRating, 1, 5) : undefined

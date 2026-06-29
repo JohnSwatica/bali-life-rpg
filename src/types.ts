@@ -424,6 +424,7 @@ export interface ActiveDeliveryState {
   stage: DeliveryStage;
   acceptedAt: number;
   dueAt: number;
+  conditionId?: string;
   pickedUpAt?: number;
   completedAt?: number;
   starRating?: number;

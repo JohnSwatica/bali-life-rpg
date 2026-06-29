@@ -1860,11 +1860,13 @@ export class GameScene extends Phaser.Scene {
       const activeDelivery = this.world.life.hustle.activeDelivery;
       if (activeDelivery) {
         const delivery = getDeliveryDefinition(activeDelivery.deliveryId);
+        const condition = delivery?.conditions?.find((candidate) => candidate.id === activeDelivery.conditionId);
         const timeLeft = Math.max(0, Math.ceil(activeDelivery.dueAt - this.getAbsoluteMinute()));
+        const conditionLabel = condition ? ` ${condition.label}:` : "";
         lines.push(
           activeDelivery.stage === "accepted"
-            ? `Delivery: ${delivery?.pickupLabel ?? "go to pickup"} (${timeLeft} min left).`
-            : `Delivery: ${delivery?.dropoffLabel ?? "go to dropoff"} (${timeLeft} min left).`
+            ? `Delivery:${conditionLabel} ${delivery?.pickupLabel ?? "go to pickup"} (${timeLeft} min left).`
+            : `Delivery:${conditionLabel} ${delivery?.dropoffLabel ?? "go to dropoff"} (${timeLeft} min left).`
         );
       } else {
         const scooterUpgrade = getScooterUpgradeStatus(this.world);

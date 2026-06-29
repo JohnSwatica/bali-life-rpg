@@ -1,6 +1,16 @@
 import { offsetVenuePoint } from "./layoutLookup";
 import type { Meter, ReputationTag } from "../types";
 
+export interface DeliveryCondition {
+  id: string;
+  label: string;
+  description: string;
+  payoutBonus?: number;
+  timeLimitDeltaMin?: number;
+  meterDeltas?: Partial<Record<Meter, number>>;
+  ratingModifier?: number;
+}
+
 export interface DeliveryDefinition {
   id: string;
   title: string;
@@ -23,6 +33,7 @@ export interface DeliveryDefinition {
   repeatable?: boolean;
   minDriverRating?: number;
   minCompletedDeliveries?: number;
+  conditions?: DeliveryCondition[];
 }
 
 export const deliveryDefinitions: DeliveryDefinition[] = [
@@ -76,7 +87,26 @@ export const deliveryDefinitions: DeliveryDefinition[] = [
     boardAvailable: true,
     repeatable: true,
     minDriverRating: 3.2,
-    minCompletedDeliveries: 1
+    minCompletedDeliveries: 1,
+    conditions: [
+      {
+        id: "villa_tip",
+        label: "Villa tip",
+        description: "The villa crew promises a little extra if the brunch bag arrives warm.",
+        payoutBonus: 18,
+        meterDeltas: { social: 1 },
+        ratingModifier: 0.1
+      },
+      {
+        id: "rush_hour",
+        label: "Rush hour",
+        description: "Lunch traffic is thick, but the app is paying surge money.",
+        payoutBonus: 30,
+        timeLimitDeltaMin: -10,
+        meterDeltas: { energy: -3, focus: 2 },
+        ratingModifier: -0.1
+      }
+    ]
   },
   {
     id: "satu_satu_invoice_pouch",
@@ -101,7 +131,26 @@ export const deliveryDefinitions: DeliveryDefinition[] = [
     boardAvailable: true,
     repeatable: true,
     minDriverRating: 3.5,
-    minCompletedDeliveries: 1
+    minCompletedDeliveries: 1,
+    conditions: [
+      {
+        id: "clean_papers",
+        label: "Clean papers",
+        description: "Everything is already signed. Easy if you keep it dry and uncrumpled.",
+        payoutBonus: 12,
+        meterDeltas: { focus: 1 },
+        ratingModifier: 0.15
+      },
+      {
+        id: "rain_window",
+        label: "Rain window",
+        description: "A short wet-season gap makes this a now-or-never paperwork run.",
+        payoutBonus: 28,
+        timeLimitDeltaMin: -8,
+        meterDeltas: { energy: -4, wellbeing: -1, focus: 2 },
+        ratingModifier: -0.05
+      }
+    ]
   },
   {
     id: "finns_linen_bundle",
@@ -126,10 +175,36 @@ export const deliveryDefinitions: DeliveryDefinition[] = [
     boardAvailable: true,
     repeatable: true,
     minDriverRating: 4.1,
-    minCompletedDeliveries: 3
+    minCompletedDeliveries: 3,
+    conditions: [
+      {
+        id: "fragile_stack",
+        label: "Fragile stack",
+        description: "The bundle is awkwardly packed. Smooth riding matters.",
+        payoutBonus: 45,
+        timeLimitDeltaMin: -12,
+        meterDeltas: { energy: -4, focus: 3 },
+        ratingModifier: -0.2
+      },
+      {
+        id: "service_gate_priority",
+        label: "Service gate priority",
+        description: "Security is expecting you, and a clean drop earns better trust.",
+        payoutBonus: 24,
+        meterDeltas: { social: 1, focus: 1 },
+        ratingModifier: 0.1
+      }
+    ]
   }
 ];
 
 export function getDeliveryDefinition(deliveryId: string): DeliveryDefinition | undefined {
   return deliveryDefinitions.find((delivery) => delivery.id === deliveryId);
+}
+
+export function getDeliveryCondition(delivery: DeliveryDefinition, conditionId: string | undefined): DeliveryCondition | undefined {
+  if (!conditionId) {
+    return undefined;
+  }
+  return delivery.conditions?.find((condition) => condition.id === conditionId);
 }

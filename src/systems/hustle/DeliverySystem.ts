@@ -1,4 +1,10 @@
-import { deliveryDefinitions, getDeliveryDefinition, type DeliveryDefinition } from "../../data/deliveries";
+import {
+  deliveryDefinitions,
+  getDeliveryCondition,
+  getDeliveryDefinition,
+  type DeliveryCondition,
+  type DeliveryDefinition
+} from "../../data/deliveries";
 import { addItem, getQuantity, removeItem } from "../Inventory";
 import { adjustPlayerMeters } from "../meters/PlayerMeters";
 import { bumpRelationshipAffinity } from "../relationships/RelationshipMemory";
@@ -18,6 +24,12 @@ export interface DeliveryOfferAvailability {
   delivery: DeliveryDefinition;
   available: boolean;
   reason: string | null;
+}
+
+export interface EffectiveDeliveryTerms {
+  payout: number;
+  timeLimitMin: number;
+  meterDeltas: DeliveryDefinition["meterDeltas"];
 }
 
 export function getDeliveryOfferAvailability(world: WorldState): DeliveryOfferAvailability[] {
@@ -46,14 +58,18 @@ export function acceptDelivery(world: WorldState, deliveryId: string, now: numbe
       return { ok: false, message: eligibility.reason ?? "That delivery is not available yet." };
     }
   }
+  const condition = selectDeliveryCondition(world, definition, now);
+  const terms = getEffectiveDeliveryTerms(definition, condition);
   const activeDelivery: ActiveDeliveryState = {
     deliveryId,
     stage: "accepted",
     acceptedAt: now,
-    dueAt: now + definition.timeLimitMin
+    dueAt: now + terms.timeLimitMin,
+    conditionId: condition?.id
   };
   world.life.hustle.activeDelivery = activeDelivery;
-  return { ok: true, message: `${definition.title} accepted. Go to ${definition.pickupVenueId.replace(/_/g, " ")}.`, activeDelivery };
+  const conditionCopy = condition ? ` (${condition.label})` : "";
+  return { ok: true, message: `${definition.title}${conditionCopy} accepted. Go to ${definition.pickupVenueId.replace(/_/g, " ")}.`, activeDelivery };
 }
 
 export function pickupDelivery(world: WorldState, now: number): DeliveryResult {
@@ -94,10 +110,12 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
     return { ok: false, message: `The ${definition.itemId.replace(/_/g, " ")} is missing from your bag.` };
   }
 
-  const starRating = calculateDeliveryStarRating(active, now, performanceScore);
-  const payout = calculateDeliveryPayout(definition.payout, starRating);
+  const condition = getDeliveryCondition(definition, active.conditionId);
+  const terms = getEffectiveDeliveryTerms(definition, condition);
+  const starRating = calculateDeliveryStarRating(active, now, performanceScore, condition);
+  const payout = calculateDeliveryPayout(terms.payout, starRating);
   player.money += payout;
-  adjustPlayerMeters(world, definition.meterDeltas);
+  adjustPlayerMeters(world, terms.meterDeltas);
   advanceWorldMinutes(world, 12);
 
   for (const bump of definition.affinityBumps ?? []) {
@@ -127,17 +145,22 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
 
   return {
     ok: true,
-    message: `Delivered ${definition.title}. Rp +${payout}. Driver rating ${starRating.toFixed(1)}★.`,
+    message: `Delivered ${definition.title}${condition ? ` (${condition.label})` : ""}. Rp +${payout}. Driver rating ${starRating.toFixed(1)}★.`,
     starRating,
     payout
   };
 }
 
-export function calculateDeliveryStarRating(active: ActiveDeliveryState, now: number, performanceScore?: number): number {
+export function calculateDeliveryStarRating(
+  active: ActiveDeliveryState,
+  now: number,
+  performanceScore?: number,
+  condition?: DeliveryCondition
+): number {
   const minutesLate = Math.max(0, now - active.dueAt);
   const timingScore = minutesLate === 0 ? 1 : Math.max(0, 1 - minutesLate / 45);
   const skillScore = performanceScore ?? 0.72;
-  return roundRating(2.6 + timingScore * 1.45 + skillScore * 0.95);
+  return roundRating(2.6 + timingScore * 1.45 + skillScore * 0.95 + (condition?.ratingModifier ?? 0));
 }
 
 export function calculateDeliveryPayout(basePayout: number, starRating: number): number {
@@ -177,6 +200,51 @@ function evaluateDeliveryOffer(world: WorldState, delivery: DeliveryDefinition):
     return { delivery, available: false, reason: `Need ${requiredRating.toFixed(1)}★ driver rating.` };
   }
   return { delivery, available: true, reason: null };
+}
+
+export function previewDeliveryCondition(world: WorldState, delivery: DeliveryDefinition, now: number): DeliveryCondition | undefined {
+  return selectDeliveryCondition(world, delivery, now);
+}
+
+export function getEffectiveDeliveryTerms(
+  delivery: DeliveryDefinition,
+  condition?: DeliveryCondition
+): EffectiveDeliveryTerms {
+  return {
+    payout: Math.max(0, delivery.payout + (condition?.payoutBonus ?? 0)),
+    timeLimitMin: Math.max(25, delivery.timeLimitMin + (condition?.timeLimitDeltaMin ?? 0)),
+    meterDeltas: mergeMeterDeltas(delivery.meterDeltas, condition?.meterDeltas)
+  };
+}
+
+function selectDeliveryCondition(world: WorldState, delivery: DeliveryDefinition, now: number): DeliveryCondition | undefined {
+  if (!delivery.conditions?.length) {
+    return undefined;
+  }
+  const bucket = Math.floor(now / 120);
+  const seed = `${delivery.id}:${world.clock.day}:${world.life.hustle.completedDeliveryCount}:${bucket}`;
+  const index = stableHash(seed) % delivery.conditions.length;
+  return delivery.conditions[index];
+}
+
+function mergeMeterDeltas(
+  base: DeliveryDefinition["meterDeltas"],
+  modifier: DeliveryCondition["meterDeltas"]
+): DeliveryDefinition["meterDeltas"] {
+  const result: DeliveryDefinition["meterDeltas"] = { ...base };
+  for (const [meter, delta] of Object.entries(modifier ?? {}) as Array<[keyof DeliveryDefinition["meterDeltas"], number]>) {
+    result[meter] = (result[meter] ?? 0) + delta;
+  }
+  return result;
+}
+
+function stableHash(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash);
 }
 
 function roundRating(value: number): number {
