@@ -269,11 +269,17 @@ export class PhoneShell {
     const rentReady = player.money >= world.life.hustle.rentAmount;
     const repairStatus = getScooterRepairStatus(world);
     const scooterUpgrade = getScooterUpgradeStatus(world);
+    const compactActions = width < 460;
+    const actionGap = 10;
+    const actionWidth = compactActions ? Math.max(112, (width - actionGap) / 2) : 126;
+    const upgradeWidth = compactActions ? actionWidth : 158;
+    const repairX = compactActions ? x : x + 304;
+    const repairY = compactActions ? rowY + 36 : rowY;
     this.addButton(
       container,
       x,
       rowY,
-      126,
+      actionWidth,
       28,
       rentReady ? "Pay Rent" : "Rent Goal",
       () => {
@@ -288,9 +294,9 @@ export class PhoneShell {
     );
     this.addButton(
       container,
-      x + 136,
+      x + actionWidth + actionGap,
       rowY,
-      158,
+      upgradeWidth,
       28,
       scooterUpgrade.available ? "Upgrade Scooter" : "Scooter Locked",
       () => {
@@ -305,9 +311,9 @@ export class PhoneShell {
     );
     this.addButton(
       container,
-      x + 304,
-      rowY,
-      132,
+      repairX,
+      repairY,
+      compactActions ? actionWidth : 132,
       28,
       repairStatus.available ? "Repair" : "Repair Locked",
       () => {
@@ -320,7 +326,7 @@ export class PhoneShell {
       },
       repairStatus.available ? 0x334532 : 0x2d3036
     );
-    rowY += 42;
+    rowY += compactActions ? 78 : 42;
 
     if (activeDelivery) {
       const delivery = getDeliveryDefinition(activeDelivery.deliveryId);
