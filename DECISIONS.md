@@ -261,3 +261,21 @@ Delivery availability is computed in `DeliverySystem`, not the phone: first-day 
 Act 1 survival pressure is represented by local, reversible economy actions rather than a fail state. `HustleEconomy` lets the player pay rent to extend the due day and upgrade the borrowed rattletrap to a daily rental once delivery count, driver rating, and money gates are met.
 
 These actions intentionally reuse existing local state: money on the player, meters, reputation, bike condition, and `world.life.hustle`. They do not introduce real payments, subscriptions, backend timers, or punitive eviction logic. The goal is immediate trade-off pressure, not a punishment system.
+
+## 2026-06-29 - Act 0 Sleep Is A Place, Not A Global Button
+
+The final Act 0 beat now points to a concrete `Cheap Kos Room` marker in `src/data/homeBase.ts`. During `sleep_first_night`, `GameScene` requires the player to be at that home marker before `E` / `ACT` completes sleep, and the same marker appears on the map/minimap guide layer.
+
+This keeps the tutorial aligned with `STORY_ARC.md`: arrive, meet Ibu Sari, run the first delivery, eat, then ride home. It is intentionally a small local helper (`HomeBase.ts`) rather than a new housing system; real housing/villa mechanics remain deferred to later acts.
+
+## 2026-06-29 - Delivery Board Conditions Add Texture Without New Systems
+
+Repeatable Act 1 delivery jobs can now carry small authored conditions such as rush hour, rain windows, fragile cargo, clean papers, or villa tips. The condition is chosen deterministically at accept time, stored as `activeDelivery.conditionId`, and folded into existing delivery payout/time/meter/rating math.
+
+This makes repeated jobs feel less identical while preserving the same local delivery state machine: accept -> pickup -> dropoff -> payout. The tutorial delivery stays fixed and predictable; conditions are Act 1 texture, not a replacement for future opportunity/event systems.
+
+## 2026-06-29 - Rent Pressure Is Visible But Non-Punitive
+
+`getRentPressureState()` is the canonical read model for rent countdown status. HUD, Phone > Feed, and authored Ibu Sari phone reminders use the same comfortable / due-soon / due-today / overdue labels.
+
+There is still no eviction, remote billing, subscription timer, or hard fail state. Rent pressure exists to make delivery choices meaningful and legible; recovery remains local and reversible through paying rent when the player has enough money.
