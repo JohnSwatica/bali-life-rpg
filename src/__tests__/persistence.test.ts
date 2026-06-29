@@ -59,7 +59,7 @@ function baseRawSave(schemaVersion?: number): Record<string, unknown> {
       displayName: "Migration Tester",
       avatar: { body: "teal", hair: "dark", outfit: "linen" },
       lifestyleTags: ["founder", "surfer"],
-      bio: "Testing the v10 chain.",
+      bio: "Testing the v11 chain.",
       homeArea: "Berawa",
       createdAt: 111,
       remoteAccountId: "should-be-nulled"
@@ -101,7 +101,7 @@ function expectCommonMigrationFields(world: WorldState): void {
 }
 
 describe("Persistence migration", () => {
-  it("migrates a raw v1 save to v10 without losing legacy state", () => {
+  it("migrates a raw v1 save to v11 without losing legacy state", () => {
     writeRawSave(baseRawSave());
 
     const world = loadWorldState();
@@ -126,7 +126,24 @@ describe("Persistence migration", () => {
       completedGoalIds: [],
       joinedClubIds: [],
       relationshipArcProgress: {},
-      settledIn: false
+      settledIn: false,
+      actProgress: {
+        currentAct: 0,
+        act0Step: "meet_ibu_sari",
+        completedAct0StepIds: [],
+        firstDayComplete: false
+      },
+      hustle: {
+        driverRating: 3.2,
+        completedDeliveryIds: [],
+        completedDeliveryCount: 0,
+        deliveryEarnings: 0,
+        activeDelivery: null,
+        rentDueDay: 4,
+        rentAmount: 450,
+        scooterTier: "borrowed_rattletrap",
+        moveOutReady: false
+      }
     });
     expect(world.opportunities).toMatchObject({
       live: [],
@@ -137,7 +154,7 @@ describe("Persistence migration", () => {
     });
   });
 
-  it("migrates v4, v6, v7, and v8 saves into the v10 life/opportunity shape", () => {
+  it("migrates v4, v6, v7, v8, and v10 saves into the v11 life/opportunity shape", () => {
     const cases = [
       {
         version: 4,
@@ -203,6 +220,20 @@ describe("Persistence migration", () => {
             templateCooldownUntil: { satu_satu_receipt_sort: 250 }
           }
         }
+      },
+      {
+        version: 10,
+        extra: {
+          life: {
+            activityHistory: {},
+            completedGoalIds: ["find_your_spot"],
+            joinedClubIds: ["berawa_run_crew"],
+            relationshipArcProgress: {
+              ari_beach_regular: { completedBeatIds: ["ari_remembers_your_name"], lastAdvancedAt: 500 }
+            },
+            settledIn: false
+          }
+        }
       }
     ];
 
@@ -213,8 +244,15 @@ describe("Persistence migration", () => {
 
       expectCommonMigrationFields(world);
       expect(world.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-      expect(world.life.joinedClubIds).toEqual(testCase.version === 7 ? ["berawa_run_crew"] : []);
-      expect(world.life.relationshipArcProgress).toEqual({});
+      expect(world.life.joinedClubIds).toEqual(testCase.version === 7 || testCase.version === 10 ? ["berawa_run_crew"] : []);
+      expect(world.life.actProgress.act0Step).toBe("meet_ibu_sari");
+      expect(world.life.hustle.driverRating).toBe(3.2);
+      expect(world.life.hustle.activeDelivery).toBeNull();
+      expect(world.life.relationshipArcProgress).toEqual(
+        testCase.version === 10
+          ? { ari_beach_regular: { completedBeatIds: ["ari_remembers_your_name"], lastAdvancedAt: 500 } }
+          : {}
+      );
       if (testCase.version === 8) {
         expect(world.opportunities.live[0]).toMatchObject({ templateId: "milk_madu_lunch_rush_shift", status: "accepted" });
         expect(world.opportunities.completedTemplateIds).toEqual(["satu_satu_receipt_sort"]);
@@ -226,7 +264,7 @@ describe("Persistence migration", () => {
     }
   });
 
-  it("round-trips a v10 payload through save and load on meaningful fields", () => {
+  it("round-trips a v11 payload through save and load on meaningful fields", () => {
     const world = createInitialWorldState();
     const player = world.players[world.localPlayerId];
     player.money = 999;
@@ -236,6 +274,35 @@ describe("Persistence migration", () => {
     world.life.joinedClubIds = ["berawa_run_crew"];
     world.life.relationshipArcProgress = {
       ari_beach_regular: { completedBeatIds: ["ari_remembers_your_name"], lastAdvancedAt: 123 }
+    };
+    world.life.actProgress = {
+      currentAct: 1,
+      act0Step: "complete",
+      completedAct0StepIds: [
+        "meet_ibu_sari",
+        "pickup_first_delivery",
+        "dropoff_first_delivery",
+        "buy_meal_and_coffee",
+        "sleep_first_night"
+      ],
+      firstDayComplete: true
+    };
+    world.life.hustle = {
+      driverRating: 4.4,
+      completedDeliveryIds: ["first_baked_villa_delivery"],
+      completedDeliveryCount: 1,
+      deliveryEarnings: 160,
+      activeDelivery: {
+        deliveryId: "milk_madu_brunch_bag",
+        stage: "picked_up",
+        acceptedAt: 500,
+        dueAt: 575,
+        pickedUpAt: 510
+      },
+      rentDueDay: 4,
+      rentAmount: 450,
+      scooterTier: "daily_rental",
+      moveOutReady: false
     };
     world.runtimeEvents.attendedEventIds = ["berawa_beach_run_morning"];
     world.relationships = [
@@ -301,6 +368,8 @@ describe("Persistence migration", () => {
     expect(loaded.life.relationshipArcProgress).toEqual({
       ari_beach_regular: { completedBeatIds: ["ari_remembers_your_name"], lastAdvancedAt: 123 }
     });
+    expect(loaded.life.actProgress).toEqual(world.life.actProgress);
+    expect(loaded.life.hustle).toEqual(world.life.hustle);
     expect(loaded.runtimeEvents.attendedEventIds).toEqual(["berawa_beach_run_morning"]);
     expect(loaded.relationships).toEqual(world.relationships);
     expect(loaded.mapDiscovery.discoveredVenueIds).toEqual(["berawa_beach"]);

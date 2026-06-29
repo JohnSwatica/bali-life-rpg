@@ -4,6 +4,14 @@ export type GroupTravelMode = "walk" | "bike";
 export type TutorialStep = "earn_bike_money" | "rent_bike" | "join_group" | "free_roam";
 export type PortalMode = "single" | "multiplayer";
 export type Meter = "energy" | "wellbeing" | "focus" | "social";
+export type Act0Step =
+  | "meet_ibu_sari"
+  | "pickup_first_delivery"
+  | "dropoff_first_delivery"
+  | "buy_meal_and_coffee"
+  | "sleep_first_night"
+  | "complete";
+export type DeliveryStage = "accepted" | "picked_up";
 export type VenueType =
   | "cafe"
   | "grocery"
@@ -404,12 +412,43 @@ export interface LifeActivityRecord {
   earnedMoney: number;
 }
 
+export interface ActProgressState {
+  currentAct: 0 | 1 | 2 | 3 | 4 | 5;
+  act0Step: Act0Step;
+  completedAct0StepIds: Act0Step[];
+  firstDayComplete: boolean;
+}
+
+export interface ActiveDeliveryState {
+  deliveryId: string;
+  stage: DeliveryStage;
+  acceptedAt: number;
+  dueAt: number;
+  pickedUpAt?: number;
+  completedAt?: number;
+  starRating?: number;
+}
+
+export interface HustleState {
+  driverRating: number;
+  completedDeliveryIds: string[];
+  completedDeliveryCount: number;
+  deliveryEarnings: number;
+  activeDelivery: ActiveDeliveryState | null;
+  rentDueDay: number;
+  rentAmount: number;
+  scooterTier: "borrowed_rattletrap" | "daily_rental" | "proper_bike";
+  moveOutReady: boolean;
+}
+
 export interface LifeLoopState {
   activityHistory: Record<string, LifeActivityRecord>;
   completedGoalIds: string[];
   joinedClubIds: string[];
   relationshipArcProgress: Record<string, RelationshipArcProgress>;
   settledIn: boolean;
+  actProgress: ActProgressState;
+  hustle: HustleState;
 }
 
 export type GameIntent =

@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-06-26
+Last updated: 2026-06-29
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -13,10 +13,16 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
-- Current branch: `feat/activities-real`.
+- Current branch: `feat/act0-hustle-loop`.
 
 ## What Was Added Recently
 
+- Act 0 / Act 1 hustle spine is now underway on `feat/act0-hustle-loop`: new local state tracks `world.life.actProgress` and `world.life.hustle`, including Act 0 tutorial step, first-day completion, active delivery, driver rating, delivery earnings, scooter tier, rent target, and move-out readiness.
+- Save schema is now v11. Older saves migrate by adding Act 0 progress and hustle defaults without wiping money, quests, inventory, relationships, reputation, discovery, profile, portal, meters, clubs, arcs, opportunities, or committed activities.
+- Added `src/data/deliveries.ts` and `src/systems/hustle/DeliverySystem.ts` for deterministic local delivery flow: accept -> pickup -> dropoff -> payout -> driver rating/reputation/relationship rewards. The first scripted delivery is Ibu Sari's BAKED villa drop.
+- Act 0 now starts at dusk near the cheap-kos/Canggu Station side. Ibu Sari gives the player a borrowed beat-up scooter, accepts the first BAKED delivery, and HUD tutorial copy points the player through pickup, dropoff, meal/coffee, and first sleep.
+- Active delivery pickup/dropoff markers are drawn on the map and become `E`/`ACT` interaction targets. Delivery targets win over overlapping shop panels so BAKED pickup does not accidentally open the shop.
+- The current automated suite is green after the Act 0/hustle additions: `npm test -- --run` reports 38 passing and 3 intentionally skipped tests; `npm run build` passes.
 - Git is now initialized locally. Baseline and every sprint phase are committed.
 - Added [STORY_ARC.md](STORY_ARC.md), the canonical progression spine: Act 0 新手村 tutorial, Act 1 hustle, Act 2 people/social, Act 3 build your warung/café + villa + bike, Act 4 solo win, Act 5 multiplayer/Nomad Nest open world.
 - Added [ACT3_BUSINESS_DESIGN.md](ACT3_BUSINESS_DESIGN.md), the deferred Act 3 ambition-layer design. It locks Ibu Sari as mentor, friendship-first tone, gentle Canggu satire, villa + business + bike as the solo win condition, and roughly two hours per act. Act 3 should be designed for hooks now but built after the tutorial/hustle/social layers are proven.
@@ -28,7 +34,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - The Phone now has a live Feed tab with newest messages, countdown opportunities, accept/track actions, event-start pings, authored NPC/club texts, and a fixed DOM unread badge/buzz on the `PHONE` button.
 - Live opportunities render as world pins and minimap dots with type colors/icons. Clicking a world pin or approaching its venue can track it; accepted opportunities resolve on-site from the existing venue activity menu before the timer expires.
 - Stakes are local and non-combat: missed social pings record a small `missed_opportunity` relationship memory, reputation gates unlock better pings, and flash deals are explicitly simulated/dev-authored promotion seeds with no real commerce integration.
-- Save schema is now v9. V1-v8 saves migrate forward with default opportunity runtime state while preserving money, quests, inventory, relationships, reputation, discovery, profile, portal, authored-street position data, meters, joined clubs, relationship arc progress, and `life` runtime state.
+- Opportunity layer introduced save schema v9. Current schema is v11 after committed activities and the Act 0 hustle state; V1-v10 saves migrate forward with defaults for newer state while preserving existing runtime data.
 - UI overlay patch added: the fixed DOM minimap is now semi-transparent in world mode and auto-hides under overlays; dialogue moved to a fixed DOM panel that stays fully within the viewport and clear of the HUD button cluster; one shared `overlayOpen` flag now controls minimap hiding, HUD muting, and the body overlay class for dialogue/phone/inventory/community/activity/shop-style modal states.
 - Added `src/data/events.ts` and `src/systems/events/EventScheduler.ts`: dev-authored events reference venues/NPCs/groups by id, appear in Calendar/Events, and can be attended on-site from the venue activity menu.
 - Added `src/data/groups.ts` and `src/systems/groups/GroupRegistry.ts`: clubs can be joined from Phone > Community or at their home venue; joining unlocks membership-gated recurring events on the calendar.
@@ -175,7 +181,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Phase B social phases 1-4 each passed `npm run build` before commit.
 - Phase B smoke checks passed: Berawa Beach Run is active at Berawa Beach on the expected day/time; joining Berawa Run Crew stores `world.life.joinedClubIds` and reveals its recurring member event; Ari's first relationship beat completes from affinity and persists to `world.life.relationshipArcProgress`; `plug_in`, `find_your_crew`, and `deepen_a_bond` complete from event/club/arc state.
 - Core test suite is now installed with Vitest and runs through `npm test`.
-- Current suite result: 31 passing tests, 3 documented skips across save migration, daily loop, social layer, opportunities, quests/goals/reputation/interaction, and authored street layout invariants.
+- Current suite result: 38 passing tests, 3 documented skips across save migration, daily loop, social layer, opportunities, quests/goals/reputation/interaction, authored street layout invariants, and Act 0 delivery/hustle state.
 - Opportunity tests cover time/reputation/club/affinity eligibility gates, deterministic 2-4 live pool maintenance, expiry/missed tracking, accept/resolve rewards, chain spawning, relationship cooling from missed social pings, and v8-to-v9 persistence of live/completed/missed/feed state.
 - `npm run build` passed after every core-test-suite phase.
 - The test suite fixed one unambiguous data-seam bug: `finns_beach_club` is now present in `VenueRegistry` so the FINNS Sunset Social event host/location resolves.
@@ -234,6 +240,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Phase B social content is dev-authored only. Players can attend events and join clubs, but cannot create/host events, create clubs, author promotions, hatch housing groups, or use real-world integrations yet.
 - Relationship arc payoffs are local hooks/text plus small state changes. Discount and housing-lead payoffs are intentionally teasers, not live commerce or housing systems.
 - Test skips to resolve later: full sleep meter restoration and full on-site event participation effects currently live in private `GameScene` methods; non-deliver quest objective handlers need scripted fixtures or an exported pure evaluator.
+- Act 0 has pure delivery/progression tests, but still needs a real-device playthrough for pacing feel: whether the first scooter, BAKED pickup, villa dropoff, meal/coffee, and sleep rhythm feels clear and not too linear.
 - `da_romeo_restaurant` remains absent from the authored street and unrendered; this is a known placement conflict for the repo owner to resolve later.
 - Map discovery now has a compact minimap, but it is still a lightweight orientation aid rather than a full interactive map.
 - The active map is one authored street only. Non-Pantai venues are deferred except for quest-critical Raya Semat stubs (`baked_berawa`, `canggu_station`) and the separate `berawa_beach` anchor.
@@ -250,10 +257,9 @@ Copy/paste this into a new AI session to bring it up to speed.
 
 ## Next Move
 
-1. Build the Act 0 / Act 1 spine:
-   - Add the guided 新手村 first-day tutorial with Ibu Sari: kos start, walk to warung, borrow beat-up scooter, phone/gig app intro, first BAKED delivery, first meal/coffee, ride home, sleep.
-   - Add a real delivery/gig loop: accept -> pickup -> dropoff -> paid -> star rating, reusing committed activities/opportunities where possible.
-   - Add driver/gig rating and simple scooter/rent pressure so Act 1 has visible survival progression.
+1. Finish and tune the Act 0 / Act 1 spine:
+   - Play through the guided 新手村 first day with Ibu Sari: kos start, walk to Ibu Sari, borrowed scooter, first BAKED delivery, first meal/coffee, sleep.
+   - Expand the delivery/gig loop beyond the first delivery: more gig templates, better gig unlocks from driver rating/reputation, and visible rent/scooter upgrade pressure.
    - Use the existing opportunity engine as the source of rush jobs, weather-ish curveballs, fragile-cargo runs, and better gigs unlocked by rating/reputation.
 
 2. Reframe the existing social layer as Act 2:

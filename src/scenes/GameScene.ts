@@ -16,6 +16,7 @@ import { collisionRects, pickupDefinitions, WORLD_HEIGHT, WORLD_WIDTH } from "..
 import { npcDefinitions } from "../data/npcs";
 import { questDefinitions } from "../data/quests";
 import { shopDefinitions } from "../data/shops";
+import { getDeliveryDefinition } from "../data/deliveries";
 import { getStreetVenueFlavor } from "../data/streetVenueFlavors";
 import { addItem, formatInventory, getQuantity, removeItem } from "../systems/Inventory";
 import { LocalNetworkAdapter, type NetworkAdapter } from "../systems/NetworkAdapter";
@@ -49,6 +50,8 @@ import {
   type VenueActivityContext
 } from "../systems/life/ActivityEngine";
 import { getSettlingInGoalTitle, updateSettlingInGoals } from "../systems/life/SettlingInGoals";
+import { completeAct0Step, getAct0HudLines, isAct0Complete, markAct0MealProgress } from "../systems/life/ActProgression";
+import { acceptDelivery, completeDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
 import {
   acceptOpportunity,
   appendOpportunityMessage,
@@ -138,6 +141,9 @@ interface BaliLifeDebugSnapshot {
   reputationTags: string[];
   lifestyleTags: string[];
   portal: string;
+  act0Step: string;
+  driverRating: number;
+  activeDelivery: string | null;
   relationshipCount: number;
   inventory: string[];
   activeQuestIds: string[];
@@ -393,6 +399,7 @@ export class GameScene extends Phaser.Scene {
     height: WORLD_HEIGHT
   });
   private opportunityMarkerLayer!: Phaser.GameObjects.Graphics;
+  private deliveryMarkerLayer!: Phaser.GameObjects.Graphics;
   private opportunityMarkerZones: Phaser.GameObjects.Zone[] = [];
 
   constructor() {
@@ -479,6 +486,7 @@ export class GameScene extends Phaser.Scene {
   private drawNeighborhood(): void {
     renderStreetTemplate(this, activeStreetTemplate);
     this.opportunityMarkerLayer = this.add.graphics().setDepth(210);
+    this.deliveryMarkerLayer = this.add.graphics().setDepth(211);
     this.addAreaLabels();
   }
 
@@ -1202,7 +1210,8 @@ export class GameScene extends Phaser.Scene {
       getNpcSprite: (npcId) => this.npcSprites.get(npcId),
       isPickupAvailable: (pickup) => this.isPickupAvailable(pickup),
       getWantedOffenders: () => this.wantedOffenders.values(),
-      getOffenderReward: (offender) => this.getOffenderReward(offender)
+      getOffenderReward: (offender) => this.getOffenderReward(offender),
+      getDeliveryTargets: () => this.getActiveDeliveryTargets()
     });
   }
 
@@ -1775,7 +1784,7 @@ export class GameScene extends Phaser.Scene {
     const wantedLabel =
       wantedLevel > 0 ? `Wanted ${wantedLevel} Rp ${bounty}` : "Clean";
     this.moneyText.setText(
-      `Rp ${this.playerState.money}  Rep ${getReputationScore(this.world.reputation)}  Safety ${this.playerState.safety}  ${wantedLabel}\n${bikeLabel}`
+      `Rp ${this.playerState.money}  Rep ${getReputationScore(this.world.reputation)}  Rating ${this.world.life.hustle.driverRating.toFixed(1)}★  Safety ${this.playerState.safety}  ${wantedLabel}\n${bikeLabel}`
     );
     this.hudController.updateMeterReadout({
       money: this.playerState.money,
@@ -1815,6 +1824,7 @@ export class GameScene extends Phaser.Scene {
 
     this.redrawHudChrome();
     this.drawOpportunityMarkers();
+    this.drawDeliveryMarkers();
     this.drawMinimap();
     this.publishDebugSnapshot(target);
   }
@@ -1830,6 +1840,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   private getTutorialLines(): string[] {
+    if (!isAct0Complete(this.world)) {
+      return getAct0HudLines(this.world);
+    }
+    if (this.world.life.hustle.completedDeliveryCount < 5) {
+      return [
+        `Act 1: keep hustling. ${this.world.life.hustle.completedDeliveryCount}/5 deliveries, Rp ${this.world.life.hustle.deliveryEarnings}/700, ${this.world.life.hustle.driverRating.toFixed(1)}★.`
+      ];
+    }
     if (!this.playerState.hasBike) {
       const remaining = Math.max(0, itemDefinitions[BIKE_RENTAL_ITEM_ID].buyPrice - this.playerState.money);
       return [
@@ -1915,6 +1933,7 @@ export class GameScene extends Phaser.Scene {
 
     this.interactionController.resolveTarget(target, {
       npc: (id) => this.interactWithNpc(id),
+      delivery: (id) => this.handleDeliveryInteraction(id),
       shop: (id) => this.openVenueActivityMenu(id),
       venue: (id) => this.openVenueActivityMenu(id),
       activity: (id) => this.openActivity(id),
@@ -1984,6 +2003,11 @@ export class GameScene extends Phaser.Scene {
     const state = this.world.npcs[npcId];
     const routine = npc.routine.find((stop) => stop.id === state.currentRoutineId);
     this.dispatchIntent({ kind: "RecordMemory", subjectType: "npc", subjectId: npcId, memory: "visited", detail: "Spoke in world." });
+
+    if (npcId === "ibu_sari" && this.world.life.actProgress.act0Step === "meet_ibu_sari") {
+      this.startAct0WithIbuSari();
+      return;
+    }
 
     const questInteraction = resolveNpcQuestInteraction(this.playerState, npcId);
     if (questInteraction?.handled) {
@@ -2091,6 +2115,33 @@ export class GameScene extends Phaser.Scene {
       : "\n\nYou have already mapped this stop. It still feels useful as a landmark.";
     this.openDialogue(venue?.name ?? node.name, `${flavor.body}${statLine}`);
     this.showToast(isFirstVisit ? flavor.firstVisitToast : flavor.repeatToast);
+  }
+
+  private startAct0WithIbuSari(): void {
+    this.playerState.hasBike = true;
+    this.playerState.onBike = true;
+    this.playerState.bikeStuck = false;
+    this.playerState.bikeCondition = Math.min(this.playerState.bikeCondition, 48);
+    this.playerState.tutorialStep = "free_roam";
+    this.world.life.hustle.scooterTier = "borrowed_rattletrap";
+    if (getQuantity(this.playerState, SCOOTER_KEY_ITEM_ID) === 0) {
+      addItem(this.playerState, SCOOTER_KEY_ITEM_ID, 1);
+    }
+    const accepted = acceptDelivery(this.world, "first_baked_villa_delivery", this.getAbsoluteMinute());
+    completeAct0Step(this.world, "meet_ibu_sari");
+    saveWorldState(this.world);
+    this.updatePlayerBikeVisual();
+    this.openDialogue(
+      "Ibu Sari",
+      [
+        "You found me. Good. Berawa is easier when one person is in your corner.",
+        "Take this scooter. It rattles, but it knows the lane better than you do.",
+        accepted.ok
+          ? "Your first gig is already on the phone: pick up pastries at BAKED and take them to the villa gate. Do this clean and you get your first rating."
+          : accepted.message
+      ].join("\n\n")
+    );
+    this.showToast("Borrowed scooter unlocked. First delivery accepted.");
   }
 
   private openVenueActivityMenu(venueId: string): void {
@@ -2369,10 +2420,17 @@ export class GameScene extends Phaser.Scene {
         );
       }
     }
+    let act0Message = "";
+    if (activityId === "grab_coffee" && markAct0MealProgress(this.world, "coffee")) {
+      act0Message = " First earnings spent. Sleep when ready.";
+    }
+    if (activityId === "eat_properly" && markAct0MealProgress(this.world, "meal")) {
+      act0Message = " First earnings spent. Sleep when ready.";
+    }
     const goalMessage = this.refreshSettlingInGoals(false);
     this.updateLighting();
     saveWorldState(this.world);
-    this.showToast(goalMessage ? `${result.message} ${goalMessage}` : result.message);
+    this.showToast(goalMessage || act0Message ? `${result.message} ${act0Message}${goalMessage ? ` ${goalMessage}` : ""}` : result.message);
   }
 
   private startCommittedActivity(context: VenueActivityContext, activityId: string): void {
@@ -4230,6 +4288,77 @@ export class GameScene extends Phaser.Scene {
     return this.interactionController.getNearestInteraction();
   }
 
+  private *getActiveDeliveryTargets() {
+    const active = this.world.life.hustle.activeDelivery;
+    if (!active) {
+      return;
+    }
+    const delivery = getDeliveryDefinition(active.deliveryId);
+    if (!delivery) {
+      return;
+    }
+    if (active.stage === "accepted") {
+      const node = venueMapNodes.find((candidate) => candidate.venueId === delivery.pickupVenueId);
+      if (!node) {
+        return;
+      }
+      yield {
+        id: active.deliveryId,
+        label: delivery.pickupLabel,
+        x: node.x,
+        y: node.y,
+        radius: Math.max(86, Math.min(node.radius, 118))
+      };
+      return;
+    }
+    yield {
+      id: active.deliveryId,
+      label: delivery.dropoffLabel,
+      x: delivery.dropoffPoint.x,
+      y: delivery.dropoffPoint.y,
+      radius: delivery.dropoffPoint.radius
+    };
+  }
+
+  private handleDeliveryInteraction(deliveryId: string): void {
+    const active = this.world.life.hustle.activeDelivery;
+    if (!active || active.deliveryId !== deliveryId) {
+      this.showToast("That delivery is not active anymore.");
+      return;
+    }
+    const wasPickup = active.stage === "accepted";
+    const result =
+      wasPickup
+        ? pickupDelivery(this.world, this.getAbsoluteMinute())
+        : completeDelivery(this.world, this.getAbsoluteMinute());
+    if (result.ok && wasPickup) {
+      completeAct0Step(this.world, "pickup_first_delivery");
+    } else if (result.ok && !this.world.life.hustle.activeDelivery) {
+      completeAct0Step(this.world, "dropoff_first_delivery");
+      this.refreshSettlingInGoals(false);
+    }
+    saveWorldState(this.world);
+    this.showToast(result.message);
+  }
+
+  private drawDeliveryMarkers(): void {
+    if (!this.deliveryMarkerLayer) {
+      return;
+    }
+    this.deliveryMarkerLayer.clear();
+    for (const target of this.getActiveDeliveryTargets()) {
+      const pulse = 0.55 + Math.sin(Date.now() / 180) * 0.12;
+      this.deliveryMarkerLayer.fillStyle(0xfff0bd, 0.18);
+      this.deliveryMarkerLayer.fillCircle(target.x, target.y, target.radius);
+      this.deliveryMarkerLayer.lineStyle(4, 0xfff0bd, pulse);
+      this.deliveryMarkerLayer.strokeCircle(target.x, target.y, target.radius);
+      this.deliveryMarkerLayer.fillStyle(0x253a35, 0.94);
+      this.deliveryMarkerLayer.fillTriangle(target.x, target.y - 34, target.x - 16, target.y - 8, target.x + 16, target.y - 8);
+      this.deliveryMarkerLayer.lineStyle(2, 0xfff0bd, 0.9);
+      this.deliveryMarkerLayer.strokeTriangle(target.x, target.y - 34, target.x - 16, target.y - 8, target.x + 16, target.y - 8);
+    }
+  }
+
   private refreshSettlingInGoals(showToast = true): string {
     const completed = updateSettlingInGoals(this.world);
     if (completed.length > 0) {
@@ -4245,16 +4374,21 @@ export class GameScene extends Phaser.Scene {
   }
 
   private canSleepHere(): boolean {
-    return canSleepNow(this.world.clock, this.world.meters);
+    return this.world.life.actProgress.act0Step === "sleep_first_night" || canSleepNow(this.world.clock, this.world.meters);
   }
 
   private sleepToMorning(): void {
     sleepUntilNextMorning(this.world);
     this.world.meters.energy = 100;
     adjustPlayerMeters(this.world, { wellbeing: 8, focus: 6, social: -4 });
+    const completedAct0 = completeAct0Step(this.world, "sleep_first_night");
     this.updateLighting();
     saveWorldState(this.world);
-    this.showToast(`Slept until ${formatClock(this.world)}. Energy restored.`);
+    this.showToast(
+      completedAct0
+        ? `Slept until ${formatClock(this.world)}. Act 1 begins: keep hustling toward rent and your own place.`
+        : `Slept until ${formatClock(this.world)}. Energy restored.`
+    );
   }
 
   private getRoutineStop(npc: NpcDefinition) {
@@ -4451,6 +4585,9 @@ export class GameScene extends Phaser.Scene {
       reputationTags: [...this.world.reputation.tags],
       lifestyleTags: [...this.world.profile.lifestyleTags],
       portal: `${this.world.portal.current}:${this.world.portal.multiplayerStatus}`,
+      act0Step: this.world.life.actProgress.act0Step,
+      driverRating: this.world.life.hustle.driverRating,
+      activeDelivery: this.world.life.hustle.activeDelivery?.deliveryId ?? null,
       relationshipCount: this.world.relationships.length,
       inventory: formatInventory(this.playerState.inventory),
       activeQuestIds: [...this.playerState.activeQuestIds],

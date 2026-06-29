@@ -69,6 +69,7 @@ describe("daily life meters and activities", () => {
   it("applies activity meter, money, item, time, and history effects", () => {
     const world = createInitialWorldState();
     const player = world.players[world.localPlayerId];
+    const startMinute = world.clock.minuteOfDay;
 
     const work = applyActivity(world, context("milk_madu_berawa"), "remote_work_session");
     expect(work.ok).toBe(true);
@@ -78,7 +79,7 @@ describe("daily life meters and activities", () => {
     expect(world.meters.wellbeing).toBe(56);
     expect(world.meters.focus).toBe(52);
     expect(world.meters.social).toBe(31);
-    expect(world.clock.minuteOfDay).toBe(11 * 60);
+    expect(world.clock.minuteOfDay).toBe(startMinute + 180);
     expect(world.life.activityHistory["milk_madu_berawa:remote_work_session"]).toMatchObject({
       count: 1,
       totalCount: 1,

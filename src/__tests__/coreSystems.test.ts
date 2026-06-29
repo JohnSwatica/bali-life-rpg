@@ -204,6 +204,28 @@ describe("InteractionController", () => {
     expect(controller.getNearestInteraction()).toMatchObject({ type: "venue", id: "nude_cafe_berawa" });
   });
 
+  it("prioritizes an active delivery pickup over an overlapping shop", () => {
+    const baked = shopDefinitions.baked_berawa;
+    const controller = new InteractionController({
+      getPlayerPosition: () => ({ x: baked.x, y: baked.y }),
+      getNpcSprite: () => undefined,
+      isPickupAvailable: () => false,
+      getWantedOffenders: () => [],
+      getOffenderReward: () => 0,
+      getDeliveryTargets: () => [
+        {
+          id: "first_baked_villa_delivery",
+          label: "Pick up sealed pastries at BAKED.",
+          x: baked.x,
+          y: baked.y,
+          radius: baked.radius
+        }
+      ]
+    });
+
+    expect(controller.getNearestInteraction()).toMatchObject({ type: "delivery", id: "first_baked_villa_delivery" });
+  });
+
   it("prioritizes wanted offenders over old community activities", () => {
     const offender = {
       id: "reckless-rider",

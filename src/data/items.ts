@@ -36,6 +36,13 @@ export const itemDefinitions: Record<string, ItemDefinition> = {
     buyPrice: 32,
     sellPrice: 12
   },
+  delivery_pastry_box: {
+    id: "delivery_pastry_box",
+    name: "Pastry Delivery Box",
+    description: "A sealed BAKED. box for the first villa delivery. It is for the customer, not your breakfast.",
+    buyPrice: 0,
+    sellPrice: 0
+  },
   surf_wax: {
     id: "surf_wax",
     name: "Surf Wax",

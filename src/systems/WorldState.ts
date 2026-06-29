@@ -55,12 +55,12 @@ export function createInitialWorldState(): WorldState {
   );
 
   const world: WorldState = {
-    schemaVersion: 10,
+    schemaVersion: 11,
     version: 1,
     neighborhoodId: "berawa-finns-club",
     clock: {
       day: 1,
-      minuteOfDay: 8 * 60,
+      minuteOfDay: 18 * 60 + 10,
       minutesPerSecond: 4
     },
     localPlayerId: LOCAL_PLAYER_ID,

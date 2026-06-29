@@ -241,3 +241,11 @@ Locked product calls:
 - First business implementation should be light stock-and-serve management, with deeper supply/crew/pricing/random-event systems later.
 
 Near-term code should leave hooks for Act 3 rather than implement the full business sim: relationship arcs should be able to feed crew candidates, player-owned venues should reuse existing venue/rating/reputation shapes, and win-condition state should eventually track villa/business/bike completion.
+
+## 2026-06-29 - Act 0 Hustle State Lives Under Life Loop
+
+Act 0 progression and Act 1 hustle values are runtime life-loop state, not loose player fields. `world.life.actProgress` tracks the current act, tutorial step, completed Act 0 steps, and first-day completion; `world.life.hustle` tracks active delivery, driver rating, delivery earnings/count, rent target, scooter tier, and move-out readiness.
+
+The first delivery loop is local and deterministic: accept -> pickup -> dropoff -> payout -> driver rating/reputation/relationship rewards. It lives in `src/data/deliveries.ts` and `src/systems/hustle/DeliverySystem.ts`, with `GameScene` only wiring Ibu Sari, map markers, and `E`/`ACT` interactions. This keeps the first story spine testable while preserving the single-player/no-backend boundary.
+
+Save schema is bumped to v11. V1-v10 saves migrate by adding Act 0 and hustle defaults without discarding existing money, quests, inventory, relationships, reputation, discovery, profile, portal, meters, clubs, arcs, opportunity feed, or committed activity state.

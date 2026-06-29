@@ -1,4 +1,13 @@
-import type { LifeLoopState } from "../../types";
+import type { ActiveDeliveryState, Act0Step, ActProgressState, HustleState, LifeLoopState } from "../../types";
+
+const ACT0_STEPS: Act0Step[] = [
+  "meet_ibu_sari",
+  "pickup_first_delivery",
+  "dropoff_first_delivery",
+  "buy_meal_and_coffee",
+  "sleep_first_night",
+  "complete"
+];
 
 export function createDefaultLifeLoopState(): LifeLoopState {
   return {
@@ -6,7 +15,32 @@ export function createDefaultLifeLoopState(): LifeLoopState {
     completedGoalIds: [],
     joinedClubIds: [],
     relationshipArcProgress: {},
-    settledIn: false
+    settledIn: false,
+    actProgress: createDefaultActProgressState(),
+    hustle: createDefaultHustleState()
+  };
+}
+
+export function createDefaultActProgressState(): ActProgressState {
+  return {
+    currentAct: 0,
+    act0Step: "meet_ibu_sari",
+    completedAct0StepIds: [],
+    firstDayComplete: false
+  };
+}
+
+export function createDefaultHustleState(): HustleState {
+  return {
+    driverRating: 3.2,
+    completedDeliveryIds: [],
+    completedDeliveryCount: 0,
+    deliveryEarnings: 0,
+    activeDelivery: null,
+    rentDueDay: 4,
+    rentAmount: 450,
+    scooterTier: "borrowed_rattletrap",
+    moveOutReady: false
   };
 }
 
@@ -15,12 +49,93 @@ export function migrateLifeLoopState(rawLife: unknown): LifeLoopState {
   if (!rawLife || typeof rawLife !== "object") {
     return base;
   }
-  const partial = rawLife as Partial<LifeLoopState>;
+  const partial = rawLife as Partial<LifeLoopState> & Record<string, unknown>;
   return {
     activityHistory: partial.activityHistory ?? {},
     completedGoalIds: partial.completedGoalIds ?? [],
     joinedClubIds: partial.joinedClubIds ?? [],
     relationshipArcProgress: partial.relationshipArcProgress ?? {},
-    settledIn: partial.settledIn ?? false
+    settledIn: partial.settledIn ?? false,
+    actProgress: migrateActProgressState(partial.actProgress),
+    hustle: migrateHustleState(partial.hustle)
   };
+}
+
+function migrateActProgressState(raw: unknown): ActProgressState {
+  const base = createDefaultActProgressState();
+  if (!raw || typeof raw !== "object") {
+    return base;
+  }
+  const value = raw as Partial<ActProgressState>;
+  const act0Step = isAct0Step(value.act0Step) ? value.act0Step : base.act0Step;
+  return {
+    currentAct: readAct(value.currentAct, base.currentAct),
+    act0Step,
+    completedAct0StepIds: Array.isArray(value.completedAct0StepIds) ? value.completedAct0StepIds.filter(isAct0Step) : [],
+    firstDayComplete: value.firstDayComplete ?? act0Step === "complete"
+  };
+}
+
+function migrateHustleState(raw: unknown): HustleState {
+  const base = createDefaultHustleState();
+  if (!raw || typeof raw !== "object") {
+    return base;
+  }
+  const value = raw as Partial<HustleState>;
+  return {
+    driverRating: clamp(readNumber(value.driverRating, base.driverRating), 1, 5),
+    completedDeliveryIds: Array.isArray(value.completedDeliveryIds)
+      ? value.completedDeliveryIds.filter((entry): entry is string => typeof entry === "string")
+      : [],
+    completedDeliveryCount: Math.max(0, Math.floor(readNumber(value.completedDeliveryCount, base.completedDeliveryCount))),
+    deliveryEarnings: Math.max(0, Math.floor(readNumber(value.deliveryEarnings, base.deliveryEarnings))),
+    activeDelivery: migrateActiveDelivery(value.activeDelivery),
+    rentDueDay: Math.max(1, Math.floor(readNumber(value.rentDueDay, base.rentDueDay))),
+    rentAmount: Math.max(0, Math.floor(readNumber(value.rentAmount, base.rentAmount))),
+    scooterTier:
+      value.scooterTier === "daily_rental" || value.scooterTier === "proper_bike" || value.scooterTier === "borrowed_rattletrap"
+        ? value.scooterTier
+        : base.scooterTier,
+    moveOutReady: value.moveOutReady ?? false
+  };
+}
+
+function migrateActiveDelivery(raw: unknown): ActiveDeliveryState | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const value = raw as Partial<ActiveDeliveryState>;
+  if (
+    typeof value.deliveryId !== "string" ||
+    (value.stage !== "accepted" && value.stage !== "picked_up") ||
+    typeof value.acceptedAt !== "number" ||
+    typeof value.dueAt !== "number"
+  ) {
+    return null;
+  }
+  return {
+    deliveryId: value.deliveryId,
+    stage: value.stage,
+    acceptedAt: value.acceptedAt,
+    dueAt: value.dueAt,
+    pickedUpAt: typeof value.pickedUpAt === "number" ? value.pickedUpAt : undefined,
+    completedAt: typeof value.completedAt === "number" ? value.completedAt : undefined,
+    starRating: typeof value.starRating === "number" ? clamp(value.starRating, 1, 5) : undefined
+  };
+}
+
+function isAct0Step(value: unknown): value is Act0Step {
+  return typeof value === "string" && ACT0_STEPS.includes(value as Act0Step);
+}
+
+function readAct(value: unknown, fallback: ActProgressState["currentAct"]): ActProgressState["currentAct"] {
+  return value === 0 || value === 1 || value === 2 || value === 3 || value === 4 || value === 5 ? value : fallback;
+}
+
+function readNumber(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }

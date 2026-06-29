@@ -14,6 +14,7 @@ const VENUE_INTERACTION_RADIUS = scaleDistance(70);
 
 export type InteractionTarget =
   | { type: "npc"; id: string; label: string; distance: number }
+  | { type: "delivery"; id: string; label: string; distance: number }
   | { type: "shop"; id: string; label: string; distance: number }
   | { type: "venue"; id: string; label: string; distance: number }
   | { type: "pickup"; id: string; label: string; distance: number }
@@ -28,12 +29,21 @@ export interface InteractionOffender {
   wantedLevel: number;
 }
 
+export interface InteractionDeliveryTarget {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  radius: number;
+}
+
 interface InteractionControllerOptions {
   getPlayerPosition: () => { x: number; y: number };
   getNpcSprite: (npcId: string) => Phaser.Physics.Arcade.Sprite | undefined;
   isPickupAvailable: (pickup: PickupDefinition) => boolean;
   getWantedOffenders: () => Iterable<InteractionOffender>;
   getOffenderReward: (offender: InteractionOffender) => number;
+  getDeliveryTargets?: () => Iterable<InteractionDeliveryTarget>;
 }
 
 interface InteractionHandlers {
@@ -41,6 +51,7 @@ interface InteractionHandlers {
   shop: (id: string) => void;
   venue: (id: string) => void;
   pickup: (id: string) => void;
+  delivery: (id: string) => void;
   activity: (id: string) => void;
   offender: (id: string) => void;
 }
@@ -65,6 +76,13 @@ export class InteractionController {
       const distance = Phaser.Math.Distance.Between(px, py, shop.x, shop.y);
       if (distance <= shop.radius) {
         candidates.push({ type: "shop", id: shop.id, label: `Enter ${shop.name}`, distance });
+      }
+    }
+
+    for (const delivery of this.options.getDeliveryTargets?.() ?? []) {
+      const distance = Phaser.Math.Distance.Between(px, py, delivery.x, delivery.y);
+      if (distance <= delivery.radius) {
+        candidates.push({ type: "delivery", id: delivery.id, label: delivery.label, distance });
       }
     }
 
@@ -114,6 +132,8 @@ export class InteractionController {
   resolveTarget(target: InteractionTarget, handlers: InteractionHandlers): void {
     if (target.type === "npc") {
       handlers.npc(target.id);
+    } else if (target.type === "delivery") {
+      handlers.delivery(target.id);
     } else if (target.type === "shop") {
       handlers.shop(target.id);
     } else if (target.type === "venue") {
@@ -131,8 +151,9 @@ export class InteractionController {
 function priority(target: InteractionTarget): number {
   if (target.type === "npc") return 0;
   if (target.type === "offender") return 1;
-  if (target.type === "activity") return 2;
-  if (target.type === "shop") return 3;
-  if (target.type === "venue") return 4;
+  if (target.type === "delivery") return 2;
+  if (target.type === "activity") return 3;
+  if (target.type === "shop") return 4;
+  if (target.type === "venue") return 5;
   return 5;
 }
