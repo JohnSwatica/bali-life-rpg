@@ -4066,13 +4066,13 @@ export class GameScene extends Phaser.Scene {
     const cols = compact ? 1 : 2;
     const gap = 10;
     const buttonWidth = compact ? panelWidth - 44 : (panelWidth - 44 - gap) / 2;
-    const buttonHeight = 36;
+    const buttonHeight = 32;
     let buttonIndex = 0;
     const addGodButton = (label: string, action: () => void, fill = 0x253a47): void => {
       const col = buttonIndex % cols;
       const row = Math.floor(buttonIndex / cols);
       const bx = x + 22 + col * (buttonWidth + gap);
-      const by = y + 142 + row * (buttonHeight + 8);
+      const by = y + 132 + row * (buttonHeight + 6);
       this.addPanelButton(container, bx, by, buttonWidth, buttonHeight, label, () => {
         action();
         saveWorldState(this.world);
@@ -4120,6 +4120,52 @@ export class GameScene extends Phaser.Scene {
       this.updatePlayerBikeVisual();
       this.showToast("Dev bike repaired.");
     });
+    addGodButton("Act 1 Ready", () => {
+      this.world.life.actProgress.currentAct = 1;
+      this.world.life.actProgress.act0Step = "complete";
+      this.world.life.actProgress.firstDayComplete = true;
+      this.world.life.actProgress.completedAct0StepIds = [
+        "meet_ibu_sari",
+        "pickup_first_delivery",
+        "dropoff_first_delivery",
+        "buy_meal_and_coffee",
+        "sleep_first_night"
+      ];
+      this.world.life.hustle.completedDeliveryCount = Math.max(this.world.life.hustle.completedDeliveryCount, 1);
+      this.world.life.hustle.deliveryEarnings = Math.max(this.world.life.hustle.deliveryEarnings, 160);
+      this.world.life.hustle.driverRating = Math.max(this.world.life.hustle.driverRating, 3.6);
+      this.playerState.hasBike = true;
+      this.playerState.onBike = true;
+      this.playerState.bikeStuck = false;
+      this.playerState.bikeCondition = Math.max(this.playerState.bikeCondition, 48);
+      if (getQuantity(this.playerState, SCOOTER_KEY_ITEM_ID) === 0) {
+        addItem(this.playerState, SCOOTER_KEY_ITEM_ID, 1);
+      }
+      this.refreshHustleMoveOutReady();
+      this.updatePlayerBikeVisual();
+      this.showToast("Dev Act 1 hustle state ready.");
+    }, 0x253a35);
+    addGodButton("+Delivery Stat", () => {
+      this.world.life.hustle.completedDeliveryCount += 1;
+      this.world.life.hustle.deliveryEarnings += 140;
+      this.world.life.hustle.driverRating = Math.min(5, Math.round((this.world.life.hustle.driverRating + 0.2) * 10) / 10);
+      this.refreshHustleMoveOutReady();
+      this.showToast("Dev delivery progress added.");
+    }, 0x253a35);
+    addGodButton("Rating 4.5★", () => {
+      this.world.life.hustle.driverRating = 4.5;
+      this.refreshHustleMoveOutReady();
+      this.showToast("Dev driver rating set.");
+    }, 0x253a35);
+    addGodButton("Pay Rent", () => {
+      const result = payHustleRent(this.world, this.getAbsoluteMinute());
+      this.showToast(result.message);
+    }, 0x394155);
+    addGodButton("Upgrade Scooter", () => {
+      const result = upgradeToDailyScooter(this.world, this.getAbsoluteMinute());
+      this.updatePlayerBikeVisual();
+      this.showToast(result.message);
+    }, 0x394155);
     addGodButton("Time 08:00", () => this.devSetTime(8 * 60));
     addGodButton("Time 18:00", () => this.devSetTime(18 * 60));
     addGodButton("Reveal Map", () => {
@@ -4144,6 +4190,13 @@ export class GameScene extends Phaser.Scene {
 
     this.addPanelButton(container, x + panelWidth - 160, y + panelHeight - 54, 138, 36, "Close", () => this.closeGodmodePanel(), 0x4a3331);
     this.godmodePanel = container;
+  }
+
+  private refreshHustleMoveOutReady(): void {
+    this.world.life.hustle.moveOutReady =
+      this.world.life.hustle.completedDeliveryCount >= 5 &&
+      this.world.life.hustle.deliveryEarnings >= 700 &&
+      this.world.life.hustle.driverRating >= 4.2;
   }
 
   private refreshGodmodePanel(): void {

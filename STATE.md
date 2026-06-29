@@ -24,6 +24,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Current delivery jobs: first BAKED villa drop, Milk & Madu brunch bag, Satu-Satu invoice pouch, and FINNS linen bundle.
 - The Hustle Board now has local survival actions: pay rent (`rentAmount` / `rentDueDay`) and upgrade from the borrowed rattletrap to a proper daily rental once money, completed deliveries, and driver rating are high enough.
 - Phone > Quests now shows an Act 1 Hustle goal surface derived from runtime state: first delivery, steady runner, daily scooter, cover first rent, and move-out ready.
+- Dev godmode now includes Act 1 testing shortcuts: set Act 1 ready, add delivery progress, set driver rating to 4.5, pay rent, and upgrade scooter. These are development-only and still gated by `import.meta.env.DEV`.
 - Act 0 now starts at dusk near the cheap-kos/Canggu Station side. Ibu Sari gives the player a borrowed beat-up scooter, accepts the first BAKED delivery, and HUD tutorial copy points the player through pickup, dropoff, meal/coffee, and first sleep.
 - Active delivery pickup/dropoff markers are drawn on the map and become `E`/`ACT` interaction targets. Delivery targets win over overlapping shop panels so BAKED pickup does not accidentally open the shop.
 - Active delivery targets now also appear on the minimap, and the Act 1 tracker shows active delivery, rent target, scooter tier, driver rating, and Hustle Board guidance.
