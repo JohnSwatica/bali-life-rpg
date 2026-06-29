@@ -12,6 +12,7 @@ import {
 } from "../data/authoredStreetLayout";
 import { activityDefinitions, interestGroupDefinitions } from "../data/community";
 import { itemDefinitions } from "../data/items";
+import { playerHomeBase } from "../data/homeBase";
 import { collisionRects, pickupDefinitions, WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
 import { npcDefinitions } from "../data/npcs";
 import { questDefinitions } from "../data/quests";
@@ -51,6 +52,7 @@ import {
 } from "../systems/life/ActivityEngine";
 import { getSettlingInGoalTitle, updateSettlingInGoals } from "../systems/life/SettlingInGoals";
 import { completeAct0Step, getAct0HudLines, isAct0Complete, markAct0MealProgress } from "../systems/life/ActProgression";
+import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
 import { acceptDelivery, completeDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
 import { getScooterUpgradeStatus, payHustleRent, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
 import {
@@ -1802,9 +1804,12 @@ export class GameScene extends Phaser.Scene {
     this.questText.setText([...this.getTutorialLines(), ...getQuestTrackerLines(this.playerState)].join("\n"));
     this.questText.setWordWrapWidth(Math.min(520, this.scale.width - 40));
 
+    const homeSleepReady = this.isAct0HomeSleepReady();
     const target = this.getNearestInteraction();
     if (this.mode === "world" && this.playerState.bikeStuck) {
       this.promptText.setText(`E / ACT: ask ${REQUIRED_BIKE_HELPERS} helpers to drag the bike out`);
+    } else if (this.mode === "world" && homeSleepReady) {
+      this.promptText.setText(`E / ACT: sleep at ${playerHomeBase.name}.`);
     } else if (this.mode === "world" && target) {
       this.promptText.setText(`E / ACT: ${target.label}`);
     } else if (this.mode === "world" && this.canSleepHere()) {
@@ -1937,6 +1942,11 @@ export class GameScene extends Phaser.Scene {
 
     if (this.playerState.bikeStuck) {
       this.tryFreeBike();
+      return;
+    }
+
+    if (this.isAct0HomeSleepReady()) {
+      this.sleepToMorning();
       return;
     }
 
@@ -4464,6 +4474,17 @@ export class GameScene extends Phaser.Scene {
         })
         .filter((target): target is { id: string; label: string; x: number; y: number; radius: number } => Boolean(target));
     }
+    if (this.world.life.actProgress.act0Step === "sleep_first_night") {
+      return [
+        {
+          id: playerHomeBase.id,
+          label: playerHomeBase.name,
+          x: playerHomeBase.x,
+          y: playerHomeBase.y,
+          radius: playerHomeBase.radius
+        }
+      ];
+    }
     return [];
   }
 
@@ -4482,7 +4503,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   private canSleepHere(): boolean {
-    return this.world.life.actProgress.act0Step === "sleep_first_night" || canSleepNow(this.world.clock, this.world.meters);
+    if (this.world.life.actProgress.act0Step === "sleep_first_night") {
+      return isPlayerAtHomeBase(this.world);
+    }
+    return canSleepNow(this.world.clock, this.world.meters);
+  }
+
+  private isAct0HomeSleepReady(): boolean {
+    return canUseHomeSleep(this.world);
   }
 
   private sleepToMorning(): void {

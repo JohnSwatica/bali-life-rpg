@@ -4,8 +4,10 @@ import { acceptDelivery, completeDelivery, getDeliveryOfferAvailability, pickupD
 import { getScooterUpgradeStatus, payHustleRent, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
 import { getHustleGoalStates } from "../systems/hustle/HustleGoals";
 import { completeAct0Step, markAct0MealProgress } from "../systems/life/ActProgression";
+import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
 import { getRelationship } from "../systems/relationships/RelationshipMemory";
 import { createInitialWorldState } from "../systems/WorldState";
+import { playerHomeBase } from "../data/homeBase";
 
 describe("Act 0 hustle and deliveries", () => {
   it("accepts, picks up, completes, and rewards the first BAKED delivery", () => {
@@ -49,6 +51,7 @@ describe("Act 0 hustle and deliveries", () => {
 
   it("keeps Act 0 progression in order through delivery, meal, and first sleep", () => {
     const world = createInitialWorldState();
+    const player = world.players[world.localPlayerId];
 
     expect(world.life.actProgress.act0Step).toBe("meet_ibu_sari");
     expect(completeAct0Step(world, "sleep_first_night")).toBe(false);
@@ -67,6 +70,11 @@ describe("Act 0 hustle and deliveries", () => {
     expect(world.life.actProgress.act0Step).toBe("buy_meal_and_coffee");
     expect(markAct0MealProgress(world, "meal")).toBe(true);
     expect(world.life.actProgress.act0Step).toBe("sleep_first_night");
+    expect(canUseHomeSleep(world)).toBe(false);
+    player.x = playerHomeBase.x;
+    player.y = playerHomeBase.y;
+    expect(isPlayerAtHomeBase(world)).toBe(true);
+    expect(canUseHomeSleep(world)).toBe(true);
 
     expect(completeAct0Step(world, "sleep_first_night")).toBe(true);
     expect(world.life.actProgress).toMatchObject({

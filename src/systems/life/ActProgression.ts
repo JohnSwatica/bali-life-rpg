@@ -27,7 +27,7 @@ const STEP_COPY: Record<Act0Step, { title: string; objective: string }> = {
   },
   sleep_first_night: {
     title: "Sleep it off",
-    objective: "Ride back somewhere quiet and sleep until morning."
+    objective: "Ride back to your cheap kos marker and sleep until morning."
   },
   complete: {
     title: "First day survived",
