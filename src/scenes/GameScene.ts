@@ -1855,8 +1855,10 @@ export class GameScene extends Phaser.Scene {
     }
     if (this.world.life.hustle.moveOutReady) {
       return [
-        "Act 1 milestone: move-out ready.",
-        "You have the runs, rating, and cash record to leave the cramped kos. Next chapter: people, crew, and a better room."
+        this.world.life.actProgress.currentAct >= 2 ? "Act 2: finding your people." : "Act 1 milestone: move-out ready.",
+        this.world.life.actProgress.currentAct >= 2
+          ? "You have breathing room. Attend events, join a crew, and turn familiar faces into real friends."
+          : "You have the runs, rating, and cash record to leave the cramped kos. Next chapter: people, crew, and a better room."
       ];
     }
     if (this.world.life.actProgress.currentAct === 1) {

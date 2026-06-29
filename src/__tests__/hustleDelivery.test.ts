@@ -173,7 +173,9 @@ describe("Act 0 hustle and deliveries", () => {
 
     expect(completed.ok).toBe(true);
     expect(world.life.hustle.moveOutReady).toBe(true);
+    expect(world.life.actProgress.currentAct).toBe(2);
     expect(completed.message).toContain("Move-out ready");
+    expect(completed.message).toContain("Act 2 begins");
   });
 
   it("lets hustle earnings pay rent and upgrade the borrowed scooter", () => {

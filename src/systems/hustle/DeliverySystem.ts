@@ -146,9 +146,12 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
     world.life.hustle.completedDeliveryCount >= 5 &&
     world.life.hustle.deliveryEarnings >= 700 &&
     world.life.hustle.driverRating >= 4.2;
+  if (!wasMoveOutReady && world.life.hustle.moveOutReady && world.life.actProgress.currentAct < 2) {
+    world.life.actProgress.currentAct = 2;
+  }
   const moveOutCopy =
     !wasMoveOutReady && world.life.hustle.moveOutReady
-      ? " Move-out ready: Ibu Sari says you can start looking for a proper room."
+      ? " Move-out ready: Ibu Sari says you can start looking for a proper room. Act 2 begins: find your people."
       : "";
   const wearCopy = scooterWear > 0 ? ` Scooter -${scooterWear}% (${player.bikeCondition}%).` : "";
 
