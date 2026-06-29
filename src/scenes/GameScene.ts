@@ -54,7 +54,7 @@ import { getSettlingInGoalTitle, updateSettlingInGoals } from "../systems/life/S
 import { completeAct0Step, getAct0HudLines, isAct0Complete, markAct0MealProgress } from "../systems/life/ActProgression";
 import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
 import { acceptDelivery, completeDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
-import { getScooterUpgradeStatus, payHustleRent, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
+import { getRentPressureState, getScooterUpgradeStatus, payHustleRent, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
 import {
   acceptOpportunity,
   appendOpportunityMessage,
@@ -1853,10 +1853,14 @@ export class GameScene extends Phaser.Scene {
       return getAct0HudLines(this.world);
     }
     if (this.world.life.hustle.completedDeliveryCount < 5) {
+      const rentPressure = getRentPressureState(this.world);
       const lines = [
         `Act 1: keep hustling. ${this.world.life.hustle.completedDeliveryCount}/5 deliveries, Rp ${this.world.life.hustle.deliveryEarnings}/700, ${this.world.life.hustle.driverRating.toFixed(1)}★.`,
-        `Rent: Rp ${this.playerState.money}/${this.world.life.hustle.rentAmount} by Day ${this.world.life.hustle.rentDueDay}. Scooter: ${this.world.life.hustle.scooterTier.replace(/_/g, " ")}.`
+        `Rent: Rp ${this.playerState.money}/${this.world.life.hustle.rentAmount} by Day ${this.world.life.hustle.rentDueDay} (${rentPressure.shortLabel}). Scooter: ${this.world.life.hustle.scooterTier.replace(/_/g, " ")}.`
       ];
+      if (rentPressure.status !== "comfortable") {
+        lines.push(rentPressure.message);
+      }
       const activeDelivery = this.world.life.hustle.activeDelivery;
       if (activeDelivery) {
         const delivery = getDeliveryDefinition(activeDelivery.deliveryId);

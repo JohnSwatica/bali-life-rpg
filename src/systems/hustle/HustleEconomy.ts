@@ -20,6 +20,49 @@ export interface ScooterUpgradeStatus {
   cost: number;
 }
 
+export type RentPressureStatus = "comfortable" | "due_soon" | "due_today" | "overdue";
+
+export interface RentPressureState {
+  status: RentPressureStatus;
+  daysRemaining: number;
+  shortLabel: string;
+  message: string;
+}
+
+export function getRentPressureState(world: WorldState): RentPressureState {
+  const daysRemaining = world.life.hustle.rentDueDay - world.clock.day;
+  if (daysRemaining < 0) {
+    return {
+      status: "overdue",
+      daysRemaining,
+      shortLabel: "Rent overdue",
+      message: `Rent was due ${Math.abs(daysRemaining)} day${Math.abs(daysRemaining) === 1 ? "" : "s"} ago. Pay it when you can to steady your life.`
+    };
+  }
+  if (daysRemaining === 0) {
+    return {
+      status: "due_today",
+      daysRemaining,
+      shortLabel: "Rent due today",
+      message: "Rent is due today. One clean run can still buy breathing room."
+    };
+  }
+  if (daysRemaining === 1) {
+    return {
+      status: "due_soon",
+      daysRemaining,
+      shortLabel: "Rent due tomorrow",
+      message: "Rent is due tomorrow. Hustle now, sleep easier later."
+    };
+  }
+  return {
+    status: "comfortable",
+    daysRemaining,
+    shortLabel: `${daysRemaining} days to rent`,
+    message: `Rent is due in ${daysRemaining} days. Keep stacking small wins.`
+  };
+}
+
 export function payHustleRent(world: WorldState, now: number): HustleActionResult {
   const player = world.players[world.localPlayerId];
   const amount = world.life.hustle.rentAmount;

@@ -9,7 +9,7 @@ import {
   pickupDelivery,
   previewDeliveryCondition
 } from "../systems/hustle/DeliverySystem";
-import { getScooterUpgradeStatus, payHustleRent, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
+import { getRentPressureState, getScooterUpgradeStatus, payHustleRent, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
 import { getHustleGoalStates } from "../systems/hustle/HustleGoals";
 import { completeAct0Step, markAct0MealProgress } from "../systems/life/ActProgression";
 import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
@@ -180,6 +180,27 @@ describe("Act 0 hustle and deliveries", () => {
     expect(player.bikeCondition).toBe(100);
     expect(world.life.hustle.scooterTier).toBe("daily_rental");
     expect(getQuantity(player, "scooter_key")).toBe(1);
+  });
+
+  it("labels rent pressure without creating a fail state", () => {
+    const world = createInitialWorldState();
+    world.clock.day = 2;
+    world.life.hustle.rentDueDay = 4;
+    expect(getRentPressureState(world)).toMatchObject({
+      status: "comfortable",
+      daysRemaining: 2,
+      shortLabel: "2 days to rent"
+    });
+
+    world.clock.day = 3;
+    expect(getRentPressureState(world)).toMatchObject({ status: "due_soon", shortLabel: "Rent due tomorrow" });
+
+    world.clock.day = 4;
+    expect(getRentPressureState(world)).toMatchObject({ status: "due_today", shortLabel: "Rent due today" });
+
+    world.clock.day = 5;
+    expect(getRentPressureState(world)).toMatchObject({ status: "overdue", daysRemaining: -1, shortLabel: "Rent overdue" });
+    expect(world.life.hustle.rentDueDay).toBe(4);
   });
 
   it("derives Act 1 hustle goals from delivery, rent, scooter, and move-out state", () => {

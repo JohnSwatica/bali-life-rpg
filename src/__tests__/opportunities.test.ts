@@ -156,4 +156,22 @@ describe("opportunity engine", () => {
     };
     expect(generateOpportunityPhoneTexts(state, world).some((message) => message.id.startsWith("hustle-board"))).toBe(false);
   });
+
+  it("sends a daily rent reminder only when rent is close", () => {
+    const world = createInitialWorldState();
+    const state = createDefaultOpportunityState();
+    world.life.actProgress.firstDayComplete = true;
+    world.clock.day = 2;
+    world.life.hustle.rentDueDay = 4;
+    setHour(world, 10);
+
+    expect(generateOpportunityPhoneTexts(state, world).some((message) => message.id.startsWith("rent-reminder"))).toBe(false);
+
+    world.clock.day = 3;
+    const created = generateOpportunityPhoneTexts(state, world);
+    expect(created).toContainEqual(
+      expect.objectContaining({ id: "rent-reminder:ibu-sari:3", from: "Ibu Sari", body: expect.stringContaining("Rent due tomorrow") })
+    );
+    expect(generateOpportunityPhoneTexts(state, world).filter((message) => message.id.startsWith("rent-reminder"))).toEqual([]);
+  });
 });

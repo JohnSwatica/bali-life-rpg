@@ -16,7 +16,7 @@ import { getRelationshipArcStatesForNpc } from "../../systems/relationships/Rela
 import { getSettlingInGoalStates } from "../../systems/life/SettlingInGoals";
 import { getDeliveryDefinition } from "../../data/deliveries";
 import { getDeliveryOfferAvailability, getEffectiveDeliveryTerms, previewDeliveryCondition } from "../../systems/hustle/DeliverySystem";
-import { getScooterUpgradeStatus } from "../../systems/hustle/HustleEconomy";
+import { getRentPressureState, getScooterUpgradeStatus } from "../../systems/hustle/HustleEconomy";
 import { getHustleGoalStates } from "../../systems/hustle/HustleGoals";
 import type { GameEvent, RelationshipMemory, Venue, WorldState } from "../../types";
 
@@ -258,9 +258,10 @@ export class PhoneShell {
   private renderHustleBoard(container: Phaser.GameObjects.Container, x: number, y: number, width: number): number {
     const world = this.options.getWorld();
     const activeDelivery = world.life.hustle.activeDelivery;
+    const rentPressure = getRentPressureState(world);
     this.renderTextList(container, x, y, width, [
       `Hustle Board: ${world.life.hustle.completedDeliveryCount} runs | Rp ${world.life.hustle.deliveryEarnings} earned | ${world.life.hustle.driverRating.toFixed(1)}★`,
-      `Rent target: Rp ${world.life.hustle.rentAmount} by Day ${world.life.hustle.rentDueDay} | Scooter: ${world.life.hustle.scooterTier.replace(/_/g, " ")}`
+      `Rent target: Rp ${world.life.hustle.rentAmount} by Day ${world.life.hustle.rentDueDay} (${rentPressure.shortLabel}) | Scooter: ${world.life.hustle.scooterTier.replace(/_/g, " ")}`
     ]);
     let rowY = y + 50;
     const player = world.players[world.localPlayerId];

@@ -8,6 +8,7 @@ import {
 } from "../minigames/ActivityMinigames";
 import { bumpRelationshipAffinity, getAffinityTier, getRelationship, recordRelationshipMemory } from "../relationships/RelationshipMemory";
 import { adjustReputation, awardReputationTag } from "../reputation/ReputationState";
+import { getRentPressureState } from "../hustle/HustleEconomy";
 import { advanceWorldMinutes } from "../time/DailyClock";
 import type {
   LiveOpportunity,
@@ -165,6 +166,18 @@ export function generateOpportunityPhoneTexts(state: OpportunityRuntimeState, wo
       at: now,
       from: "Ibu Sari",
       body: "If the day feels empty, check the Hustle Board. Small runs become rent money if you keep your rating clean.",
+      venueId: "canggu_station",
+      read: false
+    });
+  }
+
+  const rentPressure = getRentPressureState(world);
+  if (world.life.actProgress.firstDayComplete && rentPressure.status !== "comfortable" && isHourInWindow(hour, 7, 21)) {
+    candidates.push({
+      id: `rent-reminder:ibu-sari:${dayKey}`,
+      at: now,
+      from: "Ibu Sari",
+      body: `${rentPressure.shortLabel}. ${rentPressure.message}`,
       venueId: "canggu_station",
       read: false
     });
