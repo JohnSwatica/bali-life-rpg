@@ -265,5 +265,31 @@ export const opportunityTemplates: OpportunityTemplate[] = [
     },
     weight: 4,
     cooldownMin: 720
+  },
+  {
+    id: "focus_table_client_referral",
+    type: "gig",
+    title: "Warm client intro @ Satu-Satu",
+    blurb: "The focus table trusts you enough to pass along a tiny paid fix-it brief. Low drama, better money.",
+    trigger: {
+      timeWindow: { startHour: 13, endHour: 16 },
+      venueIds: ["satu_satu_coffee"],
+      requiresClubId: "focus_table_collective",
+      minReputation: 55
+    },
+    locationVenueId: "satu_satu_coffee",
+    durationMin: 95,
+    timeCostMin: 70,
+    reward: {
+      money: 145,
+      meterDeltas: { energy: -16, wellbeing: -2, focus: 14, social: 8 },
+      affinityBumps: [
+        { npcId: "made", amount: 3 },
+        { npcId: "kadek", amount: 2 }
+      ],
+      reputation: { delta: 3, tag: "reliable", reason: "Handled a warm client referral from the focus table" }
+    },
+    weight: 5,
+    cooldownMin: 1440
   }
 ];

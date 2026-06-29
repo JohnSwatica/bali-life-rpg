@@ -305,3 +305,5 @@ The move from Act 1 into Act 2 is deliberately a bridge, not another new subsyst
 The map/minimap guide layer now surfaces `Find beach crew` at Berawa Beach and `Find focus table` at Satu-Satu Coffee while the player is clubless in Act 2. This keeps the next step visible and uses the existing events, clubs, and relationship arcs as the social payoff.
 
 Phone > Quests now reads the same chapter state through a tiny pure `Act2Goals` helper: join a first crew, attend a recurring club event, and complete a relationship beat. This is intentionally a goal/read-model layer only; it does not add save schema, backend, or new social mechanics.
+
+Act 2 social payoff can be represented through existing opportunity gates before adding any new economy system. `focus_table_client_referral` is a dev-authored opportunity unlocked by Focus Table Collective membership plus reputation, showing that clubs can open better work while Act 3 business remains deferred.

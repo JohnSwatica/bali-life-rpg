@@ -41,6 +41,14 @@ describe("opportunity engine", () => {
     world.life.joinedClubIds.push("berawa_run_crew");
     expect(isOpportunityEligible(template("run_crew_open_slot"), world, state)).toBe(true);
 
+    setHour(world, 14);
+    world.reputation.score = 50;
+    expect(isOpportunityEligible(template("focus_table_client_referral"), world, state)).toBe(false);
+    world.life.joinedClubIds.push("focus_table_collective");
+    expect(isOpportunityEligible(template("focus_table_client_referral"), world, state)).toBe(false);
+    world.reputation.score = 58;
+    expect(isOpportunityEligible(template("focus_table_client_referral"), world, state)).toBe(true);
+
     setHour(world, 17);
     expect(isOpportunityEligible(template("ari_sunset_ping"), world, state)).toBe(false);
     world.relationships.push({

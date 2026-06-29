@@ -32,6 +32,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - When the move-out threshold is crossed, `world.life.actProgress.currentAct` advances to `2`, and the HUD reframes the next chapter as events, clubs, and friendships. This uses the existing Phase B social layer instead of adding new social systems.
 - Act 2 now has a lightweight handoff instead of a new system: if the player reaches Act 2 without joining a club, Ari can send a daily local phone invite, and the guide layer points toward Berawa Beach (`Find beach crew`) and Satu-Satu Coffee (`Find focus table`) as first social targets.
 - Phone > Quests now includes an Act 2 `Find Your People` goal surface once the player reaches Act 2: join a first crew, attend one recurring club rhythm, and complete a first relationship beat.
+- Act 2 club membership now unlocks a concrete better opportunity: `focus_table_client_referral` appears only after joining Focus Table Collective and reaching enough reputation, giving the social layer a small work/economy payoff.
 - Phone > Quests now shows an Act 1 Hustle goal surface derived from runtime state: first delivery, steady runner, daily scooter, cover first rent, and move-out ready.
 - Dev godmode now includes Act 1 testing shortcuts: set Act 1 ready, add delivery progress, set driver rating to 4.5, pay rent, and upgrade scooter. These are development-only and still gated by `import.meta.env.DEV`.
 - After Act 0, Ibu Sari can send one local daily phone nudge pointing the player back to the Hustle Board when no delivery is active. This uses the existing simulated phone-feed/message system.
@@ -285,6 +286,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 2. Reframe the existing social layer as Act 2:
    - Events, clubs, relationship arcs, and the Settling In goals should read as the payoff after the player has basic income and breathing room.
    - Use Ari's current Act 2 invite plus the Berawa Beach / Satu-Satu guide markers as the first bridge into clubs and recurring events.
+   - Keep adding small club/reputation-gated opportunities that make social investment pay off without building Act 3 business yet.
    - Social standing should unlock premium gigs/perks and eventually crew support for Act 3.
 
 3. Keep Act 3 as hooks only for now:
