@@ -3835,7 +3835,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawMinimapDeliveryMarkers(ctx: CanvasRenderingContext2D, layout: MinimapLayout): void {
-    for (const target of this.getActiveDeliveryTargets()) {
+    const targets = [...this.getActiveDeliveryTargets()];
+    if (targets.length === 0) {
+      targets.push(...this.getActGuideTargets());
+    }
+    for (const target of targets) {
       const point = this.projectMinimapPoint(target, layout);
       this.fillCircle(ctx, point.x, point.y, 5.2, 0xffd45c, 0.98);
       this.strokeCircle(ctx, point.x, point.y, 7, 2, 0x253a35, 0.86);
@@ -4428,7 +4432,11 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.deliveryMarkerLayer.clear();
-    for (const target of this.getActiveDeliveryTargets()) {
+    const targets = [...this.getActiveDeliveryTargets()];
+    if (targets.length === 0) {
+      targets.push(...this.getActGuideTargets());
+    }
+    for (const target of targets) {
       const pulse = 0.55 + Math.sin(Date.now() / 180) * 0.12;
       this.deliveryMarkerLayer.fillStyle(0xfff0bd, 0.18);
       this.deliveryMarkerLayer.fillCircle(target.x, target.y, target.radius);
@@ -4439,6 +4447,24 @@ export class GameScene extends Phaser.Scene {
       this.deliveryMarkerLayer.lineStyle(2, 0xfff0bd, 0.9);
       this.deliveryMarkerLayer.strokeTriangle(target.x, target.y - 34, target.x - 16, target.y - 8, target.x + 16, target.y - 8);
     }
+  }
+
+  private getActGuideTargets(): Array<{ id: string; label: string; x: number; y: number; radius: number }> {
+    if (this.world.life.actProgress.act0Step === "meet_ibu_sari") {
+      const sari = this.npcSprites.get("ibu_sari") ?? this.world.npcs.ibu_sari;
+      if (sari) {
+        return [{ id: "act0_ibu_sari", label: "Find Ibu Sari", x: sari.x, y: sari.y, radius: scaleDistance(92) }];
+      }
+    }
+    if (this.world.life.actProgress.act0Step === "buy_meal_and_coffee") {
+      return ["milk_madu_berawa", "baked_berawa"]
+        .map((venueId) => {
+          const node = venueMapNodes.find((candidate) => candidate.venueId === venueId);
+          return node ? { id: `act0_${venueId}`, label: node.venueId, x: node.x, y: node.y, radius: Math.min(node.radius, scaleDistance(104)) } : null;
+        })
+        .filter((target): target is { id: string; label: string; x: number; y: number; radius: number } => Boolean(target));
+    }
+    return [];
   }
 
   private refreshSettlingInGoals(showToast = true): string {
