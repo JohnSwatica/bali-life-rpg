@@ -50,6 +50,8 @@ describe("Act 0 hustle and deliveries", () => {
     const world = createInitialWorldState();
 
     expect(world.life.actProgress.act0Step).toBe("meet_ibu_sari");
+    expect(completeAct0Step(world, "sleep_first_night")).toBe(false);
+    expect(world.life.actProgress.completedAct0StepIds).toEqual([]);
     expect(markAct0MealProgress(world, "coffee")).toBe(false);
     expect(world.questFlags.act0_coffee_done).toBeUndefined();
 

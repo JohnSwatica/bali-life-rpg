@@ -81,10 +81,11 @@ export function completeAct0Step(world: WorldState, stepId: Act0Step): boolean {
   if (progress.completedAct0StepIds.includes(stepId)) {
     return false;
   }
-  progress.completedAct0StepIds.push(stepId);
-  if (progress.act0Step === stepId) {
-    progress.act0Step = NEXT_STEP[stepId];
+  if (progress.act0Step !== stepId) {
+    return false;
   }
+  progress.completedAct0StepIds.push(stepId);
+  progress.act0Step = NEXT_STEP[stepId];
   if (progress.act0Step === "complete") {
     if (progress.currentAct === 0) {
       progress.currentAct = 1;
