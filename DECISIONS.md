@@ -303,3 +303,5 @@ This intentionally reframes already-built Phase B systems as the Act 2 payoff in
 The move from Act 1 into Act 2 is deliberately a bridge, not another new subsystem. If the player has reached Act 2 but has not joined a club, Ari can send one local daily phone invite nudging them toward the beach crew/focus-table loop.
 
 The map/minimap guide layer now surfaces `Find beach crew` at Berawa Beach and `Find focus table` at Satu-Satu Coffee while the player is clubless in Act 2. This keeps the next step visible and uses the existing events, clubs, and relationship arcs as the social payoff.
+
+Phone > Quests now reads the same chapter state through a tiny pure `Act2Goals` helper: join a first crew, attend a recurring club event, and complete a relationship beat. This is intentionally a goal/read-model layer only; it does not add save schema, backend, or new social mechanics.

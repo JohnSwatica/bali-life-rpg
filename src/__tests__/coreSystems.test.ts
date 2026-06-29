@@ -15,6 +15,7 @@ import { shopDefinitions } from "../data/shops";
 import { addItem, getQuantity } from "../systems/Inventory";
 import { InteractionController, type InteractionOffender } from "../systems/interaction/InteractionController";
 import { applyActivity, getVenueActivityContext } from "../systems/life/ActivityEngine";
+import { getAct2GoalStates } from "../systems/life/Act2Goals";
 import { getSettlingInGoalStates, updateSettlingInGoals } from "../systems/life/SettlingInGoals";
 import {
   addHiddenTrustFlag,
@@ -126,6 +127,36 @@ describe("Settling In goals", () => {
       deepen_a_bond: true
     });
     expect(world.life.settledIn).toBe(true);
+  });
+});
+
+describe("Act 2 social goals", () => {
+  it("stay hidden before Act 2 and then track club rhythm plus relationship beats", () => {
+    const world = createInitialWorldState();
+    expect(getAct2GoalStates(world)).toEqual([]);
+
+    world.life.actProgress.currentAct = 2;
+    let states = Object.fromEntries(getAct2GoalStates(world).map((goal) => [goal.id, goal.complete]));
+    expect(states).toEqual({
+      join_first_crew: false,
+      attend_club_rhythm: false,
+      deepen_a_bond: false
+    });
+
+    world.life.joinedClubIds.push("berawa_run_crew");
+    states = Object.fromEntries(getAct2GoalStates(world).map((goal) => [goal.id, goal.complete]));
+    expect(states.join_first_crew).toBe(true);
+    expect(states.attend_club_rhythm).toBe(false);
+
+    world.runtimeEvents.attendedEventIds.push("berawa_run_crew_loop");
+    bumpRelationshipAffinity(world, "npc", "ari", 4, "showed up for Act 2", 2);
+    completeNextRelationshipArcBeat(world, "ari", 2);
+    states = Object.fromEntries(getAct2GoalStates(world).map((goal) => [goal.id, goal.complete]));
+    expect(states).toEqual({
+      join_first_crew: true,
+      attend_club_rhythm: true,
+      deepen_a_bond: true
+    });
   });
 });
 
