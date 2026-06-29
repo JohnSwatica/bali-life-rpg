@@ -32,6 +32,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Active delivery pickup/dropoff markers are drawn on the map and become `E`/`ACT` interaction targets. Delivery targets win over overlapping shop panels so BAKED pickup does not accidentally open the shop.
 - Active delivery targets now also appear on the minimap, and the Act 1 tracker shows active delivery, rent target, scooter tier, driver rating, and Hustle Board guidance.
 - Act 0 now draws lightweight guide markers on the map/minimap for the current tutorial target: Ibu Sari at the start, then nearby meal/coffee venue options after the first delivery.
+- Scene absolute-minute math now matches the shared systems convention (`Day 1` starts at minute `0`), so Act 0 delivery countdowns do not show an extra day of time.
 - The current automated suite is green after the Act 0/hustle additions: `npm test -- --run` reports 42 passing and 3 intentionally skipped tests; `npm run build` passes.
 - Git is now initialized locally. Baseline and every sprint phase are committed.
 - Added [STORY_ARC.md](STORY_ARC.md), the canonical progression spine: Act 0 新手村 tutorial, Act 1 hustle, Act 2 people/social, Act 3 build your warung/café + villa + bike, Act 4 solo win, Act 5 multiplayer/Nomad Nest open world.

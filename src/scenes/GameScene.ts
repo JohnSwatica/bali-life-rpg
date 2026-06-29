@@ -4516,7 +4516,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private getAbsoluteMinute(): number {
-    return Math.floor(this.world.clock.day * 1440 + this.world.clock.minuteOfDay);
+    return Math.floor((Math.max(1, this.world.clock.day) - 1) * 1440 + this.world.clock.minuteOfDay);
   }
 
   private updateOpportunityFeed(delta: number, force = false): void {
