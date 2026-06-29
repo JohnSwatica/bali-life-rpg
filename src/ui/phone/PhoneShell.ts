@@ -15,6 +15,7 @@ import { getAffinityPerk, getAffinityTier, summarizeRelationshipMemories } from 
 import { getRelationshipArcStatesForNpc } from "../../systems/relationships/RelationshipArcs";
 import { getSettlingInGoalStates } from "../../systems/life/SettlingInGoals";
 import { getAct2GoalStates } from "../../systems/life/Act2Goals";
+import { getAct0StepState } from "../../systems/life/ActProgression";
 import { getDeliveryDefinition } from "../../data/deliveries";
 import { getDeliveryOfferAvailability, getEffectiveDeliveryTerms, previewDeliveryCondition } from "../../systems/hustle/DeliverySystem";
 import { getRentPressureState, getScooterRepairStatus, getScooterUpgradeStatus } from "../../systems/hustle/HustleEconomy";
@@ -415,8 +416,12 @@ export class PhoneShell {
     const goals = getSettlingInGoalStates(world).map((goal) => `${goal.complete ? "Done" : "Goal"}: ${goal.title} - ${goal.description}`);
     const hustleGoals = getHustleGoalStates(world).map((goal) => `${goal.complete ? "Done" : "Hustle"}: ${goal.title} - ${goal.description}`);
     const act2Goals = getAct2GoalStates(world).map((goal) => `${goal.complete ? "Done" : "Social"}: ${goal.title} - ${goal.description}`);
+    const act0Step = getAct0StepState(world);
     return [
       ...quests,
+      ...(!world.life.actProgress.firstDayComplete
+        ? ["", "Act 0 First Day", `Current: ${act0Step.title} - ${act0Step.objective}`]
+        : []),
       "",
       "Act 1 Hustle",
       ...hustleGoals,

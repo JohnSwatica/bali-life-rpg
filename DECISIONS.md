@@ -268,6 +268,8 @@ The final Act 0 beat now points to a concrete `Cheap Kos Room` marker in `src/da
 
 This keeps the tutorial aligned with `STORY_ARC.md`: arrive, meet Ibu Sari, run the first delivery, eat, then ride home. It is intentionally a small local helper (`HomeBase.ts`) rather than a new housing system; real housing/villa mechanics remain deferred to later acts.
 
+The current Act 0 objective is also mirrored into Phone > Quests. This is a visibility/read-model pass only; the HUD and existing interaction flow remain the source of actual tutorial progression.
+
 ## 2026-06-29 - Delivery Board Conditions Add Texture Without New Systems
 
 Repeatable Act 1 delivery jobs can now carry small authored conditions such as rush hour, rain windows, fragile cargo, clean papers, or villa tips. The condition is chosen deterministically at accept time, stored as `activeDelivery.conditionId`, and folded into existing delivery payout/time/meter/rating math.
