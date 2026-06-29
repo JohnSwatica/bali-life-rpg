@@ -279,3 +279,9 @@ This makes repeated jobs feel less identical while preserving the same local del
 `getRentPressureState()` is the canonical read model for rent countdown status. HUD, Phone > Feed, and authored Ibu Sari phone reminders use the same comfortable / due-soon / due-today / overdue labels.
 
 There is still no eviction, remote billing, subscription timer, or hard fail state. Rent pressure exists to make delivery choices meaningful and legible; recovery remains local and reversible through paying rent when the player has enough money.
+
+## 2026-06-29 - Act 1 Ends On A Visible Move-Out Beat
+
+The first hustle milestone is not just a hidden `moveOutReady` boolean anymore. When a delivery pushes the player over the Act 1 thresholds (5 deliveries, Rp 700 delivery earnings, and 4.2★ rating), the delivery result calls out that Ibu Sari thinks the player can start looking for a better room, and the HUD switches to a move-out-ready milestone.
+
+If the player has enough deliveries but not enough rating or earnings, the HUD names the missing requirements. This keeps Act 1 goal pressure legible without adding a new housing/villa system before Act 2 and Act 3 are ready.
