@@ -159,6 +159,17 @@ export function generateOpportunityPhoneTexts(state: OpportunityRuntimeState, wo
     });
   }
 
+  if (world.life.actProgress.firstDayComplete && !world.life.hustle.activeDelivery && isHourInWindow(hour, 8, 20)) {
+    candidates.push({
+      id: `hustle-board:ibu-sari:${dayKey}`,
+      at: now,
+      from: "Ibu Sari",
+      body: "If the day feels empty, check the Hustle Board. Small runs become rent money if you keep your rating clean.",
+      venueId: "canggu_station",
+      read: false
+    });
+  }
+
   for (const message of candidates) {
     if (appendOpportunityMessage(state, message)) {
       created.push(message);

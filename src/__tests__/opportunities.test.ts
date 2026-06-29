@@ -6,6 +6,7 @@ import {
   acceptOpportunity,
   createDefaultOpportunityState,
   expireOpportunities,
+  generateOpportunityPhoneTexts,
   getAbsoluteMinute,
   isOpportunityEligible,
   maintainOpportunityPool,
@@ -134,5 +135,25 @@ describe("opportunity engine", () => {
     expect(ariMemory?.affinity).toBe(1);
     expect(ariMemory?.memories.some((memory) => memory.type === "missed_opportunity")).toBe(true);
     expect(state.missedTemplateIds).toContain("ari_sunset_ping");
+  });
+
+  it("sends a daily Hustle Board nudge after Act 0 when no delivery is active", () => {
+    const world = createInitialWorldState();
+    const state = createDefaultOpportunityState();
+    setHour(world, 9);
+    world.life.actProgress.firstDayComplete = true;
+
+    const created = generateOpportunityPhoneTexts(state, world);
+    expect(created).toContainEqual(expect.objectContaining({ id: "hustle-board:ibu-sari:1", from: "Ibu Sari" }));
+    expect(generateOpportunityPhoneTexts(state, world)).toEqual([]);
+
+    world.clock.day = 2;
+    world.life.hustle.activeDelivery = {
+      deliveryId: "milk_madu_brunch_bag",
+      stage: "accepted",
+      acceptedAt: getAbsoluteMinute(world.clock),
+      dueAt: getAbsoluteMinute(world.clock) + 75
+    };
+    expect(generateOpportunityPhoneTexts(state, world).some((message) => message.id.startsWith("hustle-board"))).toBe(false);
   });
 });
