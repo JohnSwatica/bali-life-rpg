@@ -52,6 +52,7 @@ import {
 import { getSettlingInGoalTitle, updateSettlingInGoals } from "../systems/life/SettlingInGoals";
 import { completeAct0Step, getAct0HudLines, isAct0Complete, markAct0MealProgress } from "../systems/life/ActProgression";
 import { acceptDelivery, completeDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
+import { payHustleRent, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
 import {
   acceptOpportunity,
   appendOpportunityMessage,
@@ -419,6 +420,8 @@ export class GameScene extends Phaser.Scene {
       onOpportunityAccept: (opportunityId) => this.acceptPhoneOpportunity(opportunityId),
       onOpportunityTrack: (opportunityId) => this.trackPhoneOpportunity(opportunityId),
       onDeliveryAccept: (deliveryId) => this.acceptPhoneDelivery(deliveryId),
+      onPayRent: () => this.payPhoneRent(),
+      onUpgradeScooter: () => this.upgradePhoneScooter(),
       onFeedViewed: () => this.markPhoneFeedRead(),
       onClose: () => {
         if (this.mode === "phone") {
@@ -4480,6 +4483,21 @@ export class GameScene extends Phaser.Scene {
   private acceptPhoneDelivery(deliveryId: string): void {
     const result = acceptDelivery(this.world, deliveryId, this.getAbsoluteMinute());
     this.showToast(result.ok ? `${result.message} Follow the delivery marker.` : result.message);
+    saveWorldState(this.world);
+  }
+
+  private payPhoneRent(): void {
+    const result = payHustleRent(this.world, this.getAbsoluteMinute());
+    this.showToast(result.message);
+    saveWorldState(this.world);
+  }
+
+  private upgradePhoneScooter(): void {
+    const result = upgradeToDailyScooter(this.world, this.getAbsoluteMinute());
+    this.showToast(result.message);
+    if (result.ok) {
+      this.updatePlayerBikeVisual();
+    }
     saveWorldState(this.world);
   }
 

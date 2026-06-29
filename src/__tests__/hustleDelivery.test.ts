@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getQuantity } from "../systems/Inventory";
 import { acceptDelivery, completeDelivery, getDeliveryOfferAvailability, pickupDelivery } from "../systems/hustle/DeliverySystem";
+import { getScooterUpgradeStatus, payHustleRent, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
 import { completeAct0Step, markAct0MealProgress } from "../systems/life/ActProgression";
 import { getRelationship } from "../systems/relationships/RelationshipMemory";
 import { createInitialWorldState } from "../systems/WorldState";
@@ -96,5 +97,39 @@ describe("Act 0 hustle and deliveries", () => {
     expect(accepted.ok).toBe(true);
     expect(world.life.hustle.activeDelivery?.deliveryId).toBe("milk_madu_brunch_bag");
     expect(getDeliveryOfferAvailability(world).every((offer) => !offer.available)).toBe(true);
+  });
+
+  it("lets hustle earnings pay rent and upgrade the borrowed scooter", () => {
+    const world = createInitialWorldState();
+    const player = world.players[world.localPlayerId];
+
+    expect(payHustleRent(world, 100)).toMatchObject({ ok: false, message: "Need Rp 380 more for rent." });
+    player.money = 500;
+    world.clock.day = 3;
+    expect(payHustleRent(world, 120)).toMatchObject({ ok: true });
+    expect(player.money).toBe(50);
+    expect(world.life.hustle.rentDueDay).toBe(7);
+    expect(world.meters.wellbeing).toBe(74);
+    expect(world.meters.focus).toBe(45);
+    expect(world.reputation.score).toBe(61);
+
+    expect(getScooterUpgradeStatus(world)).toMatchObject({
+      available: false,
+      reason: "Need 2 completed deliveries."
+    });
+    player.money = 300;
+    player.hasBike = true;
+    player.bikeCondition = 24;
+    world.life.hustle.completedDeliveryCount = 2;
+    world.life.hustle.driverRating = 3.6;
+
+    expect(getScooterUpgradeStatus(world)).toMatchObject({ available: true, cost: 260 });
+    expect(upgradeToDailyScooter(world, 140)).toMatchObject({ ok: true });
+    expect(player.money).toBe(40);
+    expect(player.hasBike).toBe(true);
+    expect(player.onBike).toBe(true);
+    expect(player.bikeCondition).toBe(100);
+    expect(world.life.hustle.scooterTier).toBe("daily_rental");
+    expect(getQuantity(player, "scooter_key")).toBe(1);
   });
 });

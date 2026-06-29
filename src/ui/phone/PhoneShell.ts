@@ -16,6 +16,7 @@ import { getRelationshipArcStatesForNpc } from "../../systems/relationships/Rela
 import { getSettlingInGoalStates } from "../../systems/life/SettlingInGoals";
 import { getDeliveryDefinition } from "../../data/deliveries";
 import { getDeliveryOfferAvailability } from "../../systems/hustle/DeliverySystem";
+import { getScooterUpgradeStatus } from "../../systems/hustle/HustleEconomy";
 import type { GameEvent, RelationshipMemory, Venue, WorldState } from "../../types";
 
 const PHONE_DEPTH = 1500;
@@ -32,6 +33,8 @@ interface PhoneShellOptions {
   onOpportunityAccept: (opportunityId: string) => void;
   onOpportunityTrack: (opportunityId: string) => void;
   onDeliveryAccept: (deliveryId: string) => void;
+  onPayRent: () => void;
+  onUpgradeScooter: () => void;
   onFeedViewed: () => void;
   onClose: () => void;
 }
@@ -259,6 +262,44 @@ export class PhoneShell {
       `Rent target: Rp ${world.life.hustle.rentAmount} by Day ${world.life.hustle.rentDueDay} | Scooter: ${world.life.hustle.scooterTier.replace(/_/g, " ")}`
     ]);
     let rowY = y + 50;
+    const player = world.players[world.localPlayerId];
+    const rentReady = player.money >= world.life.hustle.rentAmount;
+    const scooterUpgrade = getScooterUpgradeStatus(world);
+    this.addButton(
+      container,
+      x,
+      rowY,
+      126,
+      28,
+      rentReady ? "Pay Rent" : "Rent Goal",
+      () => {
+        if (rentReady) {
+          this.options.onPayRent();
+          this.open("Feed");
+        } else {
+          this.options.toast(`Need Rp ${world.life.hustle.rentAmount - player.money} more for rent.`);
+        }
+      },
+      rentReady ? 0x253a35 : 0x2d3036
+    );
+    this.addButton(
+      container,
+      x + 136,
+      rowY,
+      158,
+      28,
+      scooterUpgrade.available ? "Upgrade Scooter" : "Scooter Locked",
+      () => {
+        if (scooterUpgrade.available) {
+          this.options.onUpgradeScooter();
+          this.open("Feed");
+        } else {
+          this.options.toast(scooterUpgrade.reason ?? "Scooter upgrade is locked.");
+        }
+      },
+      scooterUpgrade.available ? 0x253a47 : 0x2d3036
+    );
+    rowY += 42;
 
     if (activeDelivery) {
       const delivery = getDeliveryDefinition(activeDelivery.deliveryId);

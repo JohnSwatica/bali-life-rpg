@@ -255,3 +255,9 @@ Save schema is bumped to v11. V1-v10 saves migrate by adding Act 0 and hustle de
 The first Act 1 delivery loop is surfaced through the existing Phone Feed as a local Hustle Board instead of a new app surface. This keeps the phone as the stimulation/control layer while avoiding another UI system.
 
 Delivery availability is computed in `DeliverySystem`, not the phone: first-day completion, scooter ownership, completed-delivery count, active-delivery lockout, repeatability, and driver-rating gates all live in one pure helper. The phone shows locked reasons honestly. Starting a board job calls the same `acceptDelivery` path as the tutorial job and uses the same pickup/dropoff markers and interaction priority.
+
+## 2026-06-29 - Rent And Scooter Upgrades Are Small Local Pressure Valves
+
+Act 1 survival pressure is represented by local, reversible economy actions rather than a fail state. `HustleEconomy` lets the player pay rent to extend the due day and upgrade the borrowed rattletrap to a daily rental once delivery count, driver rating, and money gates are met.
+
+These actions intentionally reuse existing local state: money on the player, meters, reputation, bike condition, and `world.life.hustle`. They do not introduce real payments, subscriptions, backend timers, or punitive eviction logic. The goal is immediate trade-off pressure, not a punishment system.
