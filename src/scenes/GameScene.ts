@@ -4502,9 +4502,12 @@ export class GameScene extends Phaser.Scene {
     this.opportunityUpdateTimer = 0;
 
     const beforeUnread = getUnreadOpportunityMessageCount(this.world.opportunities);
-    const maintenance = maintainOpportunityPool(this.world.opportunities, this.world);
-    const authoredTexts = generateOpportunityPhoneTexts(this.world.opportunities, this.world);
-    const eventMessages = this.appendActiveEventMessages();
+    const tutorialActive = !isAct0Complete(this.world);
+    const maintenance = tutorialActive
+      ? { spawned: [], expired: [] }
+      : maintainOpportunityPool(this.world.opportunities, this.world);
+    const authoredTexts = tutorialActive ? [] : generateOpportunityPhoneTexts(this.world.opportunities, this.world);
+    const eventMessages = tutorialActive ? 0 : this.appendActiveEventMessages();
     const afterUnread = getUnreadOpportunityMessageCount(this.world.opportunities);
     const changed =
       maintenance.spawned.length > 0 ||

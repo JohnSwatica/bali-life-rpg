@@ -27,6 +27,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Phone > Quests now shows an Act 1 Hustle goal surface derived from runtime state: first delivery, steady runner, daily scooter, cover first rent, and move-out ready.
 - Dev godmode now includes Act 1 testing shortcuts: set Act 1 ready, add delivery progress, set driver rating to 4.5, pay rent, and upgrade scooter. These are development-only and still gated by `import.meta.env.DEV`.
 - After Act 0, Ibu Sari can send one local daily phone nudge pointing the player back to the Hustle Board when no delivery is active. This uses the existing simulated phone-feed/message system.
+- Runtime opportunity spawning, event pings, and authored phone texts are gated off during Act 0 so the first-day tutorial is not interrupted by unrelated feed noise. The pure opportunity engine remains unchanged for tests/future systems.
 - Act 0 now starts at dusk near the cheap-kos/Canggu Station side. Ibu Sari gives the player a borrowed beat-up scooter, accepts the first BAKED delivery, and HUD tutorial copy points the player through pickup, dropoff, meal/coffee, and first sleep.
 - Active delivery pickup/dropoff markers are drawn on the map and become `E`/`ACT` interaction targets. Delivery targets win over overlapping shop panels so BAKED pickup does not accidentally open the shop.
 - Active delivery targets now also appear on the minimap, and the Act 1 tracker shows active delivery, rent target, scooter tier, driver rating, and Hustle Board guidance.
