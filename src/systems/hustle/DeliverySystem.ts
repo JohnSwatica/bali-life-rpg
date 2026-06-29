@@ -10,6 +10,7 @@ import { adjustPlayerMeters } from "../meters/PlayerMeters";
 import { bumpRelationshipAffinity } from "../relationships/RelationshipMemory";
 import { adjustReputation, awardReputationTag } from "../reputation/ReputationState";
 import { advanceWorldMinutes } from "../time/DailyClock";
+import { applyDeliveryScooterWear, MIN_DELIVERY_BIKE_CONDITION } from "./HustleEconomy";
 import type { ActiveDeliveryState, WorldState } from "../../types";
 
 export interface DeliveryResult {
@@ -30,6 +31,7 @@ export interface EffectiveDeliveryTerms {
   payout: number;
   timeLimitMin: number;
   meterDeltas: DeliveryDefinition["meterDeltas"];
+  scooterWear: number;
 }
 
 export function getDeliveryOfferAvailability(world: WorldState): DeliveryOfferAvailability[] {
@@ -116,6 +118,7 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
   const payout = calculateDeliveryPayout(terms.payout, starRating);
   player.money += payout;
   adjustPlayerMeters(world, terms.meterDeltas);
+  const scooterWear = applyDeliveryScooterWear(world, terms.scooterWear);
   advanceWorldMinutes(world, 12);
 
   for (const bump of definition.affinityBumps ?? []) {
@@ -147,10 +150,11 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
     !wasMoveOutReady && world.life.hustle.moveOutReady
       ? " Move-out ready: Ibu Sari says you can start looking for a proper room."
       : "";
+  const wearCopy = scooterWear > 0 ? ` Scooter -${scooterWear}% (${player.bikeCondition}%).` : "";
 
   return {
     ok: true,
-    message: `Delivered ${definition.title}${condition ? ` (${condition.label})` : ""}. Rp +${payout}. Driver rating ${starRating.toFixed(1)}★.${moveOutCopy}`,
+    message: `Delivered ${definition.title}${condition ? ` (${condition.label})` : ""}. Rp +${payout}. Driver rating ${starRating.toFixed(1)}★.${wearCopy}${moveOutCopy}`,
     starRating,
     payout
   };
@@ -189,6 +193,12 @@ function evaluateDeliveryOffer(world: WorldState, delivery: DeliveryDefinition):
   if (!player.hasBike) {
     return { delivery, available: false, reason: "You need a scooter for delivery work." };
   }
+  if (player.bikeStuck) {
+    return { delivery, available: false, reason: "Free your scooter before taking delivery work." };
+  }
+  if (player.bikeCondition < MIN_DELIVERY_BIKE_CONDITION) {
+    return { delivery, available: false, reason: `Repair scooter above ${MIN_DELIVERY_BIKE_CONDITION}% condition.` };
+  }
   if (delivery.repeatable === false && world.life.hustle.completedDeliveryIds.includes(delivery.id)) {
     return { delivery, available: false, reason: "Already completed." };
   }
@@ -218,7 +228,8 @@ export function getEffectiveDeliveryTerms(
   return {
     payout: Math.max(0, delivery.payout + (condition?.payoutBonus ?? 0)),
     timeLimitMin: Math.max(25, delivery.timeLimitMin + (condition?.timeLimitDeltaMin ?? 0)),
-    meterDeltas: mergeMeterDeltas(delivery.meterDeltas, condition?.meterDeltas)
+    meterDeltas: mergeMeterDeltas(delivery.meterDeltas, condition?.meterDeltas),
+    scooterWear: getConditionScooterWear(condition)
   };
 }
 
@@ -250,6 +261,16 @@ function stableHash(value: string): number {
     hash = Math.imul(hash, 16777619);
   }
   return Math.abs(hash);
+}
+
+function getConditionScooterWear(condition: DeliveryCondition | undefined): number {
+  if (!condition) {
+    return 0;
+  }
+  if (condition.id.includes("rain") || condition.id.includes("rush") || condition.id.includes("fragile")) {
+    return 3;
+  }
+  return 1;
 }
 
 function roundRating(value: number): number {

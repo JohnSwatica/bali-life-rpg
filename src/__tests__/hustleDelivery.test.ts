@@ -9,7 +9,14 @@ import {
   pickupDelivery,
   previewDeliveryCondition
 } from "../systems/hustle/DeliverySystem";
-import { getRentPressureState, getScooterUpgradeStatus, payHustleRent, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
+import {
+  getRentPressureState,
+  getScooterRepairStatus,
+  getScooterUpgradeStatus,
+  payHustleRent,
+  repairScooter,
+  upgradeToDailyScooter
+} from "../systems/hustle/HustleEconomy";
 import { getHustleGoalStates } from "../systems/hustle/HustleGoals";
 import { completeAct0Step, markAct0MealProgress } from "../systems/life/ActProgression";
 import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
@@ -120,6 +127,7 @@ describe("Act 0 hustle and deliveries", () => {
 
   it("applies deterministic delivery board conditions to deadline and payout", () => {
     const world = createInitialWorldState();
+    const player = world.players[world.localPlayerId];
     world.players[world.localPlayerId].hasBike = true;
     world.life.actProgress.firstDayComplete = true;
     world.life.actProgress.currentAct = 1;
@@ -146,6 +154,7 @@ describe("Act 0 hustle and deliveries", () => {
     expect(completed.starRating).toBeDefined();
     expect(completed.payout).toBe(calculateDeliveryPayout(terms.payout, completed.starRating!));
     expect(world.life.hustle.deliveryEarnings).toBe(completed.payout);
+    expect(player.bikeCondition).toBeLessThan(100);
   });
 
   it("announces move-out readiness when a delivery crosses the Act 1 threshold", () => {
@@ -199,6 +208,32 @@ describe("Act 0 hustle and deliveries", () => {
     expect(player.bikeCondition).toBe(100);
     expect(world.life.hustle.scooterTier).toBe("daily_rental");
     expect(getQuantity(player, "scooter_key")).toBe(1);
+  });
+
+  it("gates delivery work at low scooter condition and repairs locally", () => {
+    const world = createInitialWorldState();
+    const player = world.players[world.localPlayerId];
+    player.hasBike = true;
+    player.money = 200;
+    player.bikeCondition = 12;
+    world.life.actProgress.firstDayComplete = true;
+    world.life.actProgress.currentAct = 1;
+    world.life.hustle.completedDeliveryCount = 1;
+    world.life.hustle.driverRating = 3.6;
+
+    expect(getDeliveryOfferAvailability(world).find((offer) => offer.delivery.id === "milk_madu_brunch_bag")).toMatchObject({
+      available: false,
+      reason: "Repair scooter above 18% condition."
+    });
+
+    const repairStatus = getScooterRepairStatus(world);
+    expect(repairStatus).toMatchObject({ available: true, targetCondition: 78 });
+    expect(repairScooter(world, 3 * 1440 + 8 * 60)).toMatchObject({ ok: true });
+    expect(player.money).toBe(200 - repairStatus.cost);
+    expect(player.bikeCondition).toBe(78);
+    expect(getDeliveryOfferAvailability(world).find((offer) => offer.delivery.id === "milk_madu_brunch_bag")).toMatchObject({
+      available: true
+    });
   });
 
   it("labels rent pressure without creating a fail state", () => {

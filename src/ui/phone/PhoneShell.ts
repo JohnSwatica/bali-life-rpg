@@ -16,7 +16,7 @@ import { getRelationshipArcStatesForNpc } from "../../systems/relationships/Rela
 import { getSettlingInGoalStates } from "../../systems/life/SettlingInGoals";
 import { getDeliveryDefinition } from "../../data/deliveries";
 import { getDeliveryOfferAvailability, getEffectiveDeliveryTerms, previewDeliveryCondition } from "../../systems/hustle/DeliverySystem";
-import { getRentPressureState, getScooterUpgradeStatus } from "../../systems/hustle/HustleEconomy";
+import { getRentPressureState, getScooterRepairStatus, getScooterUpgradeStatus } from "../../systems/hustle/HustleEconomy";
 import { getHustleGoalStates } from "../../systems/hustle/HustleGoals";
 import type { GameEvent, RelationshipMemory, Venue, WorldState } from "../../types";
 
@@ -35,6 +35,7 @@ interface PhoneShellOptions {
   onOpportunityTrack: (opportunityId: string) => void;
   onDeliveryAccept: (deliveryId: string) => void;
   onPayRent: () => void;
+  onRepairScooter: () => void;
   onUpgradeScooter: () => void;
   onFeedViewed: () => void;
   onClose: () => void;
@@ -266,6 +267,7 @@ export class PhoneShell {
     let rowY = y + 50;
     const player = world.players[world.localPlayerId];
     const rentReady = player.money >= world.life.hustle.rentAmount;
+    const repairStatus = getScooterRepairStatus(world);
     const scooterUpgrade = getScooterUpgradeStatus(world);
     this.addButton(
       container,
@@ -300,6 +302,23 @@ export class PhoneShell {
         }
       },
       scooterUpgrade.available ? 0x253a47 : 0x2d3036
+    );
+    this.addButton(
+      container,
+      x + 304,
+      rowY,
+      132,
+      28,
+      repairStatus.available ? "Repair" : "Repair Locked",
+      () => {
+        if (repairStatus.available) {
+          this.options.onRepairScooter();
+          this.open("Feed");
+        } else {
+          this.options.toast(repairStatus.reason ?? "Scooter repair is locked.");
+        }
+      },
+      repairStatus.available ? 0x334532 : 0x2d3036
     );
     rowY += 42;
 

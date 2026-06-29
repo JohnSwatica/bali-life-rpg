@@ -54,7 +54,7 @@ import { getSettlingInGoalTitle, updateSettlingInGoals } from "../systems/life/S
 import { completeAct0Step, getAct0HudLines, isAct0Complete, markAct0MealProgress } from "../systems/life/ActProgression";
 import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
 import { acceptDelivery, completeDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
-import { getRentPressureState, getScooterUpgradeStatus, payHustleRent, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
+import { getRentPressureState, getScooterUpgradeStatus, payHustleRent, repairScooter, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
 import {
   acceptOpportunity,
   appendOpportunityMessage,
@@ -423,6 +423,7 @@ export class GameScene extends Phaser.Scene {
       onOpportunityTrack: (opportunityId) => this.trackPhoneOpportunity(opportunityId),
       onDeliveryAccept: (deliveryId) => this.acceptPhoneDelivery(deliveryId),
       onPayRent: () => this.payPhoneRent(),
+      onRepairScooter: () => this.repairPhoneScooter(),
       onUpgradeScooter: () => this.upgradePhoneScooter(),
       onFeedViewed: () => this.markPhoneFeedRead(),
       onClose: () => {
@@ -4644,6 +4645,15 @@ export class GameScene extends Phaser.Scene {
   private payPhoneRent(): void {
     const result = payHustleRent(this.world, this.getAbsoluteMinute());
     this.showToast(result.message);
+    saveWorldState(this.world);
+  }
+
+  private repairPhoneScooter(): void {
+    const result = repairScooter(this.world, this.getAbsoluteMinute());
+    this.showToast(result.message);
+    if (result.ok) {
+      this.updatePlayerBikeVisual();
+    }
     saveWorldState(this.world);
   }
 

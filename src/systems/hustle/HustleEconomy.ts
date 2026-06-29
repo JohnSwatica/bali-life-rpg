@@ -8,6 +8,7 @@ export const DAILY_SCOOTER_UPGRADE_COST = 260;
 export const DAILY_SCOOTER_UPGRADE_MIN_DELIVERIES = 2;
 export const DAILY_SCOOTER_UPGRADE_MIN_RATING = 3.6;
 export const RENT_EXTENSION_DAYS = 3;
+export const MIN_DELIVERY_BIKE_CONDITION = 18;
 
 export interface HustleActionResult {
   ok: boolean;
@@ -18,6 +19,13 @@ export interface ScooterUpgradeStatus {
   available: boolean;
   reason: string | null;
   cost: number;
+}
+
+export interface ScooterRepairStatus {
+  available: boolean;
+  reason: string | null;
+  cost: number;
+  targetCondition: number;
 }
 
 export type RentPressureStatus = "comfortable" | "due_soon" | "due_today" | "overdue";
@@ -109,6 +117,56 @@ export function getScooterUpgradeStatus(world: WorldState): ScooterUpgradeStatus
   return { available: true, reason: null, cost: DAILY_SCOOTER_UPGRADE_COST };
 }
 
+export function getScooterRepairStatus(world: WorldState): ScooterRepairStatus {
+  const player = world.players[world.localPlayerId];
+  const targetCondition = getRepairTargetCondition(world);
+  const cost = getScooterRepairCost(world);
+  if (!player.hasBike) {
+    return { available: false, reason: "You need a scooter before repairs matter.", cost, targetCondition };
+  }
+  if (player.bikeCondition >= targetCondition) {
+    return { available: false, reason: "Scooter is as good as this tier gets.", cost: 0, targetCondition };
+  }
+  if (player.money < cost) {
+    return { available: false, reason: `Need Rp ${cost - player.money} more for repairs.`, cost, targetCondition };
+  }
+  return { available: true, reason: null, cost, targetCondition };
+}
+
+export function repairScooter(world: WorldState, now: number): HustleActionResult {
+  const status = getScooterRepairStatus(world);
+  if (!status.available) {
+    return { ok: false, message: status.reason ?? "Scooter repair is not available yet." };
+  }
+  const player = world.players[world.localPlayerId];
+  player.money -= status.cost;
+  player.bikeCondition = status.targetCondition;
+  player.bikeStuck = false;
+  player.hasBike = true;
+  adjustPlayerMeters(world, { wellbeing: 3, focus: 1 });
+  adjustReputation(world.reputation, 1, "Kept the scooter maintained for delivery work", now);
+  return {
+    ok: true,
+    message: `Scooter patched up to ${status.targetCondition}%. Rp -${status.cost}.`
+  };
+}
+
+export function applyDeliveryScooterWear(world: WorldState, extraWear = 0): number {
+  const player = world.players[world.localPlayerId];
+  if (!player.hasBike) {
+    return 0;
+  }
+  const baseWear =
+    world.life.hustle.scooterTier === "borrowed_rattletrap"
+      ? 7
+      : world.life.hustle.scooterTier === "daily_rental"
+        ? 4
+        : 2;
+  const wear = Math.max(0, Math.round(baseWear + extraWear));
+  player.bikeCondition = Math.max(0, player.bikeCondition - wear);
+  return wear;
+}
+
 export function upgradeToDailyScooter(world: WorldState, now: number): HustleActionResult {
   const status = getScooterUpgradeStatus(world);
   if (!status.available) {
@@ -128,4 +186,15 @@ export function upgradeToDailyScooter(world: WorldState, now: number): HustleAct
   adjustPlayerMeters(world, { wellbeing: 5, focus: 2 });
   adjustReputation(world.reputation, 1, "Upgraded from the borrowed rattletrap", now);
   return { ok: true, message: "Scooter upgraded to a proper daily rental. Cleaner rides, fewer excuses." };
+}
+
+function getRepairTargetCondition(world: WorldState): number {
+  return world.life.hustle.scooterTier === "borrowed_rattletrap" ? 78 : 100;
+}
+
+function getScooterRepairCost(world: WorldState): number {
+  const player = world.players[world.localPlayerId];
+  const missing = Math.max(0, getRepairTargetCondition(world) - player.bikeCondition);
+  const rate = world.life.hustle.scooterTier === "borrowed_rattletrap" ? 1.15 : 1.55;
+  return Math.min(150, Math.max(35, Math.ceil(missing * rate)));
 }
