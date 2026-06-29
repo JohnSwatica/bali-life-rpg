@@ -285,3 +285,15 @@ There is still no eviction, remote billing, subscription timer, or hard fail sta
 The first hustle milestone is not just a hidden `moveOutReady` boolean anymore. When a delivery pushes the player over the Act 1 thresholds (5 deliveries, Rp 700 delivery earnings, and 4.2★ rating), the delivery result calls out that Ibu Sari thinks the player can start looking for a better room, and the HUD switches to a move-out-ready milestone.
 
 If the player has enough deliveries but not enough rating or earnings, the HUD names the missing requirements. This keeps Act 1 goal pressure legible without adding a new housing/villa system before Act 2 and Act 3 are ready.
+
+## 2026-06-29 - Scooter Condition Is A Local Hustle Constraint
+
+Delivery work now wears down the scooter through existing `player.bikeCondition`; board jobs are blocked only at very low condition, with a clear repair reason. Phone > Feed exposes a local repair action that spends money and restores condition to the tier cap (`borrowed_rattletrap` repairs only to a rough 78%, while better tiers repair higher).
+
+This adds survival texture to Act 1 without making the game punitive: there is no hard fail, no remote timer, and no new persisted schema. The same player-owned bike state already used by traffic/stuck systems carries the pressure.
+
+## 2026-06-29 - Move-Out Readiness Advances To Act 2
+
+When a delivery crosses the move-out threshold, `world.life.actProgress.currentAct` advances to `2`. The HUD then points the player toward the existing events, clubs, and relationship arcs as the "Finding Your People" chapter.
+
+This intentionally reframes already-built Phase B systems as the Act 2 payoff instead of adding another social layer. Act 3 business/villa mechanics remain documented hooks only.
