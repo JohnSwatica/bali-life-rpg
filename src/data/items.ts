@@ -78,6 +78,20 @@ export const itemDefinitions: Record<string, ItemDefinition> = {
     buyPrice: 48,
     sellPrice: 18
   },
+  invoice_pouch: {
+    id: "invoice_pouch",
+    name: "Invoice Pouch",
+    description: "A sealed paperwork pouch for a small Berawa errand.",
+    buyPrice: 0,
+    sellPrice: 0
+  },
+  linen_bundle: {
+    id: "linen_bundle",
+    name: "Linen Bundle",
+    description: "A clean service bundle tied to a higher-trust beach-club delivery.",
+    buyPrice: 0,
+    sellPrice: 0
+  },
   brunch_slice: {
     id: "brunch_slice",
     name: "Brunch Pizza Slice",

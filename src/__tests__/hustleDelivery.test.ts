@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getQuantity } from "../systems/Inventory";
-import { acceptDelivery, completeDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
+import { acceptDelivery, completeDelivery, getDeliveryOfferAvailability, pickupDelivery } from "../systems/hustle/DeliverySystem";
 import { completeAct0Step, markAct0MealProgress } from "../systems/life/ActProgression";
 import { getRelationship } from "../systems/relationships/RelationshipMemory";
 import { createInitialWorldState } from "../systems/WorldState";
@@ -70,5 +70,31 @@ describe("Act 0 hustle and deliveries", () => {
       act0Step: "complete",
       firstDayComplete: true
     });
+  });
+
+  it("offers Act 1 deliveries only after first-day completion and rating/count gates", () => {
+    const world = createInitialWorldState();
+    let offers = getDeliveryOfferAvailability(world);
+    expect(offers.every((offer) => !offer.available)).toBe(true);
+    expect(offers[0]?.reason).toBe("Finish Ibu Sari's first-day run first.");
+
+    world.players[world.localPlayerId].hasBike = true;
+    world.life.actProgress.firstDayComplete = true;
+    world.life.actProgress.currentAct = 1;
+    world.life.hustle.completedDeliveryCount = 1;
+    world.life.hustle.driverRating = 3.6;
+
+    offers = getDeliveryOfferAvailability(world);
+    expect(offers.find((offer) => offer.delivery.id === "milk_madu_brunch_bag")).toMatchObject({ available: true });
+    expect(offers.find((offer) => offer.delivery.id === "satu_satu_invoice_pouch")).toMatchObject({ available: true });
+    expect(offers.find((offer) => offer.delivery.id === "finns_linen_bundle")).toMatchObject({
+      available: false,
+      reason: "Need 3 completed deliveries."
+    });
+
+    const accepted = acceptDelivery(world, "milk_madu_brunch_bag", 2 * 1440 + 9 * 60);
+    expect(accepted.ok).toBe(true);
+    expect(world.life.hustle.activeDelivery?.deliveryId).toBe("milk_madu_brunch_bag");
+    expect(getDeliveryOfferAvailability(world).every((offer) => !offer.available)).toBe(true);
   });
 });

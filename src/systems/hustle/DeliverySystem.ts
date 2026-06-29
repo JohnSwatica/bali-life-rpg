@@ -1,4 +1,4 @@
-import { getDeliveryDefinition } from "../../data/deliveries";
+import { deliveryDefinitions, getDeliveryDefinition, type DeliveryDefinition } from "../../data/deliveries";
 import { addItem, getQuantity, removeItem } from "../Inventory";
 import { adjustPlayerMeters } from "../meters/PlayerMeters";
 import { bumpRelationshipAffinity } from "../relationships/RelationshipMemory";
@@ -14,6 +14,24 @@ export interface DeliveryResult {
   payout?: number;
 }
 
+export interface DeliveryOfferAvailability {
+  delivery: DeliveryDefinition;
+  available: boolean;
+  reason: string | null;
+}
+
+export function getDeliveryOfferAvailability(world: WorldState): DeliveryOfferAvailability[] {
+  return deliveryDefinitions
+    .filter((delivery) => delivery.boardAvailable)
+    .map((delivery) => evaluateDeliveryOffer(world, delivery));
+}
+
+export function getAvailableDeliveryOffers(world: WorldState): DeliveryDefinition[] {
+  return getDeliveryOfferAvailability(world)
+    .filter((offer) => offer.available)
+    .map((offer) => offer.delivery);
+}
+
 export function acceptDelivery(world: WorldState, deliveryId: string, now: number): DeliveryResult {
   const definition = getDeliveryDefinition(deliveryId);
   if (!definition) {
@@ -21,6 +39,12 @@ export function acceptDelivery(world: WorldState, deliveryId: string, now: numbe
   }
   if (world.life.hustle.activeDelivery) {
     return { ok: false, message: "Finish your current delivery first." };
+  }
+  if (definition.boardAvailable) {
+    const eligibility = evaluateDeliveryOffer(world, definition);
+    if (!eligibility.available) {
+      return { ok: false, message: eligibility.reason ?? "That delivery is not available yet." };
+    }
   }
   const activeDelivery: ActiveDeliveryState = {
     deliveryId,
@@ -124,6 +148,35 @@ export function calculateDeliveryPayout(basePayout: number, starRating: number):
 function updateDriverRating(current: number, latest: number, weight: number): number {
   const totalWeight = Math.max(1, weight + 4);
   return roundRating((current * (totalWeight - weight) + latest * weight) / totalWeight);
+}
+
+function evaluateDeliveryOffer(world: WorldState, delivery: DeliveryDefinition): DeliveryOfferAvailability {
+  const player = world.players[world.localPlayerId];
+  if (world.life.hustle.activeDelivery) {
+    return { delivery, available: false, reason: "Finish your active delivery first." };
+  }
+  if (!world.life.actProgress.firstDayComplete) {
+    return { delivery, available: false, reason: "Finish Ibu Sari's first-day run first." };
+  }
+  if (!player.hasBike) {
+    return { delivery, available: false, reason: "You need a scooter for delivery work." };
+  }
+  if (delivery.repeatable === false && world.life.hustle.completedDeliveryIds.includes(delivery.id)) {
+    return { delivery, available: false, reason: "Already completed." };
+  }
+  const requiredDeliveries = delivery.minCompletedDeliveries ?? 0;
+  if (requiredDeliveries > world.life.hustle.completedDeliveryCount) {
+    return {
+      delivery,
+      available: false,
+      reason: `Need ${requiredDeliveries} completed ${requiredDeliveries === 1 ? "delivery" : "deliveries"}.`
+    };
+  }
+  const requiredRating = delivery.minDriverRating ?? 0;
+  if (requiredRating > world.life.hustle.driverRating) {
+    return { delivery, available: false, reason: `Need ${requiredRating.toFixed(1)}★ driver rating.` };
+  }
+  return { delivery, available: true, reason: null };
 }
 
 function roundRating(value: number): number {

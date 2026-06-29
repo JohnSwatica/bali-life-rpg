@@ -418,6 +418,7 @@ export class GameScene extends Phaser.Scene {
       toast: (message) => this.showToast(message),
       onOpportunityAccept: (opportunityId) => this.acceptPhoneOpportunity(opportunityId),
       onOpportunityTrack: (opportunityId) => this.trackPhoneOpportunity(opportunityId),
+      onDeliveryAccept: (deliveryId) => this.acceptPhoneDelivery(deliveryId),
       onFeedViewed: () => this.markPhoneFeedRead(),
       onClose: () => {
         if (this.mode === "phone") {
@@ -4473,6 +4474,12 @@ export class GameScene extends Phaser.Scene {
   private acceptPhoneOpportunity(opportunityId: string): void {
     const result = acceptOpportunity(this.world.opportunities, opportunityId, getOpportunityAbsoluteMinute(this.world.clock));
     this.showToast(result.message);
+    saveWorldState(this.world);
+  }
+
+  private acceptPhoneDelivery(deliveryId: string): void {
+    const result = acceptDelivery(this.world, deliveryId, this.getAbsoluteMinute());
+    this.showToast(result.ok ? `${result.message} Follow the delivery marker.` : result.message);
     saveWorldState(this.world);
   }
 

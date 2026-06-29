@@ -14,6 +14,8 @@ import { getLiveOpportunityCountdown, getOpportunityTemplate } from "../../syste
 import { getAffinityPerk, getAffinityTier, summarizeRelationshipMemories } from "../../systems/relationships/RelationshipMemory";
 import { getRelationshipArcStatesForNpc } from "../../systems/relationships/RelationshipArcs";
 import { getSettlingInGoalStates } from "../../systems/life/SettlingInGoals";
+import { getDeliveryDefinition } from "../../data/deliveries";
+import { getDeliveryOfferAvailability } from "../../systems/hustle/DeliverySystem";
 import type { GameEvent, RelationshipMemory, Venue, WorldState } from "../../types";
 
 const PHONE_DEPTH = 1500;
@@ -29,6 +31,7 @@ interface PhoneShellOptions {
   toast: (message: string) => void;
   onOpportunityAccept: (opportunityId: string) => void;
   onOpportunityTrack: (opportunityId: string) => void;
+  onDeliveryAccept: (deliveryId: string) => void;
   onFeedViewed: () => void;
   onClose: () => void;
 }
@@ -187,6 +190,8 @@ export class PhoneShell {
     const world = this.options.getWorld();
     const state = world.opportunities;
     let rowY = y;
+    rowY = this.renderHustleBoard(container, x, rowY, width);
+    rowY += 8;
     const live = [...state.live].sort((a, b) => a.expiresAt - b.expiresAt);
     if (live.length === 0) {
       this.renderTextList(container, x, rowY, width, [
@@ -244,6 +249,63 @@ export class PhoneShell {
         : ["No messages yet."])
     ]);
     this.options.onFeedViewed();
+  }
+
+  private renderHustleBoard(container: Phaser.GameObjects.Container, x: number, y: number, width: number): number {
+    const world = this.options.getWorld();
+    const activeDelivery = world.life.hustle.activeDelivery;
+    this.renderTextList(container, x, y, width, [
+      `Hustle Board: ${world.life.hustle.completedDeliveryCount} runs | Rp ${world.life.hustle.deliveryEarnings} earned | ${world.life.hustle.driverRating.toFixed(1)}★`,
+      `Rent target: Rp ${world.life.hustle.rentAmount} by Day ${world.life.hustle.rentDueDay} | Scooter: ${world.life.hustle.scooterTier.replace(/_/g, " ")}`
+    ]);
+    let rowY = y + 50;
+
+    if (activeDelivery) {
+      const delivery = getDeliveryDefinition(activeDelivery.deliveryId);
+      const timeLeft = Math.max(0, Math.ceil(activeDelivery.dueAt - this.options.getNow()));
+      this.renderTextList(container, x, rowY, width - 150, [
+        `Active: ${delivery?.title ?? activeDelivery.deliveryId}`,
+        `${activeDelivery.stage === "accepted" ? delivery?.pickupLabel ?? "Go to pickup." : delivery?.dropoffLabel ?? "Go to dropoff."} ${timeLeft} min left.`
+      ]);
+      this.addButton(container, x + width - 132, rowY + 2, 112, 30, "Tracked", () => {
+        this.options.toast("Follow the delivery marker and press E / ACT.");
+      }, 0x2d3036);
+      return rowY + 62;
+    }
+
+    const offers = getDeliveryOfferAvailability(world);
+    if (offers.length === 0) {
+      this.renderTextList(container, x, rowY, width, ["Delivery board unlocks after Ibu Sari's first run."]);
+      return rowY + 42;
+    }
+
+    for (const offer of offers.slice(0, 3)) {
+      const delivery = offer.delivery;
+      const gate = offer.available ? `Rp ${delivery.payout} base | ${delivery.timeLimitMin} min` : offer.reason ?? "Locked";
+      this.renderTextList(container, x, rowY, width - 150, [
+        `${delivery.title}${offer.available ? "" : " (locked)"}`,
+        `${gate}. ${delivery.description}`
+      ]);
+      this.addButton(
+        container,
+        x + width - 132,
+        rowY + 2,
+        112,
+        30,
+        offer.available ? "Start" : "Locked",
+        () => {
+          if (offer.available) {
+            this.options.onDeliveryAccept(delivery.id);
+            this.open("Feed");
+          } else {
+            this.options.toast(offer.reason ?? "That delivery is locked.");
+          }
+        },
+        offer.available ? 0x253a35 : 0x2d3036
+      );
+      rowY += 64;
+    }
+    return rowY;
   }
 
   private contactLines(): string[] {

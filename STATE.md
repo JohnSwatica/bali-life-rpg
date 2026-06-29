@@ -20,9 +20,11 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Act 0 / Act 1 hustle spine is now underway on `feat/act0-hustle-loop`: new local state tracks `world.life.actProgress` and `world.life.hustle`, including Act 0 tutorial step, first-day completion, active delivery, driver rating, delivery earnings, scooter tier, rent target, and move-out readiness.
 - Save schema is now v11. Older saves migrate by adding Act 0 progress and hustle defaults without wiping money, quests, inventory, relationships, reputation, discovery, profile, portal, meters, clubs, arcs, opportunities, or committed activities.
 - Added `src/data/deliveries.ts` and `src/systems/hustle/DeliverySystem.ts` for deterministic local delivery flow: accept -> pickup -> dropoff -> payout -> driver rating/reputation/relationship rewards. The first scripted delivery is Ibu Sari's BAKED villa drop.
+- The Phone Feed now includes a local Hustle Board. After the first day is complete and the player has a scooter, it offers repeatable delivery jobs with driver-rating and completed-delivery gates; locked jobs show the reason rather than pretending to be available.
+- Current delivery jobs: first BAKED villa drop, Milk & Madu brunch bag, Satu-Satu invoice pouch, and FINNS linen bundle.
 - Act 0 now starts at dusk near the cheap-kos/Canggu Station side. Ibu Sari gives the player a borrowed beat-up scooter, accepts the first BAKED delivery, and HUD tutorial copy points the player through pickup, dropoff, meal/coffee, and first sleep.
 - Active delivery pickup/dropoff markers are drawn on the map and become `E`/`ACT` interaction targets. Delivery targets win over overlapping shop panels so BAKED pickup does not accidentally open the shop.
-- The current automated suite is green after the Act 0/hustle additions: `npm test -- --run` reports 38 passing and 3 intentionally skipped tests; `npm run build` passes.
+- The current automated suite is green after the Act 0/hustle additions: `npm test -- --run` reports 39 passing and 3 intentionally skipped tests; `npm run build` passes.
 - Git is now initialized locally. Baseline and every sprint phase are committed.
 - Added [STORY_ARC.md](STORY_ARC.md), the canonical progression spine: Act 0 新手村 tutorial, Act 1 hustle, Act 2 people/social, Act 3 build your warung/café + villa + bike, Act 4 solo win, Act 5 multiplayer/Nomad Nest open world.
 - Added [ACT3_BUSINESS_DESIGN.md](ACT3_BUSINESS_DESIGN.md), the deferred Act 3 ambition-layer design. It locks Ibu Sari as mentor, friendship-first tone, gentle Canggu satire, villa + business + bike as the solo win condition, and roughly two hours per act. Act 3 should be designed for hooks now but built after the tutorial/hustle/social layers are proven.
@@ -181,7 +183,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Phase B social phases 1-4 each passed `npm run build` before commit.
 - Phase B smoke checks passed: Berawa Beach Run is active at Berawa Beach on the expected day/time; joining Berawa Run Crew stores `world.life.joinedClubIds` and reveals its recurring member event; Ari's first relationship beat completes from affinity and persists to `world.life.relationshipArcProgress`; `plug_in`, `find_your_crew`, and `deepen_a_bond` complete from event/club/arc state.
 - Core test suite is now installed with Vitest and runs through `npm test`.
-- Current suite result: 38 passing tests, 3 documented skips across save migration, daily loop, social layer, opportunities, quests/goals/reputation/interaction, authored street layout invariants, and Act 0 delivery/hustle state.
+- Current suite result: 39 passing tests, 3 documented skips across save migration, daily loop, social layer, opportunities, quests/goals/reputation/interaction, authored street layout invariants, Act 0 delivery/hustle state, and Act 1 delivery-board gating.
 - Opportunity tests cover time/reputation/club/affinity eligibility gates, deterministic 2-4 live pool maintenance, expiry/missed tracking, accept/resolve rewards, chain spawning, relationship cooling from missed social pings, and v8-to-v9 persistence of live/completed/missed/feed state.
 - `npm run build` passed after every core-test-suite phase.
 - The test suite fixed one unambiguous data-seam bug: `finns_beach_club` is now present in `VenueRegistry` so the FINNS Sunset Social event host/location resolves.
