@@ -52,7 +52,7 @@ import {
 import { getSettlingInGoalTitle, updateSettlingInGoals } from "../systems/life/SettlingInGoals";
 import { completeAct0Step, getAct0HudLines, isAct0Complete, markAct0MealProgress } from "../systems/life/ActProgression";
 import { acceptDelivery, completeDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
-import { payHustleRent, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
+import { getScooterUpgradeStatus, payHustleRent, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
 import {
   acceptOpportunity,
   appendOpportunityMessage,
@@ -1848,9 +1848,24 @@ export class GameScene extends Phaser.Scene {
       return getAct0HudLines(this.world);
     }
     if (this.world.life.hustle.completedDeliveryCount < 5) {
-      return [
-        `Act 1: keep hustling. ${this.world.life.hustle.completedDeliveryCount}/5 deliveries, Rp ${this.world.life.hustle.deliveryEarnings}/700, ${this.world.life.hustle.driverRating.toFixed(1)}★.`
+      const lines = [
+        `Act 1: keep hustling. ${this.world.life.hustle.completedDeliveryCount}/5 deliveries, Rp ${this.world.life.hustle.deliveryEarnings}/700, ${this.world.life.hustle.driverRating.toFixed(1)}★.`,
+        `Rent: Rp ${this.playerState.money}/${this.world.life.hustle.rentAmount} by Day ${this.world.life.hustle.rentDueDay}. Scooter: ${this.world.life.hustle.scooterTier.replace(/_/g, " ")}.`
       ];
+      const activeDelivery = this.world.life.hustle.activeDelivery;
+      if (activeDelivery) {
+        const delivery = getDeliveryDefinition(activeDelivery.deliveryId);
+        const timeLeft = Math.max(0, Math.ceil(activeDelivery.dueAt - this.getAbsoluteMinute()));
+        lines.push(
+          activeDelivery.stage === "accepted"
+            ? `Delivery: ${delivery?.pickupLabel ?? "go to pickup"} (${timeLeft} min left).`
+            : `Delivery: ${delivery?.dropoffLabel ?? "go to dropoff"} (${timeLeft} min left).`
+        );
+      } else {
+        const scooterUpgrade = getScooterUpgradeStatus(this.world);
+        lines.push(scooterUpgrade.available ? "Phone Feed: scooter upgrade ready." : "Phone Feed: pick a Hustle Board run.");
+      }
+      return lines;
     }
     if (!this.playerState.hasBike) {
       const remaining = Math.max(0, itemDefinitions[BIKE_RENTAL_ITEM_ID].buyPrice - this.playerState.money);
@@ -3784,6 +3799,7 @@ export class GameScene extends Phaser.Scene {
 
     this.drawMinimapDiscoveredVenues(ctx, layout);
     this.drawMinimapOpportunityMarkers(ctx, layout);
+    this.drawMinimapDeliveryMarkers(ctx, layout);
     this.drawMinimapCameraView(ctx, layout);
     this.drawMinimapPlayer(ctx, layout);
   }
@@ -3815,6 +3831,15 @@ export class GameScene extends Phaser.Scene {
       const radius = tracked ? 4.8 : 3.6;
       this.fillCircle(ctx, point.x, point.y, radius, palette.fill, 0.98);
       this.strokeCircle(ctx, point.x, point.y, radius + 1.5, tracked ? 2 : 1, 0xfff0bd, tracked ? 0.94 : 0.58);
+    }
+  }
+
+  private drawMinimapDeliveryMarkers(ctx: CanvasRenderingContext2D, layout: MinimapLayout): void {
+    for (const target of this.getActiveDeliveryTargets()) {
+      const point = this.projectMinimapPoint(target, layout);
+      this.fillCircle(ctx, point.x, point.y, 5.2, 0xffd45c, 0.98);
+      this.strokeCircle(ctx, point.x, point.y, 7, 2, 0x253a35, 0.86);
+      this.strokeCircle(ctx, point.x, point.y, 8.8, 1, 0xfff0bd, 0.72);
     }
   }
 
