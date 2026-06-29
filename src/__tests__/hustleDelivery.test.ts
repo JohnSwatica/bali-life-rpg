@@ -148,6 +148,25 @@ describe("Act 0 hustle and deliveries", () => {
     expect(world.life.hustle.deliveryEarnings).toBe(completed.payout);
   });
 
+  it("announces move-out readiness when a delivery crosses the Act 1 threshold", () => {
+    const world = createInitialWorldState();
+    world.players[world.localPlayerId].hasBike = true;
+    world.life.actProgress.firstDayComplete = true;
+    world.life.actProgress.currentAct = 1;
+    world.life.hustle.completedDeliveryCount = 4;
+    world.life.hustle.deliveryEarnings = 660;
+    world.life.hustle.driverRating = 4.8;
+    const now = 3 * 1440 + 11 * 60;
+
+    expect(acceptDelivery(world, "milk_madu_brunch_bag", now)).toMatchObject({ ok: true });
+    expect(pickupDelivery(world, now + 8)).toMatchObject({ ok: true });
+    const completed = completeDelivery(world, now + 32, 1);
+
+    expect(completed.ok).toBe(true);
+    expect(world.life.hustle.moveOutReady).toBe(true);
+    expect(completed.message).toContain("Move-out ready");
+  });
+
   it("lets hustle earnings pay rent and upgrade the borrowed scooter", () => {
     const world = createInitialWorldState();
     const player = world.players[world.localPlayerId];

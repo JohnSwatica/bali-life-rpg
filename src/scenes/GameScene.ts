@@ -1852,12 +1852,26 @@ export class GameScene extends Phaser.Scene {
     if (!isAct0Complete(this.world)) {
       return getAct0HudLines(this.world);
     }
-    if (this.world.life.hustle.completedDeliveryCount < 5) {
+    if (this.world.life.hustle.moveOutReady) {
+      return [
+        "Act 1 milestone: move-out ready.",
+        "You have the runs, rating, and cash record to leave the cramped kos. Next chapter: people, crew, and a better room."
+      ];
+    }
+    if (this.world.life.actProgress.currentAct === 1) {
       const rentPressure = getRentPressureState(this.world);
+      const missing = [
+        this.world.life.hustle.completedDeliveryCount < 5 ? `${5 - this.world.life.hustle.completedDeliveryCount} more runs` : null,
+        this.world.life.hustle.deliveryEarnings < 700 ? `Rp ${700 - this.world.life.hustle.deliveryEarnings} delivery earnings` : null,
+        this.world.life.hustle.driverRating < 4.2 ? `${(4.2 - this.world.life.hustle.driverRating).toFixed(1)}★ rating` : null
+      ].filter((entry): entry is string => Boolean(entry));
       const lines = [
         `Act 1: keep hustling. ${this.world.life.hustle.completedDeliveryCount}/5 deliveries, Rp ${this.world.life.hustle.deliveryEarnings}/700, ${this.world.life.hustle.driverRating.toFixed(1)}★.`,
         `Rent: Rp ${this.playerState.money}/${this.world.life.hustle.rentAmount} by Day ${this.world.life.hustle.rentDueDay} (${rentPressure.shortLabel}). Scooter: ${this.world.life.hustle.scooterTier.replace(/_/g, " ")}.`
       ];
+      if (missing.length > 0 && this.world.life.hustle.completedDeliveryCount >= 5) {
+        lines.push(`Move-out still needs: ${missing.join(", ")}.`);
+      }
       if (rentPressure.status !== "comfortable") {
         lines.push(rentPressure.message);
       }

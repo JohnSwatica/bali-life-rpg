@@ -128,6 +128,7 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
     awardReputationTag(world.reputation, definition.reputation.tag, definition.reputation.reason, now);
   }
 
+  const wasMoveOutReady = world.life.hustle.moveOutReady;
   active.stage = "picked_up";
   active.completedAt = now;
   active.starRating = starRating;
@@ -142,10 +143,14 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
     world.life.hustle.completedDeliveryCount >= 5 &&
     world.life.hustle.deliveryEarnings >= 700 &&
     world.life.hustle.driverRating >= 4.2;
+  const moveOutCopy =
+    !wasMoveOutReady && world.life.hustle.moveOutReady
+      ? " Move-out ready: Ibu Sari says you can start looking for a proper room."
+      : "";
 
   return {
     ok: true,
-    message: `Delivered ${definition.title}${condition ? ` (${condition.label})` : ""}. Rp +${payout}. Driver rating ${starRating.toFixed(1)}★.`,
+    message: `Delivered ${definition.title}${condition ? ` (${condition.label})` : ""}. Rp +${payout}. Driver rating ${starRating.toFixed(1)}★.${moveOutCopy}`,
     starRating,
     payout
   };
