@@ -191,6 +191,7 @@ describe("Act 0 hustle and deliveries", () => {
     world.life.hustle.completedDeliveryCount = 4;
     world.life.hustle.deliveryEarnings = 660;
     world.life.hustle.driverRating = 4.8;
+    world.life.hustle.rentDueDay = 7;
     const now = 3 * 1440 + 11 * 60;
 
     expect(acceptDelivery(world, "milk_madu_brunch_bag", now)).toMatchObject({ ok: true });
@@ -346,7 +347,14 @@ describe("Act 0 hustle and deliveries", () => {
 
     player.money = 300;
     world.clock.day = 1;
-    world.life.hustle.completedDeliveryCount = 2;
+    world.life.hustle.completedDeliveryCount = 3;
     expect(getHustleNextStep(world)).toMatchObject({ title: "Upgrade scooter" });
+
+    world.life.hustle.scooterTier = "daily_rental";
+    world.life.hustle.completedDeliveryCount = 5;
+    world.life.hustle.deliveryEarnings = 720;
+    world.life.hustle.driverRating = 4.3;
+    player.money = 500;
+    expect(getHustleNextStep(world)).toMatchObject({ title: "Cover first rent" });
   });
 });

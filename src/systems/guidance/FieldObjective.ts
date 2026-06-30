@@ -1,10 +1,11 @@
 import { getDeliveryDefinition } from "../../data/deliveries";
 import { playerHomeBase } from "../../data/homeBase";
 import { getAct0StepState, isAct0Complete } from "../life/ActProgression";
-import { areAct2GoalsComplete, getAct2NextStep } from "../life/Act2Goals";
+import { areAct2GoalsComplete, getAct2NextStep, getAct2PayoffOpportunityState } from "../life/Act2Goals";
 import { getAct3ReadinessNextStep } from "../life/Act3Readiness";
 import { getHustleNextStep } from "../hustle/HustleGoals";
 import { getRentPressureState, MIN_DELIVERY_BIKE_CONDITION } from "../hustle/HustleEconomy";
+import { getAct1MoveOutReadiness } from "../hustle/HustleMilestones";
 import { getSocialGroup } from "../groups/GroupRegistry";
 import { getEvent } from "../events/EventScheduler";
 import { getRelationshipArcStates } from "../relationships/RelationshipArcs";
@@ -131,6 +132,18 @@ function getHustleObjectiveTargets(world: WorldState): FieldObjectiveTargetRef[]
     return [{ type: "home", id: playerHomeBase.id, label: "Pay rent at home" }];
   }
 
+  const moveOutReadiness = getAct1MoveOutReadiness(world);
+  if (
+    !moveOutReadiness.complete &&
+    moveOutReadiness.deliveriesComplete &&
+    moveOutReadiness.earningsComplete &&
+    moveOutReadiness.ratingComplete &&
+    !moveOutReadiness.firstRentCovered &&
+    player.money >= world.life.hustle.rentAmount
+  ) {
+    return [{ type: "home", id: playerHomeBase.id, label: "Cover first rent" }];
+  }
+
   if (world.life.hustle.moveOutReady) {
     return [
       { type: "venue", id: "act2_beach_crew", label: "Find beach crew", venueId: "berawa_beach" },
@@ -165,6 +178,11 @@ function getAct2ObjectiveTargets(world: WorldState): FieldObjectiveTargetRef[] {
         npcId: availableBeat.arc.npcId
       }
     ];
+  }
+
+  const payoff = getAct2PayoffOpportunityState(world);
+  if (payoff && payoff.status !== "completed") {
+    return [{ type: "venue", id: `act2_payoff_${payoff.templateId}`, label: payoff.title, venueId: payoff.venueId }];
   }
 
   return [];

@@ -15,7 +15,7 @@ import { shopDefinitions } from "../data/shops";
 import { addItem, getQuantity } from "../systems/Inventory";
 import { InteractionController, type InteractionOffender } from "../systems/interaction/InteractionController";
 import { applyActivity, getVenueActivityContext } from "../systems/life/ActivityEngine";
-import { getAct2GoalStates, getAct2NextStep } from "../systems/life/Act2Goals";
+import { getAct2GoalStates, getAct2NextStep, getAct2PayoffOpportunityState } from "../systems/life/Act2Goals";
 import { getAct3ReadinessGoalStates, getAct3ReadinessNextStep, isAct3Ready } from "../systems/life/Act3Readiness";
 import { getSettlingInGoalStates, updateSettlingInGoals } from "../systems/life/SettlingInGoals";
 import {
@@ -142,7 +142,8 @@ describe("Act 2 social goals", () => {
     expect(states).toEqual({
       join_first_crew: false,
       attend_club_rhythm: false,
-      deepen_a_bond: false
+      deepen_a_bond: false,
+      open_better_door: false
     });
     expect(getAct2NextStep(world)).toMatchObject({ title: "Join a first crew" });
 
@@ -156,11 +157,20 @@ describe("Act 2 social goals", () => {
     bumpRelationshipAffinity(world, "npc", "ari", 4, "showed up for Act 2", 2);
     expect(getAct2NextStep(world)).toMatchObject({ title: "Talk to ari" });
     completeNextRelationshipArcBeat(world, "ari", 2);
+    world.clock.day = 2;
+    world.clock.minuteOfDay = 9 * 60;
+    expect(getAct2PayoffOpportunityState(world)).toMatchObject({
+      templateId: "run_crew_breakfast_shift",
+      status: "eligible"
+    });
+    expect(getAct2NextStep(world)).toMatchObject({ title: "Find Run crew breakfast shift" });
+    world.opportunities.completedTemplateIds.push("run_crew_breakfast_shift");
     states = Object.fromEntries(getAct2GoalStates(world).map((goal) => [goal.id, goal.complete]));
     expect(states).toEqual({
       join_first_crew: true,
       attend_club_rhythm: true,
-      deepen_a_bond: true
+      deepen_a_bond: true,
+      open_better_door: true
     });
     expect(getAct2NextStep(world)).toMatchObject({ title: "Act 2 foundation complete", urgency: "complete" });
   });
@@ -189,6 +199,7 @@ describe("Act 3 readiness hooks", () => {
     world.runtimeEvents.attendedEventIds.push("berawa_run_crew_loop");
     bumpRelationshipAffinity(world, "npc", "ari", 4, "showed up for Act 2", 2);
     completeNextRelationshipArcBeat(world, "ari", 2);
+    world.opportunities.completedTemplateIds.push("run_crew_breakfast_shift");
     bumpRelationshipAffinity(world, "npc", "ibu_sari", 8, "mentor trust", 3);
     player.money = 1250;
     world.opportunities.completedTemplateIds.push("sari_warung_seed_errand");

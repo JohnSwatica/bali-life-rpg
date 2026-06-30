@@ -84,6 +84,7 @@ import { completeAct0Step, isAct0Complete, markAct0MealProgress } from "../syste
 import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
 import { acceptDelivery, completeDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
 import { payHustleRent, repairScooter, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
+import { isAct1MoveOutReady } from "../systems/hustle/HustleMilestones";
 import {
   acceptOpportunity,
   appendOpportunityMessage,
@@ -4948,10 +4949,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private refreshHustleMoveOutReady(): void {
-    this.world.life.hustle.moveOutReady =
-      this.world.life.hustle.completedDeliveryCount >= 5 &&
-      this.world.life.hustle.deliveryEarnings >= 700 &&
-      this.world.life.hustle.driverRating >= 4.2;
+    this.world.life.hustle.moveOutReady = isAct1MoveOutReady(this.world);
+    if (this.world.life.hustle.moveOutReady && this.world.life.actProgress.currentAct < 2) {
+      this.world.life.actProgress.currentAct = 2;
+    }
   }
 
   private refreshGodmodePanel(): void {

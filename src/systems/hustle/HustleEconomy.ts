@@ -1,6 +1,7 @@
 import { addItem, getQuantity } from "../Inventory";
 import { adjustPlayerMeters } from "../meters/PlayerMeters";
 import { adjustReputation } from "../reputation/ReputationState";
+import { isAct1MoveOutReady } from "./HustleMilestones";
 import type { WorldState } from "../../types";
 
 const SCOOTER_KEY_ITEM_ID = "scooter_key";
@@ -82,9 +83,18 @@ export function payHustleRent(world: WorldState, now: number): HustleActionResul
   world.life.hustle.rentDueDay = Math.max(world.clock.day, world.life.hustle.rentDueDay) + RENT_EXTENSION_DAYS;
   adjustPlayerMeters(world, { wellbeing: 8, focus: 3 });
   adjustReputation(world.reputation, 1, "Paid local rent on time", now);
+  const wasMoveOutReady = world.life.hustle.moveOutReady;
+  world.life.hustle.moveOutReady = isAct1MoveOutReady(world);
+  if (!wasMoveOutReady && world.life.hustle.moveOutReady && world.life.actProgress.currentAct < 2) {
+    world.life.actProgress.currentAct = 2;
+  }
+  const moveOutCopy =
+    !wasMoveOutReady && world.life.hustle.moveOutReady
+      ? " Found your feet: first rent covered, rating steady, and Act 2 begins."
+      : "";
   return {
     ok: true,
-    message: `Rent paid. Next rent target: Rp ${world.life.hustle.rentAmount} by Day ${world.life.hustle.rentDueDay}.`
+    message: `Rent paid. Next rent target: Rp ${world.life.hustle.rentAmount} by Day ${world.life.hustle.rentDueDay}.${moveOutCopy}`
   };
 }
 

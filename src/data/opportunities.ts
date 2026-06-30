@@ -289,7 +289,7 @@ export const opportunityTemplates: OpportunityTemplate[] = [
       ],
       reputation: { delta: 3, tag: "reliable", reason: "Handled a warm client referral from the focus table" }
     },
-    weight: 5,
+    weight: 9,
     cooldownMin: 1440
   },
   {
@@ -315,7 +315,7 @@ export const opportunityTemplates: OpportunityTemplate[] = [
       ],
       reputation: { delta: 2, tag: "reliable", reason: "Turned run crew trust into a paid breakfast shift" }
     },
-    weight: 5,
+    weight: 9,
     cooldownMin: 1440
   },
   {
@@ -338,7 +338,7 @@ export const opportunityTemplates: OpportunityTemplate[] = [
       affinityBumps: [{ npcId: "made", amount: 4 }],
       reputation: { delta: 3, tag: "social", reason: "Converted brunch-builder trust into useful paid work" }
     },
-    weight: 4,
+    weight: 8,
     cooldownMin: 1440
   },
   {
@@ -361,7 +361,7 @@ export const opportunityTemplates: OpportunityTemplate[] = [
       affinityBumps: [{ npcId: "ari", amount: 5 }],
       reputation: { delta: 2, tag: "community_contributor", reason: "Helped the surf circle solve a real problem" }
     },
-    weight: 4,
+    weight: 8,
     cooldownMin: 1440
   },
   {

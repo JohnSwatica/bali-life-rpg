@@ -11,6 +11,7 @@ import { bumpRelationshipAffinity } from "../relationships/RelationshipMemory";
 import { adjustReputation, awardReputationTag } from "../reputation/ReputationState";
 import { advanceWorldMinutes } from "../time/DailyClock";
 import { applyDeliveryScooterWear, MIN_DELIVERY_BIKE_CONDITION } from "./HustleEconomy";
+import { getAct1MoveOutReadiness } from "./HustleMilestones";
 import type { ActiveDeliveryState, WorldState } from "../../types";
 
 export interface DeliveryResult {
@@ -142,16 +143,20 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
   world.life.hustle.completedDeliveryCount += 1;
   world.life.hustle.deliveryEarnings += payout;
   world.life.hustle.driverRating = updateDriverRating(world.life.hustle.driverRating, starRating, definition.ratingWeight);
-  world.life.hustle.moveOutReady =
-    world.life.hustle.completedDeliveryCount >= 5 &&
-    world.life.hustle.deliveryEarnings >= 700 &&
-    world.life.hustle.driverRating >= 4.2;
+  const readiness = getAct1MoveOutReadiness(world);
+  world.life.hustle.moveOutReady = readiness.complete;
   if (!wasMoveOutReady && world.life.hustle.moveOutReady && world.life.actProgress.currentAct < 2) {
     world.life.actProgress.currentAct = 2;
   }
   const moveOutCopy =
     !wasMoveOutReady && world.life.hustle.moveOutReady
       ? " Move-out ready: Ibu Sari says you can start looking for a proper room. Act 2 begins: find your people."
+      : !wasMoveOutReady &&
+          !world.life.hustle.moveOutReady &&
+          readiness.deliveriesComplete &&
+          readiness.earningsComplete &&
+          readiness.ratingComplete
+        ? " First rent still needs covering before Ibu Sari helps you move out."
       : "";
   const wearCopy = scooterWear > 0 ? ` Scooter -${scooterWear}% (${player.bikeCondition}%).` : "";
 

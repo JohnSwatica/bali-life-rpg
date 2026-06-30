@@ -1,5 +1,13 @@
 import { getDeliveryDefinition } from "../../data/deliveries";
 import { getRentPressureState, getScooterUpgradeStatus, MIN_DELIVERY_BIKE_CONDITION } from "./HustleEconomy";
+import {
+  ACT1_MOVE_OUT_DELIVERIES,
+  ACT1_MOVE_OUT_DELIVERY_EARNINGS,
+  ACT1_MOVE_OUT_DRIVER_RATING,
+  ACT1_STEADY_RUNNER_DELIVERIES,
+  getAct1MoveOutReadiness,
+  hasCoveredFirstRent
+} from "./HustleMilestones";
 import type { WorldState } from "../../types";
 
 export interface HustleGoalState {
@@ -21,6 +29,7 @@ export function getHustleGoalStates(world: WorldState): HustleGoalState[] {
   const player = world.players[world.localPlayerId];
   const scooterUpgrade = getScooterUpgradeStatus(world);
   const rentPressure = getRentPressureState(world);
+  const moveOutReadiness = getAct1MoveOutReadiness(world);
   return [
     {
       id: "first_delivery",
@@ -33,8 +42,8 @@ export function getHustleGoalStates(world: WorldState): HustleGoalState[] {
       id: "steady_runner",
       title: "Steady runner",
       description: "Complete 3 deliveries without dropping the hustle.",
-      progress: `${Math.min(3, hustle.completedDeliveryCount)}/3 deliveries`,
-      complete: hustle.completedDeliveryCount >= 3
+      progress: `${Math.min(ACT1_STEADY_RUNNER_DELIVERIES, hustle.completedDeliveryCount)}/${ACT1_STEADY_RUNNER_DELIVERIES} deliveries`,
+      complete: hustle.completedDeliveryCount >= ACT1_STEADY_RUNNER_DELIVERIES
     },
     {
       id: "daily_scooter",
@@ -48,16 +57,16 @@ export function getHustleGoalStates(world: WorldState): HustleGoalState[] {
       title: "Cover rent",
       description: "Pay the first local rent target and buy breathing room.",
       progress:
-        hustle.rentDueDay > 4
+        hasCoveredFirstRent(world)
           ? `Paid through Day ${hustle.rentDueDay}`
           : `Rp ${Math.min(player.money, hustle.rentAmount)}/${hustle.rentAmount}; ${rentPressure.shortLabel}`,
-      complete: hustle.rentDueDay > 4
+      complete: hasCoveredFirstRent(world)
     },
     {
       id: "move_out_ready",
       title: "Move-out ready",
-      description: "Reach 5 deliveries, Rp 700 delivery earnings, and 4.2★ driver rating.",
-      progress: `${Math.min(5, hustle.completedDeliveryCount)}/5 runs, Rp ${Math.min(700, hustle.deliveryEarnings)}/700, ${Math.min(4.2, hustle.driverRating).toFixed(1)}/4.2★`,
+      description: "Reach 5 deliveries, Rp 700 delivery earnings, 4.2★ driver rating, and first rent covered.",
+      progress: `${Math.min(ACT1_MOVE_OUT_DELIVERIES, hustle.completedDeliveryCount)}/${ACT1_MOVE_OUT_DELIVERIES} runs, Rp ${Math.min(ACT1_MOVE_OUT_DELIVERY_EARNINGS, hustle.deliveryEarnings)}/${ACT1_MOVE_OUT_DELIVERY_EARNINGS}, ${Math.min(ACT1_MOVE_OUT_DRIVER_RATING, hustle.driverRating).toFixed(1)}/${ACT1_MOVE_OUT_DRIVER_RATING.toFixed(1)}★, rent ${moveOutReadiness.firstRentCovered ? "covered" : "open"}`,
       complete: hustle.moveOutReady
     }
   ];
@@ -66,6 +75,7 @@ export function getHustleGoalStates(world: WorldState): HustleGoalState[] {
 export function getHustleNextStep(world: WorldState): HustleNextStepState {
   const player = world.players[world.localPlayerId];
   const hustle = world.life.hustle;
+  const moveOutReadiness = getAct1MoveOutReadiness(world);
 
   if (!world.life.actProgress.firstDayComplete) {
     return {
@@ -136,6 +146,14 @@ export function getHustleNextStep(world: WorldState): HustleNextStepState {
     };
   }
 
+  if (hustle.completedDeliveryCount < ACT1_STEADY_RUNNER_DELIVERIES) {
+    return {
+      title: "Build delivery rhythm",
+      detail: `Take ${ACT1_STEADY_RUNNER_DELIVERIES - hustle.completedDeliveryCount} more Hustle Board run${ACT1_STEADY_RUNNER_DELIVERIES - hustle.completedDeliveryCount === 1 ? "" : "s"} to become a steady runner.`,
+      urgency: "normal"
+    };
+  }
+
   const scooterUpgrade = getScooterUpgradeStatus(world);
   if (scooterUpgrade.available) {
     return {
@@ -145,34 +163,41 @@ export function getHustleNextStep(world: WorldState): HustleNextStepState {
     };
   }
 
-  if (hustle.completedDeliveryCount < 3) {
-    return {
-      title: "Build delivery rhythm",
-      detail: `Take ${3 - hustle.completedDeliveryCount} more Hustle Board run${3 - hustle.completedDeliveryCount === 1 ? "" : "s"} to become a steady runner.`,
-      urgency: "normal"
-    };
-  }
-
-  if (hustle.completedDeliveryCount < 5) {
+  if (hustle.completedDeliveryCount < ACT1_MOVE_OUT_DELIVERIES) {
     return {
       title: "Push toward move-out",
-      detail: `${5 - hustle.completedDeliveryCount} more clean run${5 - hustle.completedDeliveryCount === 1 ? "" : "s"} before Ibu Sari trusts you can leave the cheap kos.`,
+      detail: `${ACT1_MOVE_OUT_DELIVERIES - hustle.completedDeliveryCount} more clean run${ACT1_MOVE_OUT_DELIVERIES - hustle.completedDeliveryCount === 1 ? "" : "s"} before Ibu Sari trusts you can leave the cheap kos.`,
       urgency: "normal"
     };
   }
 
-  if (hustle.deliveryEarnings < 700) {
+  if (hustle.deliveryEarnings < ACT1_MOVE_OUT_DELIVERY_EARNINGS) {
     return {
       title: "Stack delivery earnings",
-      detail: `Earn Rp ${700 - hustle.deliveryEarnings} more from board jobs to prove the hustle can cover a better room.`,
+      detail: `Earn Rp ${ACT1_MOVE_OUT_DELIVERY_EARNINGS - hustle.deliveryEarnings} more from board jobs to prove the hustle can cover a better room.`,
       urgency: "normal"
     };
   }
 
-  if (hustle.driverRating < 4.2) {
+  if (hustle.driverRating < ACT1_MOVE_OUT_DRIVER_RATING) {
     return {
       title: "Raise driver rating",
-      detail: `You need ${(4.2 - hustle.driverRating).toFixed(1)}★ more. Pick cleaner jobs and arrive before the timer bites.`,
+      detail: `You need ${(ACT1_MOVE_OUT_DRIVER_RATING - hustle.driverRating).toFixed(1)}★ more. Pick cleaner jobs and arrive before the timer bites.`,
+      urgency: "normal"
+    };
+  }
+
+  if (!moveOutReadiness.firstRentCovered) {
+    if (player.money >= hustle.rentAmount) {
+      return {
+        title: "Cover first rent",
+        detail: `Pay Rp ${hustle.rentAmount} in Phone Feed so Ibu Sari trusts you can leave the cheap kos.`,
+        urgency: "normal"
+      };
+    }
+    return {
+      title: "Stack rent buffer",
+      detail: `Need Rp ${hustle.rentAmount - player.money} more, then pay first rent to unlock the Act 2 bridge.`,
       urgency: "normal"
     };
   }
