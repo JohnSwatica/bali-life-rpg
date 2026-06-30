@@ -107,6 +107,7 @@ import {
   recordRecklessDamageFlag,
   reduceWantedStanding
 } from "../systems/reputation/ReputationState";
+import { selectCharacterAnimation } from "../systems/animation/CharacterAnimations";
 import {
   advanceClock,
   formatClock,
@@ -1170,7 +1171,7 @@ export class GameScene extends Phaser.Scene {
 
   private createPlayer(): void {
     this.player = this.physics.add.sprite(this.playerState.x, this.playerState.y, "player");
-    this.setSpriteFacing(this.player, this.playerState.direction === "left", CHARACTER_SPRITE_SCALE);
+    this.applyCharacterAnimation(this.player, "player", this.playerState.direction, false, CHARACTER_SPRITE_SCALE);
     this.player.setCollideWorldBounds(true);
     this.player.setDepth(this.player.y);
     this.player.body?.setSize(PLAYER_BODY_WIDTH, PLAYER_BODY_HEIGHT);
@@ -1380,10 +1381,11 @@ export class GameScene extends Phaser.Scene {
       const speed = baseSpeed * this.movementSpeedMultiplier;
       this.player.setVelocity(movement.x * speed, movement.y * speed);
       this.playerState.direction = this.directionFromVector(movement);
-      this.setSpriteFacing(this.player, this.playerState.direction === "left", CHARACTER_SPRITE_SCALE);
     } else {
       this.player.setVelocity(0, 0);
     }
+    const walkingOnFoot = movement.lengthSq() > 0 && !this.playerState.onBike;
+    this.applyCharacterAnimation(this.player, "player", this.playerState.direction, walkingOnFoot, CHARACTER_SPRITE_SCALE);
 
     this.enforceWaterBoundary();
 
@@ -5060,8 +5062,21 @@ export class GameScene extends Phaser.Scene {
     return vector.y < 0 ? "up" : "down";
   }
 
-  private setSpriteFacing(sprite: Phaser.GameObjects.Components.Transform, facingLeft: boolean, scale: number): void {
-    sprite.setScale(facingLeft ? -scale : scale, scale);
+  private applyCharacterAnimation(
+    sprite: Phaser.GameObjects.Sprite,
+    spriteKey: string,
+    direction: Direction,
+    moving: boolean,
+    scale: number,
+    scaleY = scale
+  ): void {
+    const animation = selectCharacterAnimation(spriteKey, direction, moving);
+    sprite.play(animation.key, true);
+    this.setSpriteFacing(sprite, animation.facingLeft, scale, scaleY);
+  }
+
+  private setSpriteFacing(sprite: Phaser.GameObjects.Components.Transform, facingLeft: boolean, scale: number, scaleY = scale): void {
+    sprite.setScale(facingLeft ? -scale : scale, scaleY);
   }
 
   private layoutForViewport(): void {
