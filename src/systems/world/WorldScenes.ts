@@ -140,7 +140,7 @@ function opportunitySceneCue(type: OpportunityType, accepted: boolean): string {
   if (type === "social") return "GATHER";
   if (type === "help_out") return "HELP?";
   if (type === "flash_deal") return "DEAL";
-  if (type === "rumor") return "TIP";
+  if (type === "rumor") return "RUMOR";
   return "SWAP";
 }
 

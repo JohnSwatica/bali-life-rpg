@@ -4472,7 +4472,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawWorldSceneSign(
-    scene: { id: string; cue: string; accepted?: boolean },
+    scene: { id: string; cue: string; accepted?: boolean; opportunityId?: string; title?: string },
     x: number,
     y: number,
     activeLabelIds: Set<string>,
@@ -4486,6 +4486,17 @@ export class GameScene extends Phaser.Scene {
       .setColor(scene.accepted ? "#c9ffd8" : "#101820")
       .setBackgroundColor(scene.accepted ? "rgba(37,58,53,0.92)" : this.sceneLabelBackground(color))
       .setVisible(true);
+    label.off("pointerdown");
+    if (scene.opportunityId) {
+      label.setInteractive({ useHandCursor: true });
+      label.on("pointerdown", (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event?: Phaser.Types.Input.EventData) => {
+        event?.stopPropagation();
+        this.trackPhoneOpportunity(scene.opportunityId!);
+      });
+      label.setData("hint", `Track ${scene.title ?? "opportunity"}`);
+    } else {
+      label.disableInteractive();
+    }
   }
 
   private getWorldSceneLabel(id: string, text: string): Phaser.GameObjects.Text {
@@ -4497,7 +4508,7 @@ export class GameScene extends Phaser.Scene {
     const label = this.add
       .text(0, 0, text, {
         fontFamily: "Inter, Arial, sans-serif",
-        fontSize: "10px",
+        fontSize: "11px",
         color: "#101820",
         fontStyle: "800",
         padding: { x: 5, y: 2 }
