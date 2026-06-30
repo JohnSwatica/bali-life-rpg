@@ -18,7 +18,7 @@ import {
   upgradeToDailyScooter
 } from "../systems/hustle/HustleEconomy";
 import { getHustleGoalStates, getHustleNextStep } from "../systems/hustle/HustleGoals";
-import { completeAct0Step, markAct0MealProgress } from "../systems/life/ActProgression";
+import { completeAct0Step, getAct0MealProgressKindForActivity, markAct0MealProgress } from "../systems/life/ActProgression";
 import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
 import { getRelationship } from "../systems/relationships/RelationshipMemory";
 import { createInitialWorldState } from "../systems/WorldState";
@@ -97,6 +97,13 @@ describe("Act 0 hustle and deliveries", () => {
       act0Step: "complete",
       firstDayComplete: true
     });
+  });
+
+  it("lets station activity choices satisfy the Act 0 meal and coffee beat", () => {
+    expect(getAct0MealProgressKindForActivity("cafe_quick_caffeine")).toBe("coffee");
+    expect(getAct0MealProgressKindForActivity("cafe_brunch_table")).toBe("meal");
+    expect(getAct0MealProgressKindForActivity("warung_nasi_reset")).toBe("meal");
+    expect(getAct0MealProgressKindForActivity("cafe_deep_work")).toBeNull();
   });
 
   it("offers Act 1 deliveries only after first-day completion and rating/count gates", () => {

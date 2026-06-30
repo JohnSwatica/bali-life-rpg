@@ -28,7 +28,7 @@ export const gameplayStationLoops: GameplayStationLoop[] = [
     title: "Cafe focus table",
     venueIds: ["satu_satu_coffee", "milk_madu_berawa", "nude_cafe_berawa", "baked_berawa"],
     fantasy: "A laptop, a coffee, and the social gravity of being seen working in Berawa.",
-    primaryMechanic: "Choose between paid deep work, coffee recovery, or light table talk.",
+    primaryMechanic: "Choose between paid deep work, a proper brunch reset, or quick coffee recovery.",
     rewardShape: "Focus and small social gains, with energy and money as the limiter.",
     riskTradeoff: "Too much cafe time burns energy and can blur into expensive procrastination.",
     bestTimeOfDay: "Morning and early afternoon are strongest for focus."

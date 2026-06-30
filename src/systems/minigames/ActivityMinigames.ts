@@ -37,15 +37,15 @@ const ACTIVITY_MINIGAMES: Record<string, ActivityMinigameDefinition | undefined>
     targetStart: 0.44,
     targetEnd: 0.6
   },
-  cafe_people_watch: {
+  cafe_brunch_table: {
     kind: "choice",
-    title: "Read the Room",
-    prompt: "Pick the move that keeps you present without derailing the day.",
+    title: "Order Like You Mean It",
+    prompt: "Pick the move that turns a cafe stop into an actual reset.",
     actionLabel: "Choose",
     choices: [
-      { id: "listen", label: "Ask about their morning", score: 1, feedback: "Easy, warm, and not too much." },
-      { id: "overshare", label: "Explain your whole plan", score: 0.42, feedback: "Sincere, but the table got heavier." },
-      { id: "scroll", label: "Half-listen while scrolling", score: 0.18, feedback: "You occupied the chair more than the moment." }
+      { id: "plate", label: "Order food and water", score: 1, feedback: "That was the responsible version of brunch." },
+      { id: "pastry", label: "Pastry and more coffee", score: 0.58, feedback: "Better than nothing, not quite a reset." },
+      { id: "scroll", label: "Scroll through the meal", score: 0.25, feedback: "Fed, but barely present." }
     ]
   },
   surf_beach_time: {

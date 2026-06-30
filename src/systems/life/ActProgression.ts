@@ -23,7 +23,7 @@ const STEP_COPY: Record<Act0Step, { title: string; objective: string }> = {
   },
   buy_meal_and_coffee: {
     title: "Spend your first earnings",
-    objective: "Grab coffee and eat properly at a cafe or bakery."
+    objective: "Use cafe station choices for quick coffee and a proper brunch plate."
   },
   sleep_first_night: {
     title: "Sleep it off",
@@ -42,6 +42,14 @@ const NEXT_STEP: Record<Act0Step, Act0Step> = {
   buy_meal_and_coffee: "sleep_first_night",
   sleep_first_night: "complete",
   complete: "complete"
+};
+
+const ACT0_MEAL_ACTIVITY_KIND: Record<string, "coffee" | "meal" | undefined> = {
+  grab_coffee: "coffee",
+  cafe_quick_caffeine: "coffee",
+  eat_properly: "meal",
+  cafe_brunch_table: "meal",
+  warung_nasi_reset: "meal"
 };
 
 export function getAct0StepState(world: WorldState): Act0StepState {
@@ -105,6 +113,10 @@ export function markAct0MealProgress(world: WorldState, kind: "coffee" | "meal")
     return completeAct0Step(world, "buy_meal_and_coffee");
   }
   return false;
+}
+
+export function getAct0MealProgressKindForActivity(activityId: string): "coffee" | "meal" | null {
+  return ACT0_MEAL_ACTIVITY_KIND[activityId] ?? null;
 }
 
 export function isAct0Complete(world: WorldState): boolean {

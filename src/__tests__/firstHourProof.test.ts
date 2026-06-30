@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getDeliveryDefinition } from "../data/deliveries";
 import { applyActivity, getVenueActivityContext } from "../systems/life/ActivityEngine";
-import { completeAct0Step, markAct0MealProgress } from "../systems/life/ActProgression";
+import { completeAct0Step, getAct0MealProgressKindForActivity, markAct0MealProgress } from "../systems/life/ActProgression";
 import { getAct2GoalStates, getAct2NextStep, getAct2PayoffOpportunityState } from "../systems/life/Act2Goals";
 import { getFieldObjective } from "../systems/guidance/FieldObjective";
 import { joinSocialGroup } from "../systems/groups/GroupRegistry";
@@ -93,10 +93,10 @@ function completeAct0DeliveryAndMeal(world: WorldState): void {
   expect(completeDelivery(world, now + 35, 1)).toMatchObject({ ok: true });
   expect(completeAct0Step(world, "pickup_first_delivery")).toBe(true);
   expect(completeAct0Step(world, "dropoff_first_delivery")).toBe(true);
-  expect(applyActivity(world, getVenueActivityContext("milk_madu_berawa")!, "grab_coffee")).toMatchObject({ ok: true });
-  expect(markAct0MealProgress(world, "coffee")).toBe(false);
-  expect(applyActivity(world, getVenueActivityContext("milk_madu_berawa")!, "eat_properly")).toMatchObject({ ok: true });
-  expect(markAct0MealProgress(world, "meal")).toBe(true);
+  expect(applyActivity(world, getVenueActivityContext("milk_madu_berawa")!, "cafe_quick_caffeine")).toMatchObject({ ok: true });
+  expect(markAct0MealProgress(world, getAct0MealProgressKindForActivity("cafe_quick_caffeine")!)).toBe(false);
+  expect(applyActivity(world, getVenueActivityContext("milk_madu_berawa")!, "cafe_brunch_table")).toMatchObject({ ok: true });
+  expect(markAct0MealProgress(world, getAct0MealProgressKindForActivity("cafe_brunch_table")!)).toBe(true);
   expect(completeAct0Step(world, "sleep_first_night")).toBe(true);
 }
 

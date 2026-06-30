@@ -101,7 +101,10 @@ function getAct0ObjectiveTargets(world: WorldState): FieldObjectiveTargetRef[] {
     return delivery ? [{ type: "point", id: delivery.dropoffId, label: delivery.dropoffLabel, ...delivery.dropoffPoint }] : [];
   }
   if (step === "buy_meal_and_coffee") {
-    return [{ type: "venue", id: "act0_meal_coffee", label: "Meal and coffee", venueId: "milk_madu_berawa" }];
+    return [
+      { type: "venue", id: "act0_meal_coffee_milk_madu", label: "Brunch and coffee", venueId: "milk_madu_berawa" },
+      { type: "venue", id: "act0_meal_coffee_baked", label: "Bakery coffee", venueId: "baked_berawa" }
+    ];
   }
   if (step === "sleep_first_night") {
     return [{ type: "home", id: playerHomeBase.id, label: playerHomeBase.name }];

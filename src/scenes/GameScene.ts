@@ -85,7 +85,7 @@ import {
   type VenueActivityContext
 } from "../systems/life/ActivityEngine";
 import { getSettlingInGoalTitle, updateSettlingInGoals } from "../systems/life/SettlingInGoals";
-import { completeAct0Step, isAct0Complete, markAct0MealProgress } from "../systems/life/ActProgression";
+import { completeAct0Step, getAct0MealProgressKindForActivity, isAct0Complete, markAct0MealProgress } from "../systems/life/ActProgression";
 import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
 import { acceptDelivery, completeDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
 import { payHustleRent, repairScooter, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
@@ -3053,11 +3053,14 @@ export class GameScene extends Phaser.Scene {
       }
     }
     let act0Message = "";
-    if (activityId === "grab_coffee" && markAct0MealProgress(this.world, "coffee")) {
-      act0Message = " First earnings spent. Sleep when ready.";
-    }
-    if (activityId === "eat_properly" && markAct0MealProgress(this.world, "meal")) {
-      act0Message = " First earnings spent. Sleep when ready.";
+    const act0MealKind = getAct0MealProgressKindForActivity(activityId);
+    if (act0MealKind && this.world.life.actProgress.act0Step === "buy_meal_and_coffee") {
+      const completedAct0Meal = markAct0MealProgress(this.world, act0MealKind);
+      if (completedAct0Meal) {
+        act0Message = " First earnings spent. Sleep when ready.";
+      } else {
+        act0Message = act0MealKind === "coffee" ? " Coffee handled. Eat properly before sleep." : " Meal handled. Grab coffee before sleep.";
+      }
     }
     const goalMessage = this.refreshSettlingInGoals(false);
     this.updateLighting();
