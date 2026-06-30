@@ -12,6 +12,7 @@ vi.mock("phaser", () => ({
 
 import { npcDefinitions } from "../data/npcs";
 import { InteractionController } from "../systems/interaction/InteractionController";
+import { getNpcIdleCue, getNpcIdleTag, getNpcIdleVisual } from "../systems/npcs/NpcIdleBehavior";
 import {
   advanceNpcRouteMotion,
   getActiveNpcRoute,
@@ -118,5 +119,30 @@ describe("NPC daily routine routes", () => {
       id: "ibu_sari",
       label: "Talk to Ibu Sari"
     });
+  });
+});
+
+describe("NPC idle behavior", () => {
+  it("assigns role-readable idle tags to named NPCs", () => {
+    expect(getNpcIdleTag(npcDefinitions.ibu_sari)).toBe("tidy_counter");
+    expect(getNpcIdleCue(npcDefinitions.ibu_sari)).toBe("tidies");
+    expect(getNpcIdleTag(npcDefinitions.kadek)).toBe("knead_oven");
+    expect(getNpcIdleTag(npcDefinitions.ari)).toBe("laptop_sip");
+    expect(getNpcIdleTag(npcDefinitions.made)).toBe("tinker_board");
+  });
+
+  it("falls back to a generic idle when no authored tag exists", () => {
+    expect(getNpcIdleTag({})).toBe("generic_idle");
+    expect(getNpcIdleCue({})).toBe("looks around");
+  });
+
+  it("produces a changing cheap visual cue while paused at waypoints", () => {
+    const start = getNpcIdleVisual(npcDefinitions.made, 0);
+    const later = getNpcIdleVisual(npcDefinitions.made, 360);
+
+    expect(start.tag).toBe("tinker_board");
+    expect(later.cue).toBe("tinkers");
+    expect(later.angleDegrees).not.toBe(start.angleDegrees);
+    expect(later.scaleY).toBeGreaterThanOrEqual(1);
   });
 });

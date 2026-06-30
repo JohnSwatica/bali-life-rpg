@@ -49,6 +49,7 @@ export const npcDefinitions: Record<string, NpcDefinition> = {
     role: "Canggu Station Grocer",
     spriteKey: "npc-sari",
     tint: 0xf59f43,
+    idleTag: "tidy_counter",
     defaultLine: "Selamat datang. Berawa shelves empty faster when the FINNS shuttle crowd arrives.",
     routine: [
       { id: "prep", label: "stocking the Canggu Station front shelf", x: sariPrep.x, y: sariPrep.y, startMinute: 300, endMinute: 660 },
@@ -120,6 +121,7 @@ export const npcDefinitions: Record<string, NpcDefinition> = {
     role: "FINNS Runner",
     spriteKey: "npc-kadek",
     tint: 0x6ab7ff,
+    idleTag: "knead_oven",
     defaultLine: "The shortcut says five minutes. Berawa traffic says good luck.",
     routine: [
       { id: "club-gate", label: "checking the FINNS Recreation Club gate", x: kadekClub.x, y: kadekClub.y, startMinute: 300, endMinute: 720 },
@@ -191,6 +193,7 @@ export const npcDefinitions: Record<string, NpcDefinition> = {
     role: "Bungalow Living Stylist",
     spriteKey: "npc-made",
     tint: 0x8bd17c,
+    idleTag: "tinker_board",
     defaultLine: "Cushions, sarongs, beach totes, and the calm side of Berawa shopping.",
     routine: [
       { id: "stall", label: "opening the Bungalow Living display", x: madeStall.x, y: madeStall.y, startMinute: 300, endMinute: 960 },
@@ -250,6 +253,7 @@ export const npcDefinitions: Record<string, NpcDefinition> = {
     role: "Berawa Surfer",
     spriteKey: "npc-ari",
     tint: 0xffd166,
+    idleTag: "laptop_sip",
     defaultLine: "The tide left coconuts, wax marks, and stories. Berawa provides.",
     routine: [
       { id: "boards", label: "checking boards by Berawa Beach", x: ariBoards.x, y: ariBoards.y, startMinute: 300, endMinute: 720 },

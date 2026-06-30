@@ -38,6 +38,7 @@ import {
   getNpcRouteActivityLabel,
   type NpcRouteMotionState
 } from "../systems/npcs/NpcRoutineRoutes";
+import { getNpcIdleCue, getNpcIdleVisual } from "../systems/npcs/NpcIdleBehavior";
 import { adjustPlayerMeters } from "../systems/meters/PlayerMeters";
 import {
   createActiveMinigame,
@@ -357,6 +358,8 @@ export class GameScene extends Phaser.Scene {
   private obstacleGroup!: Phaser.Physics.Arcade.StaticGroup;
   private npcSprites = new Map<string, Phaser.Physics.Arcade.Sprite>();
   private npcRouteMotion = new Map<string, NpcRouteMotionState>();
+  private npcIdlePhases = new Map<string, number>();
+  private npcIdleLabels = new Map<string, Phaser.GameObjects.Text>();
   private pickupSprites = new Map<string, Phaser.GameObjects.Sprite>();
   private playerBike?: Phaser.GameObjects.Sprite;
   private trafficBikes: TrafficBikeRuntime[] = [];
@@ -1764,7 +1767,51 @@ export class GameScene extends Phaser.Scene {
       state.x = Math.round(sprite.x);
       state.y = Math.round(sprite.y);
       sprite.setDepth(sprite.y);
+      this.updateNpcIdleVisual(npc, sprite, !nextMotion.moving, delta);
     }
+  }
+
+  private updateNpcIdleVisual(npc: NpcDefinition, sprite: Phaser.Physics.Arcade.Sprite, isIdle: boolean, delta: number): void {
+    const label = this.getNpcIdleLabel(npc);
+    if (!isIdle) {
+      this.npcIdlePhases.set(npc.id, 0);
+      sprite.setAngle(0);
+      this.setSpriteFacing(sprite, sprite.scaleX < 0, CHARACTER_SPRITE_SCALE);
+      label.setVisible(false);
+      return;
+    }
+
+    const elapsed = ((this.npcIdlePhases.get(npc.id) ?? 0) + delta) % 6000;
+    const visual = getNpcIdleVisual(npc, elapsed);
+    const facingLeft = sprite.scaleX < 0;
+    this.npcIdlePhases.set(npc.id, elapsed);
+    sprite.setAngle(visual.angleDegrees);
+    sprite.setScale(facingLeft ? -CHARACTER_SPRITE_SCALE : CHARACTER_SPRITE_SCALE, CHARACTER_SPRITE_SCALE * visual.scaleY);
+    label
+      .setText(visual.cue)
+      .setPosition(sprite.x, sprite.y - scaleDistance(44) + visual.labelYOffset)
+      .setDepth(sprite.y + 4)
+      .setAlpha(visual.labelAlpha)
+      .setVisible(true);
+  }
+
+  private getNpcIdleLabel(npc: NpcDefinition): Phaser.GameObjects.Text {
+    const existing = this.npcIdleLabels.get(npc.id);
+    if (existing) {
+      return existing;
+    }
+    const label = this.add
+      .text(0, 0, getNpcIdleCue(npc), {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: "10px",
+        color: "#2b1d17",
+        backgroundColor: "#fff7d6",
+        padding: { x: 5, y: 2 }
+      })
+      .setOrigin(0.5)
+      .setVisible(false);
+    this.npcIdleLabels.set(npc.id, label);
+    return label;
   }
 
   private updatePickups(): void {

@@ -629,6 +629,8 @@ export interface NpcRoutineRoute {
   waypoints: NpcRouteWaypoint[];
 }
 
+export type NpcIdleTag = "tidy_counter" | "knead_oven" | "laptop_sip" | "tinker_board" | "generic_idle";
+
 export interface NpcDefinition {
   id: string;
   name: string;
@@ -637,6 +639,7 @@ export interface NpcDefinition {
   tint: number;
   routine: NpcRoutineStop[];
   routineRoutes?: NpcRoutineRoute[];
+  idleTag?: NpcIdleTag;
   defaultLine: string;
 }
 
