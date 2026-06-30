@@ -77,6 +77,7 @@ import {
   applyActivity,
   getActivityAvailability,
   getVenueActivityContext,
+  type ActivityAvailability,
   type VenueActivityContext
 } from "../systems/life/ActivityEngine";
 import { getSettlingInGoalTitle, updateSettlingInGoals } from "../systems/life/SettlingInGoals";
@@ -461,6 +462,7 @@ export class GameScene extends Phaser.Scene {
   private toastTimer = 0;
   private panel?: Phaser.GameObjects.Container;
   private dialogueOverlay?: HTMLElement;
+  private activityMenuOverlay?: HTMLElement;
   private committedActivity?: ActiveActivityState;
   private committedActivityOverlay?: HTMLElement;
   private committedActivityProgress?: HTMLDivElement;
@@ -2692,121 +2694,95 @@ export class GameScene extends Phaser.Scene {
     this.mode = "activity";
     this.dispatchIntent({ kind: "VisitVenue", venueId });
 
-    const { width, height } = this.scale;
-    const panelWidth = Math.min(760, width - 28);
-    const panelHeight = Math.min(640, height - 44);
-    const x = (width - panelWidth) / 2;
-    const y = (height - panelHeight) / 2;
-    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 12);
-    const bg = this.add.graphics();
-    bg.fillStyle(0x111820, 0.96);
-    bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
-    bg.lineStyle(2, 0xf4d58d, 0.52);
-    bg.strokeRoundedRect(x, y, panelWidth, panelHeight, 8);
-    container.add(bg);
-
     const availability = getActivityAvailability(this.world, context);
-    container.add(this.add.text(x + 22, y + 18, context.name, this.panelTitleStyle()));
-    container.add(
-      this.add.text(
-        x + 22,
-        y + 54,
-        `${context.category.replace(/_/g, " ")} activities  |  ${formatClock(this.world)}\nEnergy ${this.world.meters.energy}  Wellbeing ${this.world.meters.wellbeing}  Focus ${this.world.meters.focus}  Social ${this.world.meters.social}  Rp ${this.playerState.money}`,
-        { ...this.panelBodyStyle(), wordWrap: { width: panelWidth - 44 } }
-      )
-    );
+    this.createActivityMenuOverlay(venueId, context, availability, shop);
+  }
 
-    let rowY = y + 112;
+  private createActivityMenuOverlay(
+    venueId: string,
+    context: VenueActivityContext,
+    availability: ActivityAvailability[],
+    shop: ShopDefinition | undefined
+  ): void {
+    this.destroyActivityMenuOverlay();
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const overlay = document.createElement("section");
+    overlay.id = "bali-life-activity-menu";
+    overlay.className = "bali-life-activity-menu";
+    overlay.dataset.activityPanel = "true";
+    overlay.dataset.uiSurface = "activity-panel";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-label", `${context.name} activities`);
+    overlay.addEventListener("pointerdown", (event) => event.stopPropagation());
+    overlay.addEventListener("click", (event) => event.stopPropagation());
+
+    const header = document.createElement("div");
+    header.className = "bali-life-activity-menu-header";
+
+    const title = document.createElement("h2");
+    title.className = "bali-life-activity-menu-title";
+    title.textContent = context.name;
+
+    const meta = document.createElement("div");
+    meta.className = "bali-life-activity-menu-meta";
+    meta.textContent =
+      `${context.category.replace(/_/g, " ")} activities | ${formatClock(this.world)} | ` +
+      `Energy ${this.world.meters.energy}  Wellbeing ${this.world.meters.wellbeing}  ` +
+      `Focus ${this.world.meters.focus}  Social ${this.world.meters.social}  Rp ${this.playerState.money}`;
+
+    header.append(title, meta);
+
+    const content = document.createElement("div");
+    content.className = "bali-life-activity-menu-content";
+
     if (shop) {
-      this.addPanelButton(container, x + 22, rowY, 156, 34, "Open buy/sell", () => this.openShop(venueId), 0x253a35);
-      container.add(
-        this.add.text(x + 192, rowY + 7, "Existing shop flow, unchanged.", {
-          ...this.panelBodyStyle(),
-          fontSize: "13px",
-          wordWrap: { width: panelWidth - 214 }
-        })
-      );
-      rowY += 50;
+      this.appendActivityMenuRow(content, {
+        title: "Shop counter",
+        body: "Existing shop flow, unchanged.",
+        actionLabel: "Open buy/sell",
+        onAction: () => this.openShop(venueId)
+      });
     }
 
     const activeEvents = getActiveEventsAtVenue(this.world.clock, venueId, this.world);
     if (activeEvents.length > 0) {
-      container.add(this.add.text(x + 22, rowY, "Happening now", this.panelSectionStyle()));
-      rowY += 28;
+      this.appendActivityMenuSection(content, "Happening now");
       for (const event of activeEvents.slice(0, 2)) {
         const cost = event.participation.cost ?? 0;
         const canAfford = cost <= 0 || this.playerState.money >= cost;
         const moneyCopy = cost < 0 ? `Earn Rp ${Math.abs(cost)}` : cost > 0 ? `Cost Rp ${cost}` : "Free";
         const meterCopy = formatMeterDeltaSummary(event.participation.meterDeltas);
-        container.add(
-          this.add.text(x + 22, rowY, `${event.title}`, {
-            ...this.panelBodyStyle(),
-            fontSize: "14px",
-            color: "#ffe9a6",
-            wordWrap: { width: panelWidth - 202 }
-          })
-        );
-        container.add(
-          this.add.text(
-            x + 22,
-            rowY + 22,
-            `${event.description}\n${event.participation.timeCost} min | ${moneyCopy}${meterCopy ? ` | ${meterCopy}` : ""}`,
-            {
-              ...this.panelBodyStyle(),
-              fontSize: "12px",
-              wordWrap: { width: panelWidth - 202 }
-            }
-          )
-        );
-        this.addPanelButton(
-          container,
-          x + panelWidth - 154,
-          rowY + 18,
-          132,
-          34,
-          canAfford ? "Attend" : "Need Rp",
-          () => {
+        this.appendActivityMenuRow(content, {
+          title: event.title,
+          body: `${event.description}\n${event.participation.timeCost} min | ${moneyCopy}${meterCopy ? ` | ${meterCopy}` : ""}`,
+          actionLabel: canAfford ? "Attend" : "Need Rp",
+          variant: canAfford ? "primary" : "blocked",
+          onAction: () => {
             if (canAfford) {
               this.attendVenueEvent(event);
             } else {
               this.showToast(`Need Rp ${cost} for ${event.title}.`);
             }
-          },
-          canAfford ? 0x2c4650 : 0x3a3030
-        );
-        rowY += 82;
+          }
+        });
       }
-      rowY += 6;
     }
 
     const liveVenueOpportunities = this.world.opportunities.live.filter((opportunity) => opportunity.locationVenueId === venueId);
     if (liveVenueOpportunities.length > 0) {
-      container.add(this.add.text(x + 22, rowY, "Phone pings here", this.panelSectionStyle()));
-      rowY += 28;
+      this.appendActivityMenuSection(content, "Phone pings here");
       for (const opportunity of liveVenueOpportunities.slice(0, 2)) {
         const template = getOpportunityTemplate(opportunity.templateId);
         const countdown = getLiveOpportunityCountdown(opportunity, this.world.clock);
         const canResolve = opportunity.status === "accepted";
-        container.add(
-          this.add.text(
-            x + 22,
-            rowY,
-            `${template?.title ?? opportunity.templateId}\n${template?.blurb ?? "Resolve this before the timer runs out."}\n${opportunity.status} | ${Math.ceil(countdown)} min left`,
-            {
-              ...this.panelBodyStyle(),
-              fontSize: "13px",
-              wordWrap: { width: panelWidth - 202 }
-            }
-          )
-        );
-        this.addPanelButton(
-          container,
-          x + panelWidth - 154,
-          rowY + 18,
-          132,
-          34,
-          canResolve ? "Resolve" : "Accept",
-          () => {
+        this.appendActivityMenuRow(content, {
+          title: template?.title ?? opportunity.templateId,
+          body: `${template?.blurb ?? "Resolve this before the timer runs out."}\n${opportunity.status} | ${Math.ceil(countdown)} min left`,
+          actionLabel: canResolve ? "Resolve" : "Accept",
+          onAction: () => {
             if (canResolve) {
               this.startCommittedOpportunity(opportunity.id, venueId);
             } else {
@@ -2815,55 +2791,36 @@ export class GameScene extends Phaser.Scene {
               this.showToast(result.message);
               this.openVenueActivityMenu(venueId);
             }
-          },
-          canResolve ? 0x2c4650 : 0x253a35
-        );
-        rowY += 78;
+          }
+        });
       }
-      rowY += 6;
     }
 
     const venueGroups = getSocialGroupsForVenue(venueId);
     const joinableGroups = venueGroups.filter((group) => !isSocialGroupJoined(this.world, group.id));
     if (joinableGroups.length > 0) {
-      container.add(this.add.text(x + 22, rowY, "Local clubs", this.panelSectionStyle()));
-      rowY += 28;
+      this.appendActivityMenuSection(content, "Local clubs");
       for (const group of joinableGroups.slice(0, 2)) {
         const eventCopy = group.recurringEventIds?.length ? `Recurring events: ${group.recurringEventIds.length}` : "Recurring event hooks reserved";
-        container.add(
-          this.add.text(x + 22, rowY, `${group.name} (${group.purpose})\n${group.joinHook}\n${eventCopy}`, {
-            ...this.panelBodyStyle(),
-            fontSize: "13px",
-            wordWrap: { width: panelWidth - 202 }
-          })
-        );
-        this.addPanelButton(
-          container,
-          x + panelWidth - 154,
-          rowY + 14,
-          132,
-          34,
-          "Join",
-          () => {
+        this.appendActivityMenuRow(content, {
+          title: `${group.name} (${group.purpose})`,
+          body: `${group.joinHook}\n${eventCopy}`,
+          actionLabel: "Join",
+          onAction: () => {
             const result = this.dispatchIntent({ kind: "JoinClub", groupId: group.id });
             saveWorldState(this.world);
             this.showToast(result.message);
             this.openVenueActivityMenu(venueId);
-          },
-          0x253a35
-        );
-        rowY += 74;
+          }
+        });
       }
-      rowY += 6;
     }
 
     if (availability.length === 0) {
-      container.add(
-        this.add.text(x + 22, rowY, "No daily-life activities are defined for this venue category yet.", {
-          ...this.panelBodyStyle(),
-          wordWrap: { width: panelWidth - 44 }
-        })
-      );
+      const empty = document.createElement("div");
+      empty.className = "bali-life-activity-menu-empty";
+      empty.textContent = "No daily-life activities are defined for this venue category yet.";
+      content.appendChild(empty);
     }
 
     for (const option of availability.slice(0, 6)) {
@@ -2874,38 +2831,89 @@ export class GameScene extends Phaser.Scene {
           : `Cost Rp ${activity.cost}`
         : "Free";
       const status = option.available ? `${activity.timeCost} min | ${moneyCopy}` : option.reason ?? "Unavailable";
-      container.add(this.add.text(x + 22, rowY, `${activity.label}`, this.panelSectionStyle()));
-      container.add(
-        this.add.text(x + 22, rowY + 23, `${activity.description}\n${status}`, {
-          ...this.panelBodyStyle(),
-          fontSize: "13px",
-          wordWrap: { width: panelWidth - 202 }
-        })
-      );
-      this.addPanelButton(
-        container,
-        x + panelWidth - 154,
-        rowY + 14,
-        132,
-        34,
-        option.available ? "Do" : "Blocked",
-        () => {
+      this.appendActivityMenuRow(content, {
+        title: activity.label,
+        body: `${activity.description}\n${status}`,
+        actionLabel: option.available ? "Do" : "Blocked",
+        variant: option.available ? "primary" : "blocked",
+        onAction: () => {
           if (option.available) {
             this.performVenueActivity(context, activity.id);
           } else {
             this.showToast(option.reason ?? "Activity unavailable.");
           }
-        },
-        option.available ? 0x253a35 : 0x3a3030
-      );
-      rowY += 78;
-      if (rowY > y + panelHeight - 102) {
-        break;
-      }
+        }
+      });
     }
 
-    this.addPanelButton(container, x + panelWidth - 160, y + panelHeight - 54, 138, 36, "Close", () => this.closePanel(), 0x4a3331);
-    this.panel = container;
+    const footer = document.createElement("div");
+    footer.className = "bali-life-activity-menu-footer";
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "bali-life-activity-menu-button is-close";
+    close.textContent = "Close";
+    close.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.closePanel();
+    });
+    footer.appendChild(close);
+
+    overlay.append(header, content, footer);
+    document.body.appendChild(overlay);
+    this.activityMenuOverlay = overlay;
+  }
+
+  private appendActivityMenuSection(parent: HTMLElement, label: string): void {
+    const heading = document.createElement("div");
+    heading.className = "bali-life-activity-menu-section";
+    heading.textContent = label;
+    parent.appendChild(heading);
+  }
+
+  private appendActivityMenuRow(
+    parent: HTMLElement,
+    config: {
+      title: string;
+      body: string;
+      actionLabel: string;
+      onAction: () => void;
+      variant?: "primary" | "blocked";
+    }
+  ): void {
+    const row = document.createElement("article");
+    row.className = `bali-life-activity-menu-row${config.variant === "blocked" ? " is-blocked" : ""}`;
+
+    const copy = document.createElement("div");
+    copy.className = "bali-life-activity-menu-copy";
+    const title = document.createElement("h3");
+    title.className = "bali-life-activity-menu-row-title";
+    title.textContent = config.title;
+    const body = document.createElement("p");
+    body.className = "bali-life-activity-menu-row-body";
+    body.textContent = config.body;
+    copy.append(title, body);
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `bali-life-activity-menu-button${config.variant === "blocked" ? " is-blocked" : ""}`;
+    button.textContent = config.actionLabel;
+    if (config.variant === "blocked") {
+      button.setAttribute("aria-disabled", "true");
+    }
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      config.onAction();
+    });
+
+    row.append(copy, button);
+    parent.appendChild(row);
+  }
+
+  private destroyActivityMenuOverlay(): void {
+    this.activityMenuOverlay?.remove();
+    this.activityMenuOverlay = undefined;
   }
 
   private performVenueActivity(context: VenueActivityContext, activityId: string): void {
@@ -4063,6 +4071,7 @@ export class GameScene extends Phaser.Scene {
     this.panel?.destroy(true);
     this.panel = undefined;
     this.destroyDialogueOverlay();
+    this.destroyActivityMenuOverlay();
     if (setWorldMode) {
       this.mode = "world";
     }
