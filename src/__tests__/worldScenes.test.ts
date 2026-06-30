@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { getEventWorldScenes, getOpportunityWorldScenes } from "../systems/world/WorldScenes";
+import {
+  getEventWorldScenes,
+  getFieldFirstDiscoveryAudit,
+  getOpportunityWorldScenes,
+  getVisibleWorldScenes
+} from "../systems/world/WorldScenes";
 import { createInitialWorldState } from "../systems/WorldState";
 import type { LiveOpportunity, WorldState } from "../types";
 
@@ -109,6 +114,28 @@ describe("world-surfaced event and club scenes", () => {
         sceneKind: "club_circle",
         cue: "CLUB"
       })
+    );
+  });
+});
+
+describe("field-first discovery audit", () => {
+  it("confirms active opportunities and events have visible world scenes", () => {
+    const world = createInitialWorldState();
+    world.clock.day = 1;
+    world.clock.minuteOfDay = 7 * 60;
+    addLiveOpportunity(world, "milk_madu_lunch_rush_shift");
+    addLiveOpportunity(world, "canggu_station_dropped_cart", "accepted");
+
+    const audit = getFieldFirstDiscoveryAudit(world);
+    expect(audit).toMatchObject({
+      liveOpportunityCount: 2,
+      opportunitySceneCount: 2,
+      activeEventCount: 1,
+      eventSceneCount: 1,
+      phoneOnlyDiscoveryCount: 0
+    });
+    expect(getVisibleWorldScenes(world).map((scene) => scene.source)).toEqual(
+      expect.arrayContaining(["opportunity", "event"])
     );
   });
 });

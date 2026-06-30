@@ -37,8 +37,10 @@ import {
 import { getFieldIndicators, type VenueFieldIndicator } from "../systems/guidance/FieldIndicators";
 import {
   getEventWorldScenes,
+  getFieldFirstDiscoveryAudit,
   getOpportunityWorldScenes,
   type EventWorldScene,
+  type FieldFirstDiscoveryAudit,
   type OpportunityWorldScene,
   type WorldSceneActor
 } from "../systems/world/WorldScenes";
@@ -187,6 +189,7 @@ interface BaliLifeDebugSnapshot {
   activeDelivery: string | null;
   fieldObjective: FieldObjectiveState;
   fieldObjectiveLine: string;
+  worldSceneAudit: FieldFirstDiscoveryAudit;
   relationshipCount: number;
   inventory: string[];
   activeQuestIds: string[];
@@ -5449,7 +5452,7 @@ export class GameScene extends Phaser.Scene {
     if (afterUnread > beforeUnread) {
       this.phoneBuzzTimer = 1800;
       if (!force && this.mode === "world") {
-        this.showToast("Phone buzz: something nearby just opened up.");
+        this.showToast("Something nearby just kicked off. Look for the scene, then use the phone for details.");
       }
     }
     if (changed) {
@@ -5649,6 +5652,7 @@ export class GameScene extends Phaser.Scene {
       activeDelivery: this.world.life.hustle.activeDelivery?.deliveryId ?? null,
       fieldObjective,
       fieldObjectiveLine: formatFieldObjectiveLine(fieldObjective),
+      worldSceneAudit: getFieldFirstDiscoveryAudit(this.world),
       relationshipCount: this.world.relationships.length,
       inventory: formatInventory(this.playerState.inventory),
       activeQuestIds: [...this.playerState.activeQuestIds],

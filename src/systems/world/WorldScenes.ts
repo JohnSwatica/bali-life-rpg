@@ -51,6 +51,8 @@ export interface EventWorldScene {
   actors: WorldSceneActor[];
 }
 
+export type WorldScene = OpportunityWorldScene | EventWorldScene;
+
 const FALLBACK_NPCS = ["ari", "made", "kadek", "ibu_sari"];
 
 export function getOpportunityWorldScenes(world: WorldState): OpportunityWorldScene[] {
@@ -95,6 +97,32 @@ export function getEventWorldScenes(world: WorldState): EventWorldScene[] {
       actors: buildActors(npcIds.length ? npcIds : fallbackNpcIds(), group ? "social" : eventActorRole(event), 3)
     };
   });
+}
+
+export function getVisibleWorldScenes(world: WorldState): WorldScene[] {
+  return [...getOpportunityWorldScenes(world), ...getEventWorldScenes(world)];
+}
+
+export interface FieldFirstDiscoveryAudit {
+  liveOpportunityCount: number;
+  opportunitySceneCount: number;
+  activeEventCount: number;
+  eventSceneCount: number;
+  phoneOnlyDiscoveryCount: number;
+}
+
+export function getFieldFirstDiscoveryAudit(world: WorldState): FieldFirstDiscoveryAudit {
+  const liveOpportunityCount = world.opportunities.live.filter((live) => live.status === "live" || live.status === "accepted").length;
+  const opportunitySceneCount = getOpportunityWorldScenes(world).length;
+  const activeEventCount = getActiveEvents(world.clock, world).length;
+  const eventSceneCount = getEventWorldScenes(world).length;
+  return {
+    liveOpportunityCount,
+    opportunitySceneCount,
+    activeEventCount,
+    eventSceneCount,
+    phoneOnlyDiscoveryCount: Math.max(0, liveOpportunityCount - opportunitySceneCount) + Math.max(0, activeEventCount - eventSceneCount)
+  };
 }
 
 function opportunitySceneKind(type: OpportunityType): OpportunityWorldSceneKind {
