@@ -27,6 +27,7 @@ import { ScriptedDialogueProvider, type DialogueProvider } from "../systems/dial
 import { InteractionController, type InteractionTarget } from "../systems/interaction/InteractionController";
 import { InputController, type GameKeyMap } from "../systems/input/InputController";
 import { IntentDispatcher, type IntentResult } from "../systems/intents/IntentDispatcher";
+import { formatFieldObjectiveLine, getFieldObjective, type FieldObjectiveState } from "../systems/guidance/FieldObjective";
 import { getSocialGroupsForVenue, isSocialGroupJoined } from "../systems/groups/GroupRegistry";
 import { PLAYER_UNIT, POKEMON_SCALE } from "../systems/map/PlayerUnitScale";
 import { getPresentedRoads, getVenueSnapRoads } from "../systems/map/RoadPresentation";
@@ -63,13 +64,10 @@ import {
   type VenueActivityContext
 } from "../systems/life/ActivityEngine";
 import { getSettlingInGoalTitle, updateSettlingInGoals } from "../systems/life/SettlingInGoals";
-import { completeAct0Step, getAct0HudLines, isAct0Complete, markAct0MealProgress } from "../systems/life/ActProgression";
-import { areAct2GoalsComplete, getAct2NextStep } from "../systems/life/Act2Goals";
-import { getAct3ReadinessNextStep } from "../systems/life/Act3Readiness";
+import { completeAct0Step, isAct0Complete, markAct0MealProgress } from "../systems/life/ActProgression";
 import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
 import { acceptDelivery, completeDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
-import { getRentPressureState, payHustleRent, repairScooter, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
-import { getHustleNextStep } from "../systems/hustle/HustleGoals";
+import { payHustleRent, repairScooter, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
 import {
   acceptOpportunity,
   appendOpportunityMessage,
@@ -109,7 +107,7 @@ import {
   getLocalPlayer,
   getTimePhase
 } from "../systems/WorldState";
-import { getQuestTrackerLines, isQuestActive, isQuestComplete, startQuest } from "../systems/QuestSystem";
+import { isQuestActive, isQuestComplete, startQuest } from "../systems/QuestSystem";
 import { resolveNpcQuestInteraction } from "../systems/quests/QuestRegistry";
 import { HudController } from "../ui/hud/HudController";
 import { PhoneShell } from "../ui/phone/PhoneShell";
@@ -162,6 +160,8 @@ interface BaliLifeDebugSnapshot {
   act0Step: string;
   driverRating: number;
   activeDelivery: string | null;
+  fieldObjective: FieldObjectiveState;
+  fieldObjectiveLine: string;
   relationshipCount: number;
   inventory: string[];
   activeQuestIds: string[];
@@ -2039,7 +2039,9 @@ export class GameScene extends Phaser.Scene {
     });
     this.hudController.updatePhoneBadge(getUnreadOpportunityMessageCount(this.world.opportunities), this.phoneBuzzTimer > 0);
     this.updateOverlayChrome();
-    this.questText.setText([...this.getTutorialLines(), ...getQuestTrackerLines(this.playerState)].join("\n"));
+    const fieldObjective = getFieldObjective(this.world);
+    this.questText.setText(formatFieldObjectiveLine(fieldObjective));
+    this.questText.setColor(this.objectiveColor(fieldObjective));
     this.questText.setWordWrapWidth(Math.min(520, this.scale.width - 40));
 
     const homeSleepReady = this.isAct0HomeSleepReady();
@@ -2073,7 +2075,20 @@ export class GameScene extends Phaser.Scene {
     this.drawOpportunityMarkers();
     this.drawDeliveryMarkers();
     this.drawMinimap();
-    this.publishDebugSnapshot(target);
+    this.publishDebugSnapshot(target, fieldObjective);
+  }
+
+  private objectiveColor(objective: FieldObjectiveState): string {
+    if (objective.urgency === "urgent") {
+      return "#fff0bd";
+    }
+    if (objective.urgency === "blocked") {
+      return "#ffb8a6";
+    }
+    if (objective.urgency === "complete") {
+      return "#c9ffd8";
+    }
+    return "#fff8df";
   }
 
   private getBikeStatusLabel(): string {
@@ -2084,67 +2099,6 @@ export class GameScene extends Phaser.Scene {
       return `Bike stuck ${this.playerState.bikeCondition}%`;
     }
     return `${this.playerState.onBike ? "Bike riding" : "Bike parked"} ${this.playerState.bikeCondition}%`;
-  }
-
-  private getTutorialLines(): string[] {
-    if (!isAct0Complete(this.world)) {
-      return getAct0HudLines(this.world);
-    }
-    if (this.world.life.hustle.moveOutReady) {
-      const act3NextStep = areAct2GoalsComplete(this.world) ? getAct3ReadinessNextStep(this.world) : null;
-      if (act3NextStep?.urgency === "ceo") {
-        return [
-          "Act 3 ready: building something.",
-          act3NextStep.detail,
-          "Do not open the business sim until the CEO confirms the scope."
-        ];
-      }
-      const act2NextStep = getAct2NextStep(this.world);
-      return [
-        this.world.life.actProgress.currentAct >= 2 ? "Act 2: finding your people." : "Act 1 milestone: move-out ready.",
-        this.world.life.actProgress.currentAct >= 2
-          ? act2NextStep
-            ? `Next: ${act2NextStep.title}. ${act2NextStep.detail}`
-            : "You have breathing room. Follow the social markers, join a crew, and turn familiar faces into real friends."
-          : "You have the runs, rating, and cash record to leave the cramped kos. Next chapter: people, crew, and a better room."
-      ];
-    }
-    if (this.world.life.actProgress.currentAct === 1) {
-      const rentPressure = getRentPressureState(this.world);
-      const missing = [
-        this.world.life.hustle.completedDeliveryCount < 5 ? `${5 - this.world.life.hustle.completedDeliveryCount} more runs` : null,
-        this.world.life.hustle.deliveryEarnings < 700 ? `Rp ${700 - this.world.life.hustle.deliveryEarnings} delivery earnings` : null,
-        this.world.life.hustle.driverRating < 4.2 ? `${(4.2 - this.world.life.hustle.driverRating).toFixed(1)}★ rating` : null
-      ].filter((entry): entry is string => Boolean(entry));
-      const lines = [
-        `Act 1: keep hustling. ${this.world.life.hustle.completedDeliveryCount}/5 deliveries, Rp ${this.world.life.hustle.deliveryEarnings}/700, ${this.world.life.hustle.driverRating.toFixed(1)}★.`,
-        `Rent: Rp ${this.playerState.money}/${this.world.life.hustle.rentAmount} by Day ${this.world.life.hustle.rentDueDay} (${rentPressure.shortLabel}). Scooter: ${this.world.life.hustle.scooterTier.replace(/_/g, " ")}.`
-      ];
-      if (missing.length > 0 && this.world.life.hustle.completedDeliveryCount >= 5) {
-        lines.push(`Move-out still needs: ${missing.join(", ")}.`);
-      }
-      if (rentPressure.status !== "comfortable") {
-        lines.push(rentPressure.message);
-      }
-      const nextStep = getHustleNextStep(this.world);
-      lines.push(`Next: ${nextStep.title}. ${nextStep.detail}`);
-      return lines;
-    }
-    if (!this.playerState.hasBike) {
-      const remaining = Math.max(0, itemDefinitions[BIKE_RENTAL_ITEM_ID].buyPrice - this.playerState.money);
-      return [
-        remaining > 0
-          ? `Tutorial: earn Rp ${remaining} more, then rent a scooter near Canggu Station.`
-          : "Tutorial: rent a scooter at Bali Family Rental Scooter."
-      ];
-    }
-    if (this.playerState.bikeStuck) {
-      return [`Tutorial: need ${REQUIRED_BIKE_HELPERS} group helpers to drag the bike out.`];
-    }
-    if (this.playerState.joinedGroupIds.length === 0) {
-      return ["Tutorial: join an interest group, then try a walk line or bike line."];
-    }
-    return [];
   }
 
   private updateLighting(): void {
@@ -4983,7 +4937,7 @@ export class GameScene extends Phaser.Scene {
     this.toastTimer = 2600;
   }
 
-  private publishDebugSnapshot(target?: InteractionTarget): void {
+  private publishDebugSnapshot(target: InteractionTarget | undefined, fieldObjective: FieldObjectiveState): void {
     if (typeof window === "undefined") {
       return;
     }
@@ -5016,6 +4970,8 @@ export class GameScene extends Phaser.Scene {
       act0Step: this.world.life.actProgress.act0Step,
       driverRating: this.world.life.hustle.driverRating,
       activeDelivery: this.world.life.hustle.activeDelivery?.deliveryId ?? null,
+      fieldObjective,
+      fieldObjectiveLine: formatFieldObjectiveLine(fieldObjective),
       relationshipCount: this.world.relationships.length,
       inventory: formatInventory(this.playerState.inventory),
       activeQuestIds: [...this.playerState.activeQuestIds],
