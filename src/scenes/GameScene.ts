@@ -87,7 +87,14 @@ import {
 import { getSettlingInGoalTitle, updateSettlingInGoals } from "../systems/life/SettlingInGoals";
 import { completeAct0Step, getAct0MealProgressKindForActivity, isAct0Complete, markAct0MealProgress } from "../systems/life/ActProgression";
 import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
-import { acceptDelivery, completeDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
+import {
+  acceptDelivery,
+  completeDelivery,
+  getDeliveryOfferAvailability,
+  getEffectiveDeliveryTerms,
+  pickupDelivery,
+  previewDeliveryCondition
+} from "../systems/hustle/DeliverySystem";
 import { payHustleRent, repairScooter, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
 import { isAct1MoveOutReady } from "../systems/hustle/HustleMilestones";
 import {
@@ -2596,6 +2603,10 @@ export class GameScene extends Phaser.Scene {
       this.refreshSettlingInGoals(false);
       saveWorldState(this.world);
     }
+    if (!arcBeat && this.shouldOpenIbuHustleBoard(npcId)) {
+      this.openIbuHustleBoard();
+      return;
+    }
     const baseLine = this.getNpcDialogueLine(npcId);
     if (getNpcDialogueSurface({ relationshipBeat: Boolean(arcBeat) }).surface === "ambient") {
       this.showNpcAmbientLine(npcId, getAmbientNpcLine(this.world, npcId, baseLine, routineLabel));
@@ -2755,6 +2766,67 @@ export class GameScene extends Phaser.Scene {
     this.mode = "activity";
     const availability = getActivityAvailability(this.world, context);
     this.createActivityMenuOverlay(playerHomeBase.id, context, availability, undefined);
+  }
+
+  private shouldOpenIbuHustleBoard(npcId: string): boolean {
+    return (
+      npcId === "ibu_sari" &&
+      this.world.life.actProgress.firstDayComplete &&
+      this.world.life.actProgress.currentAct === 1 &&
+      !this.world.life.hustle.moveOutReady
+    );
+  }
+
+  private openIbuHustleBoard(): void {
+    this.closePanel(false);
+    this.mode = "activity";
+    this.destroyActivityMenuOverlay();
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const overlay = document.createElement("section");
+    overlay.id = "bali-life-activity-menu";
+    overlay.className = "bali-life-activity-menu";
+    overlay.dataset.activityPanel = "true";
+    overlay.dataset.uiSurface = "activity-panel";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-label", "Ibu Sari hustle board");
+    overlay.addEventListener("pointerdown", (event) => event.stopPropagation());
+    overlay.addEventListener("click", (event) => event.stopPropagation());
+
+    const header = document.createElement("div");
+    header.className = "bali-life-activity-menu-header";
+    const title = document.createElement("h2");
+    title.className = "bali-life-activity-menu-title";
+    title.textContent = "Ibu Sari's Hustle Board";
+    const meta = document.createElement("div");
+    meta.className = "bali-life-activity-menu-meta";
+    meta.textContent =
+      `${this.world.life.hustle.completedDeliveryCount} runs | Rp ${this.world.life.hustle.deliveryEarnings} earned | ` +
+      `${this.world.life.hustle.driverRating.toFixed(1)} stars | Scooter ${this.playerState.bikeCondition}%`;
+    header.append(title, meta);
+
+    const content = document.createElement("div");
+    content.className = "bali-life-activity-menu-content";
+    this.appendIbuHustleBoardRows(content);
+
+    const footer = document.createElement("div");
+    footer.className = "bali-life-activity-menu-footer";
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "bali-life-activity-menu-button is-close";
+    close.textContent = "Close";
+    close.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.closePanel();
+    });
+    footer.appendChild(close);
+
+    overlay.append(header, content, footer);
+    document.body.appendChild(overlay);
+    this.activityMenuOverlay = overlay;
   }
 
   private createActivityMenuOverlay(
@@ -2954,6 +3026,60 @@ export class GameScene extends Phaser.Scene {
         this.payHomeRent();
       }
     });
+  }
+
+  private appendIbuHustleBoardRows(parent: HTMLElement): void {
+    const active = this.world.life.hustle.activeDelivery;
+    if (active) {
+      const delivery = getDeliveryDefinition(active.deliveryId);
+      const timeLeft = Math.max(0, Math.ceil(active.dueAt - this.getAbsoluteMinute()));
+      this.appendActivityMenuSection(parent, "Active run");
+      this.appendActivityMenuRow(parent, {
+        title: delivery?.title ?? active.deliveryId,
+        body:
+          `${active.stage === "accepted" ? delivery?.pickupLabel ?? "Go to pickup." : delivery?.dropoffLabel ?? "Go to dropoff."}\n` +
+          `${timeLeft} min left. Follow the field marker and press E / ACT.`,
+        actionLabel: "Tracked",
+        variant: "blocked",
+        onAction: () => this.showToast("Follow the delivery marker and press E / ACT.")
+      });
+      return;
+    }
+
+    const offers = getDeliveryOfferAvailability(this.world);
+    if (offers.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "bali-life-activity-menu-empty";
+      empty.textContent = "Delivery board unlocks after Ibu Sari's first run.";
+      parent.appendChild(empty);
+      return;
+    }
+
+    this.appendActivityMenuSection(parent, "Board jobs");
+    for (const offer of offers.slice(0, 5)) {
+      const delivery = offer.delivery;
+      const condition = offer.available ? previewDeliveryCondition(this.world, delivery, this.getAbsoluteMinute()) : undefined;
+      const terms = getEffectiveDeliveryTerms(delivery, condition);
+      const status = offer.available
+        ? `Rp ${terms.payout} | ${terms.timeLimitMin} min${condition ? ` | ${condition.label}` : ""}`
+        : offer.reason ?? "Locked";
+      this.appendActivityMenuRow(parent, {
+        title: delivery.title,
+        body: `${delivery.description}\n${status}`,
+        actionLabel: offer.available ? "Accept" : "Locked",
+        variant: offer.available ? "primary" : "blocked",
+        onAction: () => {
+          if (!offer.available) {
+            this.showToast(offer.reason ?? "That job is locked.");
+            return;
+          }
+          const result = acceptDelivery(this.world, delivery.id, this.getAbsoluteMinute());
+          this.showToast(result.ok ? `${result.message} Follow the delivery marker.` : result.message);
+          saveWorldState(this.world);
+          this.openIbuHustleBoard();
+        }
+      });
+    }
   }
 
   private payHomeRent(): void {
