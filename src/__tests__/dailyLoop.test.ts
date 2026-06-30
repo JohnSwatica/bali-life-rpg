@@ -7,6 +7,7 @@ import {
   getStationRhythmState,
   getVenueActivityContext
 } from "../systems/life/ActivityEngine";
+import { getStationSocialBridgeOptions } from "../systems/life/StationSocialBridge";
 import { adjustPlayerMeters } from "../systems/meters/PlayerMeters";
 import { canSleepNow, sleepUntilNextMorning } from "../systems/time/DailyClock";
 import { createInitialWorldState } from "../systems/WorldState";
@@ -94,6 +95,45 @@ describe("daily life meters and activities", () => {
       true
     );
     expect(getActivityAvailability(world, context("cheap_kos")).every((candidate) => candidate.activity.stationId === "home")).toBe(true);
+  });
+
+  it("bridges Act 2 station menus toward relevant crews without auto-joining", () => {
+    const world = createInitialWorldState();
+    world.life.actProgress.act0Step = "complete";
+    world.life.actProgress.firstDayComplete = true;
+    world.life.actProgress.currentAct = 2;
+
+    expect(getStationSocialBridgeOptions(world, context("tropical_nomad_coworking_space"))).toEqual([
+      expect.objectContaining({
+        group: expect.objectContaining({ id: "focus_table_collective" }),
+        status: "go_to_home",
+        homeVenueId: "satu_satu_coffee"
+      })
+    ]);
+    expect(world.life.joinedClubIds).toEqual([]);
+
+    expect(getStationSocialBridgeOptions(world, context("satu_satu_coffee"))).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          group: expect.objectContaining({ id: "focus_table_collective" }),
+          status: "join_here"
+        })
+      ])
+    );
+
+    world.life.joinedClubIds.push("focus_table_collective");
+    expect(getStationSocialBridgeOptions(world, context("satu_satu_coffee"))).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          group: expect.objectContaining({ id: "focus_table_collective" }),
+          status: "joined"
+        })
+      ])
+    );
+
+    world.life.actProgress.currentAct = 1;
+    world.life.hustle.moveOutReady = false;
+    expect(getStationSocialBridgeOptions(world, context("tropical_nomad_coworking_space"))).toEqual([]);
   });
 
   it("applies station time-of-day modifiers and queued next-morning penalties", () => {

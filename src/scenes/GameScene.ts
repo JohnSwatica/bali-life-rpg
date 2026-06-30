@@ -85,6 +85,7 @@ import {
   type VenueActivityContext
 } from "../systems/life/ActivityEngine";
 import { getSettlingInGoalTitle, updateSettlingInGoals } from "../systems/life/SettlingInGoals";
+import { getStationSocialBridgeOptions } from "../systems/life/StationSocialBridge";
 import { completeAct0Step, getAct0MealProgressKindForActivity, isAct0Complete, markAct0MealProgress } from "../systems/life/ActProgression";
 import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
 import {
@@ -2960,6 +2961,21 @@ export class GameScene extends Phaser.Scene {
             saveWorldState(this.world);
             this.showToast(result.message);
             this.openVenueActivityMenu(venueId);
+          }
+        });
+      }
+    }
+
+    const bridgeGroups = getStationSocialBridgeOptions(this.world, context).filter((option) => option.status === "go_to_home");
+    if (bridgeGroups.length > 0) {
+      this.appendActivityMenuSection(content, "Crew doors");
+      for (const option of bridgeGroups.slice(0, 2)) {
+        this.appendActivityMenuRow(content, {
+          title: `${option.group.name} (${option.group.purpose})`,
+          body: `${option.reason}\nJoin at ${option.homeVenueName}: ${option.group.joinHook}`,
+          actionLabel: "Find",
+          onAction: () => {
+            this.showToast(`Head to ${option.homeVenueName} to join ${option.group.name}.`);
           }
         });
       }
