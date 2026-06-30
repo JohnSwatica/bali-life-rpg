@@ -43,6 +43,12 @@ export interface ApplyActivityOptions {
   performanceScore?: number;
 }
 
+export interface StationRhythmState {
+  stationTitle: string;
+  bestTimeOfDay: string;
+  activeModifierLabels: string[];
+}
+
 export function getVenueActivityContext(venueId: string): VenueActivityContext | null {
   if (venueId === playerHomeBase.id) {
     return {
@@ -186,6 +192,25 @@ export function getActiveActivityTimeModifier(world: WorldState, activity: Activ
     return null;
   }
   return isActivityInTimeWindow(world.clock.minuteOfDay, modifier.startsAt, modifier.endsAt) ? modifier : null;
+}
+
+export function getStationRhythmState(world: WorldState, context: VenueActivityContext): StationRhythmState | null {
+  if (!context.stationId) {
+    return null;
+  }
+  const station = getGameplayStationLoopForVenue(context.venueId);
+  if (!station) {
+    return null;
+  }
+  const activeModifierLabels = activityDefinitions
+    .filter((activity) => activityMatchesContext(activity, context))
+    .map((activity) => getActiveActivityTimeModifier(world, activity)?.label)
+    .filter((label): label is string => Boolean(label));
+  return {
+    stationTitle: station.title,
+    bestTimeOfDay: station.bestTimeOfDay,
+    activeModifierLabels: [...new Set(activeModifierLabels)]
+  };
 }
 
 export function formatActivityPreview(activity: Activity, modifier: StationTimeOfDayModifier | null): string {

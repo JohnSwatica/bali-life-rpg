@@ -4,6 +4,7 @@ import {
   applyActivity,
   applyPendingMorningPenalties,
   getActivityAvailability,
+  getStationRhythmState,
   getVenueActivityContext
 } from "../systems/life/ActivityEngine";
 import { adjustPlayerMeters } from "../systems/meters/PlayerMeters";
@@ -118,6 +119,21 @@ describe("daily life meters and activities", () => {
     expect(summary).toContain("energy -16");
     expect(world.life.pendingMorningPenalties).toHaveLength(0);
     expect(world.meters.energy).toBe(84);
+  });
+
+  it("reports active station rhythm windows from station data", () => {
+    const world = createInitialWorldState();
+    world.clock.minuteOfDay = 8 * 60;
+
+    const cafeRhythm = getStationRhythmState(world, context("satu_satu_coffee"));
+    expect(cafeRhythm).toMatchObject({
+      stationTitle: "Cafe focus table",
+      bestTimeOfDay: "Morning and early afternoon are strongest for focus."
+    });
+    expect(cafeRhythm?.activeModifierLabels).toContain("Morning focus window");
+
+    world.clock.minuteOfDay = 15 * 60;
+    expect(getStationRhythmState(world, context("satu_satu_coffee"))?.activeModifierLabels).not.toContain("Morning focus window");
   });
 
   it("applies activity meter, money, item, time, and history effects", () => {

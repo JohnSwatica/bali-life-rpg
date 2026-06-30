@@ -79,6 +79,7 @@ import {
   applyActivity,
   formatActivityPreview,
   getActivityAvailability,
+  getStationRhythmState,
   getVenueActivityContext,
   type ActivityAvailability,
   type VenueActivityContext
@@ -2786,8 +2787,12 @@ export class GameScene extends Phaser.Scene {
 
     const meta = document.createElement("div");
     meta.className = "bali-life-activity-menu-meta";
+    const rhythm = getStationRhythmState(this.world, context);
+    const rhythmCopy = rhythm
+      ? `${rhythm.stationTitle} | Best: ${rhythm.bestTimeOfDay}${rhythm.activeModifierLabels.length ? ` | Active: ${rhythm.activeModifierLabels.join(", ")}` : ""}`
+      : `${context.category.replace(/_/g, " ")} activities`;
     meta.textContent =
-      `${context.category.replace(/_/g, " ")} activities | ${formatClock(this.world)} | ` +
+      `${rhythmCopy} | ${formatClock(this.world)} | ` +
       `Energy ${this.world.meters.energy}  Wellbeing ${this.world.meters.wellbeing}  ` +
       `Focus ${this.world.meters.focus}  Social ${this.world.meters.social}  Rp ${this.playerState.money}`;
 
