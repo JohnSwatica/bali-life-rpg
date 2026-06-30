@@ -3525,18 +3525,10 @@ export class GameScene extends Phaser.Scene {
   private renderActivityPanel(activity: VenueActivityDefinition): void {
     this.closePanel(false);
     this.mode = "activity";
-    const { width, height } = this.scale;
-    const panelWidth = Math.min(760, width - 28);
-    const panelHeight = Math.min(520, height - 44);
-    const x = (width - panelWidth) / 2;
-    const y = (height - panelHeight) / 2;
-    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10);
-    const bg = this.add.graphics();
-    bg.fillStyle(0x111820, 0.96);
-    bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
-    bg.lineStyle(2, 0xf4d58d, 0.52);
-    bg.strokeRoundedRect(x, y, panelWidth, panelHeight, 8);
-    container.add(bg);
+    this.destroyActivityMenuOverlay();
+    if (typeof document === "undefined") {
+      return;
+    }
 
     const group = activity.groupId ? interestGroupDefinitions[activity.groupId] : undefined;
     const joined = group ? this.playerState.joinedGroupIds.includes(group.id) : false;
@@ -3550,69 +3542,70 @@ export class GameScene extends Phaser.Scene {
       ? `\nRepair: Rep +${activity.reputationReward ?? 0}  |  Wanted -${activity.wantedReduction ?? 0}  |  Bounty -Rp ${activity.bountyReduction ?? 0}`
       : "";
 
-    container.add(this.add.text(x + 22, y + 18, activity.title, this.panelTitleStyle()));
-    container.add(
-      this.add.text(
-        x + 22,
-        y + 54,
-        `${activity.venueName}\n${activity.description}\n${activity.schedule}  |  ${activity.tags.join(" / ")}\n${costLine}  |  Focus ${activity.focusReward >= 0 ? "+" : ""}${activity.focusReward}  |  ${energyLine}  |  Links +${activity.connectionReward}${redemptionLine}`,
-        {
-          ...this.panelBodyStyle(),
-          wordWrap: { width: panelWidth - 44 }
-        }
-      )
-    );
+    const overlay = document.createElement("section");
+    overlay.id = "bali-life-activity-menu";
+    overlay.className = "bali-life-activity-menu";
+    overlay.dataset.activityPanel = "true";
+    overlay.dataset.uiSurface = "activity-panel";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-label", activity.title);
+    overlay.addEventListener("pointerdown", (event) => event.stopPropagation());
+    overlay.addEventListener("click", (event) => event.stopPropagation());
+
+    const header = document.createElement("div");
+    header.className = "bali-life-activity-menu-header";
+    const title = document.createElement("h2");
+    title.className = "bali-life-activity-menu-title";
+    title.textContent = activity.title;
+    const meta = document.createElement("div");
+    meta.className = "bali-life-activity-menu-meta";
+    meta.textContent = `${activity.venueName} | ${activity.schedule} | ${activity.tags.join(" / ")}`;
+    header.append(title, meta);
+
+    const content = document.createElement("div");
+    content.className = "bali-life-activity-menu-content";
+    this.appendActivityMenuRow(content, {
+      title: "Plan",
+      body: `${activity.description}\n${costLine} | Focus ${activity.focusReward >= 0 ? "+" : ""}${activity.focusReward} | ${energyLine} | Links +${activity.connectionReward}${redemptionLine}`,
+      actionLabel: "Do Activity",
+      onAction: () => this.participateInActivity(activity)
+    });
 
     if (group) {
-      container.add(this.add.text(x + 22, y + 174, "Interest Group", this.panelSectionStyle()));
-      container.add(
-        this.add.text(x + 22, y + 202, `${group.name}: ${group.hook}\nVibe: ${group.vibe}`, {
-          ...this.panelBodyStyle(),
-          wordWrap: { width: panelWidth - 44 }
-        })
-      );
-    }
-
-    const buttonY = y + panelHeight - 104;
-    this.addPanelButton(
-      container,
-      x + 22,
-      buttonY,
-      Math.min(220, panelWidth - 44),
-      38,
-      "Do Activity",
-      () => this.participateInActivity(activity),
-      0x253a35
-    );
-
-    if (group) {
-      this.addPanelButton(
-        container,
-        x + 252,
-        buttonY,
-        Math.min(220, panelWidth - 274),
-        38,
-        joined ? "Group Joined" : "Join Group",
-        () => this.joinInterestGroup(group.id, activity),
-        joined ? 0x2d3036 : 0x253a47
-      );
+      this.appendActivityMenuSection(content, "Interest Group");
+      this.appendActivityMenuRow(content, {
+        title: group.name,
+        body: `${group.hook}\nVibe: ${group.vibe}`,
+        actionLabel: joined ? "Group Joined" : "Join Group",
+        onAction: () => this.joinInterestGroup(group.id, activity)
+      });
     }
 
     if (matchingShop) {
-      this.addPanelButton(
-        container,
-        x + 22,
-        y + panelHeight - 54,
-        Math.min(220, panelWidth - 44),
-        36,
-        "Venue Shop",
-        () => this.renderShopPanel(matchingShop),
-        0x394155
-      );
+      this.appendActivityMenuRow(content, {
+        title: "Venue Shop",
+        body: "Open this venue's buy/sell panel.",
+        actionLabel: "Venue Shop",
+        onAction: () => this.renderShopPanel(matchingShop)
+      });
     }
 
-    this.addPanelButton(container, x + panelWidth - 160, y + panelHeight - 54, 138, 36, "Close", () => this.closePanel(), 0x4a3331);
-    this.panel = container;
+    const footer = document.createElement("div");
+    footer.className = "bali-life-activity-menu-footer";
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "bali-life-activity-menu-button is-close";
+    close.textContent = "Close";
+    close.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.closePanel();
+    });
+    footer.appendChild(close);
+
+    overlay.append(header, content, footer);
+    document.body.appendChild(overlay);
+    this.activityMenuOverlay = overlay;
   }
 
   private participateInActivity(activity: VenueActivityDefinition): void {
