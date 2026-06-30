@@ -612,6 +612,23 @@ export interface NpcRoutineStop {
   endMinute: number;
 }
 
+export interface NpcRouteWaypoint {
+  id: string;
+  label: string;
+  venueId?: string;
+  x: number;
+  y: number;
+  pauseMs?: number;
+}
+
+export interface NpcRoutineRoute {
+  id: string;
+  label: string;
+  startMinute: number;
+  endMinute: number;
+  waypoints: NpcRouteWaypoint[];
+}
+
 export interface NpcDefinition {
   id: string;
   name: string;
@@ -619,6 +636,7 @@ export interface NpcDefinition {
   spriteKey: string;
   tint: number;
   routine: NpcRoutineStop[];
+  routineRoutes?: NpcRoutineRoute[];
   defaultLine: string;
 }
 

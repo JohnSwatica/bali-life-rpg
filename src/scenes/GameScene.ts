@@ -32,6 +32,12 @@ import { getPresentedRoads, getVenueSnapRoads } from "../systems/map/RoadPresent
 import { renderStreetTemplate } from "../systems/map/StreetRenderer";
 import { STREET_CAMERA } from "../systems/map/TileStreetScale";
 import { scaleDistance, scalePoint } from "../systems/map/WorldScale";
+import {
+  advanceNpcRouteMotion,
+  getActiveNpcRoute,
+  getNpcRouteActivityLabel,
+  type NpcRouteMotionState
+} from "../systems/npcs/NpcRoutineRoutes";
 import { adjustPlayerMeters } from "../systems/meters/PlayerMeters";
 import {
   createActiveMinigame,
@@ -350,6 +356,7 @@ export class GameScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
   private obstacleGroup!: Phaser.Physics.Arcade.StaticGroup;
   private npcSprites = new Map<string, Phaser.Physics.Arcade.Sprite>();
+  private npcRouteMotion = new Map<string, NpcRouteMotionState>();
   private pickupSprites = new Map<string, Phaser.GameObjects.Sprite>();
   private playerBike?: Phaser.GameObjects.Sprite;
   private trafficBikes: TrafficBikeRuntime[] = [];
@@ -1721,22 +1728,39 @@ export class GameScene extends Phaser.Scene {
     for (const npc of Object.values(npcDefinitions)) {
       const state = this.world.npcs[npc.id];
       const sprite = this.npcSprites.get(npc.id);
-      const target = this.getRoutineStop(npc);
-      if (!sprite || !target) {
+      const route = getActiveNpcRoute(npc, this.world.clock.minuteOfDay);
+      if (!sprite || !route) {
         continue;
       }
 
-      state.currentRoutineId = target.id;
-      const dx = target.x - sprite.x;
-      const dy = target.y - sprite.y;
-      const distance = Math.hypot(dx, dy);
-      if (distance > 2) {
-        const step = Math.min(distance, (scaleDistance(42) * delta) / 1000);
-        sprite.x += (dx / distance) * step;
-        sprite.y += (dy / distance) * step;
-        this.setSpriteFacing(sprite, dx < -1, CHARACTER_SPRITE_SCALE);
-        sprite.body?.updateFromGameObject();
+      const previousMotion = this.npcRouteMotion.get(npc.id) ?? {
+        routeId: null,
+        waypointIndex: 0,
+        pauseMsRemaining: 0
+      };
+      const nextMotion = advanceNpcRouteMotion(
+        route,
+        {
+          ...previousMotion,
+          x: sprite.x,
+          y: sprite.y
+        },
+        delta,
+        scaleDistance(42)
+      );
+
+      this.npcRouteMotion.set(npc.id, {
+        routeId: nextMotion.routeId,
+        waypointIndex: nextMotion.waypointIndex,
+        pauseMsRemaining: nextMotion.pauseMsRemaining
+      });
+
+      state.currentRoutineId = route.id;
+      if (nextMotion.moving) {
+        this.setSpriteFacing(sprite, nextMotion.facingDx < -1, CHARACTER_SPRITE_SCALE);
       }
+      sprite.setPosition(nextMotion.x, nextMotion.y);
+      sprite.body?.updateFromGameObject();
       state.x = Math.round(sprite.x);
       state.y = Math.round(sprite.y);
       sprite.setDepth(sprite.y);
@@ -2054,7 +2078,7 @@ export class GameScene extends Phaser.Scene {
   private interactWithNpc(npcId: string): void {
     const npc = npcDefinitions[npcId];
     const state = this.world.npcs[npcId];
-    const routine = npc.routine.find((stop) => stop.id === state.currentRoutineId);
+    const routineLabel = getNpcRouteActivityLabel(npc, state.currentRoutineId);
     this.dispatchIntent({ kind: "RecordMemory", subjectType: "npc", subjectId: npcId, memory: "visited", detail: "Spoke in world." });
 
     if (npcId === "ibu_sari" && this.world.life.actProgress.act0Step === "meet_ibu_sari") {
@@ -2085,7 +2109,7 @@ export class GameScene extends Phaser.Scene {
       : "";
     this.openDialogue(
       npc.name,
-      `${this.dialogueProvider.getLine(npcId, { memory: getRelationship(this.world, "npc", npcId) })}\n\nRight now ${npc.name} is ${routine?.label ?? "taking in the neighborhood"}.${arcCopy}`
+      `${this.dialogueProvider.getLine(npcId, { memory: getRelationship(this.world, "npc", npcId) })}\n\nRight now ${npc.name} is ${routineLabel ?? "taking in the neighborhood"}.${arcCopy}`
     );
   }
 
@@ -4557,14 +4581,6 @@ export class GameScene extends Phaser.Scene {
       completedAct0
         ? `Slept until ${formatClock(this.world)}. Act 1 begins: keep hustling toward rent and your own place.`
         : `Slept until ${formatClock(this.world)}. Energy restored.`
-    );
-  }
-
-  private getRoutineStop(npc: NpcDefinition) {
-    const minute = this.world.clock.minuteOfDay;
-    return (
-      npc.routine.find((stop) => minute >= stop.startMinute && minute < stop.endMinute) ??
-      npc.routine[0]
     );
   }
 
