@@ -115,6 +115,10 @@ import {
 } from "../systems/animation/CharacterAnimations";
 import { getScooterVisualState, type ScooterVisualState } from "../systems/animation/ScooterAnimation";
 import {
+  getInteractionFlourishSpec,
+  type InteractionFlourishKind
+} from "../systems/animation/InteractionFlourishes";
+import {
   advanceClock,
   formatClock,
   getLocalPlayer,
@@ -395,6 +399,7 @@ export class GameScene extends Phaser.Scene {
   private npcReactionCues = new Map<string, { cue: string; remainingMs: number }>();
   private npcReactionAnimationTimers = new Map<string, number>();
   private npcFacingDirections = new Map<string, Direction>();
+  private npcTalkBobTimers = new Map<string, number>();
   private ambientNpcSprites = new Map<string, Phaser.Physics.Arcade.Sprite>();
   private ambientNpcRouteMotion = new Map<string, NpcRouteMotionState>();
   private ambientNpcIdlePhases = new Map<string, number>();
@@ -1740,6 +1745,57 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  private spawnInteractionFlourish(kind: InteractionFlourishKind, x: number, y: number, label?: string): void {
+    const spec = getInteractionFlourishSpec(kind);
+    const ring = this.add
+      .circle(x, y, scaleDistance(15), spec.ringColor, 0.08)
+      .setStrokeStyle(Math.max(1, scaleDistance(2)), spec.ringColor, 0.9)
+      .setScale(spec.startScale)
+      .setDepth(y + 18);
+    this.tweens.add({
+      targets: ring,
+      scale: spec.endScale,
+      alpha: 0,
+      duration: spec.durationMs,
+      ease: "Cubic.easeOut",
+      onComplete: () => ring.destroy()
+    });
+    if (label) {
+      this.spawnFloatingText(label, x, y - scaleDistance(32), spec.textColor);
+    }
+  }
+
+  private playPickupPop(sprite: Phaser.GameObjects.Sprite, label: string): void {
+    const ghost = this.add
+      .sprite(sprite.x, sprite.y, sprite.texture.key)
+      .setDepth(sprite.y + 16)
+      .setScale(sprite.scaleX, sprite.scaleY)
+      .setAlpha(0.92);
+    this.tweens.add({
+      targets: ghost,
+      y: sprite.y - scaleDistance(18),
+      scaleX: Math.abs(sprite.scaleX) * 1.28,
+      scaleY: Math.abs(sprite.scaleY) * 1.28,
+      alpha: 0,
+      duration: getInteractionFlourishSpec("pickup").durationMs,
+      ease: "Back.easeOut",
+      onComplete: () => ghost.destroy()
+    });
+    this.spawnInteractionFlourish("pickup", sprite.x, sprite.y, label);
+  }
+
+  private playDeliveryFlourish(x: number, y: number, payout?: number): void {
+    this.spawnInteractionFlourish("delivery", x, y, payout ? `Delivered +Rp ${payout}` : "Delivered");
+    if (payout && payout > 0) {
+      this.spawnCashBurst(x, y, payout);
+    }
+  }
+
+  private playActivityCommitFlourish(x: number, y: number, label: string): void {
+    this.spawnInteractionFlourish("activity", x, y, label);
+    this.cameras.main.flash(120, 244, 213, 141, false);
+  }
+
   private checkBikeTerrain(): void {
     if (!this.playerState.onBike || this.playerState.bikeStuck) {
       return;
@@ -1922,6 +1978,7 @@ export class GameScene extends Phaser.Scene {
       sprite.setDepth(sprite.y);
       this.updateNpcIdleVisual(npc, sprite, !nextMotion.moving && !reactingNow, delta);
       this.updateNpcReactionVisual(npc, sprite, delta);
+      this.updateNpcTalkBobVisual(npc.id, sprite, delta);
     }
   }
 
@@ -1947,6 +2004,28 @@ export class GameScene extends Phaser.Scene {
   private applyNpcReactionAnimation(npc: NpcDefinition, sprite: Phaser.GameObjects.Sprite, direction: Direction): void {
     sprite.play(npcReactionAnimationKey(npc.spriteKey), true);
     this.setSpriteFacing(sprite, direction === "left", CHARACTER_SPRITE_SCALE);
+  }
+
+  private startNpcTalkBob(npcId: string): void {
+    this.npcTalkBobTimers.set(npcId, getInteractionFlourishSpec("talk").durationMs);
+  }
+
+  private updateNpcTalkBobVisual(npcId: string, sprite: Phaser.GameObjects.Sprite, delta: number): void {
+    const current = this.npcTalkBobTimers.get(npcId) ?? 0;
+    if (current <= 0) {
+      return;
+    }
+    const spec = getInteractionFlourishSpec("talk");
+    const next = Math.max(0, current - delta);
+    if (next > 0) {
+      this.npcTalkBobTimers.set(npcId, next);
+    } else {
+      this.npcTalkBobTimers.delete(npcId);
+    }
+    const progress = 1 - next / spec.durationMs;
+    const nod = Math.sin(progress * Math.PI);
+    sprite.setScale(sprite.scaleX, Math.abs(sprite.scaleY) * (1 + nod * 0.055));
+    sprite.setAngle(sprite.angle + nod * 2.4);
   }
 
   private updateNpcIdleVisual(npc: NpcDefinition, sprite: Phaser.Physics.Arcade.Sprite, isIdle: boolean, delta: number): void {
@@ -2369,6 +2448,7 @@ export class GameScene extends Phaser.Scene {
     const npc = npcDefinitions[npcId];
     const state = this.world.npcs[npcId];
     const routineLabel = getNpcRouteActivityLabel(npc, state.currentRoutineId);
+    this.startNpcTalkBob(npcId);
     this.dispatchIntent({ kind: "RecordMemory", subjectType: "npc", subjectId: npcId, memory: "visited", detail: "Spoke in world." });
 
     if (npcId === "ibu_sari" && this.world.life.actProgress.act0Step === "meet_ibu_sari") {
@@ -2827,6 +2907,7 @@ export class GameScene extends Phaser.Scene {
     };
     this.world.activeActivity = { ...this.committedActivity };
     this.createCommittedActivityOverlay(this.committedActivity);
+    this.playActivityCommitFlourish(this.player.x, this.player.y, option.activity.label);
     saveWorldState(this.world);
     this.showToast(`${option.activity.label} started. ESC cancels early.`);
   }
@@ -2886,6 +2967,7 @@ export class GameScene extends Phaser.Scene {
     };
     this.world.activeActivity = { ...this.committedActivity };
     this.createCommittedActivityOverlay(this.committedActivity);
+    this.playActivityCommitFlourish(this.player.x, this.player.y, template.title);
     saveWorldState(this.world);
     this.showToast(`${template.title} started. ESC cancels early.`);
   }
@@ -4653,6 +4735,10 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    const sprite = this.pickupSprites.get(pickup.id);
+    if (sprite) {
+      this.playPickupPop(sprite, itemDefinitions[pickup.itemId].name);
+    }
     addItem(this.playerState, pickup.itemId, 1);
     this.world.collectedPickups[pickup.id] = this.getAbsoluteMinute();
     saveWorldState(this.world);
@@ -4764,9 +4850,11 @@ export class GameScene extends Phaser.Scene {
         : completeDelivery(this.world, this.getAbsoluteMinute());
     if (result.ok && wasPickup) {
       completeAct0Step(this.world, "pickup_first_delivery");
+      this.spawnInteractionFlourish("pickup", this.player.x, this.player.y, "Picked up");
     } else if (result.ok && !this.world.life.hustle.activeDelivery) {
       completeAct0Step(this.world, "dropoff_first_delivery");
       this.refreshSettlingInGoals(false);
+      this.playDeliveryFlourish(this.player.x, this.player.y, result.payout);
     }
     saveWorldState(this.world);
     this.showToast(result.message);

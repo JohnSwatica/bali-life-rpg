@@ -12,6 +12,7 @@ import {
   selectCharacterAnimation
 } from "../systems/animation/CharacterAnimations";
 import { getScooterRattleAmplitude, getScooterVisualState } from "../systems/animation/ScooterAnimation";
+import { getInteractionFlourishSpec } from "../systems/animation/InteractionFlourishes";
 
 describe("cheap animation policy", () => {
   it("keeps character animation frame counts intentionally tiny", () => {
@@ -86,5 +87,16 @@ describe("cheap animation policy", () => {
     expect(fastRight.speedCueCount).toBeGreaterThan(0);
     expect(stoppedRattletrap.speedCueCount).toBe(0);
     expect(Math.abs(stoppedRattletrap.offsetX) + Math.abs(stoppedRattletrap.offsetY)).toBeGreaterThan(0);
+  });
+
+  it("keeps interaction flourishes short and particle-free in policy", () => {
+    const talk = getInteractionFlourishSpec("talk");
+    const pickup = getInteractionFlourishSpec("pickup");
+    const delivery = getInteractionFlourishSpec("delivery");
+    const activity = getInteractionFlourishSpec("activity");
+    expect(talk.durationMs).toBeLessThanOrEqual(400);
+    expect(pickup.endScale).toBeGreaterThan(pickup.startScale);
+    expect(delivery.durationMs).toBeGreaterThan(pickup.durationMs);
+    expect(activity.ringColor).not.toBe(delivery.ringColor);
   });
 });
