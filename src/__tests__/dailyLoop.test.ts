@@ -8,6 +8,7 @@ import {
   getVenueActivityContext
 } from "../systems/life/ActivityEngine";
 import { getStationSocialBridgeOptions } from "../systems/life/StationSocialBridge";
+import { sleepAtHomeUntilMorning } from "../systems/life/SleepCycle";
 import { adjustPlayerMeters } from "../systems/meters/PlayerMeters";
 import { canSleepNow, sleepUntilNextMorning } from "../systems/time/DailyClock";
 import { createInitialWorldState } from "../systems/WorldState";
@@ -236,8 +237,15 @@ describe("daily life meters and activities", () => {
     expect(world.clock.minuteOfDay).toBe(8 * 60);
   });
 
-  it.skip("restores Energy and bumps Wellbeing/Focus on sleep after sleep logic is extracted from GameScene", () => {
-    // Today the meter-restoration part of sleep lives in private GameScene.sleepToMorning().
-    // This is intentionally skipped rather than refactoring runtime behavior in the additive test sprint.
+  it("restores Energy and bumps Wellbeing/Focus through the sleep cycle seam", () => {
+    const world = createInitialWorldState();
+    world.clock.minuteOfDay = 22 * 60;
+    world.meters = { energy: 18, wellbeing: 50, focus: 40, social: 30 };
+
+    const result = sleepAtHomeUntilMorning(world);
+
+    expect(world.clock).toMatchObject({ day: 2, minuteOfDay: 8 * 60 });
+    expect(result.meters).toMatchObject({ energy: 100, wellbeing: 58, focus: 46, social: 26 });
+    expect(world.players[world.localPlayerId]).toMatchObject({ focus: 46, socialEnergy: 26 });
   });
 });

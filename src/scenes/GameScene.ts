@@ -74,9 +74,8 @@ import {
 } from "../systems/minigames/ActivityMinigames";
 import { getActiveEvents, getActiveEventsAtVenue, isEventActive } from "../systems/events/EventScheduler";
 import { applyEventParticipation } from "../systems/events/EventParticipation";
-import { canSleepNow, sleepUntilNextMorning } from "../systems/time/DailyClock";
+import { canSleepNow } from "../systems/time/DailyClock";
 import {
-  applyPendingMorningPenalties,
   applyActivity,
   formatActivityPreview,
   getActivityAvailability,
@@ -87,6 +86,7 @@ import {
 } from "../systems/life/ActivityEngine";
 import { getSettlingInGoalTitle, updateSettlingInGoals } from "../systems/life/SettlingInGoals";
 import { getStationSocialBridgeOptions } from "../systems/life/StationSocialBridge";
+import { sleepAtHomeUntilMorning } from "../systems/life/SleepCycle";
 import { completeAct0Step, getAct0MealProgressKindForActivity, isAct0Complete, markAct0MealProgress } from "../systems/life/ActProgression";
 import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
 import {
@@ -5736,10 +5736,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private sleepToMorning(): void {
-    sleepUntilNextMorning(this.world);
-    this.world.meters.energy = 100;
-    adjustPlayerMeters(this.world, { wellbeing: 8, focus: 6, social: -4 });
-    const morningPenaltyMessage = applyPendingMorningPenalties(this.world);
+    const { morningPenaltyMessage } = sleepAtHomeUntilMorning(this.world);
     const completedAct0 = completeAct0Step(this.world, "sleep_first_night");
     this.updateLighting();
     saveWorldState(this.world);
