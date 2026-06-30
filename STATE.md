@@ -10,11 +10,11 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 
 Current durable truth:
 
-- Branch: `feat/npc-life`.
+- Branch: `feat/on-field-guidance`.
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test` = 65 passing, 3 skipped; `npm run build` passes.
+- Current verification: `npm test` = 75 passing, 3 skipped; `npm run build` passes.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Canonical act order, set in stone for near-term work:
@@ -26,7 +26,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: run a human visual pass on NPC liveliness, then continue with Liveliness Pass 2/4: on-field guidance that points the player toward the right people/places without adding new backend/AI/network scope. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, or Act 3 management sim.
+Immediate next move: run a human visual pass on on-field guidance, then continue with Liveliness Pass 3/4: animation polish. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, Act 3 management sim, or Pass 4 world-surfaced interactions yet.
 
 ## Project
 
@@ -37,10 +37,16 @@ Immediate next move: run a human visual pass on NPC liveliness, then continue wi
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
-- Current branch: `feat/npc-life`.
+- Current branch: `feat/on-field-guidance`.
 
 ## What Was Added Recently
 
+- Liveliness Pass 2 is complete on `feat/on-field-guidance`: guidance now lives primarily on the field. `src/systems/guidance/FieldObjective.ts` consolidates Act 0, Act 1 hustle, Act 2, and Act 3-ready read models into one always-visible objective line plus target refs.
+- The HUD now shows one compact `Now: ...` objective on the field instead of stacking several guidance lines. Phone > Quests remains as deeper reference, but the current next step is visible without opening a menu.
+- Objective targets are generalized across NPCs, venues, home, and delivery points. `GameScene` resolves them to live coordinates, draws world markers, draws minimap markers, and shows a fixed-screen directional arrow when the target is off-screen.
+- `src/systems/guidance/FieldIndicators.ts` surfaces existing state as field-level cues: ready relationship beats get NPC indicators, and live opportunities / active-or-soon events get venue indicators.
+- Act 0 guidance is explicitly phone-independent: each tutorial step has field objective text plus a target marker, and tests assert no Act 0 objective requires Phone/Feed/Quests text to progress. The phone is still introduced as optional deeper detail.
+- New coverage in `src/__tests__/fieldGuidance.test.ts` checks the objective readout across Act 0/1/2 state changes, generalized target refs for NPC/venue/point/home objectives, field indicators for NPCs/venues, and Act 0 no-phone progression.
 - NPC liveliness pass 1 is complete on `feat/npc-life`. Named NPCs no longer stand at a single fixed point: each has `routineRoutes` in `src/data/npcs.ts`, with time-windowed route data made of waypoints shaped like `{ id, label, venueId?, x, y, pauseMs? }`. Runtime motion is handled by `src/systems/npcs/NpcRoutineRoutes.ts`.
 - The live `GameScene` NPC loop now advances each named NPC through the active route, pauses at waypoints, updates `world.npcs[id].x/y`, and keeps `currentRoutineId` on the active route id. Existing `E` interaction already resolves against live sprite positions through `InteractionController`, and the new tests lock that contract down.
 - NPCs now have `idleTag` data. Ibu Sari uses `tidy_counter`, Kadek uses `knead_oven`, Ari uses `laptop_sip`, Made uses `tinker_board`, and untagged NPCs fall back to `generic_idle`. `src/systems/npcs/NpcIdleBehavior.ts` turns those tags into cheap sprite bob/tilt and small waypoint cues without new sprite art.
@@ -148,6 +154,7 @@ Immediate next move: run a human visual pass on NPC liveliness, then continue wi
 ## Important Files
 
 - Core types: `src/types.ts`
+- On-field guidance: `src/systems/guidance/FieldObjective.ts`, `src/systems/guidance/FieldIndicators.ts`
 - NPC liveliness: `src/data/npcs.ts`, `src/data/ambientNpcs.ts`, `src/systems/npcs/NpcRoutineRoutes.ts`, `src/systems/npcs/NpcIdleBehavior.ts`, `src/systems/npcs/NpcProximityReactions.ts`
 - Runtime world defaults: `src/systems/WorldState.ts`
 - Save/load/migration: `src/systems/Persistence.ts`
@@ -171,6 +178,10 @@ Immediate next move: run a human visual pass on NPC liveliness, then continue wi
 
 ## Phase Commits
 
+- `29c2a0d` - `feat: consolidated always-visible objective readout`
+- `dd89179` - `feat: generalized waypoint + directional cue for any objective`
+- `0de4a81` - `feat: field-level indicators for NPCs and venues with something for you`
+- `9cb9057` - `fix: Act 0 progressable without requiring the phone`
 - `45c263d` - `feat: NPC daily routine routes`
 - `07f8643` - `feat: per-NPC idle behavior at waypoints`
 - `0226a4d` - `feat: NPC proximity awareness and affinity-aware reactions`

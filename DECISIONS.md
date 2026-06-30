@@ -343,3 +343,13 @@ Idle personality is also data-driven through `NpcDefinition.idleTag`. The first 
 Proximity reactions reuse existing relationship affinity tiers. Near-radius entry turns the NPC toward the player and shows a short acknowledgment; friendly-or-warmer NPCs also pause their route briefly. The reaction is cosmetic and bounded by cooldowns so it does not block interaction, pathing, activities, the hustle loop, opportunities, overlays, or save/load.
 
 Ambient background population is intentionally separate from named NPC state. `src/data/ambientNpcs.ts` defines unnamed, non-interactive walkers with routes and idle tags. They are not saved, do not appear in `InteractionController`, and can be removed or expanded without touching dialogue, affinity, quests, or persistence.
+
+## 2026-06-30 - Guidance Lives On The Field First
+
+The current "what now" answer is no longer primarily a Phone > Quests or Feed concern. `FieldObjective` consolidates existing Act 0, Act 1 hustle, Act 2, and Act 3-ready read models into one always-visible on-field objective line. The phone remains the deeper reference surface for lists, goals, and context, but not the source of truth for the next immediate step.
+
+Waypoints now resolve from the same objective model. Objective targets can point to live NPCs, venues, home, or delivery dropoff points; `GameScene` renders them as world markers, minimap markers, and an off-screen directional arrow. This extends the existing delivery/Act 0 marker idea instead of creating another guidance system.
+
+Field-level indicators are visual surfacing only. Ready relationship beats use the existing relationship arc availability state, while venue badges use existing live opportunities and active-or-soon events. No new opportunities, events, relationship logic, backend, AI, network, animation frame work, or world-surfaced interaction verbs were added.
+
+Act 0 is explicitly progressable without opening the phone. Every tutorial step has field objective copy and at least one target marker; the phone is introduced as optional deeper detail rather than required onboarding navigation.
