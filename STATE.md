@@ -1,8 +1,32 @@
 # AI Handoff / Project State
 
-Last updated: 2026-06-29
+Last updated: 2026-06-30
 
 Copy/paste this into a new AI session to bring it up to speed.
+
+## Start Here For New Tabs
+
+If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this file, `DECISIONS.md`, `STORY_ARC.md`, `ACT3_BUSINESS_DESIGN.md`, and `docs/ROADMAP.md`, then inspect `git status --short --branch` and recent commits.
+
+Current durable truth:
+
+- Branch: `feat/act0-hustle-loop`.
+- Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
+- Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
+- OSM/generated data is sequencing/reference data only; no runtime map network calls.
+- Current verification: `npm test -- --run` = 49 passing, 3 skipped; `npm run build` passes.
+- No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
+
+Canonical act order, set in stone for near-term work:
+
+1. Act 0 - Arrival / 新手村: Ibu Sari, cheap kos, borrowed scooter, first BAKED delivery, meal/coffee, sleep.
+2. Act 1 - The Hustle: delivery board, rating, rent pressure, scooter upkeep/upgrades, move-out readiness.
+3. Act 2 - Finding Your People: events, clubs, relationship arcs, social standing, club-gated opportunities.
+4. Act 3 - Building Something: future warung/cafe + villa + real bike ambition layer, hooks only for now.
+5. Act 4 - The Good Life: solo win state.
+6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
+
+Immediate next move: play-feel and tune Act 0/Act 1, then strengthen the Act 2 handoff using existing social systems. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, or Act 3 management sim.
 
 ## Project
 
@@ -104,7 +128,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Map discovery hides area and venue detail until explored, with dev reveal-all support.
 - Scooter/bike systems include rental, slow walking vs faster riding, stuck-bike state, group-helper requirement, capped traffic-hit consequences, hit feedback, and local-life redemption hooks. This stays environmental/community consequence, not combat.
 - `WorldState.reputation` is now the canonical standing source: score, wanted level, bounty, victim flags, visible positive tags, hidden trust flags, redemption state, and history. Duplicate flat standing fields were removed from `PlayerEntityState`.
-- Save payloads now use `schemaVersion: 4` at the original key `bali-life-rpg.berawa-finns.save.v1`. Raw v1/v2/v3 saves migrate in place; v1/v2 standing fields still migrate into `ReputationState`, and pre-v4 runtime positions are scaled into the enlarged world without discarding money, quests, inventory, discovery, or relationships.
+- Historical note: schema v4 introduced enlarged-world position scaling. Current saves use schema v11 at the original key `bali-life-rpg.berawa-finns.save.v1`; raw v1-v10 saves migrate forward without discarding money, quests, inventory, discovery, relationships, reputation, profile, portal, meters, clubs, arcs, opportunity feed, committed activities, or Act 0/1 hustle state.
 - Phone UI has eight tabs: Map, Contacts, Quests, Calendar, Profile, Events, Venues, Community. Venues now have selectable detail pages with category, hours, discovery state, quality fields, associated NPCs/items/quests, and honest placeholder commerce/check-in status.
 - `PlayerProfile.lifestyleTags` remains the local cross-app identity bridge; `remoteAccountId` stays `null`.
 - New systems use `IntentDispatcher` where already introduced. Existing movement/shop/inventory/save flows remain direct.
@@ -134,6 +158,8 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Curated venue catalog: `src/data/curatedVenues.ts`
 - Berawa coordinate plan: `docs/BERAWA_MAP_PLAN.md`
 - Decisions log: `DECISIONS.md`
+- Agent operating contract: `AGENTS.md`
+- North-star seams: `VISION.md`
 
 ## Phase Commits
 
@@ -196,6 +222,41 @@ Copy/paste this into a new AI session to bring it up to speed.
 - `241cf5d` - `fix: minimap transparency + auto-hide under overlays`
 - `f8fc528` - `fix: dialogue panel fully on-screen and clear of HUD`
 - `9dde308` - `refactor: unified overlay-open state for HUD/minimap visibility`
+- `633a40c` - `feat: activity rewards + persistence + opportunity reuse`
+- `866522c` - `feat: reusable activity minigame framework`
+- `58c936d` - `feat: per-type activity minigames`
+- `c4efb02` - `chore: balance activity feel`
+- `6b74cb2` - `docs: add progression spine and Act 3 business design`
+- `4f9c0c3` - `feat: add Act 0 hustle delivery loop`
+- `623d5fb` - `feat: add repeat delivery hustle board`
+- `08102c8` - `feat: add hustle rent and scooter upgrades`
+- `b04901a` - `feat: surface Act 1 hustle guidance`
+- `3cb1e0f` - `test: harden Act 0 progression ordering`
+- `1a9771d` - `feat: add Act 1 hustle goals`
+- `3c7da92` - `chore: add hustle godmode shortcuts`
+- `f408704` - `feat: add daily hustle board phone nudge`
+- `cd2d504` - `fix: infer Act 0 completion for progressed saves`
+- `c217fe8` - `fix: gate phone feed during Act 0`
+- `25e9a72` - `feat: add Act 0 guide markers`
+- `677a1b5` - `fix: align scene absolute time for delivery timers`
+- `916b335` - `feat: anchor Act 0 sleep at home kos`
+- `4a3f23d` - `feat: add delivery board conditions`
+- `924c641` - `feat: surface Act 1 rent pressure`
+- `17310b9` - `docs: record Act 0 hustle refinements`
+- `33fa286` - `feat: announce Act 1 move-out readiness`
+- `cc4ac36` - `docs: record Act 1 milestone clarity`
+- `1325898` - `feat: add scooter repair pressure to hustle loop`
+- `541e02d` - `feat: bridge Act 1 hustle into Act 2 social`
+- `f39c25d` - `fix: keep hustle board actions inside phone panel`
+- `634f316` - `docs: record scooter maintenance and Act 2 bridge`
+- `21b5cda` - `feat: show scooter condition on hustle board`
+- `96cbfb3` - `feat: add mid-tier Act 1 delivery jobs`
+- `def647a` - `docs: record expanded Act 1 delivery board`
+- `04d3089` - `feat: guide Act 2 social handoff`
+- `c916f60` - `docs: record Act 2 social handoff`
+- `bad42c4` - `feat: surface Act 2 social goals`
+- `93826a8` - `feat: add Act 2 club-gated opportunity`
+- `efbeb9d` - `feat: mirror Act 0 objective in phone quests`
 
 ## Current Verification
 
@@ -222,7 +283,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 - Walkable/readable presentation source changes do not touch `src/data/curatedVenues.ts`, `src/data/berawaLayout.ts`, or `data/osm/berawa.curated-coords.json`; OSM/generated source coordinates remain unchanged.
 - Automated venue presentation check after the readable-ground/crisp-render pass reports 41 venue placements, 0 overlaps, main road width `155`, secondary `95`, lane `69`, `WORLD_SCALE = 1.6`, player unit `34 x 43`, camera `1.86 / 1.52`, max tangent slide about `461.7`, and max source-to-presentation move about `539`.
 - Final readable-ground/crisp-render builds passed with `npm run build` after Phase 4 and Phase 5.
-- In-app browser smoke for the readable-ground/crisp-render pass loaded `http://127.0.0.1:5173/`, found the Phaser canvas, reported schema v4 debug state, captured no console errors, verified `P` opens Phone and `ESC` returns to world, and verified a mobile `390 x 844` viewport shows touch controls and the on-screen `PHONE` button opens the phone.
+- Historical in-app browser smoke for the readable-ground/crisp-render pass loaded `http://127.0.0.1:5173/`, found the Phaser canvas, reported the then-current schema v4 debug state, captured no console errors, verified `P` opens Phone and `ESC` returns to world, and verified a mobile `390 x 844` viewport shows touch controls and the on-screen `PHONE` button opens the phone. Current schema is v11.
 - In-app browser smoke loaded `http://127.0.0.1:5173/?verify=walkable-presentation`, found the Phaser canvas, reported no console errors, and verified `P` opens Phone while `ESC` returns to world.
 - Water-boundary geometry spot checks passed: a southwest sea sample resolves back to shore, a visible beach polygon sample stays walkable, an inland road sample is untouched, and the corrected shoreline point is stable on the next check.
 - Final water-boundary build passed with `npm run build`.
@@ -245,7 +306,7 @@ Copy/paste this into a new AI session to bring it up to speed.
   - `P` opens Phone and `ESC` closes it.
   - All six HUD buttons respond to mouse automation: `PHONE`, `BAG`, `SOC`, `SAVE`, `BIKE`, `ACT`.
   - All six HUD buttons respond to mobile touch emulation after the touch HUD fix: `PHONE`, `BAG`, `SOC`, `SAVE`, `BIKE`, `ACT`.
-  - Raw v1 save migrates through the current schema chain, preserves money, moves legacy standing into `WorldState.reputation`, removes flat standing keys from the player, and now lands on schema v4 with runtime x/y positions scaled into the enlarged world.
+  - Raw v1 save migrates through the current schema chain, preserves money, moves legacy standing into `WorldState.reputation`, removes flat standing keys from the player, and now lands on schema v11 with runtime x/y positions scaled into the enlarged world when needed.
   - Ibu Sari and Kadek starter quests complete via `QuestRegistry`, award reputation tags/score, and record relationship memories.
   - Milk & Madu shop opens at the generated venue position.
   - Initial discovery includes cafe/FINNS cluster and excludes beach until approached.
@@ -393,7 +454,7 @@ The minigame framework is pure and tested in `src/systems/minigames/ActivityMini
 
 Verification:
 
-- `npm test -- --run`: 8 files passed, 35 tests passed, 3 skipped.
+- Historical activity-real verification: `npm test -- --run` was 8 files passed, 35 tests passed, 3 skipped at that point. Current suite is 49 passed, 3 skipped.
 - `npm run build`: passed.
 - New coverage verifies timing scoring, choice scoring, activity reward scaling, opportunity reward scaling, and v10 active-activity persistence.
 

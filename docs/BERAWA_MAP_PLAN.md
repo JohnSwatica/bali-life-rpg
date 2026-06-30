@@ -39,7 +39,7 @@ slotDepthTiles = 5
 camera zoom = 1.6 desktop / 1.28 mobile
 ```
 
-`src/data/streetTemplates.ts` populates the street by filtering rendered curated venues whose `street` is `Jl. Pantai Berawa` plus the beach anchor. It projects each venue's generated coordinate onto a beach-to-inland axis and then maps that order onto evenly spaced left/right tile slots. Beach-end venues sit at the seaward end; inland venues move toward the top of the strip.
+`src/data/streetTemplates.ts` now uses an explicit authored walking order for Jl. Pantai Berawa from beach to inland. OSM/curated coordinates remain the sequencing/audit reference, but the active template no longer relies on coordinate projection to derive slot order. Beach-end venues sit at the seaward end; inland venues move toward the top of the strip.
 
 The current template renders 31 Jl. Pantai Berawa/beach venues plus one temporary quest-critical side-street stub for `canggu_station`. That exception preserves the Ibu Sari starter quest and Canggu Station shop until a future Raya Semat/Canggu Station street template exists.
 

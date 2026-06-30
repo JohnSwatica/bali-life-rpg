@@ -26,18 +26,24 @@ Locked direction from [ACT3_BUSINESS_DESIGN.md](../ACT3_BUSINESS_DESIGN.md):
 - Pacing target: roughly **two hours per act**.
 - Act 3 first implementation: light stock-and-serve management, deepen later.
 
+## Current Status
+
+- Act 0 guided first day exists in code: Ibu Sari, borrowed scooter, first BAKED delivery, meal/coffee step, cheap-kos sleep marker, HUD/Phone objective visibility.
+- Act 1 hustle exists in code: delivery board, driver rating, delivery earnings, rent pressure, scooter condition/repair/upgrade, move-out threshold, and Act 1 goals.
+- Act 2 social systems exist in code: events, clubs, relationship arcs, Ari handoff invite, guide markers, Act 2 goals, and at least one club/reputation-gated opportunity.
+- Act 3 remains design-only in `ACT3_BUSINESS_DESIGN.md`.
+
 ## Next Gameplay Steps
 
-- Build the Act 0 guided 新手村 tutorial around Ibu Sari, the cheap kos, first scooter, first BAKED delivery, first meal/coffee, and sleep.
-- Add a delivery/gig loop with accept -> pickup -> dropoff -> paid -> star rating, reusing the committed activity/opportunity flow where possible.
-- Add the rating/upgrades economy that makes Act 1 hustle progression visible: better gigs, scooter repair/upgrade, rent pressure, and first move-out milestone.
-- Rewire existing events/clubs/relationship arcs so they sit clearly as Act 2 payoffs rather than disconnected side content.
+- Play-feel tune the Act 0 guided 新手村 tutorial around Ibu Sari, the cheap kos, first scooter, first BAKED delivery, first meal/coffee, and sleep.
+- Tune the delivery/gig loop: payout, timer pressure, driver rating progression, scooter wear/repair cost, rent reminders, condition frequency, and mid-tier job unlocks.
+- Make Act 2 read clearly as the payoff after move-out: events introduce people, clubs create rhythm, relationship arcs unlock trust/perks, and social standing opens better opportunities.
 - Keep Act 3 business hooks in data/state only until Act 0/1/2 are fun and proven: crew candidates from relationship arcs, venue rating/reputation compatibility, and future player-owned venue seams.
 - Add interiors for Canggu Station, Milk & Madu Berawa, BAKED. Berawa, Bungalow Living Bali, and Satu-Satu Coffee Company when they directly support the tutorial/hustle/social beats.
 
 ## Future Opening Tutorial
 
-The intended tutorial is now Act 0 / 新手村: a guided first day led by Ibu Sari. It should feel like a Pokemon-style opening walkthrough for a daily-life hustle sim, not a combat loop.
+The intended tutorial is now Act 0 / 新手村: a guided first day led by Ibu Sari. It should feel like a Pokemon-style opening walkthrough for a daily-life hustle sim, not a combat loop. The first implementation exists, but it still needs real-device pacing and clarity tuning.
 
 Planned beats:
 

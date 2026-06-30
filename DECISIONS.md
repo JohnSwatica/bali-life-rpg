@@ -309,3 +309,11 @@ The map/minimap guide layer now surfaces `Find beach crew` at Berawa Beach and `
 Phone > Quests now reads the same chapter state through a tiny pure `Act2Goals` helper: join a first crew, attend a recurring club event, and complete a relationship beat. This is intentionally a goal/read-model layer only; it does not add save schema, backend, or new social mechanics.
 
 Act 2 social payoff can be represented through existing opportunity gates before adding any new economy system. `focus_table_client_referral` is a dev-authored opportunity unlocked by Focus Table Collective membership plus reputation, showing that clubs can open better work while Act 3 business remains deferred.
+
+## 2026-06-30 - Durable New-Tab Handoff Is Canonical
+
+`AGENTS.md` and `VISION.md` are now first-class repo docs. New Codex/AI tabs must read `AGENTS.md`, `STATE.md`, `DECISIONS.md`, `STORY_ARC.md`, `ACT3_BUSINESS_DESIGN.md`, and `docs/ROADMAP.md` before continuing from a bare "keep working" instruction.
+
+The current roadmap is intentionally fixed around the act spine: Act 0 Arrival, Act 1 Hustle, Act 2 Finding Your People, Act 3 Building Something, Act 4 Good Life, Act 5 Open World. Near-term work should tune Act 0/1 and strengthen the Act 2 handoff using existing systems. It should not leap to Act 3 management, real multiplayer, backend, AI, Google data, or real commerce.
+
+Scheduling/reminder behavior is also documented: no automations should be created unless the user explicitly asks again, and any future one-time resume must use an explicit timezone/start anchor and be verified before claiming it is correct.
