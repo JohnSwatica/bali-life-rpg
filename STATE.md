@@ -10,11 +10,11 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 
 Current durable truth:
 
-- Branch: `feat/world-surfaced-interactions`.
+- Branch: `feat/first-hour-proof`.
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test` = 94 passing, 3 skipped; `npm run build` passes.
+- Current verification: `npm test` = 95 passing, 3 skipped; `npm run build` passes.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Canonical act order, set in stone for near-term work:
@@ -26,7 +26,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: run a human visual pass on the full liveliness stack, especially whether world scenes are readable from normal camera distance and whether ambient NPC lines feel less interruptive. Then tune density/clarity before moving to broader Act 0/1/2 content. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, or Act 3 management sim yet.
+Immediate next move: run a human play-feel pass through the executable first-hour proof path: new save -> Act 0 first day -> 5-run Act 1 hustle -> first rent paid -> Act 2 crew/event/bond -> one crew-opened opportunity. Tune pacing, visual density, and emotional clarity from that run before adding broader content. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, or Act 3 management sim yet.
 
 ## Project
 
@@ -37,10 +37,15 @@ Immediate next move: run a human visual pass on the full liveliness stack, espec
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
-- Current branch: `feat/world-surfaced-interactions`.
+- Current branch: `feat/first-hour-proof`.
 
 ## What Was Added Recently
 
+- First-hour proof sprint is complete on `feat/first-hour-proof`: the playable act spine now has an executable proof path from a new save through Act 0, Act 1 hustle, first rent, Act 2 social rhythm, and one crew-opened opportunity. The guard test lives in `src/__tests__/firstHourProof.test.ts`.
+- Act 1 move-out readiness is now centralized in `src/systems/hustle/HustleMilestones.ts`: Found Your Feet requires 5 deliveries, Rp 700 delivery earnings, 4.2★ driver rating, and first rent covered. Delivery completion now calls out when only rent is blocking the move-out beat; paying rent can advance the player into Act 2 if the other thresholds are already met.
+- Act 1 guidance now prioritizes delivery rhythm before recommending the scooter upgrade, then points clearly at first-rent coverage when rent is the final Act 2 blocker. The field objective can target home for `Cover first rent`, so the player has an on-field destination instead of only Phone copy.
+- Act 2 now has a fourth proof goal, `open_better_door`: after joining a crew, attending a recurring club rhythm, and completing one relationship beat, the next step is a club-gated opportunity opened by that social trust. `getAct2PayoffOpportunityState()` derives eligible/live/completed payoff opportunities from the existing opportunity engine; no backend, new economy layer, or Act 3 sim was added.
+- Act 2 payoff templates (`focus_table_client_referral`, `run_crew_breakfast_shift`, `brunch_builders_paid_intro`, `surf_circle_board_repair`) have higher spawn weight once their trust gates are met, so the social payoff is more likely to surface as a visible world opportunity at the right venue.
 - Liveliness Pass 4 is complete on `feat/world-surfaced-interactions`: opportunities, events, and clubs now surface as visible world scenes rather than primarily as Phone list entries or calendar text. `src/systems/world/WorldScenes.ts` derives these scenes from existing local opportunity/event/club data; no backend, AI, network, or new content system was added.
 - Live opportunities now render type-appropriate venue scenes in `GameScene`: gigs show help-wanted/waving cues, social opportunities show 2-3 local actors converging/gathering, help-outs show a distressed waiting actor, flash deals show an animated venue signal, and rumor/trade opportunities have lightweight field scenes. Phone Feed still exists for details/acceptance/reference.
 - Minor NPC dialogue now uses in-world ambient speech bubbles with the Pass 3 talk bob. `src/systems/dialogue/DialoguePresentation.ts` keeps Act 0, quest-critical interactions, and relationship arc beats in full dialogue panels, while routine low-stakes NPC touches stay in-world and do not switch the scene to modal dialogue.
@@ -167,6 +172,7 @@ Immediate next move: run a human visual pass on the full liveliness stack, espec
 ## Important Files
 
 - Core types: `src/types.ts`
+- First-hour proof: `src/systems/hustle/HustleMilestones.ts`, `src/systems/life/Act2Goals.ts`, `src/__tests__/firstHourProof.test.ts`
 - On-field guidance: `src/systems/guidance/FieldObjective.ts`, `src/systems/guidance/FieldIndicators.ts`
 - World-surfaced interactions: `src/systems/world/WorldScenes.ts`, `src/systems/dialogue/DialoguePresentation.ts`
 - Cheap animation: `src/systems/animation/CharacterAnimations.ts`, `src/systems/animation/ScooterAnimation.ts`, `src/systems/animation/InteractionFlourishes.ts`
@@ -193,6 +199,7 @@ Immediate next move: run a human visual pass on the full liveliness stack, espec
 
 ## Phase Commits
 
+- `2a0603a` - `feat: prove first-hour act spine`
 - `c504782` - `feat: opportunities rendered as visible in-world scenes`
 - `fd92608` - `feat: short in-world ambient lines replace many minor text boxes`
 - `ff3b574` - `feat: events and club gatherings visible as world moments`
@@ -310,7 +317,7 @@ Immediate next move: run a human visual pass on the full liveliness stack, espec
 - Phase B social phases 1-4 each passed `npm run build` before commit.
 - Phase B smoke checks passed: Berawa Beach Run is active at Berawa Beach on the expected day/time; joining Berawa Run Crew stores `world.life.joinedClubIds` and reveals its recurring member event; Ari's first relationship beat completes from affinity and persists to `world.life.relationshipArcProgress`; `plug_in`, `find_your_crew`, and `deepen_a_bond` complete from event/club/arc state.
 - Core test suite is now installed with Vitest and runs through `npm test`.
-- Current suite result: 53 passing tests, 3 documented skips across save migration, daily loop, social layer, opportunities, quests/goals/reputation/interaction, authored street layout invariants, Act 0 delivery/hustle state, Act 0 home sleep gating, Act 1 delivery-board gating and conditions, scooter wear/repair gating, move-out readiness messaging and Act 2 transition, local rent/scooter/rent-pressure economy actions, Act 1 hustle goals and next-step guidance, Act 2 social goals/next-step guidance, Act 3 readiness hooks, and the daily Hustle Board/rent/Act 2 invite phone nudges.
+- Current suite result: 95 passing tests, 3 documented skips across save migration, daily loop, social layer, opportunities, quests/goals/reputation/interaction, authored street layout invariants, Act 0 delivery/hustle state, Act 0 home sleep gating, Act 1 delivery-board gating and conditions, scooter wear/repair gating, first-rent-gated move-out readiness, local rent/scooter/rent-pressure economy actions, Act 1 hustle goals and next-step guidance, Act 2 social goals/next-step/payoff guidance, Act 3 readiness hooks, first-hour proof path, liveliness/world-scene read models, and the daily Hustle Board/rent/Act 2 invite phone nudges.
 - Opportunity tests cover time/reputation/club/affinity eligibility gates, deterministic 2-4 live pool maintenance, expiry/missed tracking, accept/resolve rewards, chain spawning, relationship cooling from missed social pings, and v8-to-v9 persistence of live/completed/missed/feed state.
 - `npm run build` passed after every core-test-suite phase.
 - The test suite fixed one unambiguous data-seam bug: `finns_beach_club` is now present in `VenueRegistry` so the FINNS Sunset Social event host/location resolves.

@@ -375,3 +375,13 @@ Minor NPC dialogue is no longer always modal. `src/systems/dialogue/DialoguePres
 Scheduled events and joined-club recurring events now render as world moments too: run gatherings, coworking tables, market walks, party pulses, and club-circle signatures. Visibility still follows the existing event scheduler and joined-club gates, so this is presentation over the current social layer rather than a new scheduling system.
 
 `getFieldFirstDiscoveryAudit()` records the intended product stance: live opportunities and active events should have matching field scenes. In covered cases `phoneOnlyDiscoveryCount` is 0, reinforcing that the phone is confirmation/reference/management, not the primary loop driver for knowing what is happening.
+
+## 2026-06-30 - First-Hour Proof Gates Act 2 On Rent And A Social Payoff
+
+The first-hour target is now executable, not just described. `src/__tests__/firstHourProof.test.ts` walks a new save through Act 0, the Act 1 delivery rhythm, scooter upgrade timing, first rent payment, the Act 2 crew/event/bond path, and one crew-opened opportunity.
+
+Act 1 "Found Your Feet" now requires first rent coverage in addition to 5 deliveries, Rp 700 delivery earnings, and 4.2★ driver rating. This is centralized in `HustleMilestones` so delivery completion, rent payment, godmode refresh, Act 1 goals, and field objectives share the same definition. Delivery completion can now say the numbers are ready but rent is still blocking the move-out beat; paying rent can advance to Act 2 once the other thresholds are met.
+
+Act 2 now has a fourth proof goal, `open_better_door`, after joining a crew, attending its rhythm, and completing a relationship beat. The payoff is derived from existing club-gated opportunities, not a new system. The first set is `focus_table_client_referral`, `run_crew_breakfast_shift`, `brunch_builders_paid_intro`, and `surf_circle_board_repair`; these get higher spawn weight after their trust gates are met so the social layer visibly opens useful work/perks before Act 3.
+
+This keeps Act 3 locked: the business sim is still not implemented. The point of this slice is proving Acts 0-2 feel like a coherent first-hour playable route before broader content or the Act 3 management layer begins.
