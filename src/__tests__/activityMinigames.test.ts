@@ -35,6 +35,15 @@ describe("activity minigames", () => {
     expect(getOpportunityMinigameDefinition("social")?.kind).toBe("choice");
   });
 
+  it("provides station-specific minigames for the main gameplay stations", () => {
+    expect(getActivityMinigameDefinition("cafe_deep_work")?.kind).toBe("timing");
+    expect(getActivityMinigameDefinition("beach_surf_session")?.kind).toBe("balance");
+    expect(getActivityMinigameDefinition("beach_club_big_night")?.kind).toBe("choice");
+    expect(getActivityMinigameDefinition("warung_local_chat")?.kind).toBe("choice");
+    expect(getActivityMinigameDefinition("coworking_focus_sprint")?.kind).toBe("timing");
+    expect(getActivityMinigameDefinition("home_plan_tomorrow")?.kind).toBe("choice");
+  });
+
   it("scales only upside activity rewards when a performance score is supplied", () => {
     const world = createInitialWorldState();
     const context = getVenueActivityContext("milk_madu_berawa")!;

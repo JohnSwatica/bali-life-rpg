@@ -14,6 +14,7 @@ import { ambientNpcDefinitions, type AmbientNpcDefinition } from "../data/ambien
 import { activityDefinitions, interestGroupDefinitions } from "../data/community";
 import { itemDefinitions } from "../data/items";
 import { playerHomeBase } from "../data/homeBase";
+import { getGameplayStationLoop } from "../data/stationLoops";
 import { collisionRects, pickupDefinitions, WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
 import { npcDefinitions } from "../data/npcs";
 import { questDefinitions } from "../data/quests";
@@ -2844,28 +2845,24 @@ export class GameScene extends Phaser.Scene {
       content.appendChild(empty);
     }
 
-    for (const option of availability.slice(0, 6)) {
-      const activity = option.activity;
-      const moneyCopy = activity.cost
-        ? activity.cost < 0
-          ? `Earn Rp ${Math.abs(activity.cost)}`
-          : `Cost Rp ${activity.cost}`
-        : "Free";
-      const status = option.available ? `${activity.timeCost} min | ${moneyCopy}` : option.reason ?? "Unavailable";
-      const preview = formatActivityPreview(activity, option.timeModifier);
-      this.appendActivityMenuRow(content, {
-        title: activity.label,
-        body: `${activity.description}\n${preview ? `${preview}\n` : ""}${status}`,
-        actionLabel: option.available ? (activity.actionLabel ?? "Do") : "Blocked",
-        variant: option.available ? "primary" : "blocked",
-        onAction: () => {
-          if (option.available) {
-            this.performVenueActivity(context, activity.id);
-          } else {
-            this.showToast(option.reason ?? "Activity unavailable.");
-          }
+    const stationOptions = availability.filter((option) => option.activity.stationId && option.activity.venueIds?.includes(context.venueId));
+    const fallbackOptions = availability.filter((option) => !stationOptions.includes(option));
+    if (stationOptions.length > 0 && context.stationId) {
+      const station = getGameplayStationLoop(context.stationId);
+      this.appendActivityMenuSection(content, `${station.title} choices`);
+      for (const option of stationOptions.slice(0, 3)) {
+        this.appendActivityOptionRow(content, context, option);
+      }
+      if (fallbackOptions.length > 0) {
+        this.appendActivityMenuSection(content, "Everyday fallback");
+        for (const option of fallbackOptions.slice(0, 3)) {
+          this.appendActivityOptionRow(content, context, option);
         }
-      });
+      }
+    } else {
+      for (const option of availability.slice(0, 6)) {
+        this.appendActivityOptionRow(content, context, option);
+      }
     }
 
     const footer = document.createElement("div");
@@ -2891,6 +2888,30 @@ export class GameScene extends Phaser.Scene {
     heading.className = "bali-life-activity-menu-section";
     heading.textContent = label;
     parent.appendChild(heading);
+  }
+
+  private appendActivityOptionRow(parent: HTMLElement, context: VenueActivityContext, option: ActivityAvailability): void {
+    const activity = option.activity;
+    const moneyCopy = activity.cost
+      ? activity.cost < 0
+        ? `Earn Rp ${Math.abs(activity.cost)}`
+        : `Cost Rp ${activity.cost}`
+      : "Free";
+    const status = option.available ? `${activity.timeCost} min | ${moneyCopy}` : option.reason ?? "Unavailable";
+    const preview = formatActivityPreview(activity, option.timeModifier);
+    this.appendActivityMenuRow(parent, {
+      title: activity.label,
+      body: `${activity.description}\n${preview ? `${preview}\n` : ""}${status}`,
+      actionLabel: option.available ? (activity.actionLabel ?? "Do") : "Blocked",
+      variant: option.available ? "primary" : "blocked",
+      onAction: () => {
+        if (option.available) {
+          this.performVenueActivity(context, activity.id);
+        } else {
+          this.showToast(option.reason ?? "Activity unavailable.");
+        }
+      }
+    });
   }
 
   private appendActivityMenuRow(

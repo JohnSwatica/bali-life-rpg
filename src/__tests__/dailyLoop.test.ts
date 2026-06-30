@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { getQuantity } from "../systems/Inventory";
-import { applyActivity, getActivityAvailability, getVenueActivityContext } from "../systems/life/ActivityEngine";
+import {
+  applyActivity,
+  applyPendingMorningPenalties,
+  getActivityAvailability,
+  getVenueActivityContext
+} from "../systems/life/ActivityEngine";
 import { adjustPlayerMeters } from "../systems/meters/PlayerMeters";
 import { canSleepNow, sleepUntilNextMorning } from "../systems/time/DailyClock";
 import { createInitialWorldState } from "../systems/WorldState";
@@ -64,6 +69,55 @@ describe("daily life meters and activities", () => {
       available: false,
       reason: "Already done today."
     });
+  });
+
+  it("surfaces authored station choices before generic fallback activities", () => {
+    const world = createInitialWorldState();
+    const stations = [
+      ["satu_satu_coffee", "cafe"],
+      ["berawa_beach", "beach"],
+      ["finns_beach_club", "beach_club"],
+      ["ulekan_berawa", "warung"],
+      ["tropical_nomad_coworking_space", "coworking"],
+      ["cheap_kos", "home"]
+    ] as const;
+
+    for (const [venueId, stationId] of stations) {
+      const availability = getActivityAvailability(world, context(venueId));
+      const stationChoices = availability.filter((candidate) => candidate.activity.stationId === stationId);
+      expect(stationChoices.length).toBeGreaterThanOrEqual(3);
+      expect(availability[0].activity.stationId).toBe(stationId);
+    }
+
+    expect(getActivityAvailability(world, context("satu_satu_coffee")).some((candidate) => candidate.activity.id === "remote_work_session")).toBe(
+      true
+    );
+    expect(getActivityAvailability(world, context("cheap_kos")).every((candidate) => candidate.activity.stationId === "home")).toBe(true);
+  });
+
+  it("applies station time-of-day modifiers and queued next-morning penalties", () => {
+    const world = createInitialWorldState();
+    const player = world.players[world.localPlayerId];
+    world.clock.minuteOfDay = 10 * 60;
+
+    const focus = applyActivity(world, context("satu_satu_coffee"), "cafe_deep_work");
+
+    expect(focus.ok).toBe(true);
+    expect(focus.moneyDelta).toBe(Math.round(115 * 1.08));
+    expect(world.meters.focus).toBe(42 + Math.round(18 * 1.18));
+
+    player.money = 500;
+    world.meters.energy = 80;
+    world.clock.minuteOfDay = 21 * 60;
+    const bigNight = applyActivity(world, context("finns_beach_club"), "beach_club_big_night");
+
+    expect(bigNight.ok).toBe(true);
+    expect(world.life.pendingMorningPenalties).toHaveLength(1);
+    world.meters.energy = 100;
+    const summary = applyPendingMorningPenalties(world);
+    expect(summary).toContain("energy -16");
+    expect(world.life.pendingMorningPenalties).toHaveLength(0);
+    expect(world.meters.energy).toBe(84);
   });
 
   it("applies activity meter, money, item, time, and history effects", () => {

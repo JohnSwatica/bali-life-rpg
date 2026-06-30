@@ -29,6 +29,25 @@ const ACTIVITY_MINIGAMES: Record<string, ActivityMinigameDefinition | undefined>
     targetStart: 0.42,
     targetEnd: 0.58
   },
+  cafe_deep_work: {
+    kind: "timing",
+    title: "Cafe Focus",
+    prompt: "Tap in the green window when the cafe noise drops and the work clicks.",
+    actionLabel: "Ship",
+    targetStart: 0.44,
+    targetEnd: 0.6
+  },
+  cafe_people_watch: {
+    kind: "choice",
+    title: "Read the Room",
+    prompt: "Pick the move that keeps you present without derailing the day.",
+    actionLabel: "Choose",
+    choices: [
+      { id: "listen", label: "Ask about their morning", score: 1, feedback: "Easy, warm, and not too much." },
+      { id: "overshare", label: "Explain your whole plan", score: 0.42, feedback: "Sincere, but the table got heavier." },
+      { id: "scroll", label: "Half-listen while scrolling", score: 0.18, feedback: "You occupied the chair more than the moment." }
+    ]
+  },
   surf_beach_time: {
     kind: "balance",
     title: "Find the Line",
@@ -36,6 +55,88 @@ const ACTIVITY_MINIGAMES: Record<string, ActivityMinigameDefinition | undefined>
     actionLabel: "Balance",
     targetStart: 0.38,
     targetEnd: 0.62
+  },
+  beach_surf_session: {
+    kind: "balance",
+    title: "Find the Line",
+    prompt: "Tap while the balance marker is centered to stay with the wave.",
+    actionLabel: "Balance",
+    targetStart: 0.38,
+    targetEnd: 0.62
+  },
+  beach_cleanup_chat: {
+    kind: "choice",
+    title: "Help Without Performing",
+    prompt: "Choose the move that makes helping feel natural.",
+    actionLabel: "Choose",
+    choices: [
+      { id: "quiet_help", label: "Start picking up first", score: 1, feedback: "Useful before impressive. People notice." },
+      { id: "organize", label: "Give everyone assignments", score: 0.52, feedback: "Helpful idea, strong entrance." },
+      { id: "photo", label: "Take a proof photo", score: 0.22, feedback: "The moment became about you." }
+    ]
+  },
+  beach_club_sunset_table: {
+    kind: "choice",
+    title: "Enter the Table",
+    prompt: "Choose how to join without making the moment feel transactional.",
+    actionLabel: "Choose",
+    choices: [
+      { id: "ask", label: "Ask what brought them here", score: 1, feedback: "Curiosity opens the table." },
+      { id: "round", label: "Offer a small round", score: 0.76, feedback: "Generous, slightly expensive, still welcome." },
+      { id: "flex", label: "Lead with a humblebrag", score: 0.2, feedback: "The table smiled politely and moved on." }
+    ]
+  },
+  beach_club_big_night: {
+    kind: "choice",
+    title: "Keep the Night Worth It",
+    prompt: "Pick the move that earns the social spike without losing yourself completely.",
+    actionLabel: "Choose",
+    choices: [
+      { id: "introduce", label: "Introduce two people", score: 1, feedback: "Connector energy. That one sticks." },
+      { id: "dance", label: "Commit to the dance floor", score: 0.78, feedback: "Memorable, a little costly." },
+      { id: "tab", label: "Open an ambitious tab", score: 0.35, feedback: "Fun for the table, brutal for the wallet." }
+    ]
+  },
+  warung_local_chat: {
+    kind: "choice",
+    title: "Warung Table Manners",
+    prompt: "Pick the move that feels respectful and easy.",
+    actionLabel: "Choose",
+    choices: [
+      { id: "ask_food", label: "Ask what they recommend", score: 1, feedback: "Simple, respectful, and useful." },
+      { id: "compare", label: "Compare it to home", score: 0.5, feedback: "Not terrible, but you centered yourself." },
+      { id: "rush", label: "Eat while checking maps", score: 0.2, feedback: "You missed the human part." }
+    ]
+  },
+  coworking_focus_sprint: {
+    kind: "timing",
+    title: "Deep Work Block",
+    prompt: "Tap in the focus window to turn the room's pressure into real output.",
+    actionLabel: "Ship",
+    targetStart: 0.45,
+    targetEnd: 0.58
+  },
+  coworking_accountability_chat: {
+    kind: "choice",
+    title: "Accountability Read",
+    prompt: "Choose the move that makes the work talk useful instead of performative.",
+    actionLabel: "Choose",
+    choices: [
+      { id: "specific", label: "Share one specific blocker", score: 1, feedback: "Concrete enough to be useful." },
+      { id: "network", label: "Ask for introductions first", score: 0.48, feedback: "A little early for that ask." },
+      { id: "vague", label: "Say you are building stuff", score: 0.25, feedback: "True, but hard to help." }
+    ]
+  },
+  home_plan_tomorrow: {
+    kind: "choice",
+    title: "Tiny Room Plan",
+    prompt: "Pick the plan that makes tomorrow easier without overplanning it.",
+    actionLabel: "Choose",
+    choices: [
+      { id: "three_tasks", label: "Pick three concrete stops", score: 1, feedback: "Small enough to follow, clear enough to matter." },
+      { id: "perfect_day", label: "Design the perfect day", score: 0.45, feedback: "Beautiful plan. Possibly fictional." },
+      { id: "avoid", label: "Rearrange the room again", score: 0.2, feedback: "Cozy, but the work is still waiting." }
+    ]
   },
   relax_hangout: {
     kind: "choice",
