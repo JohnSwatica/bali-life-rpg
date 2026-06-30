@@ -74,7 +74,9 @@ import {
 import { getActiveEvents, getActiveEventsAtVenue, isEventActive } from "../systems/events/EventScheduler";
 import { advanceWorldMinutes, canSleepNow, sleepUntilNextMorning } from "../systems/time/DailyClock";
 import {
+  applyPendingMorningPenalties,
   applyActivity,
+  formatActivityPreview,
   getActivityAvailability,
   getVenueActivityContext,
   type ActivityAvailability,
@@ -2324,6 +2326,8 @@ export class GameScene extends Phaser.Scene {
       this.promptText.setText(`E / ACT: ask ${REQUIRED_BIKE_HELPERS} helpers to drag the bike out`);
     } else if (this.mode === "world" && homeSleepReady) {
       this.promptText.setText(`E / ACT: sleep at ${playerHomeBase.name}.`);
+    } else if (this.mode === "world" && isPlayerAtHomeBase(this.world)) {
+      this.promptText.setText(`E / ACT: use ${playerHomeBase.name}.`);
     } else if (this.mode === "world" && target) {
       this.promptText.setText(`E / ACT: ${target.label}`);
     } else if (this.mode === "world" && this.canSleepHere()) {
@@ -2438,6 +2442,11 @@ export class GameScene extends Phaser.Scene {
 
     if (this.isAct0HomeSleepReady()) {
       this.sleepToMorning();
+      return;
+    }
+
+    if (isPlayerAtHomeBase(this.world)) {
+      this.openHomeActivityMenu();
       return;
     }
 
@@ -2698,6 +2707,18 @@ export class GameScene extends Phaser.Scene {
     this.createActivityMenuOverlay(venueId, context, availability, shop);
   }
 
+  private openHomeActivityMenu(): void {
+    const context = getVenueActivityContext(playerHomeBase.id);
+    if (!context) {
+      this.showToast("Home base is not available yet.");
+      return;
+    }
+    this.closePanel(false);
+    this.mode = "activity";
+    const availability = getActivityAvailability(this.world, context);
+    this.createActivityMenuOverlay(playerHomeBase.id, context, availability, undefined);
+  }
+
   private createActivityMenuOverlay(
     venueId: string,
     context: VenueActivityContext,
@@ -2831,10 +2852,11 @@ export class GameScene extends Phaser.Scene {
           : `Cost Rp ${activity.cost}`
         : "Free";
       const status = option.available ? `${activity.timeCost} min | ${moneyCopy}` : option.reason ?? "Unavailable";
+      const preview = formatActivityPreview(activity, option.timeModifier);
       this.appendActivityMenuRow(content, {
         title: activity.label,
-        body: `${activity.description}\n${status}`,
-        actionLabel: option.available ? "Do" : "Blocked",
+        body: `${activity.description}\n${preview ? `${preview}\n` : ""}${status}`,
+        actionLabel: option.available ? (activity.actionLabel ?? "Do") : "Blocked",
         variant: option.available ? "primary" : "blocked",
         onAction: () => {
           if (option.available) {
@@ -2926,6 +2948,12 @@ export class GameScene extends Phaser.Scene {
     if (!option.available) {
       this.showToast(option.reason ?? "Activity unavailable.");
       this.openVenueActivityMenu(context.venueId);
+      return;
+    }
+
+    if (activityId === "home_sleep_until_morning") {
+      this.closePanel(false);
+      this.sleepToMorning();
       return;
     }
 
@@ -5414,7 +5442,7 @@ export class GameScene extends Phaser.Scene {
     if (this.world.life.actProgress.act0Step === "sleep_first_night") {
       return isPlayerAtHomeBase(this.world);
     }
-    return canSleepNow(this.world.clock, this.world.meters);
+    return isPlayerAtHomeBase(this.world) && canSleepNow(this.world.clock, this.world.meters);
   }
 
   private isAct0HomeSleepReady(): boolean {
@@ -5425,13 +5453,14 @@ export class GameScene extends Phaser.Scene {
     sleepUntilNextMorning(this.world);
     this.world.meters.energy = 100;
     adjustPlayerMeters(this.world, { wellbeing: 8, focus: 6, social: -4 });
+    const morningPenaltyMessage = applyPendingMorningPenalties(this.world);
     const completedAct0 = completeAct0Step(this.world, "sleep_first_night");
     this.updateLighting();
     saveWorldState(this.world);
     this.showToast(
       completedAct0
-        ? `Slept until ${formatClock(this.world)}. Act 1 begins: keep hustling toward rent and your own place.`
-        : `Slept until ${formatClock(this.world)}. Energy restored.`
+        ? `Slept until ${formatClock(this.world)}. Act 1 begins: keep hustling toward rent and your own place.${morningPenaltyMessage}`
+        : `Slept until ${formatClock(this.world)}. Energy restored.${morningPenaltyMessage}`
     );
   }
 

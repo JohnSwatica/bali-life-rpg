@@ -12,6 +12,7 @@ const ACT0_STEPS: Act0Step[] = [
 export function createDefaultLifeLoopState(): LifeLoopState {
   return {
     activityHistory: {},
+    pendingMorningPenalties: [],
     completedGoalIds: [],
     joinedClubIds: [],
     relationshipArcProgress: {},
@@ -53,6 +54,7 @@ export function migrateLifeLoopState(rawLife: unknown): LifeLoopState {
   const legacyLifeProgress = hasLegacyLifeProgress(partial);
   return {
     activityHistory: partial.activityHistory ?? {},
+    pendingMorningPenalties: migratePendingMorningPenalties(partial.pendingMorningPenalties),
     completedGoalIds: partial.completedGoalIds ?? [],
     joinedClubIds: partial.joinedClubIds ?? [],
     relationshipArcProgress: partial.relationshipArcProgress ?? {},
@@ -60,6 +62,31 @@ export function migrateLifeLoopState(rawLife: unknown): LifeLoopState {
     actProgress: migrateActProgressState(partial.actProgress, legacyLifeProgress, partial.settledIn ?? false),
     hustle: migrateHustleState(partial.hustle)
   };
+}
+
+function migratePendingMorningPenalties(raw: unknown): LifeLoopState["pendingMorningPenalties"] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return raw
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return null;
+      }
+      const value = entry as Partial<LifeLoopState["pendingMorningPenalties"][number]>;
+      if (typeof value.id !== "string" || typeof value.activityId !== "string" || typeof value.label !== "string") {
+        return null;
+      }
+      return {
+        id: value.id,
+        activityId: value.activityId,
+        label: value.label,
+        createdDay: typeof value.createdDay === "number" && Number.isFinite(value.createdDay) ? value.createdDay : 0,
+        meterDeltas: value.meterDeltas && typeof value.meterDeltas === "object" ? value.meterDeltas : {},
+        reason: typeof value.reason === "string" ? value.reason : value.label
+      };
+    })
+    .filter((entry): entry is LifeLoopState["pendingMorningPenalties"][number] => Boolean(entry));
 }
 
 function migrateActProgressState(raw: unknown, legacyLifeProgress = false, settledIn = false): ActProgressState {

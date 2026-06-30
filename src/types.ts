@@ -412,6 +412,15 @@ export interface LifeActivityRecord {
   earnedMoney: number;
 }
 
+export interface PendingMorningPenalty {
+  id: string;
+  activityId: string;
+  label: string;
+  createdDay: number;
+  meterDeltas: Partial<Record<Meter, number>>;
+  reason: string;
+}
+
 export interface ActProgressState {
   currentAct: 0 | 1 | 2 | 3 | 4 | 5;
   act0Step: Act0Step;
@@ -444,6 +453,7 @@ export interface HustleState {
 
 export interface LifeLoopState {
   activityHistory: Record<string, LifeActivityRecord>;
+  pendingMorningPenalties: PendingMorningPenalty[];
   completedGoalIds: string[];
   joinedClubIds: string[];
   relationshipArcProgress: Record<string, RelationshipArcProgress>;
