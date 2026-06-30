@@ -10,6 +10,7 @@ import {
   type VenueMapNode,
   type MapFeatureDefinition
 } from "../data/authoredStreetLayout";
+import { ambientNpcDefinitions, type AmbientNpcDefinition } from "../data/ambientNpcs";
 import { activityDefinitions, interestGroupDefinitions } from "../data/community";
 import { itemDefinitions } from "../data/items";
 import { playerHomeBase } from "../data/homeBase";
@@ -370,6 +371,9 @@ export class GameScene extends Phaser.Scene {
   private npcReactionCooldowns = new Map<string, number>();
   private npcReactionLabels = new Map<string, Phaser.GameObjects.Text>();
   private npcReactionCues = new Map<string, { cue: string; remainingMs: number }>();
+  private ambientNpcSprites = new Map<string, Phaser.Physics.Arcade.Sprite>();
+  private ambientNpcRouteMotion = new Map<string, NpcRouteMotionState>();
+  private ambientNpcIdlePhases = new Map<string, number>();
   private pickupSprites = new Map<string, Phaser.GameObjects.Sprite>();
   private playerBike?: Phaser.GameObjects.Sprite;
   private trafficBikes: TrafficBikeRuntime[] = [];
@@ -461,6 +465,7 @@ export class GameScene extends Phaser.Scene {
     this.createCollision();
     this.createPickups();
     this.createNpcs();
+    this.createAmbientNpcs();
     this.createPlayer();
     this.createTrafficBikes();
     this.createWantedOffenders();
@@ -498,6 +503,7 @@ export class GameScene extends Phaser.Scene {
     this.updateWantedOffenders(delta);
     this.updateGroupLine(delta);
     this.updateNpcRoutines(delta);
+    this.updateAmbientNpcs(delta);
     this.updatePickups();
     this.updateOpportunityFeed(delta);
     this.updateCommittedActivity(delta);
@@ -1122,6 +1128,25 @@ export class GameScene extends Phaser.Scene {
       sprite.body?.setSize(PLAYER_BODY_WIDTH, PLAYER_BODY_HEIGHT);
       sprite.body?.setOffset(PLAYER_BODY_OFFSET_X, PLAYER_BODY_OFFSET_Y);
       this.npcSprites.set(npc.id, sprite);
+    }
+  }
+
+  private createAmbientNpcs(): void {
+    for (const ambientNpc of ambientNpcDefinitions) {
+      const firstWaypoint = ambientNpc.route.waypoints[0];
+      if (!firstWaypoint) {
+        continue;
+      }
+      const sprite = this.physics.add
+        .sprite(firstWaypoint.x, firstWaypoint.y, ambientNpc.spriteKey)
+        .setDepth(firstWaypoint.y)
+        .setTint(ambientNpc.tint)
+        .setAlpha(0.88)
+        .setImmovable(true);
+      this.setSpriteFacing(sprite, false, CHARACTER_SPRITE_SCALE * 0.92);
+      sprite.body?.setSize(PLAYER_BODY_WIDTH, PLAYER_BODY_HEIGHT);
+      sprite.body?.setOffset(PLAYER_BODY_OFFSET_X, PLAYER_BODY_OFFSET_Y);
+      this.ambientNpcSprites.set(ambientNpc.id, sprite);
     }
   }
 
@@ -1896,6 +1921,58 @@ export class GameScene extends Phaser.Scene {
     return label;
   }
 
+  private updateAmbientNpcs(delta: number): void {
+    for (const ambientNpc of ambientNpcDefinitions) {
+      const sprite = this.ambientNpcSprites.get(ambientNpc.id);
+      if (!sprite) {
+        continue;
+      }
+
+      const previousMotion = this.ambientNpcRouteMotion.get(ambientNpc.id) ?? {
+        routeId: ambientNpc.route.id,
+        waypointIndex: 0,
+        pauseMsRemaining: 0
+      };
+      const nextMotion = advanceNpcRouteMotion(
+        ambientNpc.route,
+        {
+          ...previousMotion,
+          x: sprite.x,
+          y: sprite.y
+        },
+        delta,
+        scaleDistance(ambientNpc.speedPxPerSecond ?? 32)
+      );
+
+      this.ambientNpcRouteMotion.set(ambientNpc.id, {
+        routeId: nextMotion.routeId,
+        waypointIndex: nextMotion.waypointIndex,
+        pauseMsRemaining: nextMotion.pauseMsRemaining
+      });
+
+      if (nextMotion.moving) {
+        this.ambientNpcIdlePhases.set(ambientNpc.id, 0);
+        sprite.setAngle(0);
+        this.setSpriteFacing(sprite, nextMotion.facingDx < -1, CHARACTER_SPRITE_SCALE * 0.92);
+      } else {
+        this.updateAmbientNpcIdleVisual(ambientNpc, sprite, delta);
+      }
+      sprite.setPosition(nextMotion.x, nextMotion.y);
+      sprite.body?.updateFromGameObject();
+      sprite.setDepth(sprite.y - 2);
+    }
+  }
+
+  private updateAmbientNpcIdleVisual(ambientNpc: AmbientNpcDefinition, sprite: Phaser.Physics.Arcade.Sprite, delta: number): void {
+    const elapsed = ((this.ambientNpcIdlePhases.get(ambientNpc.id) ?? 0) + delta) % 6000;
+    const visual = getNpcIdleVisual(ambientNpc, elapsed);
+    const facingLeft = sprite.scaleX < 0;
+    const scale = CHARACTER_SPRITE_SCALE * 0.92;
+    this.ambientNpcIdlePhases.set(ambientNpc.id, elapsed);
+    sprite.setAngle(visual.angleDegrees * 0.65);
+    sprite.setScale(facingLeft ? -scale : scale, scale * visual.scaleY);
+  }
+
   private updatePickups(): void {
     for (const pickup of pickupDefinitions) {
       const sprite = this.pickupSprites.get(pickup.id);
@@ -1914,6 +1991,10 @@ export class GameScene extends Phaser.Scene {
     const within = (object: { x: number; y: number }): boolean => Phaser.Geom.Rectangle.Contains(visibleBounds, object.x, object.y);
 
     for (const sprite of this.npcSprites.values()) {
+      sprite.setVisible(within(sprite));
+    }
+
+    for (const sprite of this.ambientNpcSprites.values()) {
       sprite.setVisible(within(sprite));
     }
 

@@ -11,6 +11,7 @@ vi.mock("phaser", () => ({
 }));
 
 import { npcDefinitions } from "../data/npcs";
+import { ambientNpcDefinitions } from "../data/ambientNpcs";
 import { InteractionController } from "../systems/interaction/InteractionController";
 import { getNpcIdleCue, getNpcIdleTag, getNpcIdleVisual } from "../systems/npcs/NpcIdleBehavior";
 import {
@@ -182,6 +183,17 @@ describe("NPC proximity reactions", () => {
       getNpcProximityReaction(friendlyMemory, 80, 120).pauseMs
     );
     expect(getNpcProximityReaction(trustedMemory, 80, 120).cue).toBe("brightens");
+  });
+});
+
+describe("ambient background population", () => {
+  it("adds non-interactive background walkers with route and idle data", () => {
+    expect(ambientNpcDefinitions.length).toBeGreaterThanOrEqual(3);
+    for (const ambientNpc of ambientNpcDefinitions) {
+      expect(npcDefinitions[ambientNpc.id]).toBeUndefined();
+      expect(ambientNpc.route.waypoints.length).toBeGreaterThanOrEqual(3);
+      expect(ambientNpc.idleTag).toBe("generic_idle");
+    }
   });
 });
 
