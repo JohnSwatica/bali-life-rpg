@@ -35,7 +35,13 @@ import {
 } from "../systems/reputation/ReputationState";
 import { bumpRelationshipAffinity } from "../systems/relationships/RelationshipMemory";
 import { completeNextRelationshipArcBeat } from "../systems/relationships/RelationshipArcs";
-import { resolveNpcQuestInteraction, getQuestObjectives } from "../systems/quests/QuestRegistry";
+import {
+  consumeQuestObjective,
+  getQuestObjectives,
+  isQuestObjectiveSatisfied,
+  resolveNpcQuestInteraction,
+  type QuestObjective
+} from "../systems/quests/QuestRegistry";
 import { createInitialWorldState } from "../systems/WorldState";
 import type { PlayerEntityState } from "../types";
 
@@ -87,9 +93,28 @@ describe("QuestRegistry", () => {
     expect(player.money).toBe(startingMoney + 90 + 75);
   });
 
-  it.skip("exercises collect/visit/buy/talk/activity/meter objective handlers once scripted fixtures exist", () => {
-    // The exported registry currently has two starter quest scripts, both using deliver objectives.
-    // The generic private handlers for other objective types need fixtures or an exported pure evaluator.
+  it("exercises the generic objective evaluator without requiring extra quest fixtures", () => {
+    const world = createInitialWorldState();
+    const player = world.players[world.localPlayerId];
+    const collect: QuestObjective = { type: "collect", itemId: "coconut", quantity: 2 };
+    const deliver: QuestObjective = { type: "deliver", itemId: "coconut", quantity: 2 };
+    const buy: QuestObjective = { type: "buy", itemId: "butter_croissant", quantity: 1 };
+    const startingCoconuts = getQuantity(player, "coconut");
+
+    expect(isQuestObjectiveSatisfied(player, { ...collect, quantity: startingCoconuts + 2 })).toBe(false);
+    addItem(player, "coconut", 2);
+    expect(isQuestObjectiveSatisfied(player, collect)).toBe(true);
+    expect(isQuestObjectiveSatisfied(player, deliver)).toBe(true);
+    expect(consumeQuestObjective(player, collect)).toEqual([]);
+    expect(getQuantity(player, "coconut")).toBe(startingCoconuts + 2);
+    expect(consumeQuestObjective(player, deliver)).toEqual([{ itemId: "coconut", quantity: 2 }]);
+    expect(getQuantity(player, "coconut")).toBe(startingCoconuts);
+
+    expect(isQuestObjectiveSatisfied(player, buy)).toBe(false);
+    addItem(player, "butter_croissant", 1);
+    expect(isQuestObjectiveSatisfied(player, buy)).toBe(true);
+    expect(isQuestObjectiveSatisfied(player, { type: "talk", npcId: "ari" })).toBe(true);
+    expect(isQuestObjectiveSatisfied(player, { type: "visit", venueId: "berawa_beach" })).toBe(true);
   });
 });
 

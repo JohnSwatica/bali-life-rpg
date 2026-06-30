@@ -3,7 +3,7 @@ import { getQuantity, removeItem } from "../Inventory";
 import { completeQuest, isQuestActive, isQuestComplete, startQuest } from "../QuestSystem";
 import type { GameIntent, InventoryEntry, PlayerEntityState, QuestDefinition, ReputationTag } from "../../types";
 
-type QuestObjective =
+export type QuestObjective =
   | { type: "collect"; itemId: string; quantity: number }
   | { type: "deliver"; itemId: string; quantity: number }
   | { type: "visit"; venueId: string }
@@ -81,7 +81,7 @@ export function resolveNpcQuestInteraction(player: PlayerEntityState, npcId: str
   }
 
   if (isQuestActive(player, script.questId)) {
-    if (!isObjectiveSatisfied(player, script.objective)) {
+    if (!isQuestObjectiveSatisfied(player, script.objective)) {
       return {
         handled: true,
         dialogue: script.progressLine,
@@ -90,7 +90,7 @@ export function resolveNpcQuestInteraction(player: PlayerEntityState, npcId: str
       };
     }
 
-    consumeObjective(player, script.objective);
+    consumeQuestObjective(player, script.objective);
     const completed = completeQuest(player, script.questId);
     return {
       handled: true,
@@ -131,7 +131,7 @@ export function getQuestObjectives(questId: string): QuestObjective[] {
   return script ? [script.objective] : [];
 }
 
-function isObjectiveSatisfied(player: PlayerEntityState, objective: QuestObjective): boolean {
+export function isQuestObjectiveSatisfied(player: PlayerEntityState, objective: QuestObjective): boolean {
   if (objective.type === "collect" || objective.type === "deliver" || objective.type === "buy") {
     return getQuantity(player, objective.itemId) >= objective.quantity;
   }
@@ -144,7 +144,7 @@ function isObjectiveSatisfied(player: PlayerEntityState, objective: QuestObjecti
   return false;
 }
 
-function consumeObjective(player: PlayerEntityState, objective: QuestObjective): InventoryEntry[] {
+export function consumeQuestObjective(player: PlayerEntityState, objective: QuestObjective): InventoryEntry[] {
   if (objective.type !== "deliver") {
     return [];
   }
