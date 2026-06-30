@@ -9,6 +9,7 @@ import {
 import { bumpRelationshipAffinity, getAffinityTier, getRelationship, recordRelationshipMemory } from "../relationships/RelationshipMemory";
 import { adjustReputation, awardReputationTag } from "../reputation/ReputationState";
 import { getRentPressureState } from "../hustle/HustleEconomy";
+import { getHustleNextStep } from "../hustle/HustleGoals";
 import { advanceWorldMinutes } from "../time/DailyClock";
 import type {
   LiveOpportunity,
@@ -161,11 +162,12 @@ export function generateOpportunityPhoneTexts(state: OpportunityRuntimeState, wo
   }
 
   if (world.life.actProgress.firstDayComplete && !world.life.hustle.activeDelivery && isHourInWindow(hour, 8, 20)) {
+    const nextStep = getHustleNextStep(world);
     candidates.push({
       id: `hustle-board:ibu-sari:${dayKey}`,
       at: now,
       from: "Ibu Sari",
-      body: "If the day feels empty, check the Hustle Board. Small runs become rent money if you keep your rating clean.",
+      body: `${nextStep.title}: ${nextStep.detail}`,
       venueId: "canggu_station",
       read: false
     });

@@ -52,6 +52,8 @@ import {
 } from "../systems/life/ActivityEngine";
 import { getSettlingInGoalTitle, updateSettlingInGoals } from "../systems/life/SettlingInGoals";
 import { completeAct0Step, getAct0HudLines, isAct0Complete, markAct0MealProgress } from "../systems/life/ActProgression";
+import { areAct2GoalsComplete, getAct2NextStep } from "../systems/life/Act2Goals";
+import { getAct3ReadinessNextStep } from "../systems/life/Act3Readiness";
 import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
 import { acceptDelivery, completeDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
 import { getRentPressureState, payHustleRent, repairScooter, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
@@ -1855,10 +1857,21 @@ export class GameScene extends Phaser.Scene {
       return getAct0HudLines(this.world);
     }
     if (this.world.life.hustle.moveOutReady) {
+      const act3NextStep = areAct2GoalsComplete(this.world) ? getAct3ReadinessNextStep(this.world) : null;
+      if (act3NextStep?.urgency === "ceo") {
+        return [
+          "Act 3 ready: building something.",
+          act3NextStep.detail,
+          "Do not open the business sim until the CEO confirms the scope."
+        ];
+      }
+      const act2NextStep = getAct2NextStep(this.world);
       return [
         this.world.life.actProgress.currentAct >= 2 ? "Act 2: finding your people." : "Act 1 milestone: move-out ready.",
         this.world.life.actProgress.currentAct >= 2
-          ? "You have breathing room. Follow the social markers, join a crew, and turn familiar faces into real friends."
+          ? act2NextStep
+            ? `Next: ${act2NextStep.title}. ${act2NextStep.detail}`
+            : "You have breathing room. Follow the social markers, join a crew, and turn familiar faces into real friends."
           : "You have the runs, rating, and cash record to leave the cramped kos. Next chapter: people, crew, and a better room."
       ];
     }

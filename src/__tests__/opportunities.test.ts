@@ -49,6 +49,15 @@ describe("opportunity engine", () => {
     world.reputation.score = 58;
     expect(isOpportunityEligible(template("focus_table_client_referral"), world, state)).toBe(true);
 
+    setHour(world, 9);
+    world.reputation.score = 59;
+    world.life.joinedClubIds = [];
+    expect(isOpportunityEligible(template("run_crew_breakfast_shift"), world, state)).toBe(false);
+    world.life.joinedClubIds.push("berawa_run_crew");
+    expect(isOpportunityEligible(template("run_crew_breakfast_shift"), world, state)).toBe(false);
+    world.reputation.score = 61;
+    expect(isOpportunityEligible(template("run_crew_breakfast_shift"), world, state)).toBe(true);
+
     setHour(world, 17);
     expect(isOpportunityEligible(template("ari_sunset_ping"), world, state)).toBe(false);
     world.relationships.push({
@@ -165,6 +174,25 @@ describe("opportunity engine", () => {
     expect(generateOpportunityPhoneTexts(state, world).some((message) => message.id.startsWith("hustle-board"))).toBe(false);
   });
 
+  it("uses Act 1 next-step guidance in the daily Hustle Board nudge", () => {
+    const world = createInitialWorldState();
+    const state = createDefaultOpportunityState();
+    world.life.actProgress.firstDayComplete = true;
+    world.life.actProgress.currentAct = 1;
+    world.players[world.localPlayerId].hasBike = true;
+    world.clock.day = 4;
+    world.life.hustle.rentDueDay = 4;
+    setHour(world, 9);
+
+    const created = generateOpportunityPhoneTexts(state, world);
+    expect(created).toContainEqual(
+      expect.objectContaining({
+        id: "hustle-board:ibu-sari:4",
+        body: expect.stringContaining("Earn rent money")
+      })
+    );
+  });
+
   it("sends a daily rent reminder only when rent is close", () => {
     const world = createInitialWorldState();
     const state = createDefaultOpportunityState();
@@ -200,5 +228,40 @@ describe("opportunity engine", () => {
     world.clock.day = 2;
     world.life.joinedClubIds.push("berawa_run_crew");
     expect(generateOpportunityPhoneTexts(state, world).some((message) => message.id.startsWith("act2-invite"))).toBe(false);
+  });
+
+  it("resolves social-payoff and Act 3-seed opportunities through existing rewards", () => {
+    const world = createInitialWorldState();
+    const state = createDefaultOpportunityState();
+    world.opportunities = state;
+    world.life.actProgress.firstDayComplete = true;
+    world.life.actProgress.currentAct = 2;
+    world.life.joinedClubIds.push("brunch_builders_table");
+    world.reputation.score = 64;
+    setHour(world, 12);
+
+    const brunchLive = spawnOpportunity(state, template("brunch_builders_paid_intro"), getAbsoluteMinute(world.clock));
+    expect(acceptOpportunity(state, brunchLive.id, getAbsoluteMinute(world.clock)).ok).toBe(true);
+    const brunchResult = resolveOpportunity(state, world, brunchLive.id, getAbsoluteMinute(world.clock), 1);
+    expect(brunchResult.ok).toBe(true);
+    expect(world.players[world.localPlayerId].money).toBeGreaterThan(200);
+    expect(world.relationships.find((memory) => memory.subjectId === "made")?.affinity).toBeGreaterThan(0);
+    expect(state.completedTemplateIds).toContain("brunch_builders_paid_intro");
+
+    setHour(world, 15);
+    world.reputation.score = 68;
+    world.relationships.push({
+      subjectType: "npc",
+      subjectId: "ibu_sari",
+      affinity: 8,
+      lastInteractionAt: 1,
+      memories: [{ type: "visited", at: 1, detail: "Mentor trust" }]
+    });
+    const sariLive = spawnOpportunity(state, template("sari_warung_seed_errand"), getAbsoluteMinute(world.clock));
+    expect(acceptOpportunity(state, sariLive.id, getAbsoluteMinute(world.clock)).ok).toBe(true);
+    const sariResult = resolveOpportunity(state, world, sariLive.id, getAbsoluteMinute(world.clock), 1);
+    expect(sariResult.ok).toBe(true);
+    expect(world.reputation.tags).toContain("local_trusted");
+    expect(state.completedTemplateIds).toContain("sari_warung_seed_errand");
   });
 });

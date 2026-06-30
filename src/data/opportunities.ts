@@ -291,5 +291,100 @@ export const opportunityTemplates: OpportunityTemplate[] = [
     },
     weight: 5,
     cooldownMin: 1440
+  },
+  {
+    id: "run_crew_breakfast_shift",
+    type: "gig",
+    title: "Run crew breakfast shift",
+    blurb: "The run crew needs one reliable hand to help steer post-loop breakfast chaos into paid work.",
+    trigger: {
+      timeWindow: { startHour: 8, endHour: 10.5 },
+      venueIds: ["milk_madu_berawa"],
+      requiresClubId: "berawa_run_crew",
+      minReputation: 60
+    },
+    locationVenueId: "milk_madu_berawa",
+    durationMin: 85,
+    timeCostMin: 60,
+    reward: {
+      money: 135,
+      meterDeltas: { energy: -14, wellbeing: 4, focus: 5, social: 12 },
+      affinityBumps: [
+        { npcId: "ari", amount: 3 },
+        { npcId: "kadek", amount: 3 }
+      ],
+      reputation: { delta: 2, tag: "reliable", reason: "Turned run crew trust into a paid breakfast shift" }
+    },
+    weight: 5,
+    cooldownMin: 1440
+  },
+  {
+    id: "brunch_builders_paid_intro",
+    type: "gig",
+    title: "Paid founder intro @ Milk & Madu",
+    blurb: "A brunch-table regular needs a tiny ops fix and would rather pay someone the group already knows.",
+    trigger: {
+      timeWindow: { startHour: 11, endHour: 14 },
+      venueIds: ["milk_madu_berawa"],
+      requiresClubId: "brunch_builders_table",
+      minReputation: 62
+    },
+    locationVenueId: "milk_madu_berawa",
+    durationMin: 100,
+    timeCostMin: 70,
+    reward: {
+      money: 175,
+      meterDeltas: { energy: -16, wellbeing: 2, focus: 12, social: 10 },
+      affinityBumps: [{ npcId: "made", amount: 4 }],
+      reputation: { delta: 3, tag: "social", reason: "Converted brunch-builder trust into useful paid work" }
+    },
+    weight: 4,
+    cooldownMin: 1440
+  },
+  {
+    id: "surf_circle_board_repair",
+    type: "help_out",
+    title: "Surf circle board patch",
+    blurb: "Ari's circle has a dinged board and a tiny thank-you budget. Practical help buys beach trust.",
+    trigger: {
+      timeWindow: { startHour: 15, endHour: 18 },
+      venueIds: ["berawa_beach"],
+      requiresClubId: "berawa_surf_circle",
+      requiresAffinity: { npcId: "ari", tier: "friendly" }
+    },
+    locationVenueId: "berawa_beach",
+    durationMin: 90,
+    timeCostMin: 45,
+    reward: {
+      money: 90,
+      meterDeltas: { energy: -10, wellbeing: 8, focus: 5, social: 12 },
+      affinityBumps: [{ npcId: "ari", amount: 5 }],
+      reputation: { delta: 2, tag: "community_contributor", reason: "Helped the surf circle solve a real problem" }
+    },
+    weight: 4,
+    cooldownMin: 1440
+  },
+  {
+    id: "sari_warung_seed_errand",
+    type: "rumor",
+    title: "Ibu Sari's warung numbers",
+    blurb: "Ibu Sari lets you help with a small stock-and-margin errand, the first real hint of running your own spot someday.",
+    trigger: {
+      timeWindow: { startHour: 14, endHour: 17 },
+      venueIds: ["canggu_station"],
+      minReputation: 65,
+      requiresAffinity: { npcId: "ibu_sari", tier: "friendly" }
+    },
+    locationVenueId: "canggu_station",
+    durationMin: 120,
+    timeCostMin: 55,
+    reward: {
+      money: 80,
+      meterDeltas: { energy: -8, wellbeing: 8, focus: 12, social: 6 },
+      affinityBumps: [{ npcId: "ibu_sari", amount: 5 }],
+      reputation: { delta: 2, tag: "local_trusted", reason: "Helped Ibu Sari think through warung stock basics" }
+    },
+    weight: 3,
+    cooldownMin: 2880
   }
 ];

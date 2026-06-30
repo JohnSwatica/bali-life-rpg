@@ -15,7 +15,8 @@ import { shopDefinitions } from "../data/shops";
 import { addItem, getQuantity } from "../systems/Inventory";
 import { InteractionController, type InteractionOffender } from "../systems/interaction/InteractionController";
 import { applyActivity, getVenueActivityContext } from "../systems/life/ActivityEngine";
-import { getAct2GoalStates } from "../systems/life/Act2Goals";
+import { getAct2GoalStates, getAct2NextStep } from "../systems/life/Act2Goals";
+import { getAct3ReadinessGoalStates, getAct3ReadinessNextStep, isAct3Ready } from "../systems/life/Act3Readiness";
 import { getSettlingInGoalStates, updateSettlingInGoals } from "../systems/life/SettlingInGoals";
 import {
   addHiddenTrustFlag,
@@ -134,6 +135,7 @@ describe("Act 2 social goals", () => {
   it("stay hidden before Act 2 and then track club rhythm plus relationship beats", () => {
     const world = createInitialWorldState();
     expect(getAct2GoalStates(world)).toEqual([]);
+    expect(getAct2NextStep(world)).toBeNull();
 
     world.life.actProgress.currentAct = 2;
     let states = Object.fromEntries(getAct2GoalStates(world).map((goal) => [goal.id, goal.complete]));
@@ -142,14 +144,17 @@ describe("Act 2 social goals", () => {
       attend_club_rhythm: false,
       deepen_a_bond: false
     });
+    expect(getAct2NextStep(world)).toMatchObject({ title: "Join a first crew" });
 
     world.life.joinedClubIds.push("berawa_run_crew");
     states = Object.fromEntries(getAct2GoalStates(world).map((goal) => [goal.id, goal.complete]));
     expect(states.join_first_crew).toBe(true);
     expect(states.attend_club_rhythm).toBe(false);
+    expect(getAct2NextStep(world)).toMatchObject({ title: "Attend Run Crew Sunrise Loop" });
 
     world.runtimeEvents.attendedEventIds.push("berawa_run_crew_loop");
     bumpRelationshipAffinity(world, "npc", "ari", 4, "showed up for Act 2", 2);
+    expect(getAct2NextStep(world)).toMatchObject({ title: "Talk to ari" });
     completeNextRelationshipArcBeat(world, "ari", 2);
     states = Object.fromEntries(getAct2GoalStates(world).map((goal) => [goal.id, goal.complete]));
     expect(states).toEqual({
@@ -157,6 +162,47 @@ describe("Act 2 social goals", () => {
       attend_club_rhythm: true,
       deepen_a_bond: true
     });
+    expect(getAct2NextStep(world)).toMatchObject({ title: "Act 2 foundation complete", urgency: "complete" });
+  });
+});
+
+describe("Act 3 readiness hooks", () => {
+  it("stay derived from Act 2 trust, capital, and business-lead signals", () => {
+    const world = createInitialWorldState();
+    const player = world.players[world.localPlayerId];
+    expect(getAct3ReadinessGoalStates(world)).toEqual([]);
+    expect(getAct3ReadinessNextStep(world)).toBeNull();
+
+    world.life.actProgress.currentAct = 2;
+    world.life.hustle.moveOutReady = true;
+    let states = Object.fromEntries(getAct3ReadinessGoalStates(world).map((goal) => [goal.id, goal.complete]));
+    expect(states).toEqual({
+      social_rhythm: false,
+      mentor_trust: false,
+      crew_candidate: false,
+      seed_capital: false,
+      business_lead: false
+    });
+    expect(getAct3ReadinessNextStep(world)).toMatchObject({ title: "Crew rhythm" });
+
+    world.life.joinedClubIds.push("berawa_run_crew");
+    world.runtimeEvents.attendedEventIds.push("berawa_run_crew_loop");
+    bumpRelationshipAffinity(world, "npc", "ari", 4, "showed up for Act 2", 2);
+    completeNextRelationshipArcBeat(world, "ari", 2);
+    bumpRelationshipAffinity(world, "npc", "ibu_sari", 8, "mentor trust", 3);
+    player.money = 1250;
+    world.opportunities.completedTemplateIds.push("sari_warung_seed_errand");
+
+    states = Object.fromEntries(getAct3ReadinessGoalStates(world).map((goal) => [goal.id, goal.complete]));
+    expect(states).toEqual({
+      social_rhythm: true,
+      mentor_trust: true,
+      crew_candidate: true,
+      seed_capital: true,
+      business_lead: true
+    });
+    expect(isAct3Ready(world)).toBe(true);
+    expect(getAct3ReadinessNextStep(world)).toMatchObject({ title: "CEO unlock needed", urgency: "ceo" });
   });
 });
 

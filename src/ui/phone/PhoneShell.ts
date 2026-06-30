@@ -14,7 +14,8 @@ import { getLiveOpportunityCountdown, getOpportunityTemplate } from "../../syste
 import { getAffinityPerk, getAffinityTier, summarizeRelationshipMemories } from "../../systems/relationships/RelationshipMemory";
 import { getRelationshipArcStatesForNpc } from "../../systems/relationships/RelationshipArcs";
 import { getSettlingInGoalStates } from "../../systems/life/SettlingInGoals";
-import { getAct2GoalStates } from "../../systems/life/Act2Goals";
+import { getAct2GoalStates, getAct2NextStep } from "../../systems/life/Act2Goals";
+import { getAct3ReadinessGoalStates, getAct3ReadinessNextStep } from "../../systems/life/Act3Readiness";
 import { getAct0StepState } from "../../systems/life/ActProgression";
 import { getDeliveryDefinition } from "../../data/deliveries";
 import { getDeliveryOfferAvailability, getEffectiveDeliveryTerms, previewDeliveryCondition } from "../../systems/hustle/DeliverySystem";
@@ -419,7 +420,16 @@ export class PhoneShell {
       return `${goal.complete ? "Done" : "Hustle"}: ${goal.title} - ${progress}`;
     });
     const hustleNext = getHustleNextStep(world);
-    const act2Goals = getAct2GoalStates(world).map((goal) => `${goal.complete ? "Done" : "Social"}: ${goal.title} - ${goal.description}`);
+    const act2Next = getAct2NextStep(world);
+    const act2Goals = getAct2GoalStates(world).map((goal) => {
+      const progress = goal.complete ? goal.progress : `${goal.description} (${goal.progress})`;
+      return `${goal.complete ? "Done" : "Social"}: ${goal.title} - ${progress}`;
+    });
+    const act3Next = getAct3ReadinessNextStep(world);
+    const act3Goals = getAct3ReadinessGoalStates(world).map((goal) => {
+      const progress = goal.complete ? goal.progress : `${goal.description} (${goal.progress})`;
+      return `${goal.complete ? "Ready" : "Build"}: ${goal.title} - ${progress}`;
+    });
     const act0Step = getAct0StepState(world);
     return [
       ...quests,
@@ -430,7 +440,12 @@ export class PhoneShell {
       "Act 1 Hustle",
       `Next: ${hustleNext.title} - ${hustleNext.detail}`,
       ...hustleGoals,
-      ...(act2Goals.length ? ["", "Act 2 Find Your People", ...act2Goals] : []),
+      ...(act2Goals.length
+        ? ["", "Act 2 Find Your People", ...(act2Next ? [`Next: ${act2Next.title} - ${act2Next.detail}`] : []), ...act2Goals]
+        : []),
+      ...(act3Goals.length
+        ? ["", "Act 3 Building Something", ...(act3Next ? [`Next: ${act3Next.title} - ${act3Next.detail}`] : []), ...act3Goals]
+        : []),
       "",
       "Settling In",
       ...goals,

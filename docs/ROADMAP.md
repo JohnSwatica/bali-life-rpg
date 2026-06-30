@@ -30,8 +30,8 @@ Locked direction from [ACT3_BUSINESS_DESIGN.md](../ACT3_BUSINESS_DESIGN.md):
 
 - Act 0 guided first day exists in code: Ibu Sari, borrowed scooter, first BAKED delivery, meal/coffee step, cheap-kos sleep marker, HUD/Phone objective visibility.
 - Act 1 hustle exists in code: delivery board, driver rating, delivery earnings, rent pressure, scooter condition/repair/upgrade, move-out threshold, and Act 1 goals.
-- Act 2 social systems exist in code: events, clubs, relationship arcs, Ari handoff invite, guide markers, Act 2 goals, and at least one club/reputation-gated opportunity.
-- Act 3 remains design-only in `ACT3_BUSINESS_DESIGN.md`.
+- Act 2 social systems exist in code: events, clubs, relationship arcs, Ari handoff invite, guide markers, Act 2 goals/next-step guidance, and multiple club/reputation-gated opportunities.
+- Act 3 remains design-first, but readiness hooks now exist in code for social foundation, mentor trust, crew candidates, seed capital, and trusted business leads. The management sim itself remains locked behind product approval.
 
 ## Next Gameplay Steps
 

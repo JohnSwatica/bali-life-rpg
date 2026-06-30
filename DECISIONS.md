@@ -323,3 +323,13 @@ Scheduling/reminder behavior is also documented: no automations should be create
 Act 1 now has a single `getHustleNextStep()` helper alongside `getHustleGoalStates()`. The HUD and Phone > Quests both use it to explain the next immediate action across active deliveries, scooter repair, rent pressure, scooter upgrades, delivery rhythm, rating, earnings, and move-out readiness.
 
 This is intentionally guidance only: no save schema, economy math, delivery state machine, or phone-feed action changed. The goal is first-hour clarity while preserving the existing local Act 1 systems.
+
+## 2026-06-30 - Three-Milestone Spine Surface
+
+The next three major milestones are now visible in code without violating the Act 3 boundary:
+
+- Act 1 / Found Your Feet: `getHustleNextStep()` also drives Ibu Sari's daily Hustle Board nudge, so rent, repair, upgrade, active delivery, and delivery-rhythm blockers point to the same next action.
+- Act 2 / Crew And A Name: `getAct2NextStep()` gives HUD + Phone a concrete social recovery path, and additional club-gated opportunity templates make run crew, brunch builders, surf circle, and focus-table membership open better work/perks.
+- Act 3 / Dream Lit: `Act3Readiness` derives hook readiness from Act 2 completion, Ibu Sari mentor trust, a first crew candidate, seed capital, and a completed business-lead opportunity.
+
+The Act 3 management simulation is still intentionally not implemented. When all readiness hooks are complete, the HUD/Phone says a CEO/product unlock is needed before opening the business sim, preserving the current scope boundary while making the next ambition leg visible.
