@@ -14,7 +14,7 @@ Current durable truth:
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test` = 100 passing, 3 skipped; `npm run build` passes.
+- Current verification: `npm test` = 109 passing, 0 skipped; `npm run build` passes.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Canonical act order, set in stone for near-term work:
@@ -43,7 +43,9 @@ Immediate next move: run a human play-feel pass through the station-first first-
 
 - Gameplay-stations follow-up is active on `feat/gameplay-stations`: the station layer is now wired into the first-hour spine instead of sitting beside it. Act 0 meal/coffee progress is satisfied by cafe station choices, low-meter Act 1 guidance points to recovery stations, rent is payable at the cheap-kos home station, Ibu Sari can open a field Hustle Board, and scooter repair/upgrade actions live at the scooter rental counter.
 - The phone remains a reference/backup surface for goals, feed, and details, but the immediate loop is now mostly field/station first: choose coffee/brunch at cafe stations, ask Ibu Sari for jobs, ride jobs, recover at warung/beach/cafe/home/coworking when meters dip, pay rent at home, and service the scooter at the rental counter.
-- New station-oriented coverage in `src/__tests__/firstHourProof.test.ts`, `src/__tests__/hustleDelivery.test.ts`, and `src/__tests__/fieldGuidance.test.ts` checks Act 0 cafe station progress, low-meter recovery guidance, rent priority, home rent copy, and scooter-counter upgrade targeting.
+- Act 2 station menus now bridge into relevant crews through `src/systems/life/StationSocialBridge.ts`: beach stations expose beach/run circles, cafe stations expose focus/brunch groups, and coworking points toward the focus table without auto-joining or adding save fields. The Act 2 objective now also points to Milk & Madu's brunch builders alongside the beach crew and focus table.
+- New station-oriented coverage in `src/__tests__/firstHourProof.test.ts`, `src/__tests__/hustleDelivery.test.ts`, `src/__tests__/fieldGuidance.test.ts`, and `src/__tests__/dailyLoop.test.ts` checks Act 0 cafe station progress, low-meter recovery guidance, rent priority, home rent copy, scooter-counter upgrade targeting, and station-to-crew bridges.
+- Two old private-scene test seams are now system helpers: `src/systems/events/EventParticipation.ts` applies event money/meter/time/item/NPC-affinity effects, and `src/systems/life/SleepCycle.ts` applies sleep recovery plus queued morning penalties. `QuestRegistry` now exports the generic objective evaluator/consumer so collect/deliver/buy/talk/visit objective behavior is covered without adding fake quest content.
 - First-hour proof sprint is complete on `feat/first-hour-proof`: the playable act spine now has an executable proof path from a new save through Act 0, Act 1 hustle, first rent, Act 2 social rhythm, and one crew-opened opportunity. The guard test lives in `src/__tests__/firstHourProof.test.ts`.
 - Act 1 move-out readiness is now centralized in `src/systems/hustle/HustleMilestones.ts`: Found Your Feet requires 5 deliveries, Rp 700 delivery earnings, 4.2★ driver rating, and first rent covered. Delivery completion now calls out when only rent is blocking the move-out beat; paying rent can advance the player into Act 2 if the other thresholds are already met.
 - Act 1 guidance now prioritizes delivery rhythm before recommending the scooter upgrade, then points clearly at first-rent coverage when rent is the final Act 2 blocker. The field objective can target home for `Cover first rent`, so the player has an on-field destination instead of only Phone copy.
@@ -320,7 +322,7 @@ Immediate next move: run a human play-feel pass through the station-first first-
 - Phase B social phases 1-4 each passed `npm run build` before commit.
 - Phase B smoke checks passed: Berawa Beach Run is active at Berawa Beach on the expected day/time; joining Berawa Run Crew stores `world.life.joinedClubIds` and reveals its recurring member event; Ari's first relationship beat completes from affinity and persists to `world.life.relationshipArcProgress`; `plug_in`, `find_your_crew`, and `deepen_a_bond` complete from event/club/arc state.
 - Core test suite is now installed with Vitest and runs through `npm test`.
-- Current suite result: 95 passing tests, 3 documented skips across save migration, daily loop, social layer, opportunities, quests/goals/reputation/interaction, authored street layout invariants, Act 0 delivery/hustle state, Act 0 home sleep gating, Act 1 delivery-board gating and conditions, scooter wear/repair gating, first-rent-gated move-out readiness, local rent/scooter/rent-pressure economy actions, Act 1 hustle goals and next-step guidance, Act 2 social goals/next-step/payoff guidance, Act 3 readiness hooks, first-hour proof path, liveliness/world-scene read models, and the daily Hustle Board/rent/Act 2 invite phone nudges.
+- Current suite result: 109 passing tests, 0 skipped across save migration, daily loop, sleep recovery, social event participation, social layer, opportunities, quests/goals/reputation/interaction, authored street layout invariants, Act 0 delivery/hustle state, Act 0 home sleep gating, Act 1 delivery-board gating and conditions, scooter wear/repair gating, first-rent-gated move-out readiness, local rent/scooter/rent-pressure economy actions, Act 1 hustle goals and next-step guidance, Act 2 social goals/next-step/payoff guidance, station-to-crew bridges, Act 3 readiness hooks, first-hour proof path, liveliness/world-scene read models, and the daily Hustle Board/rent/Act 2 invite phone nudges.
 - Opportunity tests cover time/reputation/club/affinity eligibility gates, deterministic 2-4 live pool maintenance, expiry/missed tracking, accept/resolve rewards, chain spawning, relationship cooling from missed social pings, and v8-to-v9 persistence of live/completed/missed/feed state.
 - `npm run build` passed after every core-test-suite phase.
 - The test suite fixed one unambiguous data-seam bug: `finns_beach_club` is now present in `VenueRegistry` so the FINNS Sunset Social event host/location resolves.
@@ -378,7 +380,7 @@ Immediate next move: run a human play-feel pass through the station-first first-
 - Core daily loop is now playable but not fully tuned by human feel; activity deltas are intentionally conservative and should be adjusted after a few real-device day runs.
 - Phase B social content is dev-authored only. Players can attend events and join clubs, but cannot create/host events, create clubs, author promotions, hatch housing groups, or use real-world integrations yet.
 - Relationship arc payoffs are local hooks/text plus small state changes. Discount and housing-lead payoffs are intentionally teasers, not live commerce or housing systems.
-- Test skips to resolve later: full sleep meter restoration and full on-site event participation effects currently live in private `GameScene` methods; non-deliver quest objective handlers need scripted fixtures or an exported pure evaluator.
+- No automated tests are currently skipped. The former sleep-recovery, event-participation, and generic quest-objective skips were resolved by extracting pure seams out of `GameScene` / `QuestRegistry`.
 - Act 0 has pure delivery/progression/home-marker tests, but still needs a real-device playthrough for pacing feel: whether the first scooter, BAKED pickup, villa dropoff, meal/coffee, and ride-home-to-sleep rhythm feels clear and not too linear.
 - `da_romeo_restaurant` remains absent from the authored street and unrendered; this is a known placement conflict for the repo owner to resolve later.
 - Map discovery now has a compact minimap, but it is still a lightweight orientation aid rather than a full interactive map.
@@ -510,7 +512,7 @@ The minigame framework is pure and tested in `src/systems/minigames/ActivityMini
 
 Verification:
 
-- Historical activity-real verification: `npm test -- --run` was 8 files passed, 35 tests passed, 3 skipped at that point. Current suite is 53 passed, 3 skipped.
+- Historical activity-real verification: `npm test -- --run` was 8 files passed, 35 tests passed, with three intentional skips at that point. Current verification is tracked at the top of this file.
 - `npm run build`: passed.
 - New coverage verifies timing scoring, choice scoring, activity reward scaling, opportunity reward scaling, and v10 active-activity persistence.
 
@@ -575,7 +577,7 @@ Viewport proof was collected in a throwaway real Chrome/CDP session against the 
 Verification:
 
 - `npm run build`: passed.
-- `npm test`: 15 files passed; 96 tests passed, 3 skipped.
+- `npm test`: 15 files passed; 96 tests passed, with three intentional skips at that point. Current verification is tracked at the top of this file.
 - Browser/CDP bounds checks above: passed for HUD, minimap, dialogue, venue activity panel, and legacy activity detail panel at all six requested viewport sizes.
 - Human-only still worth checking on the device: ride near beach/sand in a normal save; pick up coconuts near Berawa Beach; walk up to a rumor/opportunity scene and confirm `RUMOR`/tracking reads clearly.
 

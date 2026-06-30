@@ -188,7 +188,7 @@ Vitest is now the core deterministic test runner. `npm test` covers the v1-v8 sa
 
 The tests revealed one unambiguous data-seam bug: `finns_sunset_social` referenced `finns_beach_club`, but that venue id was missing from `VenueRegistry`. The fix was to add a first-class `finns_beach_club` venue record matching the already-authored curated venue id; no coordinates, map render code, or gameplay systems changed.
 
-Three requested checks remain documented skips instead of speculative refactors: sleep meter restoration and full on-site event participation effects still live in private `GameScene` methods, and generic non-deliver quest objective handlers need either scripted fixtures or an exported pure evaluator before they can be tested honestly.
+Those requested checks were initially documented skips instead of speculative refactors. They were later resolved by extracting pure seams: `EventParticipation` for on-site event effects, `SleepCycle` for sleep recovery, and exported `QuestRegistry` objective evaluator/consumer helpers for collect/deliver/buy/talk/visit behavior. The suite now has no skipped tests.
 
 ## 2026-06-23 - Dynamic Opportunity Engine
 
@@ -424,3 +424,11 @@ The first-hour loop should be playable from the field and station menus, with th
 - Scooter repair and upgrade actions live at the scooter rental counter. Act 1 guidance and field targets now point to that venue when maintenance or upgrade is the next step.
 
 These are presentation and flow relocations over existing systems: delivery acceptance still uses `DeliverySystem`, rent/repair/upgrade still use `HustleEconomy`, Act 0 progress still uses `ActProgression`, and no new backend, commerce, or Act 3 management layer is introduced.
+
+## 2026-07-01 - Stations Bridge Into Act 2 Crews
+
+Act 2 social discovery should feel like it grows out of places the player already uses, not a separate phone checklist. `StationSocialBridge` maps existing station types to existing social groups: beach routes toward run/surf crews, cafe routes toward focus/brunch groups, and coworking routes toward the focus table.
+
+This is a read/presentation bridge only. It does not auto-join clubs, add social XP, add save fields, or invent new groups. Exact home venues still own the actual join action; related stations can point the player there with a lightweight "Crew doors" row. Field objectives now include Milk & Madu's Brunch Builders alongside Berawa Beach and Satu-Satu so the first Act 2 crew choice is not artificially narrowed.
+
+The remaining scene-private test debt was also reduced during this pass. Event participation and sleep recovery now live in system helpers, and generic quest objective evaluation is exported from `QuestRegistry`, taking the automated baseline to 109 passing tests with zero skips.
