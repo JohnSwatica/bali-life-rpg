@@ -10,11 +10,11 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 
 Current durable truth:
 
-- Branch: `feat/cheap-animation`.
+- Branch: `feat/world-surfaced-interactions`.
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test` = 83 passing, 3 skipped; `npm run build` passes.
+- Current verification: `npm test` = 94 passing, 3 skipped; `npm run build` passes.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Canonical act order, set in stone for near-term work:
@@ -26,7 +26,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: run a human visual pass on the cheap animation layer, then continue with Liveliness Pass 4/4: world-surfaced interactions/dialogue. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, or Act 3 management sim yet.
+Immediate next move: run a human visual pass on the full liveliness stack, especially whether world scenes are readable from normal camera distance and whether ambient NPC lines feel less interruptive. Then tune density/clarity before moving to broader Act 0/1/2 content. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, or Act 3 management sim yet.
 
 ## Project
 
@@ -37,10 +37,16 @@ Immediate next move: run a human visual pass on the cheap animation layer, then 
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
-- Current branch: `feat/cheap-animation`.
+- Current branch: `feat/world-surfaced-interactions`.
 
 ## What Was Added Recently
 
+- Liveliness Pass 4 is complete on `feat/world-surfaced-interactions`: opportunities, events, and clubs now surface as visible world scenes rather than primarily as Phone list entries or calendar text. `src/systems/world/WorldScenes.ts` derives these scenes from existing local opportunity/event/club data; no backend, AI, network, or new content system was added.
+- Live opportunities now render type-appropriate venue scenes in `GameScene`: gigs show help-wanted/waving cues, social opportunities show 2-3 local actors converging/gathering, help-outs show a distressed waiting actor, flash deals show an animated venue signal, and rumor/trade opportunities have lightweight field scenes. Phone Feed still exists for details/acceptance/reference.
+- Minor NPC dialogue now uses in-world ambient speech bubbles with the Pass 3 talk bob. `src/systems/dialogue/DialoguePresentation.ts` keeps Act 0, quest-critical interactions, and relationship arc beats in full dialogue panels, while routine low-stakes NPC touches stay in-world and do not switch the scene to modal dialogue.
+- Active scheduled events and joined-club recurring events now render visible world moments: run gatherings, work-table scenes, market walks, party/music pulses, and club-circle signatures. Club visibility still respects existing joined-club gates through `EventScheduler`.
+- The phone is now confirmation/reference rather than primary discovery: field scenes plus Pass 2 objective/indicators show what is happening as the player moves. `getFieldFirstDiscoveryAudit()` currently verifies live opportunities and active events have matching visible scenes, with `phoneOnlyDiscoveryCount` at 0 in covered cases.
+- New coverage in `src/__tests__/worldScenes.test.ts` and `src/__tests__/dialoguePresentation.test.ts` checks opportunity scene kinds, event/club scene visibility, field-first discovery audit, and ambient-vs-panel dialogue routing.
 - Liveliness Pass 3 is complete on `feat/cheap-animation`: original procedural art now has a cheap animation layer. `BootScene` generates original 4-frame walk cycles for player/NPC character textures; no Nintendo/Pokemon/Game Freak sprites or traced frames are used.
 - `src/systems/animation/CharacterAnimations.ts` defines the low-frame policy: character idle = 1 frame, character walk = 4 frames per down/up/side pose, NPC idle loops = 2 frames, NPC reaction turn = 2 frames. The scene uses Phaser `anims.create` / `sprite.play` for these loops.
 - Player movement now plays a walk cycle while moving on foot and returns to an idle facing frame when stopped. The player faces up/down/left/right from the existing movement vector; scooter movement stays visually owned by the scooter layer.
@@ -162,6 +168,7 @@ Immediate next move: run a human visual pass on the cheap animation layer, then 
 
 - Core types: `src/types.ts`
 - On-field guidance: `src/systems/guidance/FieldObjective.ts`, `src/systems/guidance/FieldIndicators.ts`
+- World-surfaced interactions: `src/systems/world/WorldScenes.ts`, `src/systems/dialogue/DialoguePresentation.ts`
 - Cheap animation: `src/systems/animation/CharacterAnimations.ts`, `src/systems/animation/ScooterAnimation.ts`, `src/systems/animation/InteractionFlourishes.ts`
 - NPC liveliness: `src/data/npcs.ts`, `src/data/ambientNpcs.ts`, `src/systems/npcs/NpcRoutineRoutes.ts`, `src/systems/npcs/NpcIdleBehavior.ts`, `src/systems/npcs/NpcProximityReactions.ts`
 - Runtime world defaults: `src/systems/WorldState.ts`
@@ -186,6 +193,10 @@ Immediate next move: run a human visual pass on the cheap animation layer, then 
 
 ## Phase Commits
 
+- `c504782` - `feat: opportunities rendered as visible in-world scenes`
+- `fd92608` - `feat: short in-world ambient lines replace many minor text boxes`
+- `ff3b574` - `feat: events and club gatherings visible as world moments`
+- `f1f2354` - `chore: reduce phone-as-primary-loop-driver, confirm field-first discovery`
 - `1e31d92` - `feat: player walk cycle and facing`
 - `9817dfc` - `feat: NPC walk cycle and animated idle/reaction behaviors`
 - `ec415ad` - `feat: scooter lean and condition-aware idle motion`

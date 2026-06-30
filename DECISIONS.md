@@ -363,3 +363,15 @@ The animation frame policy is intentionally small and documented in `src/systems
 Scooter feel is cosmetic and local. `src/systems/animation/ScooterAnimation.ts` derives lean, speed-line visibility, stretch, and idle wobble from scooter tier, bike condition, velocity, and elapsed time. The borrowed rattletrap visibly rattles more than the daily rental/proper bike, but this does not affect speed, scooter wear, economy, save schema, or delivery rules.
 
 Interaction flourishes are similarly cosmetic. `src/systems/animation/InteractionFlourishes.ts` defines short talk, pickup, delivery, and activity pop specs; `GameScene` applies them as tweened rings/ghost sprites/talk bobs when dialogue opens, pickups are collected, deliveries are picked up/completed, and committed activities/opportunities begin. This deliberately does not add Pass 4 world-surfaced dialogue/interaction verbs.
+
+## 2026-06-30 - World-Surfaced Interactions Make Discovery Field-First
+
+Liveliness Pass 4 pulls the richest local reactivity out of phone lists and into the field. `src/systems/world/WorldScenes.ts` is the read model: it derives visible scenes from existing `OpportunityEngine`, event, and club data without adding backend calls, AI calls, new opportunity types, or a new content system.
+
+Live opportunities now have type-specific world scenes at their venue. Gigs show help-wanted/waving cues, social pings show small NPC gatherings, help-outs show a distressed/waiting actor, flash deals show an animated venue signal, and rumor/trade pings get lightweight visible scenes. The phone feed remains for details, acceptance, tracking, and history, but discovery is meant to happen by moving through the world.
+
+Minor NPC dialogue is no longer always modal. `src/systems/dialogue/DialoguePresentation.ts` keeps full panels for Act 0, quest-critical conversations, and relationship arc beats; routine low-stakes NPC touches become short in-world speech bubbles anchored to the NPC and paired with the Pass 3 talk bob. This reduces interruption without removing deeper dialogue where it matters.
+
+Scheduled events and joined-club recurring events now render as world moments too: run gatherings, coworking tables, market walks, party pulses, and club-circle signatures. Visibility still follows the existing event scheduler and joined-club gates, so this is presentation over the current social layer rather than a new scheduling system.
+
+`getFieldFirstDiscoveryAudit()` records the intended product stance: live opportunities and active events should have matching field scenes. In covered cases `phoneOnlyDiscoveryCount` is 0, reinforcing that the phone is confirmation/reference/management, not the primary loop driver for knowing what is happening.
