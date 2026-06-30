@@ -34,6 +34,11 @@ import {
   type FieldObjectiveTargetRef
 } from "../systems/guidance/FieldObjective";
 import { getFieldIndicators, type VenueFieldIndicator } from "../systems/guidance/FieldIndicators";
+import {
+  getOpportunityWorldScenes,
+  type OpportunityWorldScene,
+  type WorldSceneActor
+} from "../systems/world/WorldScenes";
 import { getSocialGroupsForVenue, isSocialGroupJoined } from "../systems/groups/GroupRegistry";
 import { PLAYER_UNIT, POKEMON_SCALE } from "../systems/map/PlayerUnitScale";
 import { getPresentedRoads, getVenueSnapRoads } from "../systems/map/RoadPresentation";
@@ -464,6 +469,8 @@ export class GameScene extends Phaser.Scene {
   private opportunityMarkerLayer!: Phaser.GameObjects.Graphics;
   private deliveryMarkerLayer!: Phaser.GameObjects.Graphics;
   private fieldIndicatorLayer!: Phaser.GameObjects.Graphics;
+  private worldSceneLayer!: Phaser.GameObjects.Graphics;
+  private worldSceneLabels = new Map<string, Phaser.GameObjects.Text>();
   private opportunityMarkerZones: Phaser.GameObjects.Zone[] = [];
 
   constructor() {
@@ -558,6 +565,7 @@ export class GameScene extends Phaser.Scene {
     this.opportunityMarkerLayer = this.add.graphics().setDepth(210);
     this.deliveryMarkerLayer = this.add.graphics().setDepth(211);
     this.fieldIndicatorLayer = this.add.graphics().setDepth(212);
+    this.worldSceneLayer = this.add.graphics().setDepth(213);
     this.addAreaLabels();
   }
 
@@ -2277,6 +2285,7 @@ export class GameScene extends Phaser.Scene {
     this.redrawHudChrome();
     this.drawOpportunityMarkers();
     this.drawFieldIndicators();
+    this.drawOpportunityWorldScenes();
     this.drawObjectiveMarkers();
     this.drawObjectiveDirectionCue();
     this.drawMinimap();
@@ -4188,6 +4197,190 @@ export class GameScene extends Phaser.Scene {
       });
       this.opportunityMarkerZones.push(zone);
     }
+  }
+
+  private drawOpportunityWorldScenes(): void {
+    if (!this.worldSceneLayer) {
+      return;
+    }
+    this.worldSceneLayer.clear();
+    const activeLabelIds = new Set<string>();
+    const scenes = getOpportunityWorldScenes(this.world);
+    const phase = Date.now() / 1000;
+
+    for (const scene of scenes) {
+      const node = venueMapNodes.find((candidate) => candidate.venueId === scene.venueId);
+      if (!node) {
+        continue;
+      }
+      const yOffset = Math.min(node.radius + scaleDistance(24), scaleDistance(92));
+      const x = node.x;
+      const y = node.y - yOffset;
+      this.drawOpportunityWorldScene(scene, x, y, phase, activeLabelIds);
+    }
+
+    for (const [id, label] of this.worldSceneLabels) {
+      if (!activeLabelIds.has(id)) {
+        label.setVisible(false);
+      }
+    }
+  }
+
+  private drawOpportunityWorldScene(scene: OpportunityWorldScene, x: number, y: number, phase: number, activeLabelIds: Set<string>): void {
+    const palette = this.opportunityPalette(scene.opportunityType);
+    const pulse = 0.72 + Math.sin(phase * 4) * 0.12;
+    this.worldSceneLayer.fillStyle(0x101820, 0.28);
+    this.worldSceneLayer.fillEllipse(x, y + scaleDistance(25), scaleDistance(88), scaleDistance(24));
+    this.worldSceneLayer.lineStyle(scaleDistance(2), palette.fill, 0.28 + pulse * 0.22);
+    this.worldSceneLayer.strokeEllipse(x, y + scaleDistance(25), scaleDistance(96), scaleDistance(30));
+
+    if (scene.sceneKind === "deal_signal") {
+      this.drawWorldSceneDealSignal(scene, x, y, phase, activeLabelIds, palette.fill);
+      return;
+    }
+
+    if (scene.sceneKind === "social_gathering") {
+      this.drawWorldSceneGathering(scene, x, y, phase, activeLabelIds, palette.fill);
+      return;
+    }
+
+    if (scene.sceneKind === "help_distress") {
+      this.drawWorldSceneActors(scene.actors, x, y, phase, 1);
+      this.drawWorldSceneSign(scene, x, y - scaleDistance(22), activeLabelIds, 0xffc6a6);
+      this.worldSceneLayer.lineStyle(scaleDistance(2), 0xffc6a6, 0.7 + Math.sin(phase * 8) * 0.18);
+      this.worldSceneLayer.strokeCircle(x + scaleDistance(22), y - scaleDistance(12), scaleDistance(14));
+      return;
+    }
+
+    this.drawWorldSceneActors(scene.actors, x, y, phase, 1);
+    this.drawWorldSceneSign(scene, x, y - scaleDistance(24), activeLabelIds, palette.fill);
+  }
+
+  private drawWorldSceneGathering(
+    scene: OpportunityWorldScene,
+    x: number,
+    y: number,
+    phase: number,
+    activeLabelIds: Set<string>,
+    color: number
+  ): void {
+    this.drawWorldSceneSign(scene, x, y - scaleDistance(30), activeLabelIds, color);
+    scene.actors.forEach((actor, index) => {
+      const loop = (phase * 0.32 + index * 0.21) % 1;
+      const progress = loop < 0.72 ? loop / 0.72 : 1;
+      const eased = 1 - Math.pow(1 - progress, 2);
+      const startX = x + actor.approachOffsetX;
+      const startY = y + actor.approachOffsetY;
+      const endX = x + actor.offsetX;
+      const endY = y + actor.offsetY;
+      this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(1)), color, 0.22);
+      this.worldSceneLayer.lineBetween(startX, startY + scaleDistance(18), endX, endY + scaleDistance(18));
+      this.drawWorldSceneActor(actor, x, y, phase + index, eased);
+    });
+  }
+
+  private drawWorldSceneDealSignal(
+    scene: OpportunityWorldScene,
+    x: number,
+    y: number,
+    phase: number,
+    activeLabelIds: Set<string>,
+    color: number
+  ): void {
+    const flip = 0.72 + Math.abs(Math.sin(phase * 4.2)) * 0.28;
+    this.worldSceneLayer.fillStyle(0x101820, 0.68);
+    this.worldSceneLayer.fillRoundedRect(x - scaleDistance(29) * flip, y - scaleDistance(38), scaleDistance(58) * flip, scaleDistance(28), scaleDistance(5));
+    this.worldSceneLayer.lineStyle(scaleDistance(2), color, 0.92);
+    this.worldSceneLayer.strokeRoundedRect(x - scaleDistance(29) * flip, y - scaleDistance(38), scaleDistance(58) * flip, scaleDistance(28), scaleDistance(5));
+    for (let index = 0; index < 5; index += 1) {
+      const angle = phase * 1.8 + index * 1.26;
+      const inner = scaleDistance(24);
+      const outer = scaleDistance(34 + (index % 2) * 6);
+      this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(2)), color, 0.26);
+      this.worldSceneLayer.lineBetween(x + Math.cos(angle) * inner, y + Math.sin(angle) * inner, x + Math.cos(angle) * outer, y + Math.sin(angle) * outer);
+    }
+    this.drawWorldSceneSign(scene, x, y - scaleDistance(24), activeLabelIds, color);
+  }
+
+  private drawWorldSceneActors(actors: WorldSceneActor[], x: number, y: number, phase: number, progress: number): void {
+    actors.forEach((actor, index) => this.drawWorldSceneActor(actor, x, y, phase + index * 0.4, progress));
+  }
+
+  private drawWorldSceneActor(actor: WorldSceneActor, centerX: number, centerY: number, phase: number, progress: number): void {
+    const eased = Phaser.Math.Clamp(progress, 0, 1);
+    const x = centerX + Phaser.Math.Linear(actor.approachOffsetX, actor.offsetX, eased);
+    const y = centerY + Phaser.Math.Linear(actor.approachOffsetY, actor.offsetY, eased);
+    const bob = Math.sin(phase * 6) * scaleDistance(actor.role === "distressed" ? 2.8 : 1.7);
+    const color = this.sceneActorColor(actor.spriteKey);
+    this.worldSceneLayer.fillStyle(0x101820, 0.22);
+    this.worldSceneLayer.fillEllipse(x, y + scaleDistance(23), scaleDistance(24), scaleDistance(7));
+    this.worldSceneLayer.fillStyle(color, 0.96);
+    this.worldSceneLayer.fillRoundedRect(x - scaleDistance(7), y + scaleDistance(4) + bob, scaleDistance(14), scaleDistance(20), scaleDistance(5));
+    this.worldSceneLayer.fillStyle(0xf3c36b, 0.96);
+    this.worldSceneLayer.fillCircle(x, y - scaleDistance(5) + bob, scaleDistance(8));
+    this.worldSceneLayer.fillStyle(0x25384a, 0.96);
+    this.worldSceneLayer.fillCircle(x - scaleDistance(3), y - scaleDistance(10) + bob, scaleDistance(4));
+    this.worldSceneLayer.fillCircle(x + scaleDistance(4), y - scaleDistance(10) + bob, scaleDistance(4));
+
+    const wave = Math.sin(phase * (actor.role === "waving" ? 9 : 5));
+    this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(2)), 0xf3c36b, 0.96);
+    if (actor.role === "waving" || actor.role === "distressed") {
+      this.worldSceneLayer.lineBetween(x + scaleDistance(8), y + scaleDistance(8) + bob, x + scaleDistance(16), y - scaleDistance(4) + bob + wave * scaleDistance(4));
+    } else {
+      this.worldSceneLayer.lineBetween(x + scaleDistance(8), y + scaleDistance(10) + bob, x + scaleDistance(15), y + scaleDistance(16) + bob);
+    }
+    this.worldSceneLayer.lineBetween(x - scaleDistance(8), y + scaleDistance(10) + bob, x - scaleDistance(15), y + scaleDistance(16) + bob);
+  }
+
+  private drawWorldSceneSign(
+    scene: OpportunityWorldScene,
+    x: number,
+    y: number,
+    activeLabelIds: Set<string>,
+    color: number
+  ): void {
+    const label = this.getWorldSceneLabel(`${scene.id}:cue`, scene.cue);
+    activeLabelIds.add(`${scene.id}:cue`);
+    label
+      .setPosition(x, y)
+      .setDepth(y + UI_DEPTH / 3)
+      .setColor(scene.accepted ? "#c9ffd8" : "#101820")
+      .setBackgroundColor(scene.accepted ? "rgba(37,58,53,0.92)" : this.sceneLabelBackground(color))
+      .setVisible(true);
+  }
+
+  private getWorldSceneLabel(id: string, text: string): Phaser.GameObjects.Text {
+    const existing = this.worldSceneLabels.get(id);
+    if (existing) {
+      existing.setText(text);
+      return existing;
+    }
+    const label = this.add
+      .text(0, 0, text, {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: "10px",
+        color: "#101820",
+        fontStyle: "800",
+        padding: { x: 5, y: 2 }
+      })
+      .setOrigin(0.5);
+    this.worldSceneLabels.set(id, label);
+    return label;
+  }
+
+  private sceneLabelBackground(color: number): string {
+    const red = (color >> 16) & 0xff;
+    const green = (color >> 8) & 0xff;
+    const blue = color & 0xff;
+    return `rgba(${red}, ${green}, ${blue}, 0.92)`;
+  }
+
+  private sceneActorColor(spriteKey: string): number {
+    if (spriteKey === "npc-sari") return 0xf59f43;
+    if (spriteKey === "npc-kadek") return 0x6ab7ff;
+    if (spriteKey === "npc-made") return 0x8bd17c;
+    if (spriteKey === "npc-ari") return 0xffd166;
+    return 0xf4d58d;
   }
 
   private drawMinimap(): void {
