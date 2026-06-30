@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-06-30
+Last updated: 2026-07-01
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -10,11 +10,11 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 
 Current durable truth:
 
-- Branch: `feat/first-hour-proof`.
+- Branch: `feat/gameplay-stations`.
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test` = 95 passing, 3 skipped; `npm run build` passes.
+- Current verification: `npm test` = 100 passing, 3 skipped; `npm run build` passes.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Canonical act order, set in stone for near-term work:
@@ -26,7 +26,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: run a human play-feel pass through the executable first-hour proof path: new save -> Act 0 first day -> 5-run Act 1 hustle -> first rent paid -> Act 2 crew/event/bond -> one crew-opened opportunity. Tune pacing, visual density, and emotional clarity from that run before adding broader content. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, or Act 3 management sim yet.
+Immediate next move: run a human play-feel pass through the station-first first-hour path: new save -> Act 0 first day using cafe station choices -> Ibu Sari field Hustle Board -> 5-run Act 1 hustle -> recover at stations when meters are low -> pay first rent at the cheap kos -> service/upgrade scooter at the rental counter -> Act 2 crew/event/bond -> one crew-opened opportunity. Tune pacing, visual density, and emotional clarity from that run before adding broader content. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, or Act 3 management sim yet.
 
 ## Project
 
@@ -37,10 +37,13 @@ Immediate next move: run a human play-feel pass through the executable first-hou
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
-- Current branch: `feat/first-hour-proof`.
+- Current branch: `feat/gameplay-stations`.
 
 ## What Was Added Recently
 
+- Gameplay-stations follow-up is active on `feat/gameplay-stations`: the station layer is now wired into the first-hour spine instead of sitting beside it. Act 0 meal/coffee progress is satisfied by cafe station choices, low-meter Act 1 guidance points to recovery stations, rent is payable at the cheap-kos home station, Ibu Sari can open a field Hustle Board, and scooter repair/upgrade actions live at the scooter rental counter.
+- The phone remains a reference/backup surface for goals, feed, and details, but the immediate loop is now mostly field/station first: choose coffee/brunch at cafe stations, ask Ibu Sari for jobs, ride jobs, recover at warung/beach/cafe/home/coworking when meters dip, pay rent at home, and service the scooter at the rental counter.
+- New station-oriented coverage in `src/__tests__/firstHourProof.test.ts`, `src/__tests__/hustleDelivery.test.ts`, and `src/__tests__/fieldGuidance.test.ts` checks Act 0 cafe station progress, low-meter recovery guidance, rent priority, home rent copy, and scooter-counter upgrade targeting.
 - First-hour proof sprint is complete on `feat/first-hour-proof`: the playable act spine now has an executable proof path from a new save through Act 0, Act 1 hustle, first rent, Act 2 social rhythm, and one crew-opened opportunity. The guard test lives in `src/__tests__/firstHourProof.test.ts`.
 - Act 1 move-out readiness is now centralized in `src/systems/hustle/HustleMilestones.ts`: Found Your Feet requires 5 deliveries, Rp 700 delivery earnings, 4.2★ driver rating, and first rent covered. Delivery completion now calls out when only rent is blocking the move-out beat; paying rent can advance the player into Act 2 if the other thresholds are already met.
 - Act 1 guidance now prioritizes delivery rhythm before recommending the scooter upgrade, then points clearly at first-rent coverage when rent is the final Act 2 blocker. The field objective can target home for `Cover first rent`, so the player has an on-field destination instead of only Phone copy.

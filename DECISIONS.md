@@ -412,3 +412,15 @@ The activity engine remains the source of truth. Exact station rows sort ahead o
 Home is represented as the existing `cheap_kos` home-base context, not as a new map venue. Normal sleep now belongs to that home station; Act 0 still keeps its direct guided sleep shortcut.
 
 Beach-club fallout is a narrow persisted queue (`world.life.pendingMorningPenalties`) rather than an immediate stat hit. This preserves the intended shape: the night feels rewarding now, then the cost lands after sleeping.
+
+## 2026-07-01 - Station-First Act 1 Replaces Phone-First Errands
+
+The first-hour loop should be playable from the field and station menus, with the phone acting as reference/backup rather than the primary action surface. This follow-up keeps that rule concrete:
+
+- Act 0 meal/coffee progress maps to authored cafe station choices (`cafe_quick_caffeine`, `cafe_brunch_table`) so the tutorial teaches the new station menu instead of falling back to generic cafe rows.
+- Low-meter Act 1 guidance uses `StationRecovery` to route the player toward existing recovery stations before suggesting another delivery. Rent and repair still outrank recovery because those are hard hustle blockers.
+- Rent can be paid at the cheap-kos home station. This makes "cover first rent" a place-based errand, not just Phone Feed bookkeeping.
+- Ibu Sari can open a field Hustle Board after Act 0. This preserves her role as Act 1 mentor and lets the player discover delivery work by approaching an NPC, while the Phone Feed remains a deeper board/reference.
+- Scooter repair and upgrade actions live at the scooter rental counter. Act 1 guidance and field targets now point to that venue when maintenance or upgrade is the next step.
+
+These are presentation and flow relocations over existing systems: delivery acceptance still uses `DeliverySystem`, rent/repair/upgrade still use `HustleEconomy`, Act 0 progress still uses `ActProgression`, and no new backend, commerce, or Act 3 management layer is introduced.
