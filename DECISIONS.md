@@ -333,3 +333,13 @@ The next three major milestones are now visible in code without violating the Ac
 - Act 3 / Dream Lit: `Act3Readiness` derives hook readiness from Act 2 completion, Ibu Sari mentor trust, a first crew candidate, seed capital, and a completed business-lead opportunity.
 
 The Act 3 management simulation is still intentionally not implemented. When all readiness hooks are complete, the HUD/Phone says a CEO/product unlock is needed before opening the business sim, preserving the current scope boundary while making the next ambition leg visible.
+
+## 2026-06-30 - NPC Liveliness Pass 1 Is Data-Driven
+
+Named NPCs now use authored daily route data instead of single fixed positions. `NpcDefinition.routineRoutes` is a list of time-windowed routes, and each route carries 2-4 waypoints shaped like `{ id, label, venueId?, x, y, pauseMs? }`. The older `routine` stops remain as compatibility fallback data, but runtime movement prefers `routineRoutes`.
+
+Idle personality is also data-driven through `NpcDefinition.idleTag`. The first authored tags are `tidy_counter`, `knead_oven`, `laptop_sip`, `tinker_board`, and `generic_idle`. The scene renders them with cheap cues, sprite tilt, and bobbing rather than new animation frames because full animation is reserved for Liveliness Pass 3.
+
+Proximity reactions reuse existing relationship affinity tiers. Near-radius entry turns the NPC toward the player and shows a short acknowledgment; friendly-or-warmer NPCs also pause their route briefly. The reaction is cosmetic and bounded by cooldowns so it does not block interaction, pathing, activities, the hustle loop, opportunities, overlays, or save/load.
+
+Ambient background population is intentionally separate from named NPC state. `src/data/ambientNpcs.ts` defines unnamed, non-interactive walkers with routes and idle tags. They are not saved, do not appear in `InteractionController`, and can be removed or expanded without touching dialogue, affinity, quests, or persistence.

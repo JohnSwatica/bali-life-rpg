@@ -10,11 +10,11 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 
 Current durable truth:
 
-- Branch: `feat/act0-hustle-loop`.
+- Branch: `feat/npc-life`.
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test -- --run` = 53 passing, 3 skipped; `npm run build` passes.
+- Current verification: `npm test` = 65 passing, 3 skipped; `npm run build` passes.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Canonical act order, set in stone for near-term work:
@@ -26,7 +26,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: play-feel and tune Act 0/Act 1, then strengthen the Act 2 handoff using existing social systems. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, or Act 3 management sim.
+Immediate next move: run a human visual pass on NPC liveliness, then continue with Liveliness Pass 2/4: on-field guidance that points the player toward the right people/places without adding new backend/AI/network scope. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, or Act 3 management sim.
 
 ## Project
 
@@ -37,10 +37,16 @@ Immediate next move: play-feel and tune Act 0/Act 1, then strengthen the Act 2 h
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
-- Current branch: `feat/act0-hustle-loop`.
+- Current branch: `feat/npc-life`.
 
 ## What Was Added Recently
 
+- NPC liveliness pass 1 is complete on `feat/npc-life`. Named NPCs no longer stand at a single fixed point: each has `routineRoutes` in `src/data/npcs.ts`, with time-windowed route data made of waypoints shaped like `{ id, label, venueId?, x, y, pauseMs? }`. Runtime motion is handled by `src/systems/npcs/NpcRoutineRoutes.ts`.
+- The live `GameScene` NPC loop now advances each named NPC through the active route, pauses at waypoints, updates `world.npcs[id].x/y`, and keeps `currentRoutineId` on the active route id. Existing `E` interaction already resolves against live sprite positions through `InteractionController`, and the new tests lock that contract down.
+- NPCs now have `idleTag` data. Ibu Sari uses `tidy_counter`, Kadek uses `knead_oven`, Ari uses `laptop_sip`, Made uses `tinker_board`, and untagged NPCs fall back to `generic_idle`. `src/systems/npcs/NpcIdleBehavior.ts` turns those tags into cheap sprite bob/tilt and small waypoint cues without new sprite art.
+- NPCs now react before conversation. `src/systems/npcs/NpcProximityReactions.ts` uses existing relationship affinity tiers: strangers glance, acquaintances nod, friendly NPCs smile and briefly pause, regulars wave longer, and trusted NPCs brighten. The scene turns the NPC toward the player and shows a short cue without blocking interaction.
+- Optional ambient population is implemented in `src/data/ambientNpcs.ts`: four unnamed, non-interactive background walkers reuse existing character textures, follow simple loops, and idle subtly. They are not saved and do not appear as talk targets.
+- New coverage lives in `src/__tests__/npcLife.test.ts`: authored multi-waypoint routes, route selection/motion/pause, live-position interaction targeting, idle tags/fallback/visual drift, proximity reaction tier scaling, and ambient walker invariants.
 - Act 0 / Act 1 hustle spine is now underway on `feat/act0-hustle-loop`: new local state tracks `world.life.actProgress` and `world.life.hustle`, including Act 0 tutorial step, first-day completion, active delivery, driver rating, delivery earnings, scooter tier, rent target, and move-out readiness.
 - Save schema is now v11. Older saves migrate by adding Act 0 progress and hustle defaults without wiping money, quests, inventory, relationships, reputation, discovery, profile, portal, meters, clubs, arcs, opportunities, or committed activities.
 - Save migration now infers Act 0 as complete for older saves that already have life-loop/social progress (`activityHistory`, completed goals, joined clubs, relationship arcs, or settled-in state), so established local test saves are not forced back into the new first-day tutorial.
@@ -142,6 +148,7 @@ Immediate next move: play-feel and tune Act 0/Act 1, then strengthen the Act 2 h
 ## Important Files
 
 - Core types: `src/types.ts`
+- NPC liveliness: `src/data/npcs.ts`, `src/data/ambientNpcs.ts`, `src/systems/npcs/NpcRoutineRoutes.ts`, `src/systems/npcs/NpcIdleBehavior.ts`, `src/systems/npcs/NpcProximityReactions.ts`
 - Runtime world defaults: `src/systems/WorldState.ts`
 - Save/load/migration: `src/systems/Persistence.ts`
 - Network stub: `src/systems/NetworkAdapter.ts`
@@ -164,6 +171,10 @@ Immediate next move: play-feel and tune Act 0/Act 1, then strengthen the Act 2 h
 
 ## Phase Commits
 
+- `45c263d` - `feat: NPC daily routine routes`
+- `07f8643` - `feat: per-NPC idle behavior at waypoints`
+- `0226a4d` - `feat: NPC proximity awareness and affinity-aware reactions`
+- `eb8933b` - `feat: ambient background population`
 - `3dc6eaf` - `chore: baseline before consolidate+alive sprint`
 - `12544ba` - `refactor: unify reputation under canonical ReputationState`
 - `c704051` - `refactor: extract quest handlers and core controllers from GameScene`
