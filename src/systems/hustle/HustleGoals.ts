@@ -136,7 +136,7 @@ export function getHustleNextStep(world: WorldState): HustleNextStepState {
     if (player.money >= hustle.rentAmount) {
       return {
         title: "Pay rent",
-        detail: `You have Rp ${player.money}; pay Rp ${hustle.rentAmount} in Phone Feed to buy breathing room.`,
+        detail: `You have Rp ${player.money}; pay Rp ${hustle.rentAmount} at the cheap kos to buy breathing room.`,
         urgency: rentPressure.status === "overdue" || rentPressure.status === "due_today" ? "urgent" : "normal"
       };
     }
@@ -201,7 +201,7 @@ export function getHustleNextStep(world: WorldState): HustleNextStepState {
     if (player.money >= hustle.rentAmount) {
       return {
         title: "Cover first rent",
-        detail: `Pay Rp ${hustle.rentAmount} in Phone Feed so Ibu Sari trusts you can leave the cheap kos.`,
+        detail: `Pay Rp ${hustle.rentAmount} at the cheap kos so Ibu Sari trusts you can leave it.`,
         urgency: "normal"
       };
     }

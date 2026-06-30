@@ -2810,6 +2810,10 @@ export class GameScene extends Phaser.Scene {
       });
     }
 
+    if (context.venueId === playerHomeBase.id) {
+      this.appendHomeStationActions(content);
+    }
+
     const activeEvents = getActiveEventsAtVenue(this.world.clock, venueId, this.world);
     if (activeEvents.length > 0) {
       this.appendActivityMenuSection(content, "Happening now");
@@ -2929,6 +2933,34 @@ export class GameScene extends Phaser.Scene {
     heading.className = "bali-life-activity-menu-section";
     heading.textContent = label;
     parent.appendChild(heading);
+  }
+
+  private appendHomeStationActions(parent: HTMLElement): void {
+    const rentReady = this.playerState.money >= this.world.life.hustle.rentAmount;
+    const rentDueCopy = `Rent target: Rp ${this.world.life.hustle.rentAmount} by Day ${this.world.life.hustle.rentDueDay}. Current cash: Rp ${this.playerState.money}.`;
+    this.appendActivityMenuSection(parent, "Rent and room");
+    this.appendActivityMenuRow(parent, {
+      title: rentReady ? "Pay rent at the kos" : "Rent target",
+      body: rentReady
+        ? `${rentDueCopy}\nPaying here buys breathing room without opening the phone.`
+        : `${rentDueCopy}\nNeed Rp ${this.world.life.hustle.rentAmount - this.playerState.money} more before you can cover it.`,
+      actionLabel: rentReady ? "Pay Rent" : "Blocked",
+      variant: rentReady ? "primary" : "blocked",
+      onAction: () => {
+        if (!rentReady) {
+          this.showToast(`Need Rp ${this.world.life.hustle.rentAmount - this.playerState.money} more for rent.`);
+          return;
+        }
+        this.payHomeRent();
+      }
+    });
+  }
+
+  private payHomeRent(): void {
+    const result = payHustleRent(this.world, this.getAbsoluteMinute());
+    this.showToast(result.message);
+    saveWorldState(this.world);
+    this.openHomeActivityMenu();
   }
 
   private appendActivityOptionRow(parent: HTMLElement, context: VenueActivityContext, option: ActivityAvailability): void {

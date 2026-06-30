@@ -101,8 +101,10 @@ describe("field objective readout", () => {
     expect(getFieldObjective(world)).toMatchObject({
       source: "hustle",
       title: "Pay rent",
+      detail: expect.stringContaining("cheap kos"),
       targets: [expect.objectContaining({ type: "home" })]
     });
+    expect(getFieldObjective(world).detail.toLowerCase()).not.toContain("phone");
   });
 
   it("points to recovery stations when meters are too low for healthy hustle", () => {
