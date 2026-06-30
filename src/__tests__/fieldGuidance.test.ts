@@ -89,6 +89,25 @@ describe("field objective readout", () => {
     });
   });
 
+  it("keeps joined-club event guidance field-first instead of phone-first", () => {
+    const world = createInitialWorldState();
+    world.life.actProgress.act0Step = "complete";
+    world.life.actProgress.firstDayComplete = true;
+    world.life.actProgress.currentAct = 2;
+    world.life.hustle.moveOutReady = true;
+    world.life.joinedClubIds.push("berawa_run_crew");
+
+    const objective = getFieldObjective(world);
+
+    expect(objective).toMatchObject({
+      source: "act2",
+      title: "Attend Run Crew Sunrise Loop",
+      detail: expect.stringContaining("event marker"),
+      targets: [expect.objectContaining({ type: "venue", venueId: "berawa_beach" })]
+    });
+    expect(objective.detail.toLowerCase()).not.toMatch(/phone|calendar|quests|feed/);
+  });
+
   it("targets home when the existing hustle model says rent can be paid", () => {
     const world = createInitialWorldState();
     world.life.actProgress.act0Step = "complete";

@@ -92,7 +92,7 @@ export function getAct2NextStep(world: WorldState): Act2NextStepState | null {
     return {
       title: nextEventId ? `Attend ${eventTitle(nextEventId)}` : "Attend a club rhythm",
       detail: nextEventId
-        ? "Use Phone > Calendar and show up at the venue during its event window."
+        ? "Follow the event marker to the venue during its event window and join the rhythm there."
         : "Join a group with a recurring event, then show up once.",
       urgency: "normal"
     };
