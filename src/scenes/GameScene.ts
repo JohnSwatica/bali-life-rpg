@@ -2073,6 +2073,8 @@ export class GameScene extends Phaser.Scene {
       this.promptText.setText(`E / ACT: ${target.label}`);
     } else if (this.mode === "world" && this.canSleepHere()) {
       this.promptText.setText("E / ACT: sleep until morning.");
+    } else if (this.mode === "world" && !isAct0Complete(this.world)) {
+      this.promptText.setText("Follow the field marker. P opens the phone later for deeper details.");
     } else if (this.mode === "world") {
       this.promptText.setText("WASD/arrows move. B bike. P phone. I bag. C community. F5 save.");
     } else if (this.mode === "phone") {

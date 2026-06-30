@@ -5,6 +5,7 @@ import { getHustleNextStep } from "../systems/hustle/HustleGoals";
 import { getAct2NextStep } from "../systems/life/Act2Goals";
 import { bumpRelationshipAffinity } from "../systems/relationships/RelationshipMemory";
 import { createInitialWorldState } from "../systems/WorldState";
+import type { Act0Step } from "../types";
 
 describe("field objective readout", () => {
   it("surfaces Act 0's current step as the always-visible objective", () => {
@@ -114,6 +115,28 @@ describe("field objective readout", () => {
         targets: []
       })
     ).toBe("Now: Explore Berawa - Talk to locals.");
+  });
+
+  it("keeps every Act 0 step progressable from field guidance without requiring the phone", () => {
+    const act0Steps: Act0Step[] = [
+      "meet_ibu_sari",
+      "pickup_first_delivery",
+      "dropoff_first_delivery",
+      "buy_meal_and_coffee",
+      "sleep_first_night"
+    ];
+
+    for (const step of act0Steps) {
+      const world = createInitialWorldState();
+      world.life.actProgress.act0Step = step;
+      world.life.actProgress.firstDayComplete = false;
+      const objective = getFieldObjective(world);
+      const line = formatFieldObjectiveLine(objective).toLowerCase();
+
+      expect(objective.source, step).toBe("act0");
+      expect(objective.targets.length, step).toBeGreaterThan(0);
+      expect(line, step).not.toMatch(/phone|feed|quests/);
+    }
   });
 });
 
