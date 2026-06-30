@@ -82,7 +82,7 @@ export function getAct2NextStep(world: WorldState): Act2NextStepState | null {
   if (world.life.joinedClubIds.length === 0) {
     return {
       title: "Join a first crew",
-      detail: "Follow the beach or focus-table marker and join one group so the calendar starts creating rhythm.",
+      detail: "Follow a beach, focus-table, or brunch marker and join one group so a recurring rhythm starts.",
       urgency: "normal"
     };
   }

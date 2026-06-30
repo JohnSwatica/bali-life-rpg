@@ -5710,10 +5710,11 @@ export class GameScene extends Phaser.Scene {
       ];
     }
     if (this.world.life.actProgress.currentAct >= 2 && this.world.life.joinedClubIds.length === 0) {
-      return ["berawa_beach", "satu_satu_coffee"]
+      return ["berawa_beach", "satu_satu_coffee", "milk_madu_berawa"]
         .map((venueId) => {
           const node = venueMapNodes.find((candidate) => candidate.venueId === venueId);
-          const label = venueId === "berawa_beach" ? "Find beach crew" : "Find focus table";
+          const label =
+            venueId === "berawa_beach" ? "Find beach crew" : venueId === "satu_satu_coffee" ? "Find focus table" : "Find brunch builders";
           return node ? { id: `act2_${venueId}`, label, x: node.x, y: node.y, radius: Math.min(node.radius, scaleDistance(118)) } : null;
         })
         .filter((target): target is { id: string; label: string; x: number; y: number; radius: number } => Boolean(target));

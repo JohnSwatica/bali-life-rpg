@@ -151,7 +151,8 @@ function getHustleObjectiveTargets(world: WorldState): FieldObjectiveTargetRef[]
   if (world.life.hustle.moveOutReady) {
     return [
       { type: "venue", id: "act2_beach_crew", label: "Find beach crew", venueId: "berawa_beach" },
-      { type: "venue", id: "act2_focus_table", label: "Find focus table", venueId: "satu_satu_coffee" }
+      { type: "venue", id: "act2_focus_table", label: "Find focus table", venueId: "satu_satu_coffee" },
+      { type: "venue", id: "act2_brunch_builders", label: "Find brunch builders", venueId: "milk_madu_berawa" }
     ];
   }
 
@@ -181,7 +182,8 @@ function getAct2ObjectiveTargets(world: WorldState): FieldObjectiveTargetRef[] {
   if (world.life.joinedClubIds.length === 0) {
     return [
       { type: "venue", id: "act2_beach_crew", label: "Find beach crew", venueId: "berawa_beach" },
-      { type: "venue", id: "act2_focus_table", label: "Find focus table", venueId: "satu_satu_coffee" }
+      { type: "venue", id: "act2_focus_table", label: "Find focus table", venueId: "satu_satu_coffee" },
+      { type: "venue", id: "act2_brunch_builders", label: "Find brunch builders", venueId: "milk_madu_berawa" }
     ];
   }
 

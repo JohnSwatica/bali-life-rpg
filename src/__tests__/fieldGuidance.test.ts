@@ -84,7 +84,8 @@ describe("field objective readout", () => {
       urgency: act2Next?.urgency,
       targets: [
         expect.objectContaining({ type: "venue", venueId: "berawa_beach" }),
-        expect.objectContaining({ type: "venue", venueId: "satu_satu_coffee" })
+        expect.objectContaining({ type: "venue", venueId: "satu_satu_coffee" }),
+        expect.objectContaining({ type: "venue", venueId: "milk_madu_berawa" })
       ]
     });
   });
