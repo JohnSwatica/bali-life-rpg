@@ -517,3 +517,61 @@ Still needs human feel:
 - Whether the timing/balance targets feel fun on real phone touch.
 - Whether social choices are readable enough in the committed overlay.
 - Whether the reward multiplier feels noticeable without becoming exploitable.
+
+## 2026-07-01 - Playtest Bug-Fix Pass Closed Six Confirmed Issues
+
+Branch `fix/playtest-bugs` is a real-playtest regression pass. It preserves the hustle loop, social layer, opportunity engine, map, scooter upgrades/condition, save/load, and current tests while fixing six external feedback items before moving into the design follow-up.
+
+Root causes found:
+
+- Viewport clipping came from mixed UI ownership. HUD/minimap/dialogue/progress overlays were DOM/bounds-safe, but activity menus still used Phaser canvas panels and could collide with the DOM HUD or clip rows. Activity choice/detail panels now route through a shared DOM activity overlay with `data-ui-surface="activity-panel"`, scrollable content, and overlay-open HUD hiding.
+- The bike-stuck-in-sand mechanic was mechanically intact but too punitive for this stage. It is feature-flagged off with `BIKE_TERRAIN_STUCK_ENABLED = false`; scooter condition, upgrades, delivery gating, traffic damage, and recovery hooks remain.
+- Pickup interactions fell through to the same priority bucket as venues. `InteractionController` now puts NPCs, pickups, deliveries, and offenders in the high-specificity group before activities, shops, and broad venues, with a regression test for a coconut near Berawa Beach.
+- The unexplained avatar/TIP pop-up was a world-scene rumor cue from `WorldScenes`. Rumor cues now say `RUMOR`, and opportunity scene labels are clickable/tappable to track the opportunity instead of being inert mystery objects.
+
+Viewport proof was collected in a throwaway real Chrome/CDP session against the local Vite app. A temporary dev-only game handle was used only during measurement and removed before committing. All visible measured surfaces were inside `window.innerWidth/innerHeight`:
+
+```text
+1280x800:
+  HUD/minimap: minimap 16,170-298,370; meters 1094,14-1266,122; buttons 1126,570-1266,786.
+  Dialogue: 260,437-1020,544.
+  Venue activity panel: 260,280-1020,520.
+  Legacy activity detail panel: 260,180-1020,620.
+
+1440x900:
+  HUD/minimap: minimap 16,170-298,370; meters 1254,14-1426,122; buttons 1286,670-1426,886.
+  Dialogue: 340,513-1100,620.
+  Venue activity panel: 340,330-1100,570.
+  Legacy activity detail panel: 340,230-1100,670.
+
+1728x1117:
+  HUD/minimap: minimap 16,170-298,370; meters 1542,14-1714,122; buttons 1574,887-1714,1103.
+  Dialogue: 484,730-1244,837.
+  Venue activity panel: 484,438-1244,679.
+  Legacy activity detail panel: 484,339-1244,778.
+
+2560x1440:
+  HUD/minimap: minimap 16,170-298,370; meters 2374,14-2546,122; buttons 2406,1210-2546,1426.
+  Dialogue: 900,1053-1660,1160.
+  Venue activity panel: 900,600-1660,840.
+  Legacy activity detail panel: 900,500-1660,940.
+
+1024x768:
+  HUD/minimap: minimap 16,170-254,339; meters 838,14-1010,122; buttons 870,538-1010,754.
+  Dialogue: 132,415-892,522.
+  Venue activity panel: 132,264-892,504.
+  Legacy activity detail panel: 132,164-892,604.
+
+390x844:
+  HUD/minimap: minimap 16,170-122,246; meters 236,10-380,108; buttons 250,634-380,834.
+  Dialogue: 10,499-380,618.
+  Venue activity panel: 10,267-380,577.
+  Legacy activity detail panel: 10,124-380,720.
+```
+
+Verification:
+
+- `npm run build`: passed.
+- `npm test`: 15 files passed; 96 tests passed, 3 skipped.
+- Browser/CDP bounds checks above: passed for HUD, minimap, dialogue, venue activity panel, and legacy activity detail panel at all six requested viewport sizes.
+- Human-only still worth checking on the device: ride near beach/sand in a normal save; pick up coconuts near Berawa Beach; walk up to a rumor/opportunity scene and confirm `RUMOR`/tracking reads clearly.

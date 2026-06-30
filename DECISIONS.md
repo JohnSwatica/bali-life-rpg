@@ -385,3 +385,14 @@ Act 1 "Found Your Feet" now requires first rent coverage in addition to 5 delive
 Act 2 now has a fourth proof goal, `open_better_door`, after joining a crew, attending its rhythm, and completing a relationship beat. The payoff is derived from existing club-gated opportunities, not a new system. The first set is `focus_table_client_referral`, `run_crew_breakfast_shift`, `brunch_builders_paid_intro`, and `surf_circle_board_repair`; these get higher spawn weight after their trust gates are met so the social layer visibly opens useful work/perks before Act 3.
 
 This keeps Act 3 locked: the business sim is still not implemented. The point of this slice is proving Acts 0-2 feel like a coherent first-hour playable route before broader content or the Act 3 management layer begins.
+
+## 2026-07-01 - Playtest Bugs Prefer Root Fixes Over Symptom Patches
+
+The first external playtest bug pass is treated as product evidence, not polish trivia. Several issues were repeat-regression shaped, so the fixes establish architectural rules:
+
+- New gameplay overlays should use the DOM/bounds-safe surface pattern or an equivalent measured UI layer. The old Phaser canvas activity panels caused clipping and HUD overlap because they were not part of the DOM overlay contract. Venue activity menus and legacy activity detail panels now share the DOM `activity-panel` surface.
+- Broad venue/building interactions must not outrank foreground intent. Pickups, NPCs, deliveries, and offenders are the high-specificity interaction group; activities, shops, and venues follow after that.
+- Punitive terrain-stuck behavior is disabled until it can be fun. Scooter condition and upgrades remain, but beach/sand should not currently trap the player.
+- World-scene cue labels must explain themselves or be interactable. Rumor opportunities now say `RUMOR` and can be clicked/tapped to track the opportunity; unexplained inert `TIP` bubbles are not acceptable.
+
+Bounds verification is now part of the closure standard for UI regressions. The playtest fix pass measured HUD, minimap, dialogue, venue activity panel, and legacy activity detail panel at `1280x800`, `1440x900`, `1728x1117`, `2560x1440`, `1024x768`, and `390x844`; all visible surfaces were inside the viewport. Future overlay work should preserve `data-ui-surface` hooks so this proof can be rerun.
