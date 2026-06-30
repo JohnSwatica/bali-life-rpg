@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import type { CuratedCategory } from "../../data/curatedVenues";
+import { getStationVisualForVenue, type StationVisualDefinition } from "../../data/stationVisuals";
 import type { MapFeatureDefinition, RoadPathDefinition } from "../../data/berawaLayout";
 import {
   TILESET_KEY,
@@ -256,7 +257,8 @@ function drawStreetBuildings(g: Phaser.GameObjects.Graphics, template: StreetTem
     if (!rect.slot.venueId) {
       continue;
     }
-    const palette = buildingPalette(rect.slot.category, rect.slot.isLandmark, hashString(rect.slot.venueId));
+    const stationVisual = getStationVisualForVenue(rect.slot.venueId, rect.slot.category);
+    const palette = stationVisual?.palette ?? buildingPalette(rect.slot.category, rect.slot.isLandmark, hashString(rect.slot.venueId));
     const shadowOffset = 4;
     drawEntranceMat(g, rect, palette);
     g.fillStyle(0x24312a, 0.22);
@@ -268,7 +270,7 @@ function drawStreetBuildings(g: Phaser.GameObjects.Graphics, template: StreetTem
     g.fillStyle(palette.roofLight, 0.72);
     g.fillRect(rect.x + 6, rect.y + 7, Math.max(8, rect.width - 12), 5);
     drawRoadFacingFacade(g, rect, palette);
-    drawCategoryDetails(g, rect, palette);
+    drawCategoryDetails(g, rect, palette, stationVisual);
   }
 }
 
@@ -276,10 +278,11 @@ function createStreetSigns(scene: Phaser.Scene, template: StreetTemplate): Phase
   return getStreetBuildingRects(template)
     .filter((rect) => rect.slot.venueId && rect.slot.label)
     .map((rect) => {
-      const palette = buildingPalette(rect.slot.category, rect.slot.isLandmark, hashString(rect.slot.venueId ?? rect.slot.id));
+      const stationVisual = getStationVisualForVenue(rect.slot.venueId, rect.slot.category);
+      const palette = stationVisual?.palette ?? buildingPalette(rect.slot.category, rect.slot.isLandmark, hashString(rect.slot.venueId ?? rect.slot.id));
       const sign = signPosition(rect);
       return scene.add
-        .text(sign.x, sign.y, compactVenueName(rect.slot.label ?? rect.slot.venueId ?? ""), {
+        .text(sign.x, sign.y, stationVisual?.signLabel ?? compactVenueName(rect.slot.label ?? rect.slot.venueId ?? ""), {
           fontFamily: "Inter, Arial, sans-serif",
           fontSize: rect.slot.isLandmark ? "10px" : "9px",
           fontStyle: "800",
@@ -333,12 +336,43 @@ function drawRoadFacingFacade(g: Phaser.GameObjects.Graphics, rect: StreetBuildi
   g.fillRoundedRect(windowX, rect.centerY + 38, 10, 12, 2);
 }
 
-function drawCategoryDetails(g: Phaser.GameObjects.Graphics, rect: StreetBuildingRect, palette: BuildingPalette): void {
+function drawCategoryDetails(
+  g: Phaser.GameObjects.Graphics,
+  rect: StreetBuildingRect,
+  palette: BuildingPalette,
+  stationVisual?: StationVisualDefinition
+): void {
   const category = rect.slot.category;
   const side = rect.slot.side;
   const outsideX = side === "left" ? rect.x + rect.width + 34 : rect.x - 34;
   const direction = side === "left" ? 1 : -1;
   const baseY = rect.centerY;
+
+  if (stationVisual?.prop === "laptop_table") {
+    drawLaptopTable(g, outsideX, baseY - 10, palette);
+    drawMenuBoard(g, outsideX + direction * 20, baseY + 26, palette);
+    return;
+  }
+
+  if (stationVisual?.prop === "surf_reset") {
+    drawSurfReset(g, outsideX, baseY - 18, palette);
+    return;
+  }
+
+  if (stationVisual?.prop === "club_rope") {
+    drawClubRope(g, outsideX, baseY - 12, direction, palette);
+    return;
+  }
+
+  if (stationVisual?.prop === "warung_steam") {
+    drawWarungSteam(g, outsideX, baseY, palette);
+    return;
+  }
+
+  if (stationVisual?.prop === "coworking_desks") {
+    drawCoworkingDesks(g, outsideX, baseY, palette);
+    return;
+  }
 
   if (rect.slot.venueId?.includes("scooter") || rect.slot.label?.toLowerCase().includes("scooter")) {
     drawParkedScooter(g, outsideX, baseY - 18, direction, 0xe35d4f);
@@ -382,6 +416,86 @@ function drawCafeTable(g: Phaser.GameObjects.Graphics, x: number, y: number, pal
   g.fillCircle(x + 16, y, 5);
   g.fillCircle(x, y - 16, 5);
   g.fillCircle(x, y + 16, 5);
+}
+
+function drawLaptopTable(g: Phaser.GameObjects.Graphics, x: number, y: number, palette: BuildingPalette): void {
+  drawCafeTable(g, x, y, palette);
+  g.fillStyle(0x23313a, 1);
+  g.fillRoundedRect(x - 9, y - 6, 18, 12, 2);
+  g.fillStyle(0x94d9d2, 0.95);
+  g.fillRect(x - 6, y - 3, 12, 6);
+  g.fillStyle(0xfff1c6, 1);
+  g.fillCircle(x + 18, y - 10, 4);
+}
+
+function drawSurfReset(g: Phaser.GameObjects.Graphics, x: number, y: number, palette: BuildingPalette): void {
+  drawUmbrella(g, x - 8, y, palette);
+  drawSurfboards(g, x + 22, y + 26, palette);
+  g.lineStyle(3, 0x3f91c9, 0.8);
+  g.beginPath();
+  g.arc(x - 6, y + 36, 22, Math.PI * 1.05, Math.PI * 1.72);
+  g.strokePath();
+  g.lineStyle(2, 0xffffff, 0.68);
+  g.beginPath();
+  g.arc(x - 4, y + 37, 15, Math.PI * 1.08, Math.PI * 1.62);
+  g.strokePath();
+}
+
+function drawClubRope(g: Phaser.GameObjects.Graphics, x: number, y: number, direction: number, palette: BuildingPalette): void {
+  g.fillStyle(0x000000, 0.14);
+  g.fillEllipse(x, y + 40, 70, 18, 24);
+  for (const dx of [-26, 26]) {
+    g.fillStyle(palette.sign, 1);
+    g.fillRoundedRect(x + dx - 3, y + 2, 6, 42, 3);
+    g.fillStyle(palette.accent, 1);
+    g.fillCircle(x + dx, y, 6);
+  }
+  g.lineStyle(4, palette.accent, 0.9);
+  g.lineBetween(x - 26, y + 18, x + 26, y + 18);
+  drawSpeaker(g, x + direction * 42, y + 14, palette);
+}
+
+function drawSpeaker(g: Phaser.GameObjects.Graphics, x: number, y: number, palette: BuildingPalette): void {
+  g.fillStyle(0x1f2930, 1);
+  g.fillRoundedRect(x - 10, y - 18, 20, 36, 3);
+  g.fillStyle(palette.accent, 0.85);
+  g.fillCircle(x, y - 7, 5);
+  g.fillCircle(x, y + 9, 7);
+}
+
+function drawWarungSteam(g: Phaser.GameObjects.Graphics, x: number, y: number, palette: BuildingPalette): void {
+  g.fillStyle(0x000000, 0.13);
+  g.fillEllipse(x, y + 24, 58, 14, 24);
+  g.fillStyle(palette.trim, 1);
+  g.fillRoundedRect(x - 28, y - 4, 56, 26, 4);
+  g.fillStyle(palette.roofLight, 1);
+  g.fillRoundedRect(x - 22, y - 14, 44, 13, 3);
+  g.fillStyle(0xf7eac1, 1);
+  for (const dx of [-14, 0, 14]) {
+    g.fillCircle(x + dx, y + 5, 6);
+  }
+  g.lineStyle(2, 0xffffff, 0.5);
+  for (const dx of [-12, 2, 16]) {
+    g.beginPath();
+    g.arc(x + dx, y - 12, 6, Math.PI * 0.65, Math.PI * 1.4);
+    g.strokePath();
+  }
+}
+
+function drawCoworkingDesks(g: Phaser.GameObjects.Graphics, x: number, y: number, palette: BuildingPalette): void {
+  g.fillStyle(0x000000, 0.12);
+  g.fillEllipse(x, y + 26, 64, 14, 24);
+  for (const [dx, dy] of [
+    [-18, -6],
+    [18, 10]
+  ] as const) {
+    g.fillStyle(palette.sign, 1);
+    g.fillRoundedRect(x + dx - 15, y + dy - 5, 30, 14, 3);
+    g.fillStyle(0xf7eac1, 1);
+    g.fillRoundedRect(x + dx - 8, y + dy - 13, 16, 10, 2);
+    g.fillStyle(palette.accent, 1);
+    g.fillRect(x + dx - 5, y + dy - 10, 10, 4);
+  }
 }
 
 function drawMenuBoard(g: Phaser.GameObjects.Graphics, x: number, y: number, palette: BuildingPalette): void {

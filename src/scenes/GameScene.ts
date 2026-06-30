@@ -582,6 +582,42 @@ export class GameScene extends Phaser.Scene {
     this.fieldIndicatorLayer = this.add.graphics().setDepth(212);
     this.worldSceneLayer = this.add.graphics().setDepth(213);
     this.addAreaLabels();
+    this.drawHomeBaseStationMarker();
+  }
+
+  private drawHomeBaseStationMarker(): void {
+    const g = this.add.graphics().setDepth(playerHomeBase.y - 4);
+    const x = playerHomeBase.x;
+    const y = playerHomeBase.y;
+    g.fillStyle(0x000000, 0.18);
+    g.fillEllipse(x, y + scaleDistance(34), scaleDistance(92), scaleDistance(24), 28);
+    g.fillStyle(0xf2dfb8, 1);
+    g.fillRoundedRect(x - scaleDistance(42), y - scaleDistance(26), scaleDistance(84), scaleDistance(62), scaleDistance(7));
+    g.fillStyle(0x4f8f66, 1);
+    g.beginPath();
+    g.moveTo(x - scaleDistance(50), y - scaleDistance(22));
+    g.lineTo(x, y - scaleDistance(62));
+    g.lineTo(x + scaleDistance(50), y - scaleDistance(22));
+    g.closePath();
+    g.fillPath();
+    g.fillStyle(0x253a35, 1);
+    g.fillRoundedRect(x - scaleDistance(11), y + scaleDistance(4), scaleDistance(22), scaleDistance(32), scaleDistance(3));
+    g.fillStyle(0xf7eac1, 1);
+    g.fillCircle(x + scaleDistance(6), y + scaleDistance(20), scaleDistance(2));
+    g.lineStyle(scaleDistance(2), 0x6b3f2a, 0.8);
+    g.strokeRoundedRect(x - scaleDistance(33), y + scaleDistance(12), scaleDistance(18), scaleDistance(16), scaleDistance(3));
+    this.add
+      .text(x, y - scaleDistance(18), "KOS", {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: `${Math.max(10, scaleDistance(10))}px`,
+        fontStyle: "900",
+        color: "#fff8de",
+        backgroundColor: "#253a35",
+        padding: { x: 4, y: 2 }
+      })
+      .setOrigin(0.5)
+      .setDepth(playerHomeBase.y + 2)
+      .setResolution(2);
   }
 
   private getStaticMapBakeScale(): number {
