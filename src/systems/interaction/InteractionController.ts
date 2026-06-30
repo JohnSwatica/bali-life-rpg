@@ -149,11 +149,9 @@ export class InteractionController {
 }
 
 function priority(target: InteractionTarget): number {
-  if (target.type === "npc") return 0;
-  if (target.type === "offender") return 1;
-  if (target.type === "delivery") return 2;
-  if (target.type === "activity") return 3;
-  if (target.type === "shop") return 4;
-  if (target.type === "venue") return 5;
-  return 5;
+  if (target.type === "npc" || target.type === "pickup" || target.type === "delivery" || target.type === "offender") return 0;
+  if (target.type === "activity") return 1;
+  if (target.type === "shop") return 2;
+  if (target.type === "venue") return 3;
+  return 3;
 }

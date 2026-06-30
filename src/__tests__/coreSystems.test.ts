@@ -10,6 +10,7 @@ vi.mock("phaser", () => ({
   }
 }));
 import { curatedVenueNodes } from "../data/authoredStreetLayout";
+import { pickupDefinitions } from "../data/map";
 import { npcDefinitions } from "../data/npcs";
 import { shopDefinitions } from "../data/shops";
 import { addItem, getQuantity } from "../systems/Inventory";
@@ -290,6 +291,32 @@ describe("InteractionController", () => {
     });
 
     expect(controller.getNearestInteraction()).toMatchObject({ type: "venue", id: "nude_cafe_berawa" });
+  });
+
+  it("prioritizes a foreground pickup over a closer broad venue zone", () => {
+    const pickup = pickupDefinitions.find((candidate) => candidate.id === "coconut-jetty");
+    const venue = curatedVenueNodes.find((candidate) => candidate.venueId === "berawa_beach");
+    expect(pickup).toBeDefined();
+    expect(venue).toBeDefined();
+    const dx = venue!.x - pickup!.x;
+    const dy = venue!.y - pickup!.y;
+    const distance = Math.hypot(dx, dy);
+    const player = {
+      x: pickup!.x + (dx / distance) * 50,
+      y: pickup!.y + (dy / distance) * 50
+    };
+    expect(Math.hypot(player.x - pickup!.x, player.y - pickup!.y)).toBeLessThan(64 * 1.6);
+    expect(Math.hypot(player.x - venue!.x, player.y - venue!.y)).toBeLessThan(Math.hypot(player.x - pickup!.x, player.y - pickup!.y));
+
+    const controller = new InteractionController({
+      getPlayerPosition: () => player,
+      getNpcSprite: () => undefined,
+      isPickupAvailable: (candidate) => candidate.id === pickup!.id,
+      getWantedOffenders: () => [],
+      getOffenderReward: () => 0
+    });
+
+    expect(controller.getNearestInteraction()).toMatchObject({ type: "pickup", id: "coconut-jetty" });
   });
 
   it("prioritizes an active delivery pickup over an overlapping shop", () => {
