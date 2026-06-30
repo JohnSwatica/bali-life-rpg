@@ -396,3 +396,19 @@ The first external playtest bug pass is treated as product evidence, not polish 
 - World-scene cue labels must explain themselves or be interactable. Rumor opportunities now say `RUMOR` and can be clicked/tapped to track the opportunity; unexplained inert `TIP` bubbles are not acceptable.
 
 Bounds verification is now part of the closure standard for UI regressions. The playtest fix pass measured HUD, minimap, dialogue, venue activity panel, and legacy activity detail panel at `1280x800`, `1440x900`, `1728x1117`, `2560x1440`, `1024x768`, and `390x844`; all visible surfaces were inside the viewport. Future overlay work should preserve `data-ui-surface` hooks so this proof can be rerun.
+
+## 2026-07-01 - Locations Become Stations Through Data, Not New Systems
+
+The gameplay-stations pass deliberately makes existing locations mechanically distinct without adding new buildings or a second activity system. The six station identities are cafe focus, beach reset, beach-club night, warung meal, coworking sprint, and cheap-kos home base.
+
+Station behavior is authored in data:
+
+- `stationLoops` owns the station fantasy, venue IDs, reward shape, risk, and best-time rhythm.
+- `activities` owns the actual 2-3 option choices per station, including exact venue matching, visible previews, time modifiers, minigame hooks by activity ID, and next-morning effects.
+- `stationVisuals` owns palette/sign/prop treatment so a station reads differently before interaction.
+
+The activity engine remains the source of truth. Exact station rows sort ahead of generic category activities, but legacy generic rows stay available as fallback where they still support Act 0 and older daily-life loops. This avoids breaking tutorial coffee/meal progress while giving authored stations their own top-level choices.
+
+Home is represented as the existing `cheap_kos` home-base context, not as a new map venue. Normal sleep now belongs to that home station; Act 0 still keeps its direct guided sleep shortcut.
+
+Beach-club fallout is a narrow persisted queue (`world.life.pendingMorningPenalties`) rather than an immediate stat hit. This preserves the intended shape: the night feels rewarding now, then the cost lands after sleeping.

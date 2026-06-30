@@ -575,3 +575,37 @@ Verification:
 - `npm test`: 15 files passed; 96 tests passed, 3 skipped.
 - Browser/CDP bounds checks above: passed for HUD, minimap, dialogue, venue activity panel, and legacy activity detail panel at all six requested viewport sizes.
 - Human-only still worth checking on the device: ride near beach/sand in a normal save; pick up coconuts near Berawa Beach; walk up to a rumor/opportunity scene and confirm `RUMOR`/tracking reads clearly.
+
+## 2026-07-01 - Gameplay Stations Make Existing Locations Mechanically Distinct
+
+Branch `feat/gameplay-stations` turns six existing anchors into data-driven gameplay stations instead of generic activity menus:
+
+- Cafe focus table: Satu-Satu Coffee, Milk & Madu, Nude Cafe, and BAKED.
+- Beach reset: Berawa Beach.
+- Beach club night: FINNS Beach Club.
+- Warung meal: Ulekan Berawa.
+- Coworking sprint: Tropical Nomad Coworking Space and Outpost Canggu Coworking.
+- Cheap kos room: the existing `cheap_kos` home base.
+
+The implementation reuses the existing activity engine, committed-activity flow, minigame hooks, meters, clock, reputation, affinity bumps, inventory rewards, and save/load. No buildings, backend, AI/network, combat, real commerce, or large stat system were added.
+
+Station authoring is now split across:
+
+- `src/data/stationLoops.ts` for station fantasy, venue IDs, reward shape, risk/tradeoff, and best time of day.
+- `src/data/activities.ts` for station activity rows using `stationId`, exact `venueIds`, preview/action copy, time-of-day modifiers, and optional next-morning effects.
+- `src/data/stationVisuals.ts` for distinct station signage, palette, and prop cues.
+
+Runtime behavior:
+
+- Exact station activities sort before generic category fallback activities.
+- Menus show station choices first, then everyday fallback rows where useful.
+- Main station actions use the existing minigame overlay where appropriate.
+- Time-of-day rhythm is visible in the station menu and affects positive meter/money outcomes.
+- FINNS big-night fallout queues `world.life.pendingMorningPenalties`, applied on sleep at the kos.
+- The old sleep-anywhere fallback is tightened so normal sleep belongs to the home station.
+
+Verification:
+
+- `npm run build`: passed during the station phases.
+- Focused tests passed for station choice surfacing, station minigames, time-of-day rhythm, and next-morning penalties.
+- Full-suite verification should remain the closure gate after any final balance adjustment.
