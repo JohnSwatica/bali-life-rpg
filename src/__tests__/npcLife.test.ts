@@ -18,7 +18,8 @@ import {
   getActiveNpcRoute,
   getNpcRouteActivityLabel
 } from "../systems/npcs/NpcRoutineRoutes";
-import type { NpcDefinition } from "../types";
+import { getNpcProximityReaction } from "../systems/npcs/NpcProximityReactions";
+import type { NpcDefinition, RelationshipMemory } from "../types";
 
 const namedNpcIds = ["ibu_sari", "kadek", "made", "ari"] as const;
 
@@ -146,3 +147,50 @@ describe("NPC idle behavior", () => {
     expect(later.scaleY).toBeGreaterThanOrEqual(1);
   });
 });
+
+describe("NPC proximity reactions", () => {
+  it("does not fire outside the near-radius", () => {
+    expect(getNpcProximityReaction(undefined, 121, 120)).toMatchObject({
+      active: false,
+      tier: "stranger",
+      cue: "glances",
+      pauseMs: 0
+    });
+  });
+
+  it("gives strangers a glance without pausing their route", () => {
+    expect(getNpcProximityReaction(undefined, 80, 120)).toMatchObject({
+      active: true,
+      tier: "stranger",
+      cue: "glances",
+      pauseMs: 0
+    });
+  });
+
+  it("scales warmer reactions with existing affinity tiers", () => {
+    const friendlyMemory = makeNpcMemory(8);
+    const regularMemory = makeNpcMemory(18);
+    const trustedMemory = makeNpcMemory(30);
+
+    expect(getNpcProximityReaction(friendlyMemory, 80, 120)).toMatchObject({
+      active: true,
+      tier: "friendly",
+      cue: "smiles"
+    });
+    expect(getNpcProximityReaction(friendlyMemory, 80, 120).pauseMs).toBeGreaterThan(0);
+    expect(getNpcProximityReaction(regularMemory, 80, 120).pauseMs).toBeGreaterThan(
+      getNpcProximityReaction(friendlyMemory, 80, 120).pauseMs
+    );
+    expect(getNpcProximityReaction(trustedMemory, 80, 120).cue).toBe("brightens");
+  });
+});
+
+function makeNpcMemory(affinity: number): RelationshipMemory {
+  return {
+    subjectType: "npc",
+    subjectId: "ari",
+    affinity,
+    lastInteractionAt: 1,
+    memories: []
+  };
+}

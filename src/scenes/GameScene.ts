@@ -39,6 +39,10 @@ import {
   type NpcRouteMotionState
 } from "../systems/npcs/NpcRoutineRoutes";
 import { getNpcIdleCue, getNpcIdleVisual } from "../systems/npcs/NpcIdleBehavior";
+import {
+  getNpcProximityReaction as resolveNpcProximityReaction,
+  type NpcProximityReaction
+} from "../systems/npcs/NpcProximityReactions";
 import { adjustPlayerMeters } from "../systems/meters/PlayerMeters";
 import {
   createActiveMinigame,
@@ -263,6 +267,8 @@ const TRAFFIC_HIT_MONEY_LOSS = 10;
 const TRAFFIC_KNOCKBACK_DISTANCE = scaleDistance(76);
 const WATER_BOUNDARY_TOAST_COOLDOWN_MS = 1800;
 const VENUE_LABEL_NEAR_RADIUS = scaleDistance(210);
+const NPC_PROXIMITY_REACTION_RADIUS = scaleDistance(112);
+const NPC_PROXIMITY_REACTION_LABEL_MS = 950;
 const VENUE_LABEL_STACK_DISTANCE = scaleDistance(92);
 const MAX_VISIBLE_VENUE_LABELS = 5;
 const MINIMAP_MAX_WIDTH = 280;
@@ -360,6 +366,10 @@ export class GameScene extends Phaser.Scene {
   private npcRouteMotion = new Map<string, NpcRouteMotionState>();
   private npcIdlePhases = new Map<string, number>();
   private npcIdleLabels = new Map<string, Phaser.GameObjects.Text>();
+  private npcReactionNear = new Map<string, boolean>();
+  private npcReactionCooldowns = new Map<string, number>();
+  private npcReactionLabels = new Map<string, Phaser.GameObjects.Text>();
+  private npcReactionCues = new Map<string, { cue: string; remainingMs: number }>();
   private pickupSprites = new Map<string, Phaser.GameObjects.Sprite>();
   private playerBike?: Phaser.GameObjects.Sprite;
   private trafficBikes: TrafficBikeRuntime[] = [];
@@ -1741,10 +1751,29 @@ export class GameScene extends Phaser.Scene {
         waypointIndex: 0,
         pauseMsRemaining: 0
       };
+      const routeMotion =
+        previousMotion.routeId === route.id
+          ? previousMotion
+          : {
+              routeId: route.id,
+              waypointIndex: 0,
+              pauseMsRemaining: 0
+            };
+      const reaction = this.resolveNpcProximityReaction(npc, sprite);
+      const cooldown = Math.max(0, (this.npcReactionCooldowns.get(npc.id) ?? 0) - delta);
+      this.npcReactionCooldowns.set(npc.id, cooldown);
+      const wasNear = this.npcReactionNear.get(npc.id) ?? false;
+      const shouldReact = reaction.active && !wasNear && cooldown <= 0;
+      this.npcReactionNear.set(npc.id, reaction.active);
+      if (shouldReact) {
+        this.npcReactionCooldowns.set(npc.id, reaction.cooldownMs);
+        this.npcReactionCues.set(npc.id, { cue: reaction.cue, remainingMs: NPC_PROXIMITY_REACTION_LABEL_MS });
+      }
       const nextMotion = advanceNpcRouteMotion(
         route,
         {
-          ...previousMotion,
+          ...routeMotion,
+          pauseMsRemaining: shouldReact ? Math.max(routeMotion.pauseMsRemaining, reaction.pauseMs) : routeMotion.pauseMsRemaining,
           x: sprite.x,
           y: sprite.y
         },
@@ -1763,12 +1792,21 @@ export class GameScene extends Phaser.Scene {
         this.setSpriteFacing(sprite, nextMotion.facingDx < -1, CHARACTER_SPRITE_SCALE);
       }
       sprite.setPosition(nextMotion.x, nextMotion.y);
+      if (reaction.active) {
+        this.setSpriteFacing(sprite, this.player.x < sprite.x, CHARACTER_SPRITE_SCALE);
+      }
       sprite.body?.updateFromGameObject();
       state.x = Math.round(sprite.x);
       state.y = Math.round(sprite.y);
       sprite.setDepth(sprite.y);
       this.updateNpcIdleVisual(npc, sprite, !nextMotion.moving, delta);
+      this.updateNpcReactionVisual(npc, sprite, delta);
     }
+  }
+
+  private resolveNpcProximityReaction(npc: NpcDefinition, sprite: Phaser.Physics.Arcade.Sprite): NpcProximityReaction {
+    const distance = Math.hypot(this.player.x - sprite.x, this.player.y - sprite.y);
+    return resolveNpcProximityReaction(getRelationship(this.world, "npc", npc.id), distance, NPC_PROXIMITY_REACTION_RADIUS);
   }
 
   private updateNpcIdleVisual(npc: NpcDefinition, sprite: Phaser.Physics.Arcade.Sprite, isIdle: boolean, delta: number): void {
@@ -1811,6 +1849,50 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setVisible(false);
     this.npcIdleLabels.set(npc.id, label);
+    return label;
+  }
+
+  private updateNpcReactionVisual(npc: NpcDefinition, sprite: Phaser.Physics.Arcade.Sprite, delta: number): void {
+    const cue = this.npcReactionCues.get(npc.id);
+    const existingLabel = this.npcReactionLabels.get(npc.id);
+    if (!cue) {
+      existingLabel?.setVisible(false);
+      return;
+    }
+
+    const remainingMs = cue.remainingMs - delta;
+    if (remainingMs <= 0) {
+      this.npcReactionCues.delete(npc.id);
+      existingLabel?.setVisible(false);
+      return;
+    }
+
+    this.npcReactionCues.set(npc.id, { ...cue, remainingMs });
+    const label = this.getNpcReactionLabel(npc);
+    label
+      .setText(cue.cue)
+      .setPosition(sprite.x, sprite.y - scaleDistance(58))
+      .setDepth(sprite.y + 6)
+      .setAlpha(Math.min(1, remainingMs / 250))
+      .setVisible(true);
+  }
+
+  private getNpcReactionLabel(npc: NpcDefinition): Phaser.GameObjects.Text {
+    const existing = this.npcReactionLabels.get(npc.id);
+    if (existing) {
+      return existing;
+    }
+    const label = this.add
+      .text(0, 0, "", {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: "10px",
+        color: "#123026",
+        backgroundColor: "#e6fff4",
+        padding: { x: 5, y: 2 }
+      })
+      .setOrigin(0.5)
+      .setVisible(false);
+    this.npcReactionLabels.set(npc.id, label);
     return label;
   }
 
