@@ -334,6 +334,7 @@ const TRAFFIC_ROUTES: TrafficRouteDefinition[] = PRESENTED_BERAWA_ROADS
     length: entry.length
   }));
 const TRAFFIC_JUNCTIONS = buildTrafficJunctionIndex(TRAFFIC_ROUTES);
+const BIKE_TERRAIN_STUCK_ENABLED = false;
 const BIKE_MUD_ZONES: MudZoneDefinition[] = [
   {
     id: "berawa-shortcut-mud",
@@ -1814,6 +1815,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private checkBikeTerrain(): void {
+    if (!BIKE_TERRAIN_STUCK_ENABLED) {
+      return;
+    }
     if (!this.playerState.onBike || this.playerState.bikeStuck) {
       return;
     }
@@ -2509,7 +2513,7 @@ export class GameScene extends Phaser.Scene {
     }
     saveWorldState(this.world);
     this.updatePlayerBikeVisual();
-    this.showToast(this.playerState.onBike ? "Bike mode on. Roads are fast; mud and beach sand are not." : "Bike parked. You are back on foot.");
+    this.showToast(this.playerState.onBike ? "Bike mode on. Roads are fast; beach rides stay smooth." : "Bike parked. You are back on foot.");
   }
 
   private interactWithNpc(npcId: string): void {
