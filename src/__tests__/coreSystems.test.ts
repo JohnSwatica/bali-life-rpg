@@ -119,6 +119,17 @@ describe("QuestRegistry", () => {
 });
 
 describe("Settling In goals", () => {
+  it("counts station-specific work and beach reset activities toward settling goals", () => {
+    const world = createInitialWorldState();
+    world.life.activityHistory["satu_satu_coffee:cafe_deep_work"] = { count: 1, lastDay: world.clock.day, totalCount: 1, earnedMoney: 310 };
+    world.life.activityHistory["berawa_beach:beach_reflect_walk"] = { count: 1, lastDay: world.clock.day, totalCount: 1, earnedMoney: 0 };
+
+    const states = Object.fromEntries(getSettlingInGoalStates(world).map((goal) => [goal.id, goal.complete]));
+
+    expect(states.earn_your_keep).toBe(true);
+    expect(states.touch_grass).toBe(true);
+  });
+
   it("completes the daily and social goals from their runtime state and sets settledIn", () => {
     const world = createInitialWorldState();
 

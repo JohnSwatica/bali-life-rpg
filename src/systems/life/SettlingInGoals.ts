@@ -9,6 +9,9 @@ export interface SettlingInGoalState {
   complete: boolean;
 }
 
+const WORK_ACTIVITY_IDS = new Set(["remote_work_session", "cafe_deep_work", "coworking_focus_sprint"]);
+const BEACH_RESET_ACTIVITY_IDS = new Set(["surf_beach_time", "beach_surf_session", "beach_reflect_walk", "beach_cleanup_chat"]);
+
 export function getSettlingInGoalStates(world: WorldState): SettlingInGoalState[] {
   return settlingInGoalDefinitions.map((goal) => ({
     ...goal,
@@ -51,7 +54,7 @@ function isGoalComplete(world: WorldState, goalId: string): boolean {
     return totalEarnedFromWork(world) >= 300;
   }
   if (goalId === "touch_grass") {
-    return Object.keys(world.life.activityHistory).some((key) => key.endsWith(":surf_beach_time"));
+    return hasCompletedActivity(world, BEACH_RESET_ACTIVITY_IDS);
   }
   if (goalId === "plug_in") {
     return world.runtimeEvents.attendedEventIds.length > 0 || world.opportunities.completedTemplateIds.length > 0;
@@ -76,6 +79,14 @@ function hasVenueActivityCount(world: WorldState, requiredCount: number): boolea
 
 function totalEarnedFromWork(world: WorldState): number {
   return Object.entries(world.life.activityHistory)
-    .filter(([key]) => key.endsWith(":remote_work_session"))
+    .filter(([key]) => WORK_ACTIVITY_IDS.has(getActivityIdFromRecordKey(key)))
     .reduce((total, [, record]) => total + record.earnedMoney, 0);
+}
+
+function hasCompletedActivity(world: WorldState, activityIds: Set<string>): boolean {
+  return Object.entries(world.life.activityHistory).some(([key, record]) => record.totalCount > 0 && activityIds.has(getActivityIdFromRecordKey(key)));
+}
+
+function getActivityIdFromRecordKey(recordKey: string): string {
+  return recordKey.split(":").slice(1).join(":");
 }
