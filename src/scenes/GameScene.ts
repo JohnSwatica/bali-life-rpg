@@ -24,6 +24,7 @@ import { addItem, formatInventory, getQuantity, removeItem } from "../systems/In
 import { LocalNetworkAdapter, type NetworkAdapter } from "../systems/NetworkAdapter";
 import { clearSave, loadWorldState, saveWorldState } from "../systems/Persistence";
 import { ScriptedDialogueProvider, type DialogueProvider } from "../systems/dialogue/DialogueProvider";
+import { getAmbientNpcLine, getNpcDialogueSurface } from "../systems/dialogue/DialoguePresentation";
 import { InteractionController, type InteractionTarget } from "../systems/interaction/InteractionController";
 import { InputController, type GameKeyMap } from "../systems/input/InputController";
 import { IntentDispatcher, type IntentResult } from "../systems/intents/IntentDispatcher";
@@ -405,6 +406,8 @@ export class GameScene extends Phaser.Scene {
   private npcReactionAnimationTimers = new Map<string, number>();
   private npcFacingDirections = new Map<string, Direction>();
   private npcTalkBobTimers = new Map<string, number>();
+  private npcAmbientLines = new Map<string, { text: string; remainingMs: number }>();
+  private npcAmbientLineLabels = new Map<string, Phaser.GameObjects.Text>();
   private ambientNpcSprites = new Map<string, Phaser.Physics.Arcade.Sprite>();
   private ambientNpcRouteMotion = new Map<string, NpcRouteMotionState>();
   private ambientNpcIdlePhases = new Map<string, number>();
@@ -1987,6 +1990,7 @@ export class GameScene extends Phaser.Scene {
       this.updateNpcIdleVisual(npc, sprite, !nextMotion.moving && !reactingNow, delta);
       this.updateNpcReactionVisual(npc, sprite, delta);
       this.updateNpcTalkBobVisual(npc.id, sprite, delta);
+      this.updateNpcAmbientLineVisual(npc.id, sprite, delta);
     }
   }
 
@@ -2034,6 +2038,55 @@ export class GameScene extends Phaser.Scene {
     const nod = Math.sin(progress * Math.PI);
     sprite.setScale(sprite.scaleX, Math.abs(sprite.scaleY) * (1 + nod * 0.055));
     sprite.setAngle(sprite.angle + nod * 2.4);
+  }
+
+  private showNpcAmbientLine(npcId: string, text: string): void {
+    this.npcAmbientLines.set(npcId, { text, remainingMs: 2600 });
+  }
+
+  private updateNpcAmbientLineVisual(npcId: string, sprite: Phaser.GameObjects.Sprite, delta: number): void {
+    const line = this.npcAmbientLines.get(npcId);
+    const existingLabel = this.npcAmbientLineLabels.get(npcId);
+    if (!line) {
+      existingLabel?.setVisible(false);
+      return;
+    }
+
+    const remainingMs = line.remainingMs - delta;
+    if (remainingMs <= 0) {
+      this.npcAmbientLines.delete(npcId);
+      existingLabel?.setVisible(false);
+      return;
+    }
+
+    this.npcAmbientLines.set(npcId, { ...line, remainingMs });
+    const label = this.getNpcAmbientLineLabel(npcId);
+    label
+      .setText(line.text)
+      .setPosition(sprite.x, sprite.y - scaleDistance(76))
+      .setDepth(sprite.y + 9)
+      .setAlpha(Math.min(1, remainingMs / 350))
+      .setVisible(true);
+  }
+
+  private getNpcAmbientLineLabel(npcId: string): Phaser.GameObjects.Text {
+    const existing = this.npcAmbientLineLabels.get(npcId);
+    if (existing) {
+      return existing;
+    }
+    const label = this.add
+      .text(0, 0, "", {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: "11px",
+        color: "#123026",
+        backgroundColor: "rgba(230,255,244,0.92)",
+        padding: { x: 6, y: 3 },
+        wordWrap: { width: scaleDistance(160) }
+      })
+      .setOrigin(0.5, 1)
+      .setVisible(false);
+    this.npcAmbientLineLabels.set(npcId, label);
+    return label;
   }
 
   private updateNpcIdleVisual(npc: NpcDefinition, sprite: Phaser.Physics.Arcade.Sprite, isIdle: boolean, delta: number): void {
@@ -2460,7 +2513,8 @@ export class GameScene extends Phaser.Scene {
     this.startNpcTalkBob(npcId);
     this.dispatchIntent({ kind: "RecordMemory", subjectType: "npc", subjectId: npcId, memory: "visited", detail: "Spoke in world." });
 
-    if (npcId === "ibu_sari" && this.world.life.actProgress.act0Step === "meet_ibu_sari") {
+    const act0Critical = npcId === "ibu_sari" && this.world.life.actProgress.act0Step === "meet_ibu_sari";
+    if (getNpcDialogueSurface({ act0Critical }).surface === "panel" && act0Critical) {
       this.startAct0WithIbuSari();
       return;
     }
@@ -2483,13 +2537,26 @@ export class GameScene extends Phaser.Scene {
       this.refreshSettlingInGoals(false);
       saveWorldState(this.world);
     }
+    const baseLine = this.getNpcDialogueLine(npcId);
+    if (getNpcDialogueSurface({ relationshipBeat: Boolean(arcBeat) }).surface === "ambient") {
+      this.showNpcAmbientLine(npcId, getAmbientNpcLine(this.world, npcId, baseLine, routineLabel));
+      return;
+    }
     const arcCopy = arcBeat
       ? `\n\n${arcBeat.arc.title} - ${arcBeat.beat.title}\n${arcBeat.beat.description}\nPerk: ${arcBeat.payoffMessage}`
       : "";
     this.openDialogue(
       npc.name,
-      `${this.dialogueProvider.getLine(npcId, { memory: getRelationship(this.world, "npc", npcId) })}\n\nRight now ${npc.name} is ${routineLabel ?? "taking in the neighborhood"}.${arcCopy}`
+      `${baseLine}\n\nRight now ${npc.name} is ${routineLabel ?? "taking in the neighborhood"}.${arcCopy}`
     );
+  }
+
+  private getNpcDialogueLine(npcId: string): string {
+    const line = this.dialogueProvider.getLine(npcId, { memory: getRelationship(this.world, "npc", npcId) });
+    if (typeof line === "string") {
+      return line;
+    }
+    return npcDefinitions[npcId]?.defaultLine ?? "The neighborhood hums around you.";
   }
 
   private openDialogue(title: string, body: string): void {
