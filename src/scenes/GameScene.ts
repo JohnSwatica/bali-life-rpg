@@ -46,7 +46,7 @@ import {
   getNpcRouteActivityLabel,
   type NpcRouteMotionState
 } from "../systems/npcs/NpcRoutineRoutes";
-import { getNpcIdleCue, getNpcIdleVisual } from "../systems/npcs/NpcIdleBehavior";
+import { getNpcIdleCue, getNpcIdleTag, getNpcIdleVisual } from "../systems/npcs/NpcIdleBehavior";
 import {
   getNpcProximityReaction as resolveNpcProximityReaction,
   type NpcProximityReaction
@@ -107,7 +107,12 @@ import {
   recordRecklessDamageFlag,
   reduceWantedStanding
 } from "../systems/reputation/ReputationState";
-import { selectCharacterAnimation } from "../systems/animation/CharacterAnimations";
+import {
+  directionFromDelta,
+  npcIdleAnimationKey,
+  npcReactionAnimationKey,
+  selectCharacterAnimation
+} from "../systems/animation/CharacterAnimations";
 import {
   advanceClock,
   formatClock,
@@ -387,9 +392,12 @@ export class GameScene extends Phaser.Scene {
   private npcReactionCooldowns = new Map<string, number>();
   private npcReactionLabels = new Map<string, Phaser.GameObjects.Text>();
   private npcReactionCues = new Map<string, { cue: string; remainingMs: number }>();
+  private npcReactionAnimationTimers = new Map<string, number>();
+  private npcFacingDirections = new Map<string, Direction>();
   private ambientNpcSprites = new Map<string, Phaser.Physics.Arcade.Sprite>();
   private ambientNpcRouteMotion = new Map<string, NpcRouteMotionState>();
   private ambientNpcIdlePhases = new Map<string, number>();
+  private ambientNpcFacingDirections = new Map<string, Direction>();
   private pickupSprites = new Map<string, Phaser.GameObjects.Sprite>();
   private playerBike?: Phaser.GameObjects.Sprite;
   private trafficBikes: TrafficBikeRuntime[] = [];
@@ -1143,7 +1151,8 @@ export class GameScene extends Phaser.Scene {
     for (const npc of Object.values(npcDefinitions)) {
       const state = this.world.npcs[npc.id];
       const sprite = this.physics.add.sprite(state.x, state.y, npc.spriteKey).setDepth(state.y).setImmovable(true);
-      this.setSpriteFacing(sprite, false, CHARACTER_SPRITE_SCALE);
+      this.npcFacingDirections.set(npc.id, "down");
+      this.applyCharacterAnimation(sprite, npc.spriteKey, this.npcFacingDirections.get(npc.id) ?? "down", false, CHARACTER_SPRITE_SCALE);
       sprite.body?.setSize(PLAYER_BODY_WIDTH, PLAYER_BODY_HEIGHT);
       sprite.body?.setOffset(PLAYER_BODY_OFFSET_X, PLAYER_BODY_OFFSET_Y);
       this.npcSprites.set(npc.id, sprite);
@@ -1162,7 +1171,8 @@ export class GameScene extends Phaser.Scene {
         .setTint(ambientNpc.tint)
         .setAlpha(0.88)
         .setImmovable(true);
-      this.setSpriteFacing(sprite, false, CHARACTER_SPRITE_SCALE * 0.92);
+      this.ambientNpcFacingDirections.set(ambientNpc.id, "down");
+      this.applyCharacterAnimation(sprite, ambientNpc.spriteKey, "down", false, CHARACTER_SPRITE_SCALE * 0.92);
       sprite.body?.setSize(PLAYER_BODY_WIDTH, PLAYER_BODY_HEIGHT);
       sprite.body?.setOffset(PLAYER_BODY_OFFSET_X, PLAYER_BODY_OFFSET_Y);
       this.ambientNpcSprites.set(ambientNpc.id, sprite);
@@ -1814,6 +1824,7 @@ export class GameScene extends Phaser.Scene {
       if (shouldReact) {
         this.npcReactionCooldowns.set(npc.id, reaction.cooldownMs);
         this.npcReactionCues.set(npc.id, { cue: reaction.cue, remainingMs: NPC_PROXIMITY_REACTION_LABEL_MS });
+        this.npcReactionAnimationTimers.set(npc.id, 260);
       }
       const nextMotion = advanceNpcRouteMotion(
         route,
@@ -1826,6 +1837,15 @@ export class GameScene extends Phaser.Scene {
         delta,
         scaleDistance(42)
       );
+      const reactingNow = this.tickNpcReactionAnimation(npc.id, delta);
+      let facingDirection = this.npcFacingDirections.get(npc.id) ?? "down";
+      if (nextMotion.moving) {
+        facingDirection = directionFromDelta(nextMotion.facingDx, nextMotion.facingDy, facingDirection);
+      }
+      if (reaction.active) {
+        facingDirection = directionFromDelta(this.player.x - nextMotion.x, this.player.y - nextMotion.y, facingDirection);
+      }
+      this.npcFacingDirections.set(npc.id, facingDirection);
 
       this.npcRouteMotion.set(npc.id, {
         routeId: nextMotion.routeId,
@@ -1834,18 +1854,17 @@ export class GameScene extends Phaser.Scene {
       });
 
       state.currentRoutineId = route.id;
-      if (nextMotion.moving) {
-        this.setSpriteFacing(sprite, nextMotion.facingDx < -1, CHARACTER_SPRITE_SCALE);
-      }
       sprite.setPosition(nextMotion.x, nextMotion.y);
-      if (reaction.active) {
-        this.setSpriteFacing(sprite, this.player.x < sprite.x, CHARACTER_SPRITE_SCALE);
+      if (reactingNow) {
+        this.applyNpcReactionAnimation(npc, sprite, facingDirection);
+      } else if (nextMotion.moving) {
+        this.applyCharacterAnimation(sprite, npc.spriteKey, facingDirection, true, CHARACTER_SPRITE_SCALE);
       }
       sprite.body?.updateFromGameObject();
       state.x = Math.round(sprite.x);
       state.y = Math.round(sprite.y);
       sprite.setDepth(sprite.y);
-      this.updateNpcIdleVisual(npc, sprite, !nextMotion.moving, delta);
+      this.updateNpcIdleVisual(npc, sprite, !nextMotion.moving && !reactingNow, delta);
       this.updateNpcReactionVisual(npc, sprite, delta);
     }
   }
@@ -1855,22 +1874,41 @@ export class GameScene extends Phaser.Scene {
     return resolveNpcProximityReaction(getRelationship(this.world, "npc", npc.id), distance, NPC_PROXIMITY_REACTION_RADIUS);
   }
 
+  private tickNpcReactionAnimation(npcId: string, delta: number): boolean {
+    const current = this.npcReactionAnimationTimers.get(npcId) ?? 0;
+    if (current <= 0) {
+      return false;
+    }
+    const remaining = Math.max(0, current - delta);
+    if (remaining > 0) {
+      this.npcReactionAnimationTimers.set(npcId, remaining);
+    } else {
+      this.npcReactionAnimationTimers.delete(npcId);
+    }
+    return true;
+  }
+
+  private applyNpcReactionAnimation(npc: NpcDefinition, sprite: Phaser.GameObjects.Sprite, direction: Direction): void {
+    sprite.play(npcReactionAnimationKey(npc.spriteKey), true);
+    this.setSpriteFacing(sprite, direction === "left", CHARACTER_SPRITE_SCALE);
+  }
+
   private updateNpcIdleVisual(npc: NpcDefinition, sprite: Phaser.Physics.Arcade.Sprite, isIdle: boolean, delta: number): void {
     const label = this.getNpcIdleLabel(npc);
     if (!isIdle) {
       this.npcIdlePhases.set(npc.id, 0);
       sprite.setAngle(0);
-      this.setSpriteFacing(sprite, sprite.scaleX < 0, CHARACTER_SPRITE_SCALE);
       label.setVisible(false);
       return;
     }
 
     const elapsed = ((this.npcIdlePhases.get(npc.id) ?? 0) + delta) % 6000;
     const visual = getNpcIdleVisual(npc, elapsed);
-    const facingLeft = sprite.scaleX < 0;
+    const facingDirection = this.npcFacingDirections.get(npc.id) ?? "down";
     this.npcIdlePhases.set(npc.id, elapsed);
+    sprite.play(npcIdleAnimationKey(npc.spriteKey, getNpcIdleTag(npc)), true);
     sprite.setAngle(visual.angleDegrees);
-    sprite.setScale(facingLeft ? -CHARACTER_SPRITE_SCALE : CHARACTER_SPRITE_SCALE, CHARACTER_SPRITE_SCALE * visual.scaleY);
+    this.setSpriteFacing(sprite, facingDirection === "left", CHARACTER_SPRITE_SCALE, CHARACTER_SPRITE_SCALE * visual.scaleY);
     label
       .setText(visual.cue)
       .setPosition(sprite.x, sprite.y - scaleDistance(44) + visual.labelYOffset)
@@ -1974,7 +2012,13 @@ export class GameScene extends Phaser.Scene {
       if (nextMotion.moving) {
         this.ambientNpcIdlePhases.set(ambientNpc.id, 0);
         sprite.setAngle(0);
-        this.setSpriteFacing(sprite, nextMotion.facingDx < -1, CHARACTER_SPRITE_SCALE * 0.92);
+        const direction = directionFromDelta(
+          nextMotion.facingDx,
+          nextMotion.facingDy,
+          this.ambientNpcFacingDirections.get(ambientNpc.id) ?? "down"
+        );
+        this.ambientNpcFacingDirections.set(ambientNpc.id, direction);
+        this.applyCharacterAnimation(sprite, ambientNpc.spriteKey, direction, true, CHARACTER_SPRITE_SCALE * 0.92);
       } else {
         this.updateAmbientNpcIdleVisual(ambientNpc, sprite, delta);
       }
@@ -1987,11 +2031,12 @@ export class GameScene extends Phaser.Scene {
   private updateAmbientNpcIdleVisual(ambientNpc: AmbientNpcDefinition, sprite: Phaser.Physics.Arcade.Sprite, delta: number): void {
     const elapsed = ((this.ambientNpcIdlePhases.get(ambientNpc.id) ?? 0) + delta) % 6000;
     const visual = getNpcIdleVisual(ambientNpc, elapsed);
-    const facingLeft = sprite.scaleX < 0;
+    const facingDirection = this.ambientNpcFacingDirections.get(ambientNpc.id) ?? "down";
     const scale = CHARACTER_SPRITE_SCALE * 0.92;
     this.ambientNpcIdlePhases.set(ambientNpc.id, elapsed);
+    sprite.play(npcIdleAnimationKey(ambientNpc.spriteKey, ambientNpc.idleTag), true);
     sprite.setAngle(visual.angleDegrees * 0.65);
-    sprite.setScale(facingLeft ? -scale : scale, scale * visual.scaleY);
+    this.setSpriteFacing(sprite, facingDirection === "left", scale, scale * visual.scaleY);
   }
 
   private updatePickups(): void {

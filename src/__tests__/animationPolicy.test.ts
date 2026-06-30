@@ -43,4 +43,17 @@ describe("cheap animation policy", () => {
     expect(npcIdleAnimationKey("npc-sari", "tidy_counter")).toBe("npc-sari:idle:tidy_counter");
     expect(npcReactionAnimationKey("npc-kadek")).toBe("npc-kadek:reaction:turn");
   });
+
+  it("lets NPC route deltas drive the same cheap walk-cycle policy", () => {
+    const routeDirection = directionFromDelta(8, 32);
+    expect(routeDirection).toBe("down");
+    expect(selectCharacterAnimation("npc-ari", routeDirection, true)).toEqual({
+      key: characterAnimationKey("npc-ari", "walk", "down"),
+      facingLeft: false
+    });
+    expect(selectCharacterAnimation("npc-made", directionFromDelta(-16, 2), true)).toEqual({
+      key: characterAnimationKey("npc-made", "walk", "left"),
+      facingLeft: true
+    });
+  });
 });
