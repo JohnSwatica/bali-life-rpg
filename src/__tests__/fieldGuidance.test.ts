@@ -105,6 +105,46 @@ describe("field objective readout", () => {
     });
   });
 
+  it("points to recovery stations when meters are too low for healthy hustle", () => {
+    const world = createInitialWorldState();
+    world.life.actProgress.act0Step = "complete";
+    world.life.actProgress.firstDayComplete = true;
+    world.life.actProgress.currentAct = 1;
+    world.players[world.localPlayerId].hasBike = true;
+    world.meters.energy = 20;
+
+    expect(getHustleNextStep(world)).toMatchObject({
+      title: "Recover before the next run",
+      urgency: "blocked"
+    });
+    expect(getFieldObjective(world)).toMatchObject({
+      source: "hustle",
+      title: "Recover before the next run",
+      targets: [
+        expect.objectContaining({ type: "home" }),
+        expect.objectContaining({ type: "venue", venueId: "ulekan_berawa" }),
+        expect.objectContaining({ type: "venue", venueId: "milk_madu_berawa" })
+      ]
+    });
+  });
+
+  it("keeps payable rent higher priority than station recovery", () => {
+    const world = createInitialWorldState();
+    world.life.actProgress.act0Step = "complete";
+    world.life.actProgress.firstDayComplete = true;
+    world.life.actProgress.currentAct = 1;
+    world.players[world.localPlayerId].hasBike = true;
+    world.players[world.localPlayerId].money = world.life.hustle.rentAmount;
+    world.meters.energy = 20;
+    world.life.hustle.rentDueDay = world.clock.day;
+
+    expect(getFieldObjective(world)).toMatchObject({
+      source: "hustle",
+      title: "Pay rent",
+      targets: [expect.objectContaining({ type: "home" })]
+    });
+  });
+
   it("formats the readout as a single compact line", () => {
     expect(
       formatFieldObjectiveLine({

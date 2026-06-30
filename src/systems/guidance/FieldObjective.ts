@@ -3,6 +3,7 @@ import { playerHomeBase } from "../../data/homeBase";
 import { getAct0StepState, isAct0Complete } from "../life/ActProgression";
 import { areAct2GoalsComplete, getAct2NextStep, getAct2PayoffOpportunityState } from "../life/Act2Goals";
 import { getAct3ReadinessNextStep } from "../life/Act3Readiness";
+import { getStationRecoveryNudge } from "../life/StationRecovery";
 import { getHustleNextStep } from "../hustle/HustleGoals";
 import { getRentPressureState, MIN_DELIVERY_BIKE_CONDITION } from "../hustle/HustleEconomy";
 import { getAct1MoveOutReadiness } from "../hustle/HustleMilestones";
@@ -151,6 +152,21 @@ function getHustleObjectiveTargets(world: WorldState): FieldObjectiveTargetRef[]
     return [
       { type: "venue", id: "act2_beach_crew", label: "Find beach crew", venueId: "berawa_beach" },
       { type: "venue", id: "act2_focus_table", label: "Find focus table", venueId: "satu_satu_coffee" }
+    ];
+  }
+
+  const recoveryNudge = getStationRecoveryNudge(world);
+  if (recoveryNudge) {
+    return [
+      ...(recoveryNudge.includeHome ? ([{ type: "home" as const, id: playerHomeBase.id, label: playerHomeBase.name }] satisfies FieldObjectiveTargetRef[]) : []),
+      ...recoveryNudge.venueIds.map(
+        (venueId): FieldObjectiveTargetRef => ({
+          type: "venue",
+          id: `station_recovery_${venueId}`,
+          label: recoveryNudge.title,
+          venueId
+        })
+      )
     ];
   }
 

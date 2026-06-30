@@ -8,6 +8,7 @@ import {
   getAct1MoveOutReadiness,
   hasCoveredFirstRent
 } from "./HustleMilestones";
+import { getStationRecoveryNudge } from "../life/StationRecovery";
 import type { WorldState } from "../../types";
 
 export interface HustleGoalState {
@@ -143,6 +144,15 @@ export function getHustleNextStep(world: WorldState): HustleNextStepState {
       title: "Earn rent money",
       detail: `${rentPressure.shortLabel}. Need Rp ${hustle.rentAmount - player.money} more before rent feels steady.`,
       urgency: rentPressure.status === "overdue" || rentPressure.status === "due_today" ? "urgent" : "normal"
+    };
+  }
+
+  const recoveryNudge = getStationRecoveryNudge(world);
+  if (recoveryNudge) {
+    return {
+      title: recoveryNudge.title,
+      detail: recoveryNudge.detail,
+      urgency: recoveryNudge.urgency
     };
   }
 
