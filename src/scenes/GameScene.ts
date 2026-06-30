@@ -54,7 +54,8 @@ import { getSettlingInGoalTitle, updateSettlingInGoals } from "../systems/life/S
 import { completeAct0Step, getAct0HudLines, isAct0Complete, markAct0MealProgress } from "../systems/life/ActProgression";
 import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
 import { acceptDelivery, completeDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
-import { getRentPressureState, getScooterUpgradeStatus, payHustleRent, repairScooter, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
+import { getRentPressureState, payHustleRent, repairScooter, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
+import { getHustleNextStep } from "../systems/hustle/HustleGoals";
 import {
   acceptOpportunity,
   appendOpportunityMessage,
@@ -1878,21 +1879,8 @@ export class GameScene extends Phaser.Scene {
       if (rentPressure.status !== "comfortable") {
         lines.push(rentPressure.message);
       }
-      const activeDelivery = this.world.life.hustle.activeDelivery;
-      if (activeDelivery) {
-        const delivery = getDeliveryDefinition(activeDelivery.deliveryId);
-        const condition = delivery?.conditions?.find((candidate) => candidate.id === activeDelivery.conditionId);
-        const timeLeft = Math.max(0, Math.ceil(activeDelivery.dueAt - this.getAbsoluteMinute()));
-        const conditionLabel = condition ? ` ${condition.label}:` : "";
-        lines.push(
-          activeDelivery.stage === "accepted"
-            ? `Delivery:${conditionLabel} ${delivery?.pickupLabel ?? "go to pickup"} (${timeLeft} min left).`
-            : `Delivery:${conditionLabel} ${delivery?.dropoffLabel ?? "go to dropoff"} (${timeLeft} min left).`
-        );
-      } else {
-        const scooterUpgrade = getScooterUpgradeStatus(this.world);
-        lines.push(scooterUpgrade.available ? "Phone Feed: scooter upgrade ready." : "Phone Feed: pick a Hustle Board run.");
-      }
+      const nextStep = getHustleNextStep(this.world);
+      lines.push(`Next: ${nextStep.title}. ${nextStep.detail}`);
       return lines;
     }
     if (!this.playerState.hasBike) {

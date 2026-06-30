@@ -17,7 +17,7 @@ import {
   repairScooter,
   upgradeToDailyScooter
 } from "../systems/hustle/HustleEconomy";
-import { getHustleGoalStates } from "../systems/hustle/HustleGoals";
+import { getHustleGoalStates, getHustleNextStep } from "../systems/hustle/HustleGoals";
 import { completeAct0Step, markAct0MealProgress } from "../systems/life/ActProgression";
 import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
 import { getRelationship } from "../systems/relationships/RelationshipMemory";
@@ -311,5 +311,42 @@ describe("Act 0 hustle and deliveries", () => {
       cover_first_rent: true,
       move_out_ready: true
     });
+  });
+
+  it("derives the next Act 1 hustle action from current pressure", () => {
+    const world = createInitialWorldState();
+    const player = world.players[world.localPlayerId];
+
+    expect(getHustleNextStep(world)).toMatchObject({ title: "Finish first day", urgency: "normal" });
+
+    player.hasBike = true;
+    world.life.actProgress.firstDayComplete = true;
+    world.life.actProgress.currentAct = 1;
+    world.life.hustle.completedDeliveryCount = 1;
+    world.life.hustle.driverRating = 3.6;
+    expect(getHustleNextStep(world)).toMatchObject({ title: "Build delivery rhythm" });
+
+    const now = 2 * 1440 + 9 * 60;
+    expect(acceptDelivery(world, "milk_madu_brunch_bag", now)).toMatchObject({ ok: true });
+    expect(getHustleNextStep(world)).toMatchObject({ title: "Pick up active delivery" });
+    expect(pickupDelivery(world, now + 8)).toMatchObject({ ok: true });
+    expect(getHustleNextStep(world)).toMatchObject({ title: "Drop off active delivery" });
+    world.life.hustle.activeDelivery = null;
+
+    player.bikeCondition = 12;
+    expect(getHustleNextStep(world)).toMatchObject({ title: "Repair scooter", urgency: "blocked" });
+
+    player.bikeCondition = 80;
+    player.money = 450;
+    world.clock.day = 4;
+    expect(getHustleNextStep(world)).toMatchObject({ title: "Pay rent", urgency: "urgent" });
+
+    player.money = 200;
+    expect(getHustleNextStep(world)).toMatchObject({ title: "Earn rent money", urgency: "urgent" });
+
+    player.money = 300;
+    world.clock.day = 1;
+    world.life.hustle.completedDeliveryCount = 2;
+    expect(getHustleNextStep(world)).toMatchObject({ title: "Upgrade scooter" });
   });
 });

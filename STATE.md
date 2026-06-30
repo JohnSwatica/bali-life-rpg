@@ -14,7 +14,7 @@ Current durable truth:
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test -- --run` = 49 passing, 3 skipped; `npm run build` passes.
+- Current verification: `npm test -- --run` = 50 passing, 3 skipped; `npm run build` passes.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Canonical act order, set in stone for near-term work:
@@ -57,7 +57,7 @@ Immediate next move: play-feel and tune Act 0/Act 1, then strengthen the Act 2 h
 - Act 2 now has a lightweight handoff instead of a new system: if the player reaches Act 2 without joining a club, Ari can send a daily local phone invite, and the guide layer points toward Berawa Beach (`Find beach crew`) and Satu-Satu Coffee (`Find focus table`) as first social targets.
 - Phone > Quests now includes an Act 2 `Find Your People` goal surface once the player reaches Act 2: join a first crew, attend one recurring club rhythm, and complete a first relationship beat.
 - Act 2 club membership now unlocks a concrete better opportunity: `focus_table_client_referral` appears only after joining Focus Table Collective and reaching enough reputation, giving the social layer a small work/economy payoff.
-- Phone > Quests now shows an Act 1 Hustle goal surface derived from runtime state: first delivery, steady runner, daily scooter, cover first rent, and move-out ready.
+- Phone > Quests now shows an Act 1 Hustle goal surface derived from runtime state: first delivery, steady runner, daily scooter, cover first rent, and move-out ready. Those goals now include concrete progress text, and `getHustleNextStep()` gives HUD + Phone a single next-action read model for active deliveries, scooter repair, rent pressure, scooter upgrade, and move-out requirements.
 - Dev godmode now includes Act 1 testing shortcuts: set Act 1 ready, add delivery progress, set driver rating to 4.5, pay rent, and upgrade scooter. These are development-only and still gated by `import.meta.env.DEV`.
 - After Act 0, Ibu Sari can send one local daily phone nudge pointing the player back to the Hustle Board when no delivery is active. This uses the existing simulated phone-feed/message system.
 - Runtime opportunity spawning, event pings, and authored phone texts are gated off during Act 0 so the first-day tutorial is not interrupted by unrelated feed noise. The pure opportunity engine remains unchanged for tests/future systems.
@@ -68,7 +68,7 @@ Immediate next move: play-feel and tune Act 0/Act 1, then strengthen the Act 2 h
 - Phone > Quests now shows the current Act 0 first-day objective while the tutorial is active, so the player has a second place to recover the next step if they miss HUD copy.
 - The final Act 0 sleep step is now anchored to `src/data/homeBase.ts` (`Cheap Kos Room`) and `src/systems/life/HomeBase.ts`; the player must be at the home marker to complete the first night instead of sleeping anywhere.
 - Scene absolute-minute math now matches the shared systems convention (`Day 1` starts at minute `0`), so Act 0 delivery countdowns do not show an extra day of time.
-- The current automated suite is green after the Act 0/hustle additions: `npm test -- --run` reports 49 passing and 3 intentionally skipped tests; `npm run build` passes.
+- The current automated suite is green after the Act 0/hustle additions: `npm test -- --run` reports 50 passing and 3 intentionally skipped tests; `npm run build` passes.
 - Git is now initialized locally. Baseline and every sprint phase are committed.
 - Added [STORY_ARC.md](STORY_ARC.md), the canonical progression spine: Act 0 新手村 tutorial, Act 1 hustle, Act 2 people/social, Act 3 build your warung/café + villa + bike, Act 4 solo win, Act 5 multiplayer/Nomad Nest open world.
 - Added [ACT3_BUSINESS_DESIGN.md](ACT3_BUSINESS_DESIGN.md), the deferred Act 3 ambition-layer design. It locks Ibu Sari as mentor, friendship-first tone, gentle Canggu satire, villa + business + bike as the solo win condition, and roughly two hours per act. Act 3 should be designed for hooks now but built after the tutorial/hustle/social layers are proven.
@@ -264,7 +264,7 @@ Immediate next move: play-feel and tune Act 0/Act 1, then strengthen the Act 2 h
 - Phase B social phases 1-4 each passed `npm run build` before commit.
 - Phase B smoke checks passed: Berawa Beach Run is active at Berawa Beach on the expected day/time; joining Berawa Run Crew stores `world.life.joinedClubIds` and reveals its recurring member event; Ari's first relationship beat completes from affinity and persists to `world.life.relationshipArcProgress`; `plug_in`, `find_your_crew`, and `deepen_a_bond` complete from event/club/arc state.
 - Core test suite is now installed with Vitest and runs through `npm test`.
-- Current suite result: 49 passing tests, 3 documented skips across save migration, daily loop, social layer, opportunities, quests/goals/reputation/interaction, authored street layout invariants, Act 0 delivery/hustle state, Act 0 home sleep gating, Act 1 delivery-board gating and conditions, scooter wear/repair gating, move-out readiness messaging and Act 2 transition, local rent/scooter/rent-pressure economy actions, Act 1 hustle goals, Act 2 social goals, and the daily Hustle Board/rent/Act 2 invite phone nudges.
+- Current suite result: 50 passing tests, 3 documented skips across save migration, daily loop, social layer, opportunities, quests/goals/reputation/interaction, authored street layout invariants, Act 0 delivery/hustle state, Act 0 home sleep gating, Act 1 delivery-board gating and conditions, scooter wear/repair gating, move-out readiness messaging and Act 2 transition, local rent/scooter/rent-pressure economy actions, Act 1 hustle goals and next-step guidance, Act 2 social goals, and the daily Hustle Board/rent/Act 2 invite phone nudges.
 - Opportunity tests cover time/reputation/club/affinity eligibility gates, deterministic 2-4 live pool maintenance, expiry/missed tracking, accept/resolve rewards, chain spawning, relationship cooling from missed social pings, and v8-to-v9 persistence of live/completed/missed/feed state.
 - `npm run build` passed after every core-test-suite phase.
 - The test suite fixed one unambiguous data-seam bug: `finns_beach_club` is now present in `VenueRegistry` so the FINNS Sunset Social event host/location resolves.
@@ -454,7 +454,7 @@ The minigame framework is pure and tested in `src/systems/minigames/ActivityMini
 
 Verification:
 
-- Historical activity-real verification: `npm test -- --run` was 8 files passed, 35 tests passed, 3 skipped at that point. Current suite is 49 passed, 3 skipped.
+- Historical activity-real verification: `npm test -- --run` was 8 files passed, 35 tests passed, 3 skipped at that point. Current suite is 50 passed, 3 skipped.
 - `npm run build`: passed.
 - New coverage verifies timing scoring, choice scoring, activity reward scaling, opportunity reward scaling, and v10 active-activity persistence.
 

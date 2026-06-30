@@ -47,7 +47,7 @@ Near-term priority is **Act 0 / Act 1 playability and tuning**, then making exis
 - Save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Current test command: `npm test -- --run`.
 - Current build command: `npm run build`.
-- Latest known automated result: 49 passing tests, 3 intentional skips; build passes.
+- Latest known automated result: 50 passing tests, 3 intentional skips; build passes.
 - Active playable map: authored tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM data is retained for coordinates/sequencing/reference only. Do not make runtime map network calls.
 

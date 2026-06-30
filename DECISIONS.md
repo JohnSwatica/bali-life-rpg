@@ -317,3 +317,9 @@ Act 2 social payoff can be represented through existing opportunity gates before
 The current roadmap is intentionally fixed around the act spine: Act 0 Arrival, Act 1 Hustle, Act 2 Finding Your People, Act 3 Building Something, Act 4 Good Life, Act 5 Open World. Near-term work should tune Act 0/1 and strengthen the Act 2 handoff using existing systems. It should not leap to Act 3 management, real multiplayer, backend, AI, Google data, or real commerce.
 
 Scheduling/reminder behavior is also documented: no automations should be created unless the user explicitly asks again, and any future one-time resume must use an explicit timezone/start anchor and be verified before claiming it is correct.
+
+## 2026-06-30 - Act 1 Guidance Is A Pure Read Model
+
+Act 1 now has a single `getHustleNextStep()` helper alongside `getHustleGoalStates()`. The HUD and Phone > Quests both use it to explain the next immediate action across active deliveries, scooter repair, rent pressure, scooter upgrades, delivery rhythm, rating, earnings, and move-out readiness.
+
+This is intentionally guidance only: no save schema, economy math, delivery state machine, or phone-feed action changed. The goal is first-hour clarity while preserving the existing local Act 1 systems.

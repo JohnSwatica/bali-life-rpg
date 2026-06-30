@@ -19,7 +19,7 @@ import { getAct0StepState } from "../../systems/life/ActProgression";
 import { getDeliveryDefinition } from "../../data/deliveries";
 import { getDeliveryOfferAvailability, getEffectiveDeliveryTerms, previewDeliveryCondition } from "../../systems/hustle/DeliverySystem";
 import { getRentPressureState, getScooterRepairStatus, getScooterUpgradeStatus } from "../../systems/hustle/HustleEconomy";
-import { getHustleGoalStates } from "../../systems/hustle/HustleGoals";
+import { getHustleGoalStates, getHustleNextStep } from "../../systems/hustle/HustleGoals";
 import type { GameEvent, RelationshipMemory, Venue, WorldState } from "../../types";
 
 const PHONE_DEPTH = 1500;
@@ -414,7 +414,11 @@ export class PhoneShell {
     const complete = player.completedQuestIds.map((id) => `Done: ${questDefinitions[id]?.title ?? id}`);
     const quests = [...active, ...complete].length ? [...active, ...complete] : ["No active quests. Talk to Ibu Sari or Kadek."];
     const goals = getSettlingInGoalStates(world).map((goal) => `${goal.complete ? "Done" : "Goal"}: ${goal.title} - ${goal.description}`);
-    const hustleGoals = getHustleGoalStates(world).map((goal) => `${goal.complete ? "Done" : "Hustle"}: ${goal.title} - ${goal.description}`);
+    const hustleGoals = getHustleGoalStates(world).map((goal) => {
+      const progress = goal.complete ? goal.progress : `${goal.description} (${goal.progress})`;
+      return `${goal.complete ? "Done" : "Hustle"}: ${goal.title} - ${progress}`;
+    });
+    const hustleNext = getHustleNextStep(world);
     const act2Goals = getAct2GoalStates(world).map((goal) => `${goal.complete ? "Done" : "Social"}: ${goal.title} - ${goal.description}`);
     const act0Step = getAct0StepState(world);
     return [
@@ -424,6 +428,7 @@ export class PhoneShell {
         : []),
       "",
       "Act 1 Hustle",
+      `Next: ${hustleNext.title} - ${hustleNext.detail}`,
       ...hustleGoals,
       ...(act2Goals.length ? ["", "Act 2 Find Your People", ...act2Goals] : []),
       "",
