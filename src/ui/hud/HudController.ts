@@ -257,11 +257,13 @@ export class HudController {
     this.meterOverlay = document.createElement("div");
     this.meterOverlay.id = "bali-life-hud-meters";
     this.meterOverlay.className = "bali-life-hud-meters";
+    this.meterOverlay.dataset.uiSurface = "hud-meters";
     this.meterOverlay.setAttribute("aria-label", "Player meters");
 
     this.buttonOverlay = document.createElement("div");
     this.buttonOverlay.id = "bali-life-hud-buttons";
     this.buttonOverlay.className = "bali-life-hud-buttons";
+    this.buttonOverlay.dataset.uiSurface = "hud-buttons";
     this.buttonOverlay.setAttribute("aria-label", "Game actions");
 
     const buttons: Array<{ action: HudActionName; label: string; callback: () => void }> = [
@@ -299,6 +301,7 @@ export class HudController {
     this.minimapFrame = document.createElement("div");
     this.minimapFrame.id = "bali-life-minimap";
     this.minimapFrame.className = "bali-life-minimap";
+    this.minimapFrame.dataset.uiSurface = "minimap";
     this.minimapFrame.setAttribute("aria-label", "Minimap");
     this.minimapCanvas = document.createElement("canvas");
     this.minimapCanvas.className = "bali-life-minimap-canvas";

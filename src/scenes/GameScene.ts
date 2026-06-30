@@ -2580,6 +2580,7 @@ export class GameScene extends Phaser.Scene {
     const overlay = document.createElement("section");
     overlay.className = "bali-life-dialogue";
     overlay.dataset.dialoguePanel = "true";
+    overlay.dataset.uiSurface = "dialogue";
     overlay.setAttribute("role", "dialog");
     overlay.setAttribute("aria-label", title);
     overlay.addEventListener("pointerdown", (event) => event.stopPropagation());
@@ -3213,6 +3214,7 @@ export class GameScene extends Phaser.Scene {
     const overlay = document.createElement("section");
     overlay.className = "bali-life-activity-progress";
     overlay.dataset.activityProgress = "true";
+    overlay.dataset.uiSurface = "activity-progress";
     overlay.setAttribute("role", "status");
     overlay.addEventListener("pointerdown", (event) => event.stopPropagation());
     overlay.addEventListener("click", (event) => event.stopPropagation());

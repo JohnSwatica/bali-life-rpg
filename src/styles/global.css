@@ -50,7 +50,15 @@ canvas {
 }
 
 .bali-life-hud-buttons.is-muted {
-  opacity: 0.16;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+body.bali-life-overlay-open .bali-life-hud-buttons,
+body.bali-life-overlay-open .bali-life-hud-meters {
+  opacity: 0;
+  visibility: hidden;
   pointer-events: none;
 }
 
