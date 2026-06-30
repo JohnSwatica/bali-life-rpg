@@ -73,7 +73,8 @@ import {
   scoreTimingAttempt
 } from "../systems/minigames/ActivityMinigames";
 import { getActiveEvents, getActiveEventsAtVenue, isEventActive } from "../systems/events/EventScheduler";
-import { advanceWorldMinutes, canSleepNow, sleepUntilNextMorning } from "../systems/time/DailyClock";
+import { applyEventParticipation } from "../systems/events/EventParticipation";
+import { canSleepNow, sleepUntilNextMorning } from "../systems/time/DailyClock";
 import {
   applyPendingMorningPenalties,
   applyActivity,
@@ -3689,23 +3690,10 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    this.playerState.money -= cost;
-    adjustPlayerMeters(this.world, event.participation.meterDeltas);
-    advanceWorldMinutes(this.world, event.participation.timeCost);
-
-    for (const itemId of event.participation.itemIds ?? []) {
-      addItem(this.playerState, itemId, 1);
-    }
-
-    const npcAffinity = new Map<string, number>();
-    for (const npcId of event.participation.meetNpcs ?? []) {
-      npcAffinity.set(npcId, (npcAffinity.get(npcId) ?? 0) + 1);
-    }
-    for (const bump of event.participation.affinityBumps ?? []) {
-      npcAffinity.set(bump.npcId, (npcAffinity.get(bump.npcId) ?? 0) + bump.amount);
-    }
-    for (const [npcId, amount] of npcAffinity) {
-      bumpRelationshipAffinity(this.world, "npc", npcId, amount, `Attended ${event.title}`, this.getAbsoluteMinute());
+    const participation = applyEventParticipation(this.world, event, this.getAbsoluteMinute());
+    if (!participation.ok) {
+      this.showToast(participation.message);
+      return;
     }
 
     const intentResult = this.dispatchIntent({ kind: "AttendEvent", eventId: event.id });

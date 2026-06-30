@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { gameEventDefinitions } from "../data/events";
 import { socialGroupDefinitions } from "../data/groups";
 import { npcDefinitions } from "../data/npcs";
+import { getQuantity } from "../systems/Inventory";
+import { applyEventParticipation } from "../systems/events/EventParticipation";
 import { getVenue } from "../systems/venues/VenueRegistry";
 import { getActiveEventsAtVenue, getUpcomingEvents } from "../systems/events/EventScheduler";
 import { getAllSocialGroups, getSocialGroup, joinSocialGroup } from "../systems/groups/GroupRegistry";
@@ -49,9 +51,30 @@ describe("social events", () => {
     expect(world.reputation.tags).toContain("explorer");
   });
 
-  it.skip("applies full on-site attendance meter/time/money effects after that logic is extracted from GameScene", () => {
-    // GameScene.attendVenueEvent currently applies participation meter, money, item, time, and NPC affinity effects.
-    // The exported IntentDispatcher records the event, reputation, and venue memory seam only.
+  it("applies full on-site attendance meter/time/money effects through the event participation seam", () => {
+    const world = createInitialWorldState();
+    const player = world.players[world.localPlayerId];
+    const event = gameEventDefinitions.find((candidate) => candidate.id === "canggu_station_market_hour")!;
+    world.clock.day = 1;
+    world.clock.minuteOfDay = 15 * 60;
+    player.money = 500;
+
+    const participation = applyEventParticipation(world, event, 15 * 60);
+    const intent = new IntentDispatcher().dispatch({ kind: "AttendEvent", eventId: event.id }, world, 16 * 60 + 15);
+
+    expect(participation).toMatchObject({ ok: true, moneyDelta: -45, completedAt: 16 * 60 + 15 });
+    expect(intent.ok).toBe(true);
+    expect(player.money).toBe(455);
+    expect(world.clock).toMatchObject({ day: 1, minuteOfDay: 16 * 60 + 15 });
+    expect(world.meters).toMatchObject({ energy: 86, wellbeing: 74, social: 44 });
+    expect(getQuantity(player, "pantry_bag")).toBe(1);
+    expect(getRelationship(world, "npc", "ibu_sari")?.affinity).toBe(5);
+    expect(world.runtimeEvents.attendedEventIds).toEqual(["canggu_station_market_hour"]);
+    expect(getRelationship(world, "venue", "canggu_station")?.memories.at(-1)).toMatchObject({
+      type: "attended_event",
+      detail: "Market Hour Walk"
+    });
+    expect(world.reputation.tags).toContain("helpful");
   });
 });
 
