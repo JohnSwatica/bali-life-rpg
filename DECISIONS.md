@@ -431,4 +431,6 @@ Act 2 social discovery should feel like it grows out of places the player alread
 
 This is a read/presentation bridge only. It does not auto-join clubs, add social XP, add save fields, or invent new groups. Exact home venues still own the actual join action; related stations can point the player there with a lightweight "Crew doors" row. Field objectives now include Milk & Madu's Brunch Builders alongside Berawa Beach and Satu-Satu so the first Act 2 crew choice is not artificially narrowed.
 
-The remaining scene-private test debt was also reduced during this pass. Event participation and sleep recovery now live in system helpers, and generic quest objective evaluation is exported from `QuestRegistry`, taking the automated baseline to 109 passing tests with zero skips.
+The remaining scene-private test debt was also reduced during this pass. Event participation and sleep recovery now live in system helpers, and generic quest objective evaluation is exported from `QuestRegistry`.
+
+Older Settling In goals must keep recognizing new station activity IDs. `earn_your_keep` now counts station work (`cafe_deep_work`, `coworking_focus_sprint`) alongside the old generic work session, and `touch_grass` counts station beach reset actions alongside the old surf/beach activity. This keeps the station pass from fragmenting older progression. Automated baseline: 110 passing tests, zero skips.
