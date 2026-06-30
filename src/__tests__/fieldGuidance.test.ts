@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { getFieldObjective, formatFieldObjectiveLine } from "../systems/guidance/FieldObjective";
+import { getFieldIndicators } from "../systems/guidance/FieldIndicators";
 import { getHustleNextStep } from "../systems/hustle/HustleGoals";
 import { getAct2NextStep } from "../systems/life/Act2Goals";
+import { bumpRelationshipAffinity } from "../systems/relationships/RelationshipMemory";
 import { createInitialWorldState } from "../systems/WorldState";
 
 describe("field objective readout", () => {
@@ -112,5 +114,54 @@ describe("field objective readout", () => {
         targets: []
       })
     ).toBe("Now: Explore Berawa - Talk to locals.");
+  });
+});
+
+describe("field-level indicators", () => {
+  it("marks NPCs with ready relationship beats", () => {
+    const world = createInitialWorldState();
+    bumpRelationshipAffinity(world, "npc", "ari", 4, "ready beat", 1);
+
+    expect(getFieldIndicators(world).npcs).toContainEqual(
+      expect.objectContaining({
+        type: "relationship",
+        npcId: "ari",
+        label: "Name in the sand"
+      })
+    );
+  });
+
+  it("marks venues with live opportunities", () => {
+    const world = createInitialWorldState();
+    world.opportunities.live.push({
+      id: "test-live-opportunity",
+      templateId: "milk_madu_lunch_rush_shift",
+      status: "live",
+      spawnedAt: 1,
+      expiresAt: 100,
+      locationVenueId: "milk_madu_berawa"
+    });
+
+    expect(getFieldIndicators(world).venues).toContainEqual(
+      expect.objectContaining({
+        type: "opportunity",
+        venueId: "milk_madu_berawa",
+        label: "Lunch rush barista @ Milk & Madu"
+      })
+    );
+  });
+
+  it("marks venues with active or soon events", () => {
+    const world = createInitialWorldState();
+    world.clock.day = 1;
+    world.clock.minuteOfDay = 7 * 60;
+
+    expect(getFieldIndicators(world).venues).toContainEqual(
+      expect.objectContaining({
+        type: "event",
+        venueId: "berawa_beach",
+        label: "Berawa Beach Run"
+      })
+    );
   });
 });

@@ -33,6 +33,7 @@ import {
   type FieldObjectiveState,
   type FieldObjectiveTargetRef
 } from "../systems/guidance/FieldObjective";
+import { getFieldIndicators, type VenueFieldIndicator } from "../systems/guidance/FieldIndicators";
 import { getSocialGroupsForVenue, isSocialGroupJoined } from "../systems/groups/GroupRegistry";
 import { PLAYER_UNIT, POKEMON_SCALE } from "../systems/map/PlayerUnitScale";
 import { getPresentedRoads, getVenueSnapRoads } from "../systems/map/RoadPresentation";
@@ -445,6 +446,7 @@ export class GameScene extends Phaser.Scene {
   });
   private opportunityMarkerLayer!: Phaser.GameObjects.Graphics;
   private deliveryMarkerLayer!: Phaser.GameObjects.Graphics;
+  private fieldIndicatorLayer!: Phaser.GameObjects.Graphics;
   private opportunityMarkerZones: Phaser.GameObjects.Zone[] = [];
 
   constructor() {
@@ -538,6 +540,7 @@ export class GameScene extends Phaser.Scene {
     renderStreetTemplate(this, activeStreetTemplate);
     this.opportunityMarkerLayer = this.add.graphics().setDepth(210);
     this.deliveryMarkerLayer = this.add.graphics().setDepth(211);
+    this.fieldIndicatorLayer = this.add.graphics().setDepth(212);
     this.addAreaLabels();
   }
 
@@ -2089,6 +2092,7 @@ export class GameScene extends Phaser.Scene {
 
     this.redrawHudChrome();
     this.drawOpportunityMarkers();
+    this.drawFieldIndicators();
     this.drawObjectiveMarkers();
     this.drawObjectiveDirectionCue();
     this.drawMinimap();
@@ -4679,6 +4683,67 @@ export class GameScene extends Phaser.Scene {
       this.deliveryMarkerLayer.fillTriangle(target.x, target.y - 34, target.x - 16, target.y - 8, target.x + 16, target.y - 8);
       this.deliveryMarkerLayer.lineStyle(2, 0xfff0bd, 0.9);
       this.deliveryMarkerLayer.strokeTriangle(target.x, target.y - 34, target.x - 16, target.y - 8, target.x + 16, target.y - 8);
+    }
+  }
+
+  private drawFieldIndicators(): void {
+    if (!this.fieldIndicatorLayer) {
+      return;
+    }
+    this.fieldIndicatorLayer.clear();
+    const indicators = getFieldIndicators(this.world);
+    for (const indicator of indicators.npcs) {
+      const sprite = this.npcSprites.get(indicator.npcId);
+      if (!sprite?.visible) {
+        continue;
+      }
+      this.drawNpcFieldIndicator(sprite.x, sprite.y - scaleDistance(58));
+    }
+
+    const venueOffsets = new Map<string, number>();
+    for (const indicator of indicators.venues) {
+      const node = venueMapNodes.find((candidate) => candidate.venueId === indicator.venueId);
+      if (!node) {
+        continue;
+      }
+      const offset = venueOffsets.get(indicator.venueId) ?? 0;
+      venueOffsets.set(indicator.venueId, offset + 1);
+      this.drawVenueFieldIndicator(node.x + offset * scaleDistance(18), node.y - Math.min(node.radius + scaleDistance(48), scaleDistance(112)), indicator);
+    }
+  }
+
+  private drawNpcFieldIndicator(x: number, y: number): void {
+    const radius = scaleDistance(13);
+    this.fieldIndicatorLayer.fillStyle(0x101820, 0.76);
+    this.fieldIndicatorLayer.fillCircle(x, y + scaleDistance(3), radius + scaleDistance(4));
+    this.fieldIndicatorLayer.fillStyle(0xfff0bd, 0.98);
+    this.fieldIndicatorLayer.fillCircle(x, y, radius);
+    this.fieldIndicatorLayer.lineStyle(2, 0x253a35, 0.88);
+    this.fieldIndicatorLayer.strokeCircle(x, y, radius);
+    this.fieldIndicatorLayer.lineStyle(3, 0x253a35, 0.95);
+    this.fieldIndicatorLayer.lineBetween(x, y - scaleDistance(7), x, y + scaleDistance(2));
+    this.fieldIndicatorLayer.fillStyle(0x253a35, 0.95);
+    this.fieldIndicatorLayer.fillCircle(x, y + scaleDistance(7), scaleDistance(2));
+  }
+
+  private drawVenueFieldIndicator(x: number, y: number, indicator: VenueFieldIndicator): void {
+    const radius = scaleDistance(12);
+    const fill = indicator.type === "event" ? 0x8ee6ff : 0xffd45c;
+    this.fieldIndicatorLayer.fillStyle(0x101820, 0.7);
+    this.fieldIndicatorLayer.fillCircle(x, y + scaleDistance(3), radius + scaleDistance(4));
+    this.fieldIndicatorLayer.fillStyle(fill, 0.98);
+    this.fieldIndicatorLayer.fillCircle(x, y, radius);
+    this.fieldIndicatorLayer.lineStyle(2, 0x253a35, 0.82);
+    this.fieldIndicatorLayer.strokeCircle(x, y, radius);
+    if (indicator.type === "event") {
+      this.fieldIndicatorLayer.lineStyle(2, 0x253a35, 0.9);
+      this.fieldIndicatorLayer.strokeRect(x - scaleDistance(5), y - scaleDistance(4), scaleDistance(10), scaleDistance(9));
+      this.fieldIndicatorLayer.lineBetween(x - scaleDistance(5), y - scaleDistance(1), x + scaleDistance(5), y - scaleDistance(1));
+    } else {
+      this.fieldIndicatorLayer.fillStyle(0x253a35, 0.95);
+      this.fieldIndicatorLayer.fillCircle(x, y, scaleDistance(3));
+      this.fieldIndicatorLayer.lineStyle(2, 0x253a35, 0.9);
+      this.fieldIndicatorLayer.strokeCircle(x, y, scaleDistance(6));
     }
   }
 
