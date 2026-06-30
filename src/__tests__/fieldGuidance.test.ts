@@ -11,7 +11,8 @@ describe("field objective readout", () => {
     expect(getFieldObjective(world)).toMatchObject({
       source: "act0",
       title: "Find Ibu Sari",
-      detail: "Walk to Ibu Sari near Canggu Station and press E / ACT."
+      detail: "Walk to Ibu Sari near Canggu Station and press E / ACT.",
+      targets: [{ type: "npc", npcId: "ibu_sari" }]
     });
   });
 
@@ -49,6 +50,18 @@ describe("field objective readout", () => {
       source: "hustle",
       title: "Pick up active delivery"
     });
+    expect(getFieldObjective(world).targets).toEqual([
+      expect.objectContaining({
+        type: "venue",
+        venueId: "milk_madu_berawa"
+      })
+    ]);
+
+    world.life.hustle.activeDelivery.stage = "picked_up";
+    expect(getFieldObjective(world)).toMatchObject({
+      title: "Drop off active delivery",
+      targets: [expect.objectContaining({ type: "point", id: "upper_lane_villa" })]
+    });
   });
 
   it("delegates Act 2 guidance to the existing Act 2 next-step model", () => {
@@ -65,7 +78,27 @@ describe("field objective readout", () => {
       source: "act2",
       title: act2Next?.title,
       detail: act2Next?.detail,
-      urgency: act2Next?.urgency
+      urgency: act2Next?.urgency,
+      targets: [
+        expect.objectContaining({ type: "venue", venueId: "berawa_beach" }),
+        expect.objectContaining({ type: "venue", venueId: "satu_satu_coffee" })
+      ]
+    });
+  });
+
+  it("targets home when the existing hustle model says rent can be paid", () => {
+    const world = createInitialWorldState();
+    world.life.actProgress.act0Step = "complete";
+    world.life.actProgress.firstDayComplete = true;
+    world.life.actProgress.currentAct = 1;
+    world.players[world.localPlayerId].hasBike = true;
+    world.players[world.localPlayerId].money = world.life.hustle.rentAmount;
+    world.life.hustle.rentDueDay = world.clock.day;
+
+    expect(getFieldObjective(world)).toMatchObject({
+      source: "hustle",
+      title: "Pay rent",
+      targets: [expect.objectContaining({ type: "home" })]
     });
   });
 
@@ -75,7 +108,8 @@ describe("field objective readout", () => {
         source: "idle",
         title: "Explore Berawa",
         detail: "Talk to locals.",
-        urgency: "normal"
+        urgency: "normal",
+        targets: []
       })
     ).toBe("Now: Explore Berawa - Talk to locals.");
   });

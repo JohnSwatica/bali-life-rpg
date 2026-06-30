@@ -27,7 +27,12 @@ import { ScriptedDialogueProvider, type DialogueProvider } from "../systems/dial
 import { InteractionController, type InteractionTarget } from "../systems/interaction/InteractionController";
 import { InputController, type GameKeyMap } from "../systems/input/InputController";
 import { IntentDispatcher, type IntentResult } from "../systems/intents/IntentDispatcher";
-import { formatFieldObjectiveLine, getFieldObjective, type FieldObjectiveState } from "../systems/guidance/FieldObjective";
+import {
+  formatFieldObjectiveLine,
+  getFieldObjective,
+  type FieldObjectiveState,
+  type FieldObjectiveTargetRef
+} from "../systems/guidance/FieldObjective";
 import { getSocialGroupsForVenue, isSocialGroupJoined } from "../systems/groups/GroupRegistry";
 import { PLAYER_UNIT, POKEMON_SCALE } from "../systems/map/PlayerUnitScale";
 import { getPresentedRoads, getVenueSnapRoads } from "../systems/map/RoadPresentation";
@@ -216,6 +221,15 @@ interface TrafficRouteDefinition {
 interface TrafficJunctionOption {
   route: TrafficRouteDefinition;
   pointIndex: number;
+}
+
+interface FieldObjectiveTarget {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  radius: number;
+  type: FieldObjectiveTargetRef["type"];
 }
 
 interface TrafficBikeRuntime {
@@ -422,6 +436,7 @@ export class GameScene extends Phaser.Scene {
   private committedMinigameFeedback?: HTMLDivElement;
   private nightOverlay!: Phaser.GameObjects.Graphics;
   private lanternGlow!: Phaser.GameObjects.Graphics;
+  private objectiveArrowLayer!: Phaser.GameObjects.Graphics;
   private discoveryToastCooldown = 0;
   private waterBoundaryToastCooldown = 0;
   private waterBoundaryGuard: WaterBoundaryGuard = createWaterBoundaryGuard(berawaMapFeatures, {
@@ -1334,6 +1349,7 @@ export class GameScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(UI_DEPTH + 3)
       .setAlpha(0);
+    this.objectiveArrowLayer = this.add.graphics().setScrollFactor(0).setDepth(UI_DEPTH + 2);
     this.nightOverlay = this.add.graphics().setScrollFactor(0).setDepth(900);
     this.lanternGlow = this.add.graphics().setDepth(905);
     this.hudController = new HudController(this, UI_DEPTH, {
@@ -2073,7 +2089,8 @@ export class GameScene extends Phaser.Scene {
 
     this.redrawHudChrome();
     this.drawOpportunityMarkers();
-    this.drawDeliveryMarkers();
+    this.drawObjectiveMarkers();
+    this.drawObjectiveDirectionCue();
     this.drawMinimap();
     this.publishDebugSnapshot(target, fieldObjective);
   }
@@ -4021,7 +4038,7 @@ export class GameScene extends Phaser.Scene {
 
     this.drawMinimapDiscoveredVenues(ctx, layout);
     this.drawMinimapOpportunityMarkers(ctx, layout);
-    this.drawMinimapDeliveryMarkers(ctx, layout);
+    this.drawMinimapObjectiveMarkers(ctx, layout);
     this.drawMinimapCameraView(ctx, layout);
     this.drawMinimapPlayer(ctx, layout);
   }
@@ -4056,11 +4073,8 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private drawMinimapDeliveryMarkers(ctx: CanvasRenderingContext2D, layout: MinimapLayout): void {
-    const targets = [...this.getActiveDeliveryTargets()];
-    if (targets.length === 0) {
-      targets.push(...this.getActGuideTargets());
-    }
+  private drawMinimapObjectiveMarkers(ctx: CanvasRenderingContext2D, layout: MinimapLayout): void {
+    const targets = this.getFieldObjectiveTargets();
     for (const target of targets) {
       const point = this.projectMinimapPoint(target, layout);
       this.fillCircle(ctx, point.x, point.y, 5.2, 0xffd45c, 0.98);
@@ -4649,15 +4663,12 @@ export class GameScene extends Phaser.Scene {
     this.showToast(result.message);
   }
 
-  private drawDeliveryMarkers(): void {
+  private drawObjectiveMarkers(): void {
     if (!this.deliveryMarkerLayer) {
       return;
     }
     this.deliveryMarkerLayer.clear();
-    const targets = [...this.getActiveDeliveryTargets()];
-    if (targets.length === 0) {
-      targets.push(...this.getActGuideTargets());
-    }
+    const targets = this.getFieldObjectiveTargets();
     for (const target of targets) {
       const pulse = 0.55 + Math.sin(Date.now() / 180) * 0.12;
       this.deliveryMarkerLayer.fillStyle(0xfff0bd, 0.18);
@@ -4669,6 +4680,80 @@ export class GameScene extends Phaser.Scene {
       this.deliveryMarkerLayer.lineStyle(2, 0xfff0bd, 0.9);
       this.deliveryMarkerLayer.strokeTriangle(target.x, target.y - 34, target.x - 16, target.y - 8, target.x + 16, target.y - 8);
     }
+  }
+
+  private drawObjectiveDirectionCue(): void {
+    this.objectiveArrowLayer.clear();
+    if (this.isOverlayOpen()) {
+      return;
+    }
+    const targets = this.getFieldObjectiveTargets();
+    const view = this.cameras.main.worldView;
+    const offscreenTarget = targets.find((target) => !Phaser.Geom.Rectangle.Contains(view, target.x, target.y));
+    if (!offscreenTarget) {
+      return;
+    }
+
+    const viewportWidth = this.scale.width;
+    const viewportHeight = this.scale.height;
+    const centerX = viewportWidth / 2;
+    const centerY = viewportHeight / 2;
+    const dx = offscreenTarget.x - (view.x + view.width / 2);
+    const dy = offscreenTarget.y - (view.y + view.height / 2);
+    const distance = Math.hypot(dx, dy);
+    if (distance <= 0) {
+      return;
+    }
+
+    const halfWidth = Math.max(24, centerX - 44);
+    const halfHeight = Math.max(24, centerY - 52);
+    const edgeScale = Math.min(halfWidth / Math.max(1, Math.abs(dx)), halfHeight / Math.max(1, Math.abs(dy)));
+    const x = centerX + dx * edgeScale;
+    const y = centerY + dy * edgeScale;
+    const angle = Math.atan2(dy, dx);
+    const size = 15;
+    const tip = { x: x + Math.cos(angle) * size, y: y + Math.sin(angle) * size };
+    const left = { x: x + Math.cos(angle + 2.45) * size, y: y + Math.sin(angle + 2.45) * size };
+    const right = { x: x + Math.cos(angle - 2.45) * size, y: y + Math.sin(angle - 2.45) * size };
+
+    this.objectiveArrowLayer.fillStyle(0x101820, 0.76);
+    this.objectiveArrowLayer.fillCircle(x, y, size + 9);
+    this.objectiveArrowLayer.lineStyle(2, 0xfff0bd, 0.82);
+    this.objectiveArrowLayer.strokeCircle(x, y, size + 9);
+    this.objectiveArrowLayer.fillStyle(0xffd45c, 0.98);
+    this.objectiveArrowLayer.fillTriangle(tip.x, tip.y, left.x, left.y, right.x, right.y);
+    this.objectiveArrowLayer.lineStyle(2, 0x253a35, 0.72);
+    this.objectiveArrowLayer.strokeTriangle(tip.x, tip.y, left.x, left.y, right.x, right.y);
+  }
+
+  private getFieldObjectiveTargets(objective = getFieldObjective(this.world)): FieldObjectiveTarget[] {
+    return objective.targets
+      .map((target) => this.resolveFieldObjectiveTarget(target))
+      .filter((target): target is FieldObjectiveTarget => Boolean(target));
+  }
+
+  private resolveFieldObjectiveTarget(target: FieldObjectiveTargetRef): FieldObjectiveTarget | null {
+    if (target.type === "npc") {
+      const sprite = this.npcSprites.get(target.npcId);
+      const state = this.world.npcs[target.npcId];
+      if (!sprite && !state) {
+        return null;
+      }
+      const x = sprite?.x ?? state.x;
+      const y = sprite?.y ?? state.y;
+      return { id: target.id, label: target.label, x, y, radius: scaleDistance(92), type: target.type };
+    }
+    if (target.type === "venue") {
+      const node = venueMapNodes.find((candidate) => candidate.venueId === target.venueId);
+      if (!node) {
+        return null;
+      }
+      return { id: target.id, label: target.label, x: node.x, y: node.y, radius: Math.min(node.radius, scaleDistance(118)), type: target.type };
+    }
+    if (target.type === "home") {
+      return { id: target.id, label: target.label, x: playerHomeBase.x, y: playerHomeBase.y, radius: playerHomeBase.radius, type: target.type };
+    }
+    return target;
   }
 
   private getActGuideTargets(): Array<{ id: string; label: string; x: number; y: number; radius: number }> {
