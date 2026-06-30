@@ -113,6 +113,7 @@ import {
   npcReactionAnimationKey,
   selectCharacterAnimation
 } from "../systems/animation/CharacterAnimations";
+import { getScooterVisualState, type ScooterVisualState } from "../systems/animation/ScooterAnimation";
 import {
   advanceClock,
   formatClock,
@@ -400,6 +401,8 @@ export class GameScene extends Phaser.Scene {
   private ambientNpcFacingDirections = new Map<string, Direction>();
   private pickupSprites = new Map<string, Phaser.GameObjects.Sprite>();
   private playerBike?: Phaser.GameObjects.Sprite;
+  private playerBikeSpeedCue?: Phaser.GameObjects.Graphics;
+  private scooterMotionElapsedMs = 0;
   private trafficBikes: TrafficBikeRuntime[] = [];
   private trafficRouteCursor = 0;
   private trafficHitCooldown = 0;
@@ -1187,6 +1190,7 @@ export class GameScene extends Phaser.Scene {
     this.player.body?.setSize(PLAYER_BODY_WIDTH, PLAYER_BODY_HEIGHT);
     this.player.body?.setOffset(PLAYER_BODY_OFFSET_X, PLAYER_BODY_OFFSET_Y);
     this.playerBike = this.add.sprite(this.playerState.x, this.playerState.y + scaleDistance(10), "player-bike").setVisible(false);
+    this.playerBikeSpeedCue = this.add.graphics().setVisible(false);
     this.physics.add.collider(this.player, this.obstacleGroup);
     this.updatePlayerBikeVisual();
   }
@@ -1402,7 +1406,7 @@ export class GameScene extends Phaser.Scene {
     this.playerState.x = Math.round(this.player.x);
     this.playerState.y = Math.round(this.player.y);
     this.player.setDepth(this.player.y);
-    this.updatePlayerBikeVisual();
+    this.updatePlayerBikeVisual(delta);
     this.checkBikeTerrain();
     this.checkPlayerBikeHarmToOthers();
     this.updatePlayerWantedSign();
@@ -1414,16 +1418,68 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private updatePlayerBikeVisual(): void {
+  private updatePlayerBikeVisual(delta = 0): void {
     if (!this.playerBike) {
       return;
     }
+    this.scooterMotionElapsedMs = (this.scooterMotionElapsedMs + delta) % 120000;
     const visible = this.playerState.onBike || this.playerState.bikeStuck;
+    const bodyVelocity = this.player.body?.velocity;
+    const visual = getScooterVisualState({
+      tier: this.world.life.hustle.scooterTier,
+      bikeCondition: this.playerState.bikeCondition,
+      velocityX: visible ? bodyVelocity?.x ?? 0 : 0,
+      velocityY: visible ? bodyVelocity?.y ?? 0 : 0,
+      maxSpeed: BIKE_SPEED * this.movementSpeedMultiplier,
+      elapsedMs: this.scooterMotionElapsedMs
+    });
     this.playerBike.setVisible(visible);
-    this.playerBike.setPosition(this.player.x, this.player.y + scaleDistance(10));
+    this.playerBike.setPosition(this.player.x + visual.offsetX, this.player.y + scaleDistance(10) + visual.offsetY);
     this.playerBike.setDepth(this.player.y - 1);
     this.playerBike.setAlpha(this.playerState.bikeStuck ? 0.62 : 1);
-    this.setSpriteFacing(this.playerBike, this.playerState.direction === "left", PLAYER_BIKE_SPRITE_SCALE);
+    this.playerBike.setAngle(visual.angleDegrees);
+    this.setSpriteFacing(
+      this.playerBike,
+      this.playerState.direction === "left",
+      PLAYER_BIKE_SPRITE_SCALE * visual.scaleX,
+      PLAYER_BIKE_SPRITE_SCALE * visual.scaleY
+    );
+    this.drawPlayerScooterSpeedCue(visible, visual, bodyVelocity?.x ?? 0, bodyVelocity?.y ?? 0);
+  }
+
+  private drawPlayerScooterSpeedCue(visible: boolean, visual: ScooterVisualState, velocityX: number, velocityY: number): void {
+    const cue = this.playerBikeSpeedCue;
+    if (!cue) {
+      return;
+    }
+    cue.clear();
+    cue.setVisible(false);
+    if (!visible || visual.speedCueCount <= 0) {
+      return;
+    }
+    const speed = Math.hypot(velocityX, velocityY);
+    if (speed <= 0.01) {
+      return;
+    }
+    const ux = velocityX / speed;
+    const uy = velocityY / speed;
+    const sideX = -uy;
+    const sideY = ux;
+    const baseX = this.player.x - ux * scaleDistance(18);
+    const baseY = this.player.y + scaleDistance(10) - uy * scaleDistance(18);
+    cue.setDepth(this.player.y - 2);
+    cue.setVisible(true);
+    for (let index = 0; index < visual.speedCueCount; index += 1) {
+      const spread = (index - (visual.speedCueCount - 1) / 2) * scaleDistance(9);
+      const startX = baseX + sideX * spread;
+      const startY = baseY + sideY * spread;
+      const length = scaleDistance(24 + index * 8);
+      cue.lineStyle(Math.max(1, scaleDistance(2)), 0xfff0bd, visual.speedCueAlpha * (1 - index * 0.12));
+      cue.beginPath();
+      cue.moveTo(startX, startY);
+      cue.lineTo(startX - ux * length, startY - uy * length);
+      cue.strokePath();
+    }
   }
 
   private updateTraffic(delta: number): void {
