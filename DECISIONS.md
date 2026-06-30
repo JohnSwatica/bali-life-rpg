@@ -353,3 +353,13 @@ Waypoints now resolve from the same objective model. Objective targets can point
 Field-level indicators are visual surfacing only. Ready relationship beats use the existing relationship arc availability state, while venue badges use existing live opportunities and active-or-soon events. No new opportunities, events, relationship logic, backend, AI, network, animation frame work, or world-surfaced interaction verbs were added.
 
 Act 0 is explicitly progressable without opening the phone. Every tutorial step has field objective copy and at least one target marker; the phone is introduced as optional deeper detail rather than required onboarding navigation.
+
+## 2026-06-30 - Cheap Animation Layer Uses Original Procedural Frames
+
+Liveliness Pass 3 adds motion on top of the existing player, NPC routine, scooter, delivery, and committed-activity systems without changing their gameplay logic. `BootScene` still generates original flat-color procedural character art in code; no Nintendo, Pokemon, Game Freak, copied, or traced sprite frames are used.
+
+The animation frame policy is intentionally small and documented in `src/systems/animation/CharacterAnimations.ts`: character idle uses 1 frame, character walking uses 4 frames per down/up/side pose, NPC idle-tag loops use 2 frames, and NPC proximity reactions use a 2-frame turn cue. Player and NPC sprites use Phaser `anims.create` / `sprite.play`; existing Pass 1 route, idle-tag, and affinity-reaction data remain the source of behavior.
+
+Scooter feel is cosmetic and local. `src/systems/animation/ScooterAnimation.ts` derives lean, speed-line visibility, stretch, and idle wobble from scooter tier, bike condition, velocity, and elapsed time. The borrowed rattletrap visibly rattles more than the daily rental/proper bike, but this does not affect speed, scooter wear, economy, save schema, or delivery rules.
+
+Interaction flourishes are similarly cosmetic. `src/systems/animation/InteractionFlourishes.ts` defines short talk, pickup, delivery, and activity pop specs; `GameScene` applies them as tweened rings/ghost sprites/talk bobs when dialogue opens, pickups are collected, deliveries are picked up/completed, and committed activities/opportunities begin. This deliberately does not add Pass 4 world-surfaced dialogue/interaction verbs.

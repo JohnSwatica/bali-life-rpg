@@ -10,11 +10,11 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 
 Current durable truth:
 
-- Branch: `feat/on-field-guidance`.
+- Branch: `feat/cheap-animation`.
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test` = 75 passing, 3 skipped; `npm run build` passes.
+- Current verification: `npm test` = 83 passing, 3 skipped; `npm run build` passes.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Canonical act order, set in stone for near-term work:
@@ -26,7 +26,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: run a human visual pass on on-field guidance, then continue with Liveliness Pass 3/4: animation polish. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, Act 3 management sim, or Pass 4 world-surfaced interactions yet.
+Immediate next move: run a human visual pass on the cheap animation layer, then continue with Liveliness Pass 4/4: world-surfaced interactions/dialogue. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, or Act 3 management sim yet.
 
 ## Project
 
@@ -37,10 +37,17 @@ Immediate next move: run a human visual pass on on-field guidance, then continue
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
-- Current branch: `feat/on-field-guidance`.
+- Current branch: `feat/cheap-animation`.
 
 ## What Was Added Recently
 
+- Liveliness Pass 3 is complete on `feat/cheap-animation`: original procedural art now has a cheap animation layer. `BootScene` generates original 4-frame walk cycles for player/NPC character textures; no Nintendo/Pokemon/Game Freak sprites or traced frames are used.
+- `src/systems/animation/CharacterAnimations.ts` defines the low-frame policy: character idle = 1 frame, character walk = 4 frames per down/up/side pose, NPC idle loops = 2 frames, NPC reaction turn = 2 frames. The scene uses Phaser `anims.create` / `sprite.play` for these loops.
+- Player movement now plays a walk cycle while moving on foot and returns to an idle facing frame when stopped. The player faces up/down/left/right from the existing movement vector; scooter movement stays visually owned by the scooter layer.
+- Named NPCs and ambient walkers now play walk cycles while Pass 1 routine routes move them. `idleTag` behaviors now use short looped idle animations, and proximity reactions briefly play a turn/reaction animation before returning to route or idle behavior.
+- The player scooter now has cosmetic lean, speed lines at higher speed, and tier/condition-aware idle motion. The borrowed rattletrap visibly wobbles more than the daily rental or proper bike; this is visual only and does not alter economy, speed, save data, or scooter wear.
+- Interaction flourishes are now in place: NPC dialogue starts a brief talk bob, pickups pop with a ghost/ring beat, delivery pickup/completion gets a small pop/cash flourish, and committed activities/opportunities start with a compact activity ring flash.
+- New coverage in `src/__tests__/animationPolicy.test.ts` checks frame counts, character/NPC animation key selection, scooter rattle/lean/speed-cue policy, and short interaction flourish specs. No save schema change was required.
 - Liveliness Pass 2 is complete on `feat/on-field-guidance`: guidance now lives primarily on the field. `src/systems/guidance/FieldObjective.ts` consolidates Act 0, Act 1 hustle, Act 2, and Act 3-ready read models into one always-visible objective line plus target refs.
 - The HUD now shows one compact `Now: ...` objective on the field instead of stacking several guidance lines. Phone > Quests remains as deeper reference, but the current next step is visible without opening a menu.
 - Objective targets are generalized across NPCs, venues, home, and delivery points. `GameScene` resolves them to live coordinates, draws world markers, draws minimap markers, and shows a fixed-screen directional arrow when the target is off-screen.
@@ -155,6 +162,7 @@ Immediate next move: run a human visual pass on on-field guidance, then continue
 
 - Core types: `src/types.ts`
 - On-field guidance: `src/systems/guidance/FieldObjective.ts`, `src/systems/guidance/FieldIndicators.ts`
+- Cheap animation: `src/systems/animation/CharacterAnimations.ts`, `src/systems/animation/ScooterAnimation.ts`, `src/systems/animation/InteractionFlourishes.ts`
 - NPC liveliness: `src/data/npcs.ts`, `src/data/ambientNpcs.ts`, `src/systems/npcs/NpcRoutineRoutes.ts`, `src/systems/npcs/NpcIdleBehavior.ts`, `src/systems/npcs/NpcProximityReactions.ts`
 - Runtime world defaults: `src/systems/WorldState.ts`
 - Save/load/migration: `src/systems/Persistence.ts`
@@ -178,6 +186,10 @@ Immediate next move: run a human visual pass on on-field guidance, then continue
 
 ## Phase Commits
 
+- `1e31d92` - `feat: player walk cycle and facing`
+- `9817dfc` - `feat: NPC walk cycle and animated idle/reaction behaviors`
+- `ec415ad` - `feat: scooter lean and condition-aware idle motion`
+- `eec9a9c` - `feat: talk pickup delivery activity animation flourishes`
 - `29c2a0d` - `feat: consolidated always-visible objective readout`
 - `dd89179` - `feat: generalized waypoint + directional cue for any objective`
 - `0de4a81` - `feat: field-level indicators for NPCs and venues with something for you`
