@@ -1,6 +1,8 @@
 import { npcDefinitions } from "../../data/npcs";
+import { socialGroupDefinitions } from "../../data/groups";
+import { getActiveEvents } from "../events/EventScheduler";
 import { getOpportunityTemplate } from "../opportunities/OpportunityEngine";
-import type { OpportunityType, WorldState } from "../../types";
+import type { GameEvent, OpportunityType, WorldState } from "../../types";
 
 export type OpportunityWorldSceneKind =
   | "gig_help_wanted"
@@ -9,6 +11,8 @@ export type OpportunityWorldSceneKind =
   | "deal_signal"
   | "rumor_whisper"
   | "trade_swap";
+
+export type EventWorldSceneKind = "run_gathering" | "work_table" | "market_walk" | "party_pulse" | "club_circle";
 
 export interface WorldSceneActor {
   id: string;
@@ -32,6 +36,18 @@ export interface OpportunityWorldScene {
   sceneKind: OpportunityWorldSceneKind;
   cue: string;
   accepted: boolean;
+  actors: WorldSceneActor[];
+}
+
+export interface EventWorldScene {
+  source: "event";
+  id: string;
+  eventId: string;
+  venueId: string;
+  title: string;
+  sceneKind: EventWorldSceneKind;
+  cue: string;
+  clubId?: string;
   actors: WorldSceneActor[];
 }
 
@@ -60,6 +76,25 @@ export function getOpportunityWorldScenes(world: WorldState): OpportunityWorldSc
       };
     })
     .filter((scene): scene is OpportunityWorldScene => Boolean(scene));
+}
+
+export function getEventWorldScenes(world: WorldState): EventWorldScene[] {
+  return getActiveEvents(world.clock, world).map((event) => {
+    const clubId = event.host.type === "group" ? event.host.id : undefined;
+    const group = clubId ? socialGroupDefinitions.find((candidate) => candidate.id === clubId) : undefined;
+    const npcIds = uniqueNpcIds([...(event.participation.meetNpcs ?? []), ...(group?.memberIds ?? [])]);
+    return {
+      source: "event" as const,
+      id: `event:${event.id}`,
+      eventId: event.id,
+      venueId: event.locationVenueId,
+      title: event.title,
+      sceneKind: eventSceneKind(event),
+      cue: eventSceneCue(event, Boolean(group)),
+      clubId,
+      actors: buildActors(npcIds.length ? npcIds : fallbackNpcIds(), group ? "social" : eventActorRole(event), 3)
+    };
+  });
 }
 
 function opportunitySceneKind(type: OpportunityType): OpportunityWorldSceneKind {
@@ -95,6 +130,30 @@ function opportunitySceneActors(type: OpportunityType, preferredNpcIds: string[]
     return buildActors(uniqueNpcIds([...preferredNpcIds, "made", ...fallbackNpcIds()]), "waving", 1);
   }
   return buildActors(uniqueNpcIds([...preferredNpcIds, ...fallbackNpcIds()]), type === "trade" ? "social" : "gathering", 2);
+}
+
+function eventSceneKind(event: GameEvent): EventWorldSceneKind {
+  if (event.host.type === "group") return "club_circle";
+  if (event.type === "run") return "run_gathering";
+  if (event.type === "coworking") return "work_table";
+  if (event.type === "market") return "market_walk";
+  if (event.type === "party" || event.type === "live_music") return "party_pulse";
+  return "club_circle";
+}
+
+function eventSceneCue(event: GameEvent, isClub: boolean): string {
+  if (isClub) return "CLUB";
+  if (event.type === "run") return "RUN";
+  if (event.type === "coworking") return "WORK";
+  if (event.type === "market") return "MARKET";
+  if (event.type === "party" || event.type === "live_music") return "LIVE";
+  return "NOW";
+}
+
+function eventActorRole(event: GameEvent): WorldSceneActor["role"] {
+  if (event.type === "coworking") return "working";
+  if (event.type === "party" || event.type === "meetup") return "social";
+  return "gathering";
 }
 
 function buildActors(npcIds: string[], role: WorldSceneActor["role"], limit: number): WorldSceneActor[] {

@@ -36,7 +36,9 @@ import {
 } from "../systems/guidance/FieldObjective";
 import { getFieldIndicators, type VenueFieldIndicator } from "../systems/guidance/FieldIndicators";
 import {
+  getEventWorldScenes,
   getOpportunityWorldScenes,
+  type EventWorldScene,
   type OpportunityWorldScene,
   type WorldSceneActor
 } from "../systems/world/WorldScenes";
@@ -2338,7 +2340,7 @@ export class GameScene extends Phaser.Scene {
     this.redrawHudChrome();
     this.drawOpportunityMarkers();
     this.drawFieldIndicators();
-    this.drawOpportunityWorldScenes();
+    this.drawWorldInteractionScenes();
     this.drawObjectiveMarkers();
     this.drawObjectiveDirectionCue();
     this.drawMinimap();
@@ -4266,16 +4268,15 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private drawOpportunityWorldScenes(): void {
+  private drawWorldInteractionScenes(): void {
     if (!this.worldSceneLayer) {
       return;
     }
     this.worldSceneLayer.clear();
     const activeLabelIds = new Set<string>();
-    const scenes = getOpportunityWorldScenes(this.world);
     const phase = Date.now() / 1000;
 
-    for (const scene of scenes) {
+    for (const scene of getOpportunityWorldScenes(this.world)) {
       const node = venueMapNodes.find((candidate) => candidate.venueId === scene.venueId);
       if (!node) {
         continue;
@@ -4284,6 +4285,17 @@ export class GameScene extends Phaser.Scene {
       const x = node.x;
       const y = node.y - yOffset;
       this.drawOpportunityWorldScene(scene, x, y, phase, activeLabelIds);
+    }
+
+    for (const scene of getEventWorldScenes(this.world)) {
+      const node = venueMapNodes.find((candidate) => candidate.venueId === scene.venueId);
+      if (!node) {
+        continue;
+      }
+      const yOffset = Math.min(node.radius + scaleDistance(66), scaleDistance(136));
+      const x = node.x + scaleDistance(44);
+      const y = node.y - yOffset;
+      this.drawEventWorldScene(scene, x, y, phase, activeLabelIds);
     }
 
     for (const [id, label] of this.worldSceneLabels) {
@@ -4321,6 +4333,47 @@ export class GameScene extends Phaser.Scene {
 
     this.drawWorldSceneActors(scene.actors, x, y, phase, 1);
     this.drawWorldSceneSign(scene, x, y - scaleDistance(24), activeLabelIds, palette.fill);
+  }
+
+  private drawEventWorldScene(scene: EventWorldScene, x: number, y: number, phase: number, activeLabelIds: Set<string>): void {
+    const color = this.eventSceneColor(scene.sceneKind);
+    const pulse = 0.62 + Math.sin(phase * (scene.clubId ? 5.2 : 3.6)) * 0.18;
+    this.worldSceneLayer.fillStyle(0x101820, 0.24);
+    this.worldSceneLayer.fillEllipse(x, y + scaleDistance(28), scaleDistance(104), scaleDistance(28));
+    this.worldSceneLayer.lineStyle(scaleDistance(scene.clubId ? 3 : 2), color, 0.34 + pulse * 0.26);
+    this.worldSceneLayer.strokeEllipse(x, y + scaleDistance(28), scaleDistance(112), scaleDistance(36));
+
+    if (scene.sceneKind === "work_table") {
+      this.worldSceneLayer.fillStyle(0x2b3d4f, 0.82);
+      this.worldSceneLayer.fillRoundedRect(x - scaleDistance(28), y + scaleDistance(10), scaleDistance(56), scaleDistance(13), scaleDistance(4));
+      this.worldSceneLayer.fillStyle(0xfff0bd, 0.86);
+      this.worldSceneLayer.fillRoundedRect(x - scaleDistance(10), y + scaleDistance(3), scaleDistance(20), scaleDistance(12), scaleDistance(3));
+    } else if (scene.sceneKind === "party_pulse") {
+      for (let index = 0; index < 3; index += 1) {
+        const noteX = x + scaleDistance(-24 + index * 24);
+        const noteY = y - scaleDistance(8) + Math.sin(phase * 4 + index) * scaleDistance(5);
+        this.worldSceneLayer.fillStyle(color, 0.72);
+        this.worldSceneLayer.fillCircle(noteX, noteY, scaleDistance(3));
+        this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(2)), color, 0.72);
+        this.worldSceneLayer.lineBetween(noteX + scaleDistance(3), noteY, noteX + scaleDistance(3), noteY - scaleDistance(16));
+      }
+    } else if (scene.sceneKind === "market_walk") {
+      this.worldSceneLayer.fillStyle(0xfff0bd, 0.86);
+      this.worldSceneLayer.fillRoundedRect(x - scaleDistance(31), y + scaleDistance(8), scaleDistance(62), scaleDistance(16), scaleDistance(5));
+      this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(2)), color, 0.72);
+      this.worldSceneLayer.lineBetween(x - scaleDistance(20), y + scaleDistance(6), x + scaleDistance(20), y + scaleDistance(6));
+    } else if (scene.sceneKind === "run_gathering") {
+      this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(2)), color, 0.78);
+      this.worldSceneLayer.beginPath();
+      this.worldSceneLayer.arc(x, y + scaleDistance(18), scaleDistance(28), 0.2, Math.PI * 1.72);
+      this.worldSceneLayer.strokePath();
+    } else {
+      this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(2)), color, 0.76);
+      this.worldSceneLayer.strokeCircle(x, y + scaleDistance(16), scaleDistance(30 + Math.sin(phase * 4) * 3));
+    }
+
+    this.drawWorldSceneActors(scene.actors, x, y, phase, 1);
+    this.drawWorldSceneSign(scene, x, y - scaleDistance(30), activeLabelIds, color);
   }
 
   private drawWorldSceneGathering(
@@ -4400,7 +4453,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawWorldSceneSign(
-    scene: OpportunityWorldScene,
+    scene: { id: string; cue: string; accepted?: boolean },
     x: number,
     y: number,
     activeLabelIds: Set<string>,
@@ -4447,6 +4500,14 @@ export class GameScene extends Phaser.Scene {
     if (spriteKey === "npc-kadek") return 0x6ab7ff;
     if (spriteKey === "npc-made") return 0x8bd17c;
     if (spriteKey === "npc-ari") return 0xffd166;
+    return 0xf4d58d;
+  }
+
+  private eventSceneColor(kind: EventWorldScene["sceneKind"]): number {
+    if (kind === "run_gathering") return 0x8fe3b4;
+    if (kind === "work_table") return 0x91b7dd;
+    if (kind === "market_walk") return 0xffd45c;
+    if (kind === "party_pulse") return 0xd95c8a;
     return 0xf4d58d;
   }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getOpportunityWorldScenes } from "../systems/world/WorldScenes";
+import { getEventWorldScenes, getOpportunityWorldScenes } from "../systems/world/WorldScenes";
 import { createInitialWorldState } from "../systems/WorldState";
 import type { LiveOpportunity, WorldState } from "../types";
 
@@ -72,6 +72,42 @@ describe("world-surfaced opportunity scenes", () => {
         cue: "TRACKED",
         accepted: true,
         actors: []
+      })
+    );
+  });
+});
+
+describe("world-surfaced event and club scenes", () => {
+  it("renders active scheduled events as visible world moments", () => {
+    const world = createInitialWorldState();
+    world.clock.day = 1;
+    world.clock.minuteOfDay = 7 * 60;
+
+    expect(getEventWorldScenes(world)).toContainEqual(
+      expect.objectContaining({
+        source: "event",
+        eventId: "berawa_beach_run_morning",
+        venueId: "berawa_beach",
+        sceneKind: "run_gathering",
+        cue: "RUN",
+        actors: [expect.objectContaining({ npcId: "ari" })]
+      })
+    );
+  });
+
+  it("renders joined club recurring events with a club signature", () => {
+    const world = createInitialWorldState();
+    world.clock.day = 2;
+    world.clock.minuteOfDay = Math.round(6.5 * 60);
+    world.life.joinedClubIds.push("berawa_run_crew");
+
+    expect(getEventWorldScenes(world)).toContainEqual(
+      expect.objectContaining({
+        eventId: "berawa_run_crew_loop",
+        clubId: "berawa_run_crew",
+        venueId: "berawa_beach",
+        sceneKind: "club_circle",
+        cue: "CLUB"
       })
     );
   });
