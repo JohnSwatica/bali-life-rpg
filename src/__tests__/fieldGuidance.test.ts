@@ -147,6 +147,27 @@ describe("field objective readout", () => {
     });
   });
 
+  it("targets the scooter counter when an upgrade is ready", () => {
+    const world = createInitialWorldState();
+    world.life.actProgress.act0Step = "complete";
+    world.life.actProgress.firstDayComplete = true;
+    world.life.actProgress.currentAct = 1;
+    world.players[world.localPlayerId].hasBike = true;
+    world.players[world.localPlayerId].money = 300;
+    world.life.hustle.completedDeliveryCount = 3;
+    world.life.hustle.driverRating = 3.8;
+
+    const objective = getFieldObjective(world);
+
+    expect(objective).toMatchObject({
+      source: "hustle",
+      title: "Upgrade scooter",
+      detail: expect.stringContaining("scooter counter"),
+      targets: [expect.objectContaining({ type: "venue", venueId: "bali_family_rental_scooter" })]
+    });
+    expect(objective.detail.toLowerCase()).not.toContain("phone");
+  });
+
   it("formats the readout as a single compact line", () => {
     expect(
       formatFieldObjectiveLine({

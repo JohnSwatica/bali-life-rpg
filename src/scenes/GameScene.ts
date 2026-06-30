@@ -95,7 +95,13 @@ import {
   pickupDelivery,
   previewDeliveryCondition
 } from "../systems/hustle/DeliverySystem";
-import { payHustleRent, repairScooter, upgradeToDailyScooter } from "../systems/hustle/HustleEconomy";
+import {
+  getScooterRepairStatus,
+  getScooterUpgradeStatus,
+  payHustleRent,
+  repairScooter,
+  upgradeToDailyScooter
+} from "../systems/hustle/HustleEconomy";
 import { isAct1MoveOutReady } from "../systems/hustle/HustleMilestones";
 import {
   acceptOpportunity,
@@ -2886,6 +2892,10 @@ export class GameScene extends Phaser.Scene {
       this.appendHomeStationActions(content);
     }
 
+    if (context.venueId === "bali_family_rental_scooter") {
+      this.appendScooterCounterActions(content);
+    }
+
     const activeEvents = getActiveEventsAtVenue(this.world.clock, venueId, this.world);
     if (activeEvents.length > 0) {
       this.appendActivityMenuSection(content, "Happening now");
@@ -3024,6 +3034,54 @@ export class GameScene extends Phaser.Scene {
           return;
         }
         this.payHomeRent();
+      }
+    });
+  }
+
+  private appendScooterCounterActions(parent: HTMLElement): void {
+    const repairStatus = getScooterRepairStatus(this.world);
+    const upgradeStatus = getScooterUpgradeStatus(this.world);
+    this.appendActivityMenuSection(parent, "Scooter counter");
+    this.appendActivityMenuRow(parent, {
+      title: repairStatus.available ? "Patch scooter" : "Repair status",
+      body: repairStatus.available
+        ? `Rp ${repairStatus.cost} to patch this tier back to ${repairStatus.targetCondition}%. Current condition: ${this.playerState.bikeCondition}%.`
+        : repairStatus.reason ?? "Scooter repair is not needed right now.",
+      actionLabel: repairStatus.available ? `Repair Rp ${repairStatus.cost}` : "Blocked",
+      variant: repairStatus.available ? "primary" : "blocked",
+      onAction: () => {
+        if (!repairStatus.available) {
+          this.showToast(repairStatus.reason ?? "Scooter repair is not available.");
+          return;
+        }
+        const result = repairScooter(this.world, this.getAbsoluteMinute());
+        this.showToast(result.message);
+        if (result.ok) {
+          this.updatePlayerBikeVisual();
+        }
+        saveWorldState(this.world);
+        this.openVenueActivityMenu("bali_family_rental_scooter");
+      }
+    });
+    this.appendActivityMenuRow(parent, {
+      title: upgradeStatus.available ? "Upgrade to daily rental" : "Upgrade status",
+      body: upgradeStatus.available
+        ? `Rp ${upgradeStatus.cost} for a daily rental: cleaner rides, steadier delivery work.`
+        : upgradeStatus.reason ?? "Scooter upgrade is not available right now.",
+      actionLabel: upgradeStatus.available ? "Upgrade" : "Locked",
+      variant: upgradeStatus.available ? "primary" : "blocked",
+      onAction: () => {
+        if (!upgradeStatus.available) {
+          this.showToast(upgradeStatus.reason ?? "Scooter upgrade is locked.");
+          return;
+        }
+        const result = upgradeToDailyScooter(this.world, this.getAbsoluteMinute());
+        this.showToast(result.message);
+        if (result.ok) {
+          this.updatePlayerBikeVisual();
+        }
+        saveWorldState(this.world);
+        this.openVenueActivityMenu("bali_family_rental_scooter");
       }
     });
   }

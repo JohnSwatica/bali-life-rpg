@@ -50,7 +50,7 @@ export function getHustleGoalStates(world: WorldState): HustleGoalState[] {
       id: "daily_scooter",
       title: "Better scooter",
       description: "Upgrade from the borrowed rattletrap to a daily rental.",
-      progress: hustle.scooterTier === "borrowed_rattletrap" ? scooterUpgrade.reason ?? "Ready in Phone Feed" : "Daily rental unlocked",
+      progress: hustle.scooterTier === "borrowed_rattletrap" ? scooterUpgrade.reason ?? "Ready at scooter counter" : "Daily rental unlocked",
       complete: hustle.scooterTier !== "borrowed_rattletrap"
     },
     {
@@ -126,7 +126,7 @@ export function getHustleNextStep(world: WorldState): HustleNextStepState {
   if (player.bikeCondition < MIN_DELIVERY_BIKE_CONDITION) {
     return {
       title: "Repair scooter",
-      detail: `Phone Feed repair is needed before board jobs unlock again. Current condition: ${player.bikeCondition}%.`,
+      detail: `Repair at the scooter counter before board jobs unlock again. Current condition: ${player.bikeCondition}%.`,
       urgency: "blocked"
     };
   }
@@ -168,7 +168,7 @@ export function getHustleNextStep(world: WorldState): HustleNextStepState {
   if (scooterUpgrade.available) {
     return {
       title: "Upgrade scooter",
-      detail: `Spend Rp ${scooterUpgrade.cost} in Phone Feed for a daily rental and smoother delivery work.`,
+      detail: `Spend Rp ${scooterUpgrade.cost} at the scooter counter for a daily rental and smoother delivery work.`,
       urgency: "normal"
     };
   }
