@@ -34,7 +34,7 @@ const ACT2_PAYOFF_TEMPLATE_IDS = [
 ] as const;
 
 export function getAct2GoalStates(world: WorldState): Act2GoalState[] {
-  if (world.life.actProgress.currentAct < 2) {
+  if (!isAct2Unlocked(world)) {
     return [];
   }
 
@@ -75,7 +75,7 @@ export function getAct2GoalStates(world: WorldState): Act2GoalState[] {
 }
 
 export function getAct2NextStep(world: WorldState): Act2NextStepState | null {
-  if (world.life.actProgress.currentAct < 2) {
+  if (!isAct2Unlocked(world)) {
     return null;
   }
 
@@ -139,6 +139,10 @@ export function getAct2NextStep(world: WorldState): Act2NextStepState | null {
     detail: "You have a crew, a rhythm, and a real bond. Better social opportunities can now point toward Act 3 hooks.",
     urgency: "complete"
   };
+}
+
+export function isAct2Unlocked(world: WorldState): boolean {
+  return world.life.actProgress.currentAct >= 2 || world.life.hustle.moveOutReady;
 }
 
 export function areAct2GoalsComplete(world: WorldState): boolean {

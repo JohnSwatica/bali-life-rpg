@@ -1,7 +1,7 @@
 import { getDeliveryDefinition } from "../../data/deliveries";
 import { playerHomeBase } from "../../data/homeBase";
 import { getAct0StepState, isAct0Complete } from "../life/ActProgression";
-import { areAct2GoalsComplete, getAct2NextStep, getAct2PayoffOpportunityState } from "../life/Act2Goals";
+import { areAct2GoalsComplete, getAct2NextStep, getAct2PayoffOpportunityState, isAct2Unlocked } from "../life/Act2Goals";
 import { getAct3ReadinessNextStep } from "../life/Act3Readiness";
 import { getStationRecoveryNudge } from "../life/StationRecovery";
 import { getHustleNextStep } from "../hustle/HustleGoals";
@@ -41,7 +41,7 @@ export function getFieldObjective(world: WorldState): FieldObjectiveState {
     };
   }
 
-  if (world.life.actProgress.currentAct >= 2) {
+  if (isAct2Unlocked(world)) {
     const act3Next = areAct2GoalsComplete(world) ? getAct3ReadinessNextStep(world) : null;
     if (act3Next?.urgency === "ceo") {
       return {
@@ -65,7 +65,7 @@ export function getFieldObjective(world: WorldState): FieldObjectiveState {
     }
   }
 
-  if (world.life.actProgress.currentAct === 1 || world.life.hustle.moveOutReady) {
+  if (world.life.actProgress.currentAct === 1) {
     const hustleNext = getHustleNextStep(world);
     return {
       source: "hustle",

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getQuantity } from "../systems/Inventory";
+import { getFieldObjective } from "../systems/guidance/FieldObjective";
 import {
   acceptDelivery,
   calculateDeliveryPayout,
@@ -249,6 +250,37 @@ describe("Act 0 hustle and deliveries", () => {
     expect(world.life.actProgress.currentAct).toBe(2);
     expect(completed.message).toContain("Move-out ready");
     expect(completed.message).toContain("Act 2 begins");
+  });
+
+  it("keeps the Act 2 chapter turn ahead of scooter repair guidance when condition is low", () => {
+    const world = createInitialWorldState();
+    const player = world.players[world.localPlayerId];
+    player.hasBike = true;
+    player.bikeCondition = 17;
+    player.money = 500;
+    world.life.actProgress.firstDayComplete = true;
+    world.life.actProgress.act0Step = "complete";
+    world.life.actProgress.currentAct = 1;
+    world.life.hustle.completedDeliveryCount = 5;
+    world.life.hustle.deliveryEarnings = 720;
+    world.life.hustle.driverRating = 4.3;
+    world.life.hustle.rentDueDay = 4;
+
+    const rent = payHustleRent(world, 2 * 1440 + 14 * 60);
+
+    expect(rent.message).toContain("Act 2 begins");
+    expect(world.life.hustle.moveOutReady).toBe(true);
+    expect(getHustleNextStep(world)).toMatchObject({ title: "Start Act 2" });
+    expect(getFieldObjective(world)).toMatchObject({
+      source: "act2",
+      title: "Join a first crew"
+    });
+
+    world.life.actProgress.currentAct = 1;
+    expect(getFieldObjective(world)).toMatchObject({
+      source: "act2",
+      title: "Join a first crew"
+    });
   });
 
   it("lets hustle earnings pay rent and upgrade the borrowed scooter", () => {
