@@ -501,3 +501,13 @@ After this pass, `grep -n "setScrollFactor(0)" src/scenes/GameScene.ts` returns 
 `shortenAmbientLine()` now treats digit-dot-digit runs as atomic while finding the first sentence for in-world NPC bubbles. This fixes a pre-existing presentation bug where decimal values in lines such as Rio's `Rated 4.9...` and Pak Bagus's `Berawa 2.0...` were mistaken for sentence-ending periods and truncated into broken ambient copy.
 
 This is a system-level dialogue presentation fix, not a content workaround. Decimal ratings, version-like place names, and similar NPC copy should remain valid authored text. Existing non-decimal NPC lines keep the same sentence-shortening behavior.
+
+## 2026-07-02 - Act 1 Moral Choices Use Hidden Axes And Opt-In Decline Rewards
+
+The Story Bible's Rooted/Extractive and Relational/Algorithmic substrate now lives directly on `ReputationState` as `rootedAxis` and `relationalAxis`, both defaulting to `0` and clamped to `-100..100`. No save-schema bump was needed: `migrateReputationState()` already spreads `createDefaultReputationState()` before existing save data, so older saves inherit neutral axes unless future saves explicitly carry values.
+
+Opportunity templates can now express moral-choice mechanics without a new UI surface. `axisImpact` moves hidden axes while leaving visible reputation score alone, `declineReward` applies only when an opportunity expires, and `maxMoney` / `minCompletedDeliveryCount` gate Act 1 desperation beats. Existing opportunities without `declineReward` keep their old expiry behavior; accepted opportunities are removed from the live pool, so they cannot later receive their decline reward.
+
+The first content using this is Act 1's `no_questions_package`: taking it is a decisive Extractive/Rooted-axis hit with cash attached, while letting it expire is the quieter clean branch with no consolation money. This follows the Story Bible rule that both branches are remembered and neither dead-ends.
+
+The golden thread also advances without starting larger systems. `elena_notebook_2` unlocks at three completed deliveries, and Kadek's Act 1 ambient line names Rumah's bike during the 5-9 delivery window. This does not add Rio's leaderboard, the permit obstacle, collective-action meter, Made's reckoning, Act 3 business simulation, backend, AI, or multiplayer.

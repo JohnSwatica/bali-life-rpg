@@ -14,7 +14,7 @@ Current durable truth:
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test -- --run` = 131 passing, 0 skipped; `npm run build` passes.
+- Current verification: `npm test -- --run` = 138 passing, 0 skipped; `npm run build` passes.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Canonical act order, set in stone for near-term work:
@@ -41,6 +41,10 @@ Immediate next move: run a human play-feel pass through the station-first first-
 
 ## What Was Added Recently
 
+- Story Phase 3 is complete on `feat/gameplay-stations`: reputation now has hidden `rootedAxis` and `relationalAxis` fields defaulting to `0`, with no save-schema bump because existing reputation migration spreads defaults before old save data. Positive Rooted means rooted vs. extractive; positive Relational means relational vs. algorithmic.
+- Opportunities can now opt into `axisImpact`, `declineReward`, `maxMoney`, and `minCompletedDeliveryCount`. Existing templates without `declineReward` still expire silently; moral-choice templates can now make "let it expire" a real branch without adding a new Decline button.
+- Act 1 now has the first moral-choice opportunity, `no_questions_package`, at `bali_family_rental_scooter`: it appears only when the player has at most Rp 40 and at least 3 completed deliveries. Taking it pays Rp 180 but moves Rooted -15 and reputation -3; letting it expire gives no money but moves Rooted +10 and awards the `reliable` tag.
+- The Act 1 Elena/Rumah golden thread now drips after delivery progress: `elena_notebook_2` unlocks in the Discovery Ledger at 3 completed deliveries, and Kadek says `"That's Rumah's old bike."` during the 5-9 delivery window. The earlier Act 0 Kadek hesitation still only fires before 5 deliveries, so the two lines do not overlap.
 - Ambient NPC line shortening now treats decimal numbers like `4.9` and `2.0` as part of the same sentence instead of splitting at the decimal point. This fixes a pre-existing presentation bug surfaced by Rio's driver-rating line and Pak Bagus's `Berawa 2.0` default line; the NPC content itself was not changed.
 - Playability/onboarding fix pass is complete on `feat/gameplay-stations`: the in-canvas Phaser HUD now renders through a camera-zoom-safe HUD layer, venue-dwelling NPCs win interaction focus over their venue/shop menus, and the fresh-save Act 0 opening now funnels the player to Ibu Sari with a visible objective/arrow before other world interactions open.
 - The HUD fix keeps the intentional `STREET_CAMERA.desktopZoom = 1.6` world zoom. `GameScene` anchors the HUD layer to the main camera world view and inverse-scales it like the Phone panel, so the status box, objective line, off-screen arrow, toast, and bottom prompt behave like screen UI rather than zoomed world objects.

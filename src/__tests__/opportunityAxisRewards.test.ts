@@ -56,6 +56,7 @@ describe("opportunity axis and decline rewards", () => {
 
     expect(acceptOpportunity(acceptedState, acceptedLive.id, getAbsoluteMinute(acceptedWorld.clock)).ok).toBe(true);
     expect(resolveOpportunity(acceptedState, acceptedWorld, acceptedLive.id).ok).toBe(true);
+    expireOpportunities(acceptedState, acceptedWorld, acceptedLive.expiresAt);
     expect(acceptedWorld.reputation.rootedAxis).toBe(-15);
     expect(acceptedWorld.reputation.relationalAxis).toBe(-5);
     expect(acceptedWorld.reputation.score).toBe(60);
