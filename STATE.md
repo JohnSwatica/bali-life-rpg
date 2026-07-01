@@ -14,7 +14,7 @@ Current durable truth:
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test -- --run` = 117 passing, 0 skipped; `npm run build` passes.
+- Current verification: `npm test -- --run` = 120 passing, 0 skipped; `npm run build` passes.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Canonical act order, set in stone for near-term work:
@@ -41,6 +41,9 @@ Immediate next move: run a human play-feel pass through the station-first first-
 
 ## What Was Added Recently
 
+- Act 1/2 access and sequencing fixes are complete on `feat/gameplay-stations`: Ibu Sari's Act 1 field Hustle Board now takes priority over unresolved legacy starter-quest progress chatter once the board is available, so the coconut restock quest can no longer permanently block the delivery board.
+- Act 2 guidance now treats `world.life.hustle.moveOutReady` as an Act 2 unlock signal even if `currentAct` and the milestone flag are briefly out of sync. A low scooter condition still blocks future board deliveries, but the immediate chapter-turn field objective stays on the social handoff (`Join a first crew`) instead of undercutting the payoff with `Repair scooter`.
+- Club membership debugging is now explicit: `world.life.joinedClubIds` remains the canonical Act 2 club field, while `playerState.joinedGroupIds` remains legacy interest-group/group-travel state. `__BALI_LIFE_DEBUG__` now exposes `joinedClubIds` plus `legacyJoinedGroupIds` so real venue-menu joins do not falsely look unjoined in debug.
 - Corrected world-bounds/density pass is complete on `feat/gameplay-stations`: the beach was not missing; the dev-only godmode shortcuts were stale and dropped the player into undecorated field. Teleport buttons now resolve live authored venue nodes for Canggu Station, FINNS Beach Club, and Berawa Beach instead of old base-map coordinates.
 - Playable containment now comes from authored content instead of the raw `3840 x 2720` tile backing world. `src/data/playableBounds.ts` derives bounds from the active street template plus authored venues, pickups, home, spawn, NPC routine points, and ambient route points; `GameScene` uses those bounds for physics/camera setup and clamps save loads, knockback, water correction, group helpers, dev teleports, and live movement.
 - Current authored play bounds are `x=914..2528`, `y=0..2720`; the ordinary north/mid street corridor clamps more tightly to `x=1091..2502`, then expands near the beach approach at `y>=1952` so the beach-club/beach terminus content stays reachable. Layout invariant tests assert the bounds are narrower than the raw world and keep all authored venue/interaction points reachable.
