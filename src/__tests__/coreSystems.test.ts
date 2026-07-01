@@ -21,6 +21,7 @@ import { getAct3ReadinessGoalStates, getAct3ReadinessNextStep, isAct3Ready } fro
 import { getSettlingInGoalStates, updateSettlingInGoals } from "../systems/life/SettlingInGoals";
 import {
   addHiddenTrustFlag,
+  adjustReputationAxis,
   adjustReputation,
   awardReputationTag,
   clearWantedStanding,
@@ -296,6 +297,26 @@ describe("ReputationState", () => {
     expect(getBounty(reputation)).toBe(0);
     expect(getFlaggedByVictims(reputation)).toBe(0);
     expect(getLastFlagReason(reputation)).toBeUndefined();
+  });
+
+  it("tracks hidden rooted and relational axes without changing visible score", () => {
+    const reputation = createDefaultReputationState(60);
+
+    expect(reputation.rootedAxis).toBe(0);
+    expect(reputation.relationalAxis).toBe(0);
+
+    adjustReputationAxis(reputation, "rooted", 35, "helped the corner", 1);
+    adjustReputationAxis(reputation, "relational", -125, "optimized over people", 2);
+    adjustReputationAxis(reputation, "rooted", 90, "stayed with the place", 3);
+
+    expect(reputation.rootedAxis).toBe(100);
+    expect(reputation.relationalAxis).toBe(-100);
+    expect(reputation.score).toBe(60);
+    expect(reputation.history.slice(-3)).toEqual([
+      { at: 1, change: "helped the corner", delta: 0 },
+      { at: 2, change: "optimized over people", delta: 0 },
+      { at: 3, change: "stayed with the place", delta: 0 }
+    ]);
   });
 });
 

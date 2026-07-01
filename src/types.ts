@@ -350,6 +350,9 @@ export interface ReputationState {
   hiddenFlags: TrustFlag[];
   redemption: { active: boolean; challengeId: string | null };
   history: ReputationEvent[];
+  // Both axes range -100..100 like score: +rooted/-extractive, +relational/-algorithmic.
+  rootedAxis: number;
+  relationalAxis: number;
 }
 
 export interface MemoryEvent {

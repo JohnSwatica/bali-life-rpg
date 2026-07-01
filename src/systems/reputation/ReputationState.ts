@@ -12,13 +12,27 @@ export function createDefaultReputationState(score = 60): ReputationState {
       active: false,
       challengeId: null
     },
-    history: []
+    history: [],
+    rootedAxis: 0,
+    relationalAxis: 0
   };
 }
 
 export function adjustReputation(reputation: ReputationState, delta: number, reason: string, at: number): void {
   reputation.score = Math.max(-100, Math.min(100, reputation.score + delta));
   reputation.history.push({ at, change: reason, delta });
+}
+
+export function adjustReputationAxis(
+  reputation: ReputationState,
+  axis: "rooted" | "relational",
+  delta: number,
+  reason: string,
+  at: number
+): void {
+  const key = axis === "rooted" ? "rootedAxis" : "relationalAxis";
+  reputation[key] = Math.max(-100, Math.min(100, reputation[key] + delta));
+  reputation.history.push({ at, change: reason, delta: 0 });
 }
 
 export function getReputationScore(reputation: ReputationState): number {
