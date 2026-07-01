@@ -46,6 +46,15 @@ interface BuildingPalette {
   accent: number;
 }
 
+const AMBIENT_STREET_PALETTE: BuildingPalette = {
+  roof: 0x40a7b2,
+  roofLight: 0x87d8d4,
+  wall: 0xf0dfb9,
+  trim: 0x4f7f5a,
+  sign: 0x23594f,
+  accent: 0xf2c35d
+};
+
 export function renderStreetTemplate(scene: Phaser.Scene, template: StreetTemplate): StreetRenderHandle {
   createOriginalStreetTileset(scene);
   const data = buildStreetTileData(template);
@@ -592,17 +601,103 @@ function signPosition(rect: StreetBuildingRect): { x: number; y: number } {
 }
 
 function drawStreetProps(g: Phaser.GameObjects.Graphics, template: StreetTemplate): void {
-  for (let y = 8; y < TILE_WORLD.heightTiles - 12; y += 7) {
-    drawTreeCanopy(g, 11 * TILE_SIZE, y * TILE_SIZE + 16);
-    drawTreeCanopy(g, (TILE_WORLD.widthTiles - 12) * TILE_SIZE, y * TILE_SIZE + 16);
+  if (!isVerticalStreet(template)) {
+    return;
   }
 
+  drawCorridorAmbientProps(g, template);
+  drawBeachAmbientProps(g, template);
+}
+
+function drawCorridorAmbientProps(g: Phaser.GameObjects.Graphics, template: StreetTemplate): void {
+  const roadRight = roadRightTile(template);
+  const leftShadeX = (template.roadLeftTile - template.sidewalkTiles - 0.4) * TILE_SIZE;
+  const leftSidewalkX = (template.roadLeftTile - template.sidewalkTiles + 0.65) * TILE_SIZE;
+  const rightSidewalkX = (roadRight + template.sidewalkTiles + 0.55) * TILE_SIZE;
+  const rightShadeX = (roadRight + template.sidewalkTiles + 1.45) * TILE_SIZE;
+  const endTile = template.beachTerminus ? template.beachTerminus.startsAtTile - 4 : streetEndTile(template);
+  let index = 0;
+
+  for (let yTile = template.start.tileY + 4; yTile < endTile; yTile += 5) {
+    const y = yTile * TILE_SIZE + 12;
+    if (index % 3 === 0) {
+      drawTreeCanopy(g, leftShadeX, y);
+      drawPlanter(g, rightSidewalkX, y + 18, AMBIENT_STREET_PALETTE);
+    } else if (index % 3 === 1) {
+      drawBench(g, leftSidewalkX, y + 8, 1);
+      drawLanternPost(g, rightSidewalkX, y - 8);
+    } else {
+      drawLanternPost(g, leftSidewalkX, y - 8);
+      drawBench(g, rightShadeX, y + 8, -1);
+    }
+    index += 1;
+  }
+}
+
+function drawBeachAmbientProps(g: Phaser.GameObjects.Graphics, template: StreetTemplate): void {
   if (template.beachTerminus) {
     const sandY = template.beachTerminus.startsAtTile * TILE_SIZE;
-    for (let x = 8 * TILE_SIZE; x < TILE_WORLD.width - 8 * TILE_SIZE; x += 8 * TILE_SIZE) {
-      drawPalm(g, x, sandY + 54 + ((x / TILE_SIZE) % 3) * 8);
+    const waterY = (template.beachTerminus.startsAtTile + template.beachTerminus.sandTiles) * TILE_SIZE;
+    const dockCenterX = (template.beachTerminus.dockTileX + 1) * TILE_SIZE;
+    const beachLeft = (template.beachTerminus.dockTileX - 11) * TILE_SIZE;
+    const beachRight = (template.beachTerminus.dockTileX + 13) * TILE_SIZE;
+    const approachY = sandY - 282;
+
+    drawPalm(g, dockCenterX - 720, approachY - 8);
+    drawBench(g, dockCenterX - 610, approachY + 34, 1);
+    drawSurfboards(g, dockCenterX - 500, approachY + 46, AMBIENT_STREET_PALETTE);
+    drawLanternPost(g, dockCenterX + 486, approachY + 20);
+    drawPlanter(g, dockCenterX + 574, approachY + 46, AMBIENT_STREET_PALETTE);
+    drawPalm(g, dockCenterX + 690, approachY + 12);
+
+    for (const [x, offset] of [
+      [beachLeft, 0],
+      [dockCenterX - 230, 12],
+      [dockCenterX + 220, 8],
+      [beachRight, 18]
+    ] as const) {
+      drawPalm(g, x, sandY + 54 + offset);
     }
+
+    drawUmbrella(g, dockCenterX - 260, sandY + 116, AMBIENT_STREET_PALETTE);
+    drawBeachTowel(g, dockCenterX - 198, sandY + 144, 0x40a7b2, 0xfff1c6);
+    drawSurfboards(g, dockCenterX - 118, sandY + 134, AMBIENT_STREET_PALETTE);
+    drawBeachTowel(g, dockCenterX + 164, sandY + 132, 0xd95b43, 0xf2c35d);
+    drawUmbrella(g, dockCenterX + 252, sandY + 112, AMBIENT_STREET_PALETTE);
+    drawSurfboards(g, dockCenterX + 298, waterY - 28, AMBIENT_STREET_PALETTE);
   }
+}
+
+function drawBench(g: Phaser.GameObjects.Graphics, x: number, y: number, direction: number): void {
+  g.fillStyle(0x000000, 0.12);
+  g.fillEllipse(x, y + 13, 48, 10, 24);
+  g.fillStyle(0x8b5f2f, 1);
+  g.fillRoundedRect(x - 22, y - 5, 44, 9, 3);
+  g.fillRoundedRect(x - 20, y + 6, 40, 7, 3);
+  g.fillStyle(0x5b3c2c, 1);
+  g.fillRect(x - 17, y + 12, 4, 10);
+  g.fillRect(x + 13, y + 12, 4, 10);
+  g.fillStyle(0xf2c35d, 0.9);
+  g.fillCircle(x + direction * 18, y - 10, 4);
+}
+
+function drawLanternPost(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
+  g.fillStyle(0x5b3c2c, 1);
+  g.fillRoundedRect(x - 2, y - 2, 4, 38, 2);
+  g.fillStyle(0xf2c35d, 1);
+  g.fillCircle(x, y - 6, 7);
+  g.fillStyle(0xfff1c6, 0.8);
+  g.fillCircle(x - 2, y - 8, 2);
+}
+
+function drawBeachTowel(g: Phaser.GameObjects.Graphics, x: number, y: number, colorA: number, colorB: number): void {
+  g.fillStyle(0x000000, 0.1);
+  g.fillEllipse(x, y + 10, 50, 14, 24);
+  g.fillStyle(colorA, 0.95);
+  g.fillRoundedRect(x - 24, y - 7, 48, 24, 4);
+  g.fillStyle(colorB, 0.95);
+  g.fillRect(x - 18, y - 7, 7, 24);
+  g.fillRect(x + 4, y - 7, 7, 24);
 }
 
 function drawTreeCanopy(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
