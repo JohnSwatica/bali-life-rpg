@@ -21,5 +21,12 @@ export const discoveryLedgerEntries: DiscoveryLedgerEntry[] = [
     title: "Kos, Kontrakan, Villa: The Ladder",
     body: "A kos is a single rented room, sometimes with a shared bathroom down the hall -- cheapest, and where almost everyone starts. A kontrakan is a whole house leased by the year, usually split between roommates who can afford to commit. A villa is leased or owned outright, the top of the ladder, and the one foreigners can never actually hold title to without a local partner -- more on that later. Every rung up costs more up front and buys you more privacy, more space, and more say over your own door.",
     unlock: { type: "act0_step_complete", step: "meet_ibu_sari" }
+  },
+  {
+    id: "elena_notebook_2",
+    kind: "elena_fragment",
+    title: "Notebook Page -- 'Rumah'",
+    body: "Further into the notebook, one page survived better than the rest: a rough floor plan, tables sketched in, a name at the top underlined so many times the pen tore the paper -- RUMAH. Someone asked you today, not quite joking, if you're 'the new one driving Rumah's old bike.' When you asked what Rumah was, they went quiet and changed the subject.",
+    unlock: { type: "delivery_count", count: 3 }
   }
 ];

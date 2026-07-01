@@ -6,11 +6,12 @@ import { isDiscoveryLedgerEntryUnlocked } from "../systems/discovery/DiscoveryLe
 import { createInitialWorldState } from "../systems/WorldState";
 
 describe("Discovery Ledger", () => {
-  it("defines the three seed ledger entries and their clue items", () => {
+  it("defines the seed ledger entries and their clue items", () => {
     expect(discoveryLedgerEntries.map((entry) => entry.id)).toEqual([
       "elena_notebook_1",
       "elena_sim_1",
-      "codex_housing_ladder"
+      "codex_housing_ladder",
+      "elena_notebook_2"
     ]);
     expect(itemDefinitions.elena_notebook.name).toBe("Water-Damaged Notebook");
     expect(itemDefinitions.elena_sim.name).toBe("Old SIM Card");
@@ -50,5 +51,17 @@ describe("Discovery Ledger", () => {
     world.life.actProgress.completedAct0StepIds.push("meet_ibu_sari");
 
     expect(isDiscoveryLedgerEntryUnlocked(world, housing!)).toBe(true);
+  });
+
+  it("unlocks the Act 1 Rumah notebook page at the third completed delivery", () => {
+    const world = createInitialWorldState();
+    const rumah = discoveryLedgerEntries.find((entry) => entry.id === "elena_notebook_2");
+
+    expect(rumah).toBeDefined();
+    world.life.hustle.completedDeliveryCount = 2;
+    expect(isDiscoveryLedgerEntryUnlocked(world, rumah!)).toBe(false);
+
+    world.life.hustle.completedDeliveryCount = 3;
+    expect(isDiscoveryLedgerEntryUnlocked(world, rumah!)).toBe(true);
   });
 });

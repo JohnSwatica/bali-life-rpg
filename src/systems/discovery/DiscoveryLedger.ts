@@ -4,5 +4,8 @@ export function isDiscoveryLedgerEntryUnlocked(world: WorldState, entry: Discove
   if (entry.unlock.type === "pickup_collected") {
     return Boolean(world.collectedPickups[entry.unlock.pickupId]);
   }
-  return world.life.actProgress.completedAct0StepIds.includes(entry.unlock.step);
+  if (entry.unlock.type === "act0_step_complete") {
+    return world.life.actProgress.completedAct0StepIds.includes(entry.unlock.step);
+  }
+  return world.life.hustle.completedDeliveryCount >= entry.unlock.count;
 }

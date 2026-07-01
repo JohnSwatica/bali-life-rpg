@@ -14,7 +14,8 @@ export type Act0Step =
 export type DiscoveryLedgerEntryKind = "elena_fragment" | "codex_note";
 export type DiscoveryLedgerUnlockCondition =
   | { type: "pickup_collected"; pickupId: string }
-  | { type: "act0_step_complete"; step: Act0Step };
+  | { type: "act0_step_complete"; step: Act0Step }
+  | { type: "delivery_count"; count: number };
 export interface DiscoveryLedgerEntry {
   id: string;
   kind: DiscoveryLedgerEntryKind;

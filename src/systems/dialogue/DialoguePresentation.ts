@@ -41,6 +41,13 @@ export function getAmbientNpcLine(world: WorldState, npcId: string, fallbackLine
   if (npcId === "kadek" && world.collectedPickups["elena-notebook-seat"] && world.life.hustle.completedDeliveryCount < 5) {
     return "\"Hey, that's--\" He stops himself and goes back to the oven.";
   }
+  if (
+    npcId === "kadek" &&
+    world.life.hustle.completedDeliveryCount >= 5 &&
+    world.life.hustle.completedDeliveryCount < 10
+  ) {
+    return "\"That's Rumah's old bike.\" He says it plainly this time, then goes quiet.";
+  }
   if (routineLabel) {
     return appendRoutineContext(shortenAmbientLine(fallbackLine), routineLabel);
   }

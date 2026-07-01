@@ -73,8 +73,29 @@ describe("in-world dialogue presentation", () => {
       "\"Hey, that's--\" He stops himself and goes back to the oven."
     );
 
-    world.life.hustle.completedDeliveryCount = 5;
+    world.life.hustle.completedDeliveryCount = 10;
 
+    expect(getAmbientNpcLine(world, "kadek", "Fallback line.", "checking the oven")).toContain("checking the oven");
+  });
+
+  it("seeds Kadek's Act 1 Rumah bike reveal after five deliveries", () => {
+    const world = createInitialWorldState();
+    world.life.hustle.driverRating = 4.2;
+
+    world.life.hustle.completedDeliveryCount = 4;
+    expect(getAmbientNpcLine(world, "kadek", "Fallback line.", "checking the oven")).toContain("checking the oven");
+
+    world.life.hustle.completedDeliveryCount = 5;
+    expect(getAmbientNpcLine(world, "kadek", "Fallback line.", "checking the oven")).toBe(
+      "\"That's Rumah's old bike.\" He says it plainly this time, then goes quiet."
+    );
+
+    world.life.hustle.completedDeliveryCount = 9;
+    expect(getAmbientNpcLine(world, "kadek", "Fallback line.", "checking the oven")).toBe(
+      "\"That's Rumah's old bike.\" He says it plainly this time, then goes quiet."
+    );
+
+    world.life.hustle.completedDeliveryCount = 10;
     expect(getAmbientNpcLine(world, "kadek", "Fallback line.", "checking the oven")).toContain("checking the oven");
   });
 });
