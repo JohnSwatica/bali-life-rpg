@@ -14,7 +14,7 @@ Current durable truth:
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test -- --run` = 126 passing, 0 skipped; `npm run build` passes.
+- Current verification: `npm test -- --run` = 130 passing, 0 skipped; `npm run build` passes.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Canonical act order, set in stone for near-term work:
@@ -41,6 +41,10 @@ Immediate next move: run a human play-feel pass through the station-first first-
 
 ## What Was Added Recently
 
+- Playability/onboarding fix pass is complete on `feat/gameplay-stations`: the in-canvas Phaser HUD now renders through a camera-zoom-safe HUD layer, venue-dwelling NPCs win interaction focus over their venue/shop menus, and the fresh-save Act 0 opening now funnels the player to Ibu Sari with a visible objective/arrow before other world interactions open.
+- The HUD fix keeps the intentional `STREET_CAMERA.desktopZoom = 1.6` world zoom. `GameScene` anchors the HUD layer to the main camera world view and inverse-scales it like the Phone panel, so the status box, objective line, off-screen arrow, toast, and bottom prompt behave like screen UI rather than zoomed world objects.
+- The NPC-vs-venue interaction fix is geometric, not just priority-based: `InteractionController` uses a larger NPC radius and suppresses venue/shop candidates while a talkable NPC occupies that venue footprint, so Ibu Sari/Kadek/Made do not lose to the building menu when their routines drift around the venue.
+- The first-run Act 0 gate is session-only. `openFirstRunHint()` activates it only when the premise panel is actually shown on a fresh save; existing saves that have already seen the premise do not get re-gated. While active, non-Ibu world interactions redirect with a short toast until the first Ibu Sari conversation advances `meet_ibu_sari`.
 - `STORY_BIBLE.md` v3 is now the canonical narrative/design source for the dramatic spine, cast, world systems, and hook architecture. It supersedes informal story notes where they conflict. Narrative and macro story decisions in this bible and future story packets are CSO/design specs for the coding agent to implement, not open briefs to reinterpret.
 - Narrative Foundation phase 1 has begun: Rio, Pak Bagus, and Willow are registered as inert NPC data with authored daily routine routes and `generic_idle` behavior only. Their sprite keys (`npc-rio`, `npc-pak-bagus`, `npc-willow`) currently use original procedural placeholder textures in `BootScene`; dedicated character art remains a later art pass. Elena is intentionally not in `npcDefinitions` because every NPC definition auto-populates the world and the Story Bible keeps her off-screen until Act 4. Rio/Pak Bagus/Willow also intentionally have no tiered dialogue or relationship arcs yet; their `defaultLine` fallback is the whole interaction surface for this phase.
 - The Discovery Ledger exists as a read-only Phone `Threads` tab derived from existing state, not new save data. `src/data/discoveryLedger.ts` currently has three entries: two Elena fragments unlocked by the scooter-seat notebook/SIM pickups and one codex note unlocked by completing `meet_ibu_sari`. The two clue pickups live near Canggu Station, use new zero-value item definitions, and produce a special `Besok ya` toast when collected. Kadek now has one early ambient reaction after the notebook is found and before five deliveries are complete.
