@@ -101,6 +101,12 @@ import {
   isAct0Complete,
   markAct0MealProgress
 } from "../systems/life/ActProgression";
+import {
+  FIRST_RUN_IBU_REDIRECT_TOAST,
+  isAct0FirstRunGateActive,
+  shouldStartAct0FirstRunGate,
+  shouldRedirectAct0FirstRunInteraction
+} from "../systems/life/FirstRunGate";
 import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
 import {
   acceptDelivery,
@@ -482,6 +488,7 @@ export class GameScene extends Phaser.Scene {
   private dialogueProvider: DialogueProvider = new ScriptedDialogueProvider();
   private hudController!: HudController;
   private phone?: PhoneShell;
+  private act0FirstRunGateSessionActive = false;
   private godmodePanel?: Phaser.GameObjects.Container;
   private movementSpeedMultiplier = 1;
   private discoveryLabels: Array<{ subjectType: "area" | "venue"; id: string; label: Phaser.GameObjects.Text }> = [];
@@ -2447,6 +2454,8 @@ export class GameScene extends Phaser.Scene {
     const target = this.getNearestInteraction();
     if (this.mode === "world" && this.playerState.bikeStuck) {
       this.promptText.setText(`E / ACT: ask ${REQUIRED_BIKE_HELPERS} helpers to drag the bike out`);
+    } else if (this.mode === "world" && isAct0FirstRunGateActive(this.world, this.act0FirstRunGateSessionActive)) {
+      this.promptText.setText("Find Ibu Sari first - follow the arrow and press E / ACT.");
     } else if (this.mode === "world" && homeSleepReady) {
       this.promptText.setText(`E / ACT: sleep at ${playerHomeBase.name}.`);
     } else if (this.mode === "world" && isPlayerAtHomeBase(this.world)) {
@@ -2563,6 +2572,19 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    const target = this.getNearestInteraction();
+    if (
+      shouldRedirectAct0FirstRunInteraction(
+        this.world,
+        this.act0FirstRunGateSessionActive,
+        target,
+        isPlayerAtHomeBase(this.world)
+      )
+    ) {
+      this.showToast(FIRST_RUN_IBU_REDIRECT_TOAST);
+      return;
+    }
+
     if (this.isAct0HomeSleepReady()) {
       this.sleepToMorning();
       return;
@@ -2573,7 +2595,6 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    const target = this.getNearestInteraction();
     if (!target) {
       if (this.canSleepHere()) {
         this.sleepToMorning();
@@ -4454,6 +4475,7 @@ export class GameScene extends Phaser.Scene {
     if (this.world.questFlags.firstRunHintSeen) {
       return;
     }
+    this.act0FirstRunGateSessionActive = shouldStartAct0FirstRunGate(this.world);
     this.world.questFlags.firstRunHintSeen = true;
     saveWorldState(this.world);
     const copy = getAct0ColdOpenCopy();
