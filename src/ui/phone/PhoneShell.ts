@@ -22,6 +22,7 @@ import { getDeliveryOfferAvailability, getEffectiveDeliveryTerms, previewDeliver
 import { getRentPressureState, getScooterRepairStatus, getScooterUpgradeStatus } from "../../systems/hustle/HustleEconomy";
 import { getHustleGoalStates, getHustleNextStep } from "../../systems/hustle/HustleGoals";
 import type { GameEvent, RelationshipMemory, Venue, WorldState } from "../../types";
+import { getPhoneCameraScale, getPhonePanelLayout, PHONE_CONTENT_INSET_PX } from "./PhoneLayout";
 
 const PHONE_DEPTH = 1500;
 const TABS = ["Feed", "Map", "Contacts", "Quests", "Calendar", "Profile", "Events", "Venues", "Community"] as const;
@@ -84,11 +85,14 @@ export class PhoneShell {
     this.container?.destroy(true);
     const { scene } = this.options;
     const { width, height } = scene.scale;
-    const panelWidth = Math.min(860, width - 24);
-    const panelHeight = Math.min(690, height - 24);
-    const x = (width - panelWidth) / 2;
-    const y = (height - panelHeight) / 2;
-    const container = scene.add.container(0, 0).setScrollFactor(0).setDepth(PHONE_DEPTH);
+    const { panelWidth, panelHeight, x, y, bodyX, bodyWidth } = getPhonePanelLayout(width, height);
+    const camera = scene.cameras.main;
+    const cameraZoom = camera.zoom || 1;
+    const container = scene
+      .add.container(camera.worldView.x, camera.worldView.y)
+      .setScrollFactor(1)
+      .setDepth(PHONE_DEPTH)
+      .setScale(getPhoneCameraScale(cameraZoom));
     const bg = scene.add.graphics();
     bg.fillStyle(0x101820, 0.97);
     bg.fillRoundedRect(x, y, panelWidth, panelHeight, 10);
@@ -98,17 +102,17 @@ export class PhoneShell {
 
     this.renderPortalHeader(container, x, y, panelWidth);
     this.renderTabs(container, x, y + 74, panelWidth);
-    this.renderActiveTab(container, x, y + 148, panelWidth, panelHeight - 198);
+    this.renderActiveTab(container, bodyX, y + 148, bodyWidth, panelHeight - 198);
     this.addButton(container, x + panelWidth - 116, y + panelHeight - 42, 92, 30, "Close", () => this.close(), 0x4a3331);
     this.container = container;
   }
 
   private renderPortalHeader(container: Phaser.GameObjects.Container, x: number, y: number, panelWidth: number): void {
     const world = this.options.getWorld();
-    container.add(this.options.scene.add.text(x + 18, y + 16, "Bali Life Phone", this.titleStyle()));
+    container.add(this.options.scene.add.text(x + PHONE_CONTENT_INSET_PX, y + 16, "Bali Life Phone", this.titleStyle()));
     container.add(
       this.options.scene.add.text(
-        x + 18,
+        x + PHONE_CONTENT_INSET_PX,
         y + 46,
         `Portal: ${world.portal.current === "single" ? "Single Player" : "Multiplayer"}  |  Multiplayer ${world.portal.multiplayerStatus}`,
         this.bodyStyle(13)
@@ -121,11 +125,11 @@ export class PhoneShell {
   private renderTabs(container: Phaser.GameObjects.Container, x: number, y: number, panelWidth: number): void {
     const gap = 6;
     const columns = panelWidth < 560 ? 4 : 8;
-    const tabWidth = (panelWidth - 36 - gap * (columns - 1)) / columns;
+    const tabWidth = (panelWidth - PHONE_CONTENT_INSET_PX * 2 - gap * (columns - 1)) / columns;
     TABS.forEach((tab, index) => {
       const row = Math.floor(index / columns);
       const column = index % columns;
-      const tabX = x + 18 + column * (tabWidth + gap);
+      const tabX = x + PHONE_CONTENT_INSET_PX + column * (tabWidth + gap);
       const tabY = y + row * 34;
       this.addButton(
         container,
@@ -147,9 +151,9 @@ export class PhoneShell {
     panelWidth: number,
     contentHeight: number
   ): void {
-    const bodyX = x + 22;
+    const bodyX = x;
     const bodyY = y;
-    const bodyWidth = panelWidth - 44;
+    const bodyWidth = panelWidth;
     const title = this.options.scene.add.text(bodyX, bodyY, this.activeTab, this.sectionStyle());
     container.add(title);
     const textY = bodyY + 30;
@@ -739,21 +743,19 @@ export class PhoneShell {
     text.setWordWrapWidth(width - 12);
     button.add([bg, text]);
     button.setSize(width, height);
+    button.setInteractive(new Phaser.Geom.Rectangle(0, 0, width, height), Phaser.Geom.Rectangle.Contains);
     container.add(button);
 
-    const hitZone = scene.add.zone(x + width / 2, y + height / 2, width, height).setScrollFactor(0).setDepth(PHONE_DEPTH + 1);
-    hitZone.setInteractive(new Phaser.Geom.Rectangle(0, 0, width, height), Phaser.Geom.Rectangle.Contains);
-    if (hitZone.input) {
-      hitZone.input.cursor = "pointer";
+    if (button.input) {
+      button.input.cursor = "pointer";
     }
-    hitZone.on("pointerover", () => bg.setAlpha(0.86));
-    hitZone.on("pointerout", () => bg.setAlpha(1));
-    hitZone.on("pointerdown", (pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event?: Phaser.Types.Input.EventData) => {
+    button.on("pointerover", () => bg.setAlpha(0.86));
+    button.on("pointerout", () => bg.setAlpha(1));
+    button.on("pointerdown", (pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event?: Phaser.Types.Input.EventData) => {
       event?.stopPropagation();
       pointer.event?.stopPropagation();
       onClick();
     });
-    container.once(Phaser.GameObjects.Events.DESTROY, () => hitZone.destroy());
   }
 
   private titleStyle(): Phaser.Types.GameObjects.Text.TextStyle {
