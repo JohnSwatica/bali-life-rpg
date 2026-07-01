@@ -23,6 +23,14 @@ export function isSocialGroupJoined(world: WorldState, groupId: string): boolean
   return world.life.joinedClubIds.includes(groupId);
 }
 
+export function getMembershipDebugState(world: WorldState): { joinedClubIds: string[]; legacyJoinedGroupIds: string[] } {
+  const player = world.players[world.localPlayerId];
+  return {
+    joinedClubIds: [...world.life.joinedClubIds],
+    legacyJoinedGroupIds: [...(player?.joinedGroupIds ?? [])]
+  };
+}
+
 export function joinSocialGroup(world: WorldState, groupId: string, at: number): { ok: boolean; message: string } {
   const group = getSocialGroup(groupId);
   if (!group) {

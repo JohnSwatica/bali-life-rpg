@@ -6,7 +6,7 @@ import { getQuantity } from "../systems/Inventory";
 import { applyEventParticipation } from "../systems/events/EventParticipation";
 import { getVenue } from "../systems/venues/VenueRegistry";
 import { getActiveEventsAtVenue, getUpcomingEvents } from "../systems/events/EventScheduler";
-import { getAllSocialGroups, getSocialGroup, joinSocialGroup } from "../systems/groups/GroupRegistry";
+import { getAllSocialGroups, getMembershipDebugState, getSocialGroup, joinSocialGroup } from "../systems/groups/GroupRegistry";
 import { IntentDispatcher } from "../systems/intents/IntentDispatcher";
 import { bumpRelationshipAffinity, getRelationship } from "../systems/relationships/RelationshipMemory";
 import { completeNextRelationshipArcBeat, getRelationshipArcStatesForNpc } from "../systems/relationships/RelationshipArcs";
@@ -92,6 +92,16 @@ describe("clubs and groups", () => {
     expect(world.life.joinedClubIds).toEqual(["berawa_run_crew"]);
     expect(before).not.toContain("berawa_run_crew_loop");
     expect(after).toContain("berawa_run_crew_loop");
+  });
+
+  it("exposes canonical joined clubs separately from legacy player group travel state", () => {
+    const world = createInitialWorldState();
+    const result = new IntentDispatcher().dispatch({ kind: "JoinClub", groupId: "berawa_run_crew" }, world, 1);
+    const debug = getMembershipDebugState(world);
+
+    expect(result.ok).toBe(true);
+    expect(debug.joinedClubIds).toEqual(["berawa_run_crew"]);
+    expect(debug.legacyJoinedGroupIds).toEqual([]);
   });
 
   it("keeps group purpose generic and references resolvable", () => {

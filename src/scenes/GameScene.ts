@@ -46,7 +46,7 @@ import {
   type OpportunityWorldScene,
   type WorldSceneActor
 } from "../systems/world/WorldScenes";
-import { getSocialGroupsForVenue, isSocialGroupJoined } from "../systems/groups/GroupRegistry";
+import { getMembershipDebugState, getSocialGroupsForVenue, isSocialGroupJoined } from "../systems/groups/GroupRegistry";
 import { PLAYER_UNIT, POKEMON_SCALE } from "../systems/map/PlayerUnitScale";
 import { getPresentedRoads, getVenueSnapRoads } from "../systems/map/RoadPresentation";
 import { getPermanentlySignedVenueIds, renderStreetTemplate } from "../systems/map/StreetRenderer";
@@ -231,7 +231,9 @@ interface BaliLifeDebugSnapshot {
   inventory: string[];
   activeQuestIds: string[];
   completedQuestIds: string[];
+  joinedClubIds: string[];
   joinedGroupIds: string[];
+  legacyJoinedGroupIds: string[];
   prompt: string;
   time: string;
   timePhase: string;
@@ -6007,6 +6009,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    const membershipDebug = getMembershipDebugState(this.world);
     const snapshot: BaliLifeDebugSnapshot = {
       schemaVersion: this.world.schemaVersion,
       mode: this.mode,
@@ -6042,7 +6045,9 @@ export class GameScene extends Phaser.Scene {
       inventory: formatInventory(this.playerState.inventory),
       activeQuestIds: [...this.playerState.activeQuestIds],
       completedQuestIds: [...this.playerState.completedQuestIds],
-      joinedGroupIds: [...this.playerState.joinedGroupIds],
+      joinedClubIds: membershipDebug.joinedClubIds,
+      joinedGroupIds: membershipDebug.legacyJoinedGroupIds,
+      legacyJoinedGroupIds: membershipDebug.legacyJoinedGroupIds,
       prompt: this.promptText.text,
       time: formatClock(this.world),
       timePhase: getTimePhase(this.world.clock.minuteOfDay),
