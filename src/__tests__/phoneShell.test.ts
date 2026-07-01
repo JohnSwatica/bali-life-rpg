@@ -1,4 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("phaser", () => ({
+  default: {}
+}));
+
+import { createInitialWorldState } from "../systems/WorldState";
+import { PhoneShell } from "../ui/phone/PhoneShell";
 import { getPhoneCameraScale, getPhonePanelLayout } from "../ui/phone/PhoneLayout";
 
 describe("phone shell layout", () => {
@@ -31,5 +38,31 @@ describe("phone shell layout", () => {
     expect(getPhoneCameraScale(1)).toBeCloseTo(1);
     expect(getPhoneCameraScale(1.86)).toBeCloseTo(1 / 1.86);
     expect(getPhoneCameraScale(0)).toBe(1000);
+  });
+
+  it("renders an empty Threads tab without throwing", () => {
+    const renderedText: string[] = [];
+    const fakeScene = {
+      add: {
+        text: (_x: number, _y: number, text: string) => {
+          renderedText.push(text);
+          return {};
+        }
+      }
+    };
+    const shell = new PhoneShell({
+      scene: fakeScene,
+      getWorld: () => createInitialWorldState()
+    } as unknown as ConstructorParameters<typeof PhoneShell>[0]);
+    const shellInternals = shell as unknown as {
+      activeTab: string;
+      renderActiveTab(container: { add: (child: unknown) => void }, x: number, y: number, panelWidth: number, contentHeight: number): void;
+    };
+
+    shellInternals.activeTab = "Threads";
+
+    expect(() => shellInternals.renderActiveTab({ add: () => undefined }, 0, 0, 420, 320)).not.toThrow();
+    expect(renderedText).toContain("Threads");
+    expect(renderedText).toContain("Nothing here yet. Keep exploring Berawa.");
   });
 });

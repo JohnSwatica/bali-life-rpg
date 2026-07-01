@@ -11,6 +11,17 @@ export type Act0Step =
   | "buy_meal_and_coffee"
   | "sleep_first_night"
   | "complete";
+export type DiscoveryLedgerEntryKind = "elena_fragment" | "codex_note";
+export type DiscoveryLedgerUnlockCondition =
+  | { type: "pickup_collected"; pickupId: string }
+  | { type: "act0_step_complete"; step: Act0Step };
+export interface DiscoveryLedgerEntry {
+  id: string;
+  kind: DiscoveryLedgerEntryKind;
+  title: string;
+  body: string;
+  unlock: DiscoveryLedgerUnlockCondition;
+}
 export type DeliveryStage = "accepted" | "picked_up";
 export type VenueType =
   | "cafe"

@@ -175,5 +175,19 @@ export const itemDefinitions: Record<string, ItemDefinition> = {
     description: "A simple home-prepped bowl from coconut, coffee energy, and Berawa morning optimism.",
     buyPrice: 0,
     sellPrice: 18
+  },
+  elena_notebook: {
+    id: "elena_notebook",
+    name: "Water-Damaged Notebook",
+    description: "Swollen pages, careful handwriting, half a floor plan for somewhere called Rumah.",
+    buyPrice: 0,
+    sellPrice: 0
+  },
+  elena_sim: {
+    id: "elena_sim",
+    name: "Old SIM Card",
+    description: "No phone to put it in. The service on this one ran out a long time ago.",
+    buyPrice: 0,
+    sellPrice: 0
   }
 };

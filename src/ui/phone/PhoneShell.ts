@@ -4,8 +4,10 @@ import { lifestyleTagSuggestions } from "../../data/lifestyleTags";
 import { npcDefinitions } from "../../data/npcs";
 import { questDefinitions } from "../../data/quests";
 import { gameEventDefinitions } from "../../data/events";
+import { discoveryLedgerEntries } from "../../data/discoveryLedger";
 import { getActiveEvents, getUpcomingEvents, formatEventSchedule, formatEventTime, getEventsForGroup } from "../../systems/events/EventScheduler";
 import { getAllSocialGroups, isSocialGroupJoined } from "../../systems/groups/GroupRegistry";
+import { isDiscoveryLedgerEntryUnlocked } from "../../systems/discovery/DiscoveryLedger";
 import type { IntentDispatcher } from "../../systems/intents/IntentDispatcher";
 import { setLifestyleTags } from "../../systems/profile/ProfileState";
 import { getAllVenues, getPriorityVenueCandidates, getVenue, getVisibleVenues } from "../../systems/venues/VenueRegistry";
@@ -25,7 +27,7 @@ import type { GameEvent, RelationshipMemory, Venue, WorldState } from "../../typ
 import { getPhoneCameraScale, getPhonePanelLayout, PHONE_CONTENT_INSET_PX } from "./PhoneLayout";
 
 const PHONE_DEPTH = 1500;
-const TABS = ["Feed", "Map", "Contacts", "Quests", "Calendar", "Profile", "Events", "Venues", "Community"] as const;
+const TABS = ["Feed", "Map", "Contacts", "Threads", "Quests", "Calendar", "Profile", "Events", "Venues", "Community"] as const;
 type PhoneTab = (typeof TABS)[number];
 
 interface PhoneShellOptions {
@@ -163,6 +165,8 @@ export class PhoneShell {
       this.renderTextList(container, bodyX, textY, bodyWidth, this.mapLines());
     } else if (this.activeTab === "Contacts") {
       this.renderTextList(container, bodyX, textY, bodyWidth, this.contactLines());
+    } else if (this.activeTab === "Threads") {
+      this.renderTextList(container, bodyX, textY, bodyWidth, this.threadLines());
     } else if (this.activeTab === "Quests") {
       this.renderTextList(container, bodyX, textY, bodyWidth, this.questLines());
     } else if (this.activeTab === "Calendar") {
@@ -410,6 +414,26 @@ export class PhoneShell {
         memories.length ? `  Known: ${memories.join(" / ")}` : "  Known: no specific memories yet"
       ];
     });
+  }
+
+  private threadLines(): string[] {
+    const world = this.options.getWorld();
+    const unlocked = discoveryLedgerEntries.filter((entry) =>
+      isDiscoveryLedgerEntryUnlocked(world, entry));
+    const lockedCount = discoveryLedgerEntries.length - unlocked.length;
+    if (unlocked.length === 0) {
+      return ["Nothing here yet. Keep exploring Berawa."];
+    }
+    return [
+      ...unlocked.flatMap((entry) => [
+        `${entry.kind === "elena_fragment" ? "Fragment" : "Codex"}: ${entry.title}`,
+        entry.body,
+        ""
+      ]),
+      lockedCount > 0
+        ? `${lockedCount} entr${lockedCount === 1 ? "y" : "ies"} still locked.`
+        : "All current entries unlocked."
+    ];
   }
 
   private questLines(): string[] {
