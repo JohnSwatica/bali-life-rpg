@@ -5454,6 +5454,10 @@ export class GameScene extends Phaser.Scene {
     addItem(this.playerState, pickup.itemId, 1);
     this.world.collectedPickups[pickup.id] = this.getAbsoluteMinute();
     saveWorldState(this.world);
+    if (pickup.itemId === "elena_notebook" || pickup.itemId === "elena_sim") {
+      this.showToast(`Collected ${itemDefinitions[pickup.itemId].name}. You ask Ibu Sari whose it was. She just says: "Besok ya."`);
+      return;
+    }
     this.showToast(`Collected ${itemDefinitions[pickup.itemId].name}.`);
   }
 

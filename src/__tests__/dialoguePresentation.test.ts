@@ -38,4 +38,19 @@ describe("in-world dialogue presentation", () => {
     world.life.hustle.driverRating = 3.1;
     expect(getAmbientNpcLine(world, "ibu_sari", "Fallback line.")).toMatch(/Ratings recover/);
   });
+
+  it("seeds Kadek's early Elena reaction after the notebook pickup", () => {
+    const world = createInitialWorldState();
+    world.collectedPickups["elena-notebook-seat"] = 1;
+    world.life.hustle.driverRating = 4.2;
+    world.life.hustle.completedDeliveryCount = 2;
+
+    expect(getAmbientNpcLine(world, "kadek", "Fallback line.", "checking the oven")).toBe(
+      "\"Hey, that's--\" He stops himself and goes back to the oven."
+    );
+
+    world.life.hustle.completedDeliveryCount = 5;
+
+    expect(getAmbientNpcLine(world, "kadek", "Fallback line.", "checking the oven")).toContain("checking the oven");
+  });
 });

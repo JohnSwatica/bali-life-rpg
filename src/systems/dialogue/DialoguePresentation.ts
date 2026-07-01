@@ -38,6 +38,9 @@ export function getAmbientNpcLine(world: WorldState, npcId: string, fallbackLine
   if (world.life.hustle.driverRating < 3.4 && (npcId === "ibu_sari" || npcId === "kadek")) {
     return "Slow down. Ratings recover when deliveries arrive clean.";
   }
+  if (npcId === "kadek" && world.collectedPickups["elena-notebook-seat"] && world.life.hustle.completedDeliveryCount < 5) {
+    return "\"Hey, that's--\" He stops himself and goes back to the oven.";
+  }
   if (routineLabel) {
     return appendRoutineContext(shortenAmbientLine(fallbackLine), routineLabel);
   }
