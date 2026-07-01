@@ -48,7 +48,7 @@ import {
 import { getSocialGroupsForVenue, isSocialGroupJoined } from "../systems/groups/GroupRegistry";
 import { PLAYER_UNIT, POKEMON_SCALE } from "../systems/map/PlayerUnitScale";
 import { getPresentedRoads, getVenueSnapRoads } from "../systems/map/RoadPresentation";
-import { renderStreetTemplate } from "../systems/map/StreetRenderer";
+import { getPermanentlySignedVenueIds, renderStreetTemplate } from "../systems/map/StreetRenderer";
 import { STREET_CAMERA } from "../systems/map/TileStreetScale";
 import { scaleDistance, scalePoint } from "../systems/map/WorldScale";
 import {
@@ -1209,7 +1209,11 @@ export class GameScene extends Phaser.Scene {
     for (const node of curatedVenueNodes) {
       venues.set(node.venueId, node.name);
     }
+    const permanentlySignedVenueIds = getPermanentlySignedVenueIds(activeStreetTemplate);
     for (const node of venueMapNodes) {
+      if (permanentlySignedVenueIds.has(node.venueId)) {
+        continue;
+      }
       const label = this.add
         .text(node.x, node.y - 42, venues.get(node.venueId) ?? node.venueId, {
           ...this.mapLabelStyle(),

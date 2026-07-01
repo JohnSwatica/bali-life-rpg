@@ -282,7 +282,7 @@ function createStreetSigns(scene: Phaser.Scene, template: StreetTemplate): Phase
       const palette = stationVisual?.palette ?? buildingPalette(rect.slot.category, rect.slot.isLandmark, hashString(rect.slot.venueId ?? rect.slot.id));
       const sign = signPosition(rect);
       return scene.add
-        .text(sign.x, sign.y, stationVisual?.signLabel ?? compactVenueName(rect.slot.label ?? rect.slot.venueId ?? ""), {
+        .text(sign.x, sign.y, getStreetSignPrimaryText(rect.slot), {
           fontFamily: "Inter, Arial, sans-serif",
           fontSize: rect.slot.isLandmark ? "10px" : "9px",
           fontStyle: "800",
@@ -296,6 +296,18 @@ function createStreetSigns(scene: Phaser.Scene, template: StreetTemplate): Phase
         .setDepth(-82)
         .setResolution(2);
     });
+}
+
+export function getStreetSignPrimaryText(slot: Pick<StreetBuildingSlot, "label" | "venueId">): string {
+  return compactVenueName(slot.label ?? slot.venueId ?? "");
+}
+
+export function getPermanentlySignedVenueIds(template: StreetTemplate): Set<string> {
+  return new Set(
+    template.slots
+      .filter((slot) => slot.venueId && slot.label)
+      .map((slot) => slot.venueId!)
+  );
 }
 
 function drawEntranceMat(g: Phaser.GameObjects.Graphics, rect: StreetBuildingRect, palette: BuildingPalette): void {

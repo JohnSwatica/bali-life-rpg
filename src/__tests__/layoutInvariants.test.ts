@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { activeStreetTemplate, curatedVenueNodes, venueMapNodes } from "../data/authoredStreetLayout";
+import { stationVisualDefinitions } from "../data/stationVisuals";
 import { getVenuePoint } from "../data/layoutLookup";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
+import { getPermanentlySignedVenueIds, getStreetSignPrimaryText } from "../systems/map/StreetRenderer";
 import { createStreetSlots, type StreetSlotSpec, type StreetTemplate } from "../systems/map/StreetTemplate";
 import { TILE_SIZE } from "../systems/map/TileStreetScale";
 
@@ -88,5 +90,21 @@ describe("authored street layout invariants", () => {
     ];
 
     expect(createStreetSlots(base, specs)).toEqual(createStreetSlots(base, specs));
+  });
+
+  it("uses real venue names as primary sign text instead of station labels", () => {
+    const stationLabels = new Set(stationVisualDefinitions.map((visual) => visual.signLabel));
+    const slots = activeStreetTemplate.slots.filter((slot) => slot.venueId && slot.label);
+    const signTexts = slots.map((slot) => getStreetSignPrimaryText(slot));
+
+    expect(signTexts).toContain("CANGGU\nSTATION");
+    expect(signTexts).toContain("MILK &\nMADU");
+    for (const text of signTexts) {
+      expect(stationLabels.has(text), text).toBe(false);
+    }
+
+    const duplicateTexts = signTexts.filter((text, index) => signTexts.indexOf(text) !== index);
+    expect(duplicateTexts).toEqual([]);
+    expect(getPermanentlySignedVenueIds(activeStreetTemplate).has("canggu_station")).toBe(true);
   });
 });
