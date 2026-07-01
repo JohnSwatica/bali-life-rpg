@@ -13,7 +13,12 @@ vi.mock("phaser", () => ({
 import { npcDefinitions } from "../data/npcs";
 import { ambientNpcDefinitions } from "../data/ambientNpcs";
 import { InteractionController } from "../systems/interaction/InteractionController";
-import { getNpcIdleCue, getNpcIdleTag, getNpcIdleVisual } from "../systems/npcs/NpcIdleBehavior";
+import {
+  getNpcIdleCue,
+  getNpcIdleTag,
+  getNpcIdleVisual,
+  shouldShowNpcIdleCueLabel
+} from "../systems/npcs/NpcIdleBehavior";
 import {
   advanceNpcRouteMotion,
   getActiveNpcRoute,
@@ -146,6 +151,11 @@ describe("NPC idle behavior", () => {
     expect(later.cue).toBe("tinkers");
     expect(later.angleDegrees).not.toBe(start.angleDegrees);
     expect(later.scaleY).toBeGreaterThanOrEqual(1);
+  });
+
+  it("keeps raw idle cue labels out of default player-facing presentation", () => {
+    expect(shouldShowNpcIdleCueLabel()).toBe(false);
+    expect(shouldShowNpcIdleCueLabel(true)).toBe(true);
   });
 });
 

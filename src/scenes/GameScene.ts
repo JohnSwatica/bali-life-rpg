@@ -57,7 +57,12 @@ import {
   getNpcRouteActivityLabel,
   type NpcRouteMotionState
 } from "../systems/npcs/NpcRoutineRoutes";
-import { getNpcIdleCue, getNpcIdleTag, getNpcIdleVisual } from "../systems/npcs/NpcIdleBehavior";
+import {
+  getNpcIdleCue,
+  getNpcIdleTag,
+  getNpcIdleVisual,
+  shouldShowNpcIdleCueLabel
+} from "../systems/npcs/NpcIdleBehavior";
 import {
   getNpcProximityReaction as resolveNpcProximityReaction,
   type NpcProximityReaction
@@ -185,6 +190,8 @@ import type {
 } from "../types";
 
 type Mode = "world" | "dialogue" | "shop" | "inventory" | "activity" | "committedActivity" | "community" | "phone" | "godmode";
+
+const SHOW_NPC_IDLE_DEBUG_LABELS = shouldShowNpcIdleCueLabel();
 
 interface BaliLifeDebugSnapshot {
   schemaVersion: number;
@@ -2163,11 +2170,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateNpcIdleVisual(npc: NpcDefinition, sprite: Phaser.Physics.Arcade.Sprite, isIdle: boolean, delta: number): void {
-    const label = this.getNpcIdleLabel(npc);
+    const label = SHOW_NPC_IDLE_DEBUG_LABELS ? this.getNpcIdleLabel(npc) : this.npcIdleLabels.get(npc.id);
     if (!isIdle) {
       this.npcIdlePhases.set(npc.id, 0);
       sprite.setAngle(0);
-      label.setVisible(false);
+      label?.setVisible(false);
       return;
     }
 
@@ -2178,8 +2185,11 @@ export class GameScene extends Phaser.Scene {
     sprite.play(npcIdleAnimationKey(npc.spriteKey, getNpcIdleTag(npc)), true);
     sprite.setAngle(visual.angleDegrees);
     this.setSpriteFacing(sprite, facingDirection === "left", CHARACTER_SPRITE_SCALE, CHARACTER_SPRITE_SCALE * visual.scaleY);
-    label
-      .setText(visual.cue)
+    if (!SHOW_NPC_IDLE_DEBUG_LABELS) {
+      label?.setVisible(false);
+      return;
+    }
+    label?.setText(visual.cue)
       .setPosition(sprite.x, sprite.y - scaleDistance(44) + visual.labelYOffset)
       .setDepth(sprite.y + 4)
       .setAlpha(visual.labelAlpha)
@@ -2194,10 +2204,10 @@ export class GameScene extends Phaser.Scene {
     const label = this.add
       .text(0, 0, getNpcIdleCue(npc), {
         fontFamily: "Inter, Arial, sans-serif",
-        fontSize: "10px",
-        color: "#2b1d17",
-        backgroundColor: "#fff7d6",
-        padding: { x: 5, y: 2 }
+        fontSize: "9px",
+        color: "#fff8df",
+        backgroundColor: "rgba(16,24,32,0.58)",
+        padding: { x: 4, y: 2 }
       })
       .setOrigin(0.5)
       .setVisible(false);

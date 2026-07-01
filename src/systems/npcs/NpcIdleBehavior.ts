@@ -49,6 +49,10 @@ const IDLE_DEFINITIONS: Record<NpcIdleTag, NpcIdleDefinition> = {
   }
 };
 
+export function shouldShowNpcIdleCueLabel(debugOverlayEnabled = false): boolean {
+  return debugOverlayEnabled;
+}
+
 export function getNpcIdleTag(npc: Pick<NpcDefinition, "idleTag">): NpcIdleTag {
   return npc.idleTag ?? "generic_idle";
 }
