@@ -17,7 +17,16 @@ import {
 } from "../systems/animation/CharacterAnimations";
 import type { Direction, NpcIdleTag } from "../types";
 
-const CHARACTER_KEYS = ["player", "npc-sari", "npc-kadek", "npc-made", "npc-ari"];
+const CHARACTER_KEYS = [
+  "player",
+  "npc-sari",
+  "npc-kadek",
+  "npc-made",
+  "npc-ari",
+  "npc-rio",
+  "npc-pak-bagus",
+  "npc-willow"
+];
 const NPC_IDLE_TAGS: NpcIdleTag[] = ["tidy_counter", "knead_oven", "laptop_sip", "tinker_board", "generic_idle"];
 
 export class BootScene extends Phaser.Scene {
@@ -31,6 +40,9 @@ export class BootScene extends Phaser.Scene {
     this.createCharacterTexture("npc-kadek", 0x6ab7ff, 0xe3b57a, 0x273043);
     this.createCharacterTexture("npc-made", 0x8bd17c, 0xdb9d67, 0x472d30);
     this.createCharacterTexture("npc-ari", 0xffd166, 0xc9874b, 0x23395b);
+    this.createCharacterTexture("npc-rio", 0xff5d5d, 0xc9874b, 0x20242f);
+    this.createCharacterTexture("npc-pak-bagus", 0xd4af6a, 0xd19a67, 0x42302b);
+    this.createCharacterTexture("npc-willow", 0xc9a6ff, 0xf0c4a8, 0x6d5a95);
     this.createPickupTexture("pickup-coconut", 0x8a5a2f, 0x6f8f3d);
     this.createPickupTexture("pickup-frangipani", 0xfff5cf, 0xf3b5c6);
     this.createScooterTexture("player-bike", 0x2e7d78, 0xf4d58d);

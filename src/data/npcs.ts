@@ -42,6 +42,22 @@ const ariBeach = offsetVenuePoint("berawa_beach", { x: 475, y: 1340 }, -8, 54);
 const ariSunset = offsetVenuePoint("mowies_berawa", { x: 650, y: 1215 }, 58, 24);
 const ariSleep = offsetVenuePoint("berawa_beach", { x: 310, y: 1260 }, -110, 18);
 
+const rioSleep = offsetVenuePoint("bali_family_rental_scooter", { x: 650, y: 900 }, -48, -62);
+const rioRentalMorning = offsetVenuePoint("bali_family_rental_scooter", { x: 650, y: 900 }, 36, -26);
+const rioStation = offsetVenuePoint("canggu_station", { x: 610, y: 742 }, 78, -30);
+const rioBeach = offsetVenuePoint("berawa_beach", { x: 650, y: 1215 }, 46, 32);
+const rioRentalEvening = offsetVenuePoint("bali_family_rental_scooter", { x: 650, y: 900 }, -24, 44);
+
+const bagusSleep = offsetVenuePoint("finns_recreation_club", { x: 1660, y: 360 }, -58, -48);
+const bagusClubMorning = offsetVenuePoint("finns_recreation_club", { x: 1660, y: 360 }, -32, 34);
+const bagusCoffee = offsetVenuePoint("satu_satu_coffee", { x: 1780, y: 365 }, 82, 18);
+const bagusClubEvening = offsetVenuePoint("finns_recreation_club", { x: 1660, y: 360 }, 54, 52);
+
+const willowSleep = offsetVenuePoint("milk_madu_berawa", { x: 1160, y: 640 }, -72, -44);
+const willowMilkMorning = offsetVenuePoint("milk_madu_berawa", { x: 1160, y: 640 }, 64, -18);
+const willowBeachClub = offsetVenuePoint("finns_beach_club", { x: 1768, y: 300 }, -46, 42);
+const willowMilkEvening = offsetVenuePoint("milk_madu_berawa", { x: 1160, y: 640 }, 36, 58);
+
 export const npcDefinitions: Record<string, NpcDefinition> = {
   ibu_sari: {
     id: "ibu_sari",
@@ -315,6 +331,198 @@ export const npcDefinitions: Record<string, NpcDefinition> = {
         waypoints: [
           routePoint("rack-rest", "rack rest", "berawa_beach", { x: 310, y: 1260 }, -110, 18, 2200),
           routePoint("quiet-sand", "quiet sand", "berawa_beach", { x: 310, y: 1260 }, -82, 42, 2200)
+        ]
+      }
+    ]
+  },
+  rio: {
+    id: "rio",
+    name: "Rio",
+    role: "Jalan Driver, Leaderboard #1",
+    spriteKey: "npc-rio",
+    tint: 0xff5d5d,
+    idleTag: "generic_idle",
+    defaultLine: "Rated 4.9, delivered in record time. You keeping up, new guy?",
+    routine: [
+      { id: "sleep", label: "resting at the scooter rental", x: rioSleep.x, y: rioSleep.y, startMinute: 0, endMinute: 300 },
+      { id: "rental-morning", label: "checking leaderboard times at Bali Family Rental Scooter", x: rioRentalMorning.x, y: rioRentalMorning.y, startMinute: 300, endMinute: 720 },
+      { id: "station-run", label: "hovering near the Canggu Station delivery board", x: rioStation.x, y: rioStation.y, startMinute: 720, endMinute: 960 },
+      { id: "beach-flex", label: "showing off by Berawa Beach", x: rioBeach.x, y: rioBeach.y, startMinute: 960, endMinute: 1260 },
+      { id: "rental-evening", label: "tuning routes at Bali Family Rental Scooter", x: rioRentalEvening.x, y: rioRentalEvening.y, startMinute: 1260, endMinute: 1440 }
+    ],
+    routineRoutes: [
+      {
+        id: "rio-rest-route",
+        label: "resting at the scooter rental",
+        startMinute: 0,
+        endMinute: 300,
+        waypoints: [
+          routePoint("rental-back-bench", "rental back bench", "bali_family_rental_scooter", { x: 650, y: 900 }, -48, -62, 2200),
+          routePoint("helmet-rack", "helmet rack", "bali_family_rental_scooter", { x: 650, y: 900 }, -18, -78, 2200)
+        ]
+      },
+      {
+        id: "rio-rental-morning-route",
+        label: "checking leaderboard times at Bali Family Rental Scooter",
+        startMinute: 300,
+        endMinute: 720,
+        waypoints: [
+          routePoint("rental-counter", "rental counter", "bali_family_rental_scooter", { x: 650, y: 900 }, 36, -26),
+          routePoint("scooter-line", "scooter line", "bali_family_rental_scooter", { x: 650, y: 900 }, 74, -8),
+          routePoint("timing-board", "timing board", "bali_family_rental_scooter", { x: 650, y: 900 }, 18, 28)
+        ]
+      },
+      {
+        id: "rio-station-route",
+        label: "hovering near the Canggu Station delivery board",
+        startMinute: 720,
+        endMinute: 960,
+        waypoints: [
+          routePoint("station-board", "station board", "canggu_station", { x: 610, y: 742 }, 78, -30),
+          routePoint("fast-lane", "fast lane", "canggu_station", { x: 610, y: 742 }, 44, -62),
+          routePoint("order-pickup", "order pickup", "canggu_station", { x: 610, y: 742 }, 92, 12)
+        ]
+      },
+      {
+        id: "rio-beach-route",
+        label: "showing off by Berawa Beach",
+        startMinute: 960,
+        endMinute: 1260,
+        waypoints: [
+          routePoint("beach-edge-flex", "beach edge", "berawa_beach", { x: 650, y: 1215 }, 46, 32),
+          routePoint("photo-stop", "photo stop", "berawa_beach", { x: 650, y: 1215 }, 82, 58),
+          routePoint("scooter-lean", "scooter lean", "berawa_beach", { x: 650, y: 1215 }, 28, 82)
+        ]
+      },
+      {
+        id: "rio-rental-evening-route",
+        label: "tuning routes at Bali Family Rental Scooter",
+        startMinute: 1260,
+        endMinute: 1440,
+        waypoints: [
+          routePoint("evening-route-map", "route map", "bali_family_rental_scooter", { x: 650, y: 900 }, -24, 44),
+          routePoint("battery-check", "battery check", "bali_family_rental_scooter", { x: 650, y: 900 }, 22, 64),
+          routePoint("night-helmet", "night helmet", "bali_family_rental_scooter", { x: 650, y: 900 }, -58, 70)
+        ]
+      }
+    ]
+  },
+  pak_bagus: {
+    id: "pak_bagus",
+    name: "Pak Bagus",
+    role: "Berawa 2.0 Developer",
+    spriteKey: "npc-pak-bagus",
+    tint: 0xd4af6a,
+    idleTag: "generic_idle",
+    defaultLine: "Berawa 2.0 isn't just buildings -- it's a promise to this street. You'll see.",
+    routine: [
+      { id: "sleep", label: "resting near FINNS Recreation Club", x: bagusSleep.x, y: bagusSleep.y, startMinute: 0, endMinute: 300 },
+      { id: "club-morning", label: "sponsoring the FINNS Recreation Club morning crowd", x: bagusClubMorning.x, y: bagusClubMorning.y, startMinute: 300, endMinute: 780 },
+      { id: "coffee-network", label: "networking at Satu-Satu Coffee", x: bagusCoffee.x, y: bagusCoffee.y, startMinute: 780, endMinute: 1020 },
+      { id: "club-evening", label: "holding court near FINNS Recreation Club", x: bagusClubEvening.x, y: bagusClubEvening.y, startMinute: 1020, endMinute: 1440 }
+    ],
+    routineRoutes: [
+      {
+        id: "bagus-rest-route",
+        label: "resting near FINNS Recreation Club",
+        startMinute: 0,
+        endMinute: 300,
+        waypoints: [
+          routePoint("club-villa-gate", "club villa gate", "finns_recreation_club", { x: 1660, y: 360 }, -58, -48, 2200),
+          routePoint("quiet-driveway", "quiet driveway", "finns_recreation_club", { x: 1660, y: 360 }, -28, -70, 2200)
+        ]
+      },
+      {
+        id: "bagus-club-morning-route",
+        label: "sponsoring the FINNS Recreation Club morning crowd",
+        startMinute: 300,
+        endMinute: 780,
+        waypoints: [
+          routePoint("sponsor-banner", "sponsor banner", "finns_recreation_club", { x: 1660, y: 360 }, -32, 34),
+          routePoint("club-steps", "club steps", "finns_recreation_club", { x: 1660, y: 360 }, 12, 58),
+          routePoint("handshake-post", "handshake post", "finns_recreation_club", { x: 1660, y: 360 }, -68, 66)
+        ]
+      },
+      {
+        id: "bagus-coffee-route",
+        label: "networking at Satu-Satu Coffee",
+        startMinute: 780,
+        endMinute: 1020,
+        waypoints: [
+          routePoint("corner-table", "corner table", "satu_satu_coffee", { x: 1780, y: 365 }, 82, 18),
+          routePoint("investor-chat", "investor chat", "satu_satu_coffee", { x: 1780, y: 365 }, 50, 46),
+          routePoint("street-call", "street call", "satu_satu_coffee", { x: 1780, y: 365 }, 92, 64)
+        ]
+      },
+      {
+        id: "bagus-club-evening-route",
+        label: "holding court near FINNS Recreation Club",
+        startMinute: 1020,
+        endMinute: 1440,
+        waypoints: [
+          routePoint("evening-terrace", "evening terrace", "finns_recreation_club", { x: 1660, y: 360 }, 54, 52),
+          routePoint("guest-arrival", "guest arrival", "finns_recreation_club", { x: 1660, y: 360 }, 88, 26),
+          routePoint("club-sign", "club sign", "finns_recreation_club", { x: 1660, y: 360 }, 22, 78)
+        ]
+      }
+    ]
+  },
+  willow: {
+    id: "willow",
+    name: "Willow",
+    role: "@WillowWanders -- Wellness Creator",
+    spriteKey: "npc-willow",
+    tint: 0xc9a6ff,
+    idleTag: "generic_idle",
+    defaultLine: "This lighting is SO good right now. Wait, are you new? You have such an authentic energy.",
+    routine: [
+      { id: "sleep", label: "resting near Milk & Madu", x: willowSleep.x, y: willowSleep.y, startMinute: 0, endMinute: 300 },
+      { id: "milk-morning", label: "filming wellness content at Milk & Madu", x: willowMilkMorning.x, y: willowMilkMorning.y, startMinute: 300, endMinute: 900 },
+      { id: "beach-club", label: "shooting beach content at FINNS Beach Club", x: willowBeachClub.x, y: willowBeachClub.y, startMinute: 900, endMinute: 1200 },
+      { id: "milk-evening", label: "editing captions at Milk & Madu", x: willowMilkEvening.x, y: willowMilkEvening.y, startMinute: 1200, endMinute: 1440 }
+    ],
+    routineRoutes: [
+      {
+        id: "willow-rest-route",
+        label: "resting near Milk & Madu",
+        startMinute: 0,
+        endMinute: 300,
+        waypoints: [
+          routePoint("quiet-booth", "quiet booth", "milk_madu_berawa", { x: 1160, y: 640 }, -72, -44, 2200),
+          routePoint("phone-charge", "phone charge", "milk_madu_berawa", { x: 1160, y: 640 }, -38, -64, 2200)
+        ]
+      },
+      {
+        id: "willow-milk-morning-route",
+        label: "filming wellness content at Milk & Madu",
+        startMinute: 300,
+        endMinute: 900,
+        waypoints: [
+          routePoint("content-table", "content table", "milk_madu_berawa", { x: 1160, y: 640 }, 64, -18),
+          routePoint("smoothie-light", "smoothie light", "milk_madu_berawa", { x: 1160, y: 640 }, 86, 18),
+          routePoint("mirror-check", "mirror check", "milk_madu_berawa", { x: 1160, y: 640 }, 42, 34)
+        ]
+      },
+      {
+        id: "willow-beach-club-route",
+        label: "shooting beach content at FINNS Beach Club",
+        startMinute: 900,
+        endMinute: 1200,
+        waypoints: [
+          routePoint("pool-shot", "pool shot", "finns_beach_club", { x: 1768, y: 300 }, -46, 42),
+          routePoint("beach-club-sign", "beach club sign", "finns_beach_club", { x: 1768, y: 300 }, -78, 62),
+          routePoint("story-angle", "story angle", "finns_beach_club", { x: 1768, y: 300 }, -24, 84)
+        ]
+      },
+      {
+        id: "willow-milk-evening-route",
+        label: "editing captions at Milk & Madu",
+        startMinute: 1200,
+        endMinute: 1440,
+        waypoints: [
+          routePoint("caption-corner", "caption corner", "milk_madu_berawa", { x: 1160, y: 640 }, 36, 58),
+          routePoint("late-smoothie", "late smoothie", "milk_madu_berawa", { x: 1160, y: 640 }, 76, 76),
+          routePoint("softbox-pack", "softbox pack", "milk_madu_berawa", { x: 1160, y: 640 }, 12, 82)
         ]
       }
     ]

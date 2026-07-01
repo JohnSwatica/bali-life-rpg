@@ -27,9 +27,20 @@ import {
 import { getNpcProximityReaction } from "../systems/npcs/NpcProximityReactions";
 import type { NpcDefinition, RelationshipMemory } from "../types";
 
-const namedNpcIds = ["ibu_sari", "kadek", "made", "ari"] as const;
+const namedNpcIds = ["ibu_sari", "kadek", "made", "ari", "rio", "pak_bagus", "willow"] as const;
 
 describe("NPC daily routine routes", () => {
+  it("registers the narrative foundation NPCs without spawning Elena early", () => {
+    expect(npcDefinitions.rio.role).toBe("Jalan Driver, Leaderboard #1");
+    expect(npcDefinitions.pak_bagus.role).toBe("Berawa 2.0 Developer");
+    expect(npcDefinitions.willow.role).toBe("@WillowWanders -- Wellness Creator");
+    expect(npcDefinitions.elena).toBeUndefined();
+
+    expect(npcDefinitions.rio.idleTag).toBe("generic_idle");
+    expect(npcDefinitions.pak_bagus.idleTag).toBe("generic_idle");
+    expect(npcDefinitions.willow.idleTag).toBe("generic_idle");
+  });
+
   it("authors multi-waypoint daily routes for each named NPC", () => {
     for (const npcId of namedNpcIds) {
       const npc = npcDefinitions[npcId];
