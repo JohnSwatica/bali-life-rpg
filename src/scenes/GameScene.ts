@@ -3803,7 +3803,7 @@ export class GameScene extends Phaser.Scene {
     const panelHeight = Math.min(580, height - 44);
     const x = (width - panelWidth) / 2;
     const y = (height - panelHeight) / 2;
-    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10);
+    const container = this.createZoomCompensatedContainer(UI_DEPTH + 10);
     const bg = this.add.graphics();
     bg.fillStyle(0x111820, 0.95);
     bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
@@ -4307,7 +4307,7 @@ export class GameScene extends Phaser.Scene {
     const panelHeight = Math.min(660, height - 44);
     const x = (width - panelWidth) / 2;
     const y = (height - panelHeight) / 2;
-    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10);
+    const container = this.createZoomCompensatedContainer(UI_DEPTH + 10);
     const bg = this.add.graphics();
     bg.fillStyle(0x111820, 0.96);
     bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
@@ -4411,7 +4411,7 @@ export class GameScene extends Phaser.Scene {
     const panelHeight = Math.min(560, height - 44);
     const x = (width - panelWidth) / 2;
     const y = (height - panelHeight) / 2;
-    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10);
+    const container = this.createZoomCompensatedContainer(UI_DEPTH + 10);
     const bg = this.add.graphics();
     bg.fillStyle(0x111820, 0.95);
     bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
@@ -6047,6 +6047,15 @@ export class GameScene extends Phaser.Scene {
     const camera = this.cameras.main;
     this.hudLayer
       .setPosition(camera.worldView.x, camera.worldView.y)
+      .setScale(getPhoneCameraScale(camera.zoom || 1));
+  }
+
+  private createZoomCompensatedContainer(depth: number): Phaser.GameObjects.Container {
+    const camera = this.cameras.main;
+    return this.add
+      .container(camera.worldView.x, camera.worldView.y)
+      .setScrollFactor(1)
+      .setDepth(depth)
       .setScale(getPhoneCameraScale(camera.zoom || 1));
   }
 
