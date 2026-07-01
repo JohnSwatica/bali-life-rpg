@@ -117,6 +117,7 @@ import {
   repairScooter,
   upgradeToDailyScooter
 } from "../systems/hustle/HustleEconomy";
+import { shouldOpenIbuHustleBoard as canOpenIbuHustleBoard } from "../systems/hustle/IbuHustleBoard";
 import { isAct1MoveOutReady } from "../systems/hustle/HustleMilestones";
 import {
   acceptOpportunity,
@@ -2646,6 +2647,11 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    if (this.shouldOpenIbuHustleBoard(npcId)) {
+      this.openIbuHustleBoard();
+      return;
+    }
+
     const questInteraction = resolveNpcQuestInteraction(this.playerState, npcId);
     if (questInteraction?.handled) {
       for (const intent of questInteraction.intents) {
@@ -2663,10 +2669,6 @@ export class GameScene extends Phaser.Scene {
     if (arcBeat) {
       this.refreshSettlingInGoals(false);
       saveWorldState(this.world);
-    }
-    if (!arcBeat && this.shouldOpenIbuHustleBoard(npcId)) {
-      this.openIbuHustleBoard();
-      return;
     }
     const baseLine = this.getNpcDialogueLine(npcId);
     if (getNpcDialogueSurface({ relationshipBeat: Boolean(arcBeat) }).surface === "ambient") {
@@ -2830,12 +2832,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private shouldOpenIbuHustleBoard(npcId: string): boolean {
-    return (
-      npcId === "ibu_sari" &&
-      this.world.life.actProgress.firstDayComplete &&
-      this.world.life.actProgress.currentAct === 1 &&
-      !this.world.life.hustle.moveOutReady
-    );
+    return canOpenIbuHustleBoard(this.world, npcId);
   }
 
   private openIbuHustleBoard(): void {

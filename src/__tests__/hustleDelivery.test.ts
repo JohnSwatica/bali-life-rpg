@@ -18,6 +18,7 @@ import {
   upgradeToDailyScooter
 } from "../systems/hustle/HustleEconomy";
 import { getHustleGoalStates, getHustleNextStep } from "../systems/hustle/HustleGoals";
+import { shouldOpenIbuHustleBoard } from "../systems/hustle/IbuHustleBoard";
 import {
   completeAct0Step,
   getAct0ColdOpenCopy,
@@ -25,6 +26,8 @@ import {
   markAct0MealProgress
 } from "../systems/life/ActProgression";
 import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
+import { startQuest } from "../systems/QuestSystem";
+import { resolveNpcQuestInteraction } from "../systems/quests/QuestRegistry";
 import { getRelationship } from "../systems/relationships/RelationshipMemory";
 import { createInitialWorldState } from "../systems/WorldState";
 import { playerHomeBase } from "../data/homeBase";
@@ -172,6 +175,26 @@ describe("Act 0 hustle and deliveries", () => {
     expect(accepted.ok).toBe(true);
     expect(world.life.hustle.activeDelivery?.deliveryId).toBe("milk_madu_brunch_bag");
     expect(getDeliveryOfferAvailability(world).every((offer) => !offer.available)).toBe(true);
+  });
+
+  it("keeps Ibu Sari's Act 1 Hustle Board reachable when her starter quest is still unresolved", () => {
+    const world = createInitialWorldState();
+    const player = world.players[world.localPlayerId];
+    player.hasBike = true;
+    player.inventory = player.inventory.filter((entry) => entry.itemId !== "coconut");
+    world.life.actProgress.firstDayComplete = true;
+    world.life.actProgress.act0Step = "complete";
+    world.life.actProgress.currentAct = 1;
+    world.life.hustle.completedDeliveryCount = 1;
+    world.life.hustle.driverRating = 3.6;
+
+    startQuest(player, "canggu_station_restock");
+    const questInteraction = resolveNpcQuestInteraction(player, "ibu_sari");
+
+    expect(questInteraction).toMatchObject({ handled: true, shouldSave: false });
+    expect(questInteraction?.dialogue).toContain("Bring me two");
+    expect(shouldOpenIbuHustleBoard(world, "ibu_sari")).toBe(true);
+    expect(getDeliveryOfferAvailability(world).some((offer) => offer.available)).toBe(true);
   });
 
   it("applies deterministic delivery board conditions to deadline and payout", () => {
