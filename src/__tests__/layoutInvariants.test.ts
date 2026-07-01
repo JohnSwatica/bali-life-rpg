@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { activeStreetTemplate, curatedVenueNodes, venueMapNodes } from "../data/authoredStreetLayout";
+import { authoredPlayableBounds, authoredPlayablePoints } from "../data/playableBounds";
 import { stationVisualDefinitions } from "../data/stationVisuals";
 import { getVenuePoint } from "../data/layoutLookup";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
+import { clampPointToPlayableBounds, isPointInsidePlayableBounds } from "../systems/map/PlayableBounds";
 import { getPermanentlySignedVenueIds, getStreetSignPrimaryText } from "../systems/map/StreetRenderer";
 import { createStreetSlots, type StreetSlotSpec, type StreetTemplate } from "../systems/map/StreetTemplate";
 import { TILE_SIZE } from "../systems/map/TileStreetScale";
@@ -106,5 +108,42 @@ describe("authored street layout invariants", () => {
     const duplicateTexts = signTexts.filter((text, index) => signTexts.indexOf(text) !== index);
     expect(duplicateTexts).toEqual([]);
     expect(getPermanentlySignedVenueIds(activeStreetTemplate).has("canggu_station")).toBe(true);
+  });
+
+  it("contains playable bounds to the authored corridor while keeping venues and interaction points reachable", () => {
+    expect(authoredPlayableBounds.width).toBeLessThan(WORLD_WIDTH * 0.6);
+    expect(authoredPlayableBounds.height).toBeLessThanOrEqual(WORLD_HEIGHT);
+    expect(authoredPlayableBounds.x).toBeGreaterThanOrEqual(0);
+    expect(authoredPlayableBounds.y).toBeGreaterThanOrEqual(0);
+    expect(authoredPlayableBounds.x + authoredPlayableBounds.width).toBeLessThanOrEqual(WORLD_WIDTH);
+    expect(authoredPlayableBounds.y + authoredPlayableBounds.height).toBeLessThanOrEqual(WORLD_HEIGHT);
+
+    for (const node of venueMapNodes) {
+      expect(isPointInsidePlayableBounds(authoredPlayableBounds, node), node.venueId).toBe(true);
+    }
+    for (const node of curatedVenueNodes) {
+      expect(isPointInsidePlayableBounds(authoredPlayableBounds, node), node.venueId).toBe(true);
+    }
+    for (const point of authoredPlayablePoints) {
+      expect(isPointInsidePlayableBounds(authoredPlayableBounds, point), `${point.x},${point.y}`).toBe(true);
+    }
+  });
+
+  it("clamps stray north-street movement back to the corridor while preserving beach width", () => {
+    const streetY = Math.max(authoredPlayableBounds.minY + 160, 160);
+    const leftStreetClamp = clampPointToPlayableBounds(authoredPlayableBounds, { x: 0, y: streetY });
+    const rightStreetClamp = clampPointToPlayableBounds(authoredPlayableBounds, { x: WORLD_WIDTH, y: streetY });
+
+    expect(leftStreetClamp.x).toBe(authoredPlayableBounds.corridorMinX);
+    expect(rightStreetClamp.x).toBe(authoredPlayableBounds.corridorMaxX);
+
+    const beachY = authoredPlayableBounds.beachExpansionStartY
+      ? authoredPlayableBounds.beachExpansionStartY + 160
+      : authoredPlayableBounds.maxY;
+    const leftBeachClamp = clampPointToPlayableBounds(authoredPlayableBounds, { x: 0, y: beachY });
+    const rightBeachClamp = clampPointToPlayableBounds(authoredPlayableBounds, { x: WORLD_WIDTH, y: beachY });
+
+    expect(leftBeachClamp.x).toBe(authoredPlayableBounds.minX);
+    expect(rightBeachClamp.x).toBe(authoredPlayableBounds.maxX);
   });
 });

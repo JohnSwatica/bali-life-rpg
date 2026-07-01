@@ -13,6 +13,7 @@ import {
 import { ambientNpcDefinitions, type AmbientNpcDefinition } from "../data/ambientNpcs";
 import { activityDefinitions, interestGroupDefinitions } from "../data/community";
 import { itemDefinitions } from "../data/items";
+import { authoredPlayableBounds } from "../data/playableBounds";
 import { playerHomeBase } from "../data/homeBase";
 import { getGameplayStationLoop } from "../data/stationLoops";
 import { collisionRects, pickupDefinitions, WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
@@ -50,6 +51,7 @@ import { PLAYER_UNIT, POKEMON_SCALE } from "../systems/map/PlayerUnitScale";
 import { getPresentedRoads, getVenueSnapRoads } from "../systems/map/RoadPresentation";
 import { getPermanentlySignedVenueIds, renderStreetTemplate } from "../systems/map/StreetRenderer";
 import { STREET_CAMERA } from "../systems/map/TileStreetScale";
+import { clampPointToPlayableBounds } from "../systems/map/PlayableBounds";
 import { scaleDistance, scalePoint } from "../systems/map/WorldScale";
 import {
   advanceNpcRouteMotion,
@@ -545,7 +547,12 @@ export class GameScene extends Phaser.Scene {
       }
     });
 
-    this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    this.physics.world.setBounds(
+      authoredPlayableBounds.x,
+      authoredPlayableBounds.y,
+      authoredPlayableBounds.width,
+      authoredPlayableBounds.height
+    );
     this.drawNeighborhood();
     this.createCollision();
     this.createPickups();
@@ -561,7 +568,12 @@ export class GameScene extends Phaser.Scene {
     this.resumeCommittedActivityIfNeeded();
     this.updateOpportunityFeed(0, true);
 
-    this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    this.cameras.main.setBounds(
+      authoredPlayableBounds.x,
+      authoredPlayableBounds.y,
+      authoredPlayableBounds.width,
+      authoredPlayableBounds.height
+    );
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.layoutForViewport();
 
@@ -1280,6 +1292,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createPlayer(): void {
+    const start = this.clampToPlayableBounds(this.playerState.x, this.playerState.y, scaleDistance(28));
+    this.playerState.x = Math.round(start.x);
+    this.playerState.y = Math.round(start.y);
     this.player = this.physics.add.sprite(this.playerState.x, this.playerState.y, "player");
     this.applyCharacterAnimation(this.player, "player", this.playerState.direction, false, CHARACTER_SPRITE_SCALE);
     this.player.setCollideWorldBounds(true);
@@ -1425,6 +1440,9 @@ export class GameScene extends Phaser.Scene {
         clearSave();
         this.world = loadWorldState();
         this.playerState = getLocalPlayer(this.world);
+        const start = this.clampToPlayableBounds(this.playerState.x, this.playerState.y, scaleDistance(28));
+        this.playerState.x = Math.round(start.x);
+        this.playerState.y = Math.round(start.y);
         this.player.setPosition(this.playerState.x, this.playerState.y);
         this.clearGroupLine();
         this.updatePlayerBikeVisual();
@@ -1499,6 +1517,7 @@ export class GameScene extends Phaser.Scene {
     this.applyCharacterAnimation(this.player, "player", this.playerState.direction, walkingOnFoot, CHARACTER_SPRITE_SCALE);
 
     this.enforceWaterBoundary();
+    this.enforcePlayableBounds();
 
     this.playerState.x = Math.round(this.player.x);
     this.playerState.y = Math.round(this.player.y);
@@ -1785,11 +1804,13 @@ export class GameScene extends Phaser.Scene {
       away.normalize();
       knockback.add(away.scale(0.45)).normalize();
     }
-    const edgeMargin = scaleDistance(28);
-    const nextX = Phaser.Math.Clamp(this.player.x + knockback.x * TRAFFIC_KNOCKBACK_DISTANCE, edgeMargin, WORLD_WIDTH - edgeMargin);
-    const nextY = Phaser.Math.Clamp(this.player.y + knockback.y * TRAFFIC_KNOCKBACK_DISTANCE, edgeMargin, WORLD_HEIGHT - edgeMargin);
+    const next = this.clampToPlayableBounds(
+      this.player.x + knockback.x * TRAFFIC_KNOCKBACK_DISTANCE,
+      this.player.y + knockback.y * TRAFFIC_KNOCKBACK_DISTANCE,
+      scaleDistance(28)
+    );
     this.player.setVelocity(0, 0);
-    this.player.setPosition(nextX, nextY);
+    this.player.setPosition(next.x, next.y);
     this.player.body?.updateFromGameObject();
     this.playerState.x = Math.round(this.player.x);
     this.playerState.y = Math.round(this.player.y);
@@ -1918,10 +1939,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.player.setVelocity(0, 0);
-    this.player.setPosition(
-      Phaser.Math.Clamp(correction.x, scaleDistance(24), WORLD_WIDTH - scaleDistance(24)),
-      Phaser.Math.Clamp(correction.y, scaleDistance(24), WORLD_HEIGHT - scaleDistance(24))
-    );
+    const clamped = this.clampToPlayableBounds(correction.x, correction.y, scaleDistance(24));
+    this.player.setPosition(clamped.x, clamped.y);
     this.player.body?.updateFromGameObject();
     if (this.waterBoundaryToastCooldown <= 0) {
       this.waterBoundaryToastCooldown = WATER_BOUNDARY_TOAST_COOLDOWN_MS;
@@ -1931,6 +1950,20 @@ export class GameScene extends Phaser.Scene {
           : "That waterway is not passable yet. Find a road or path around it."
       );
     }
+  }
+
+  private enforcePlayableBounds(): void {
+    const clamped = this.clampToPlayableBounds(this.player.x, this.player.y, scaleDistance(24));
+    if (Math.abs(clamped.x - this.player.x) < 0.5 && Math.abs(clamped.y - this.player.y) < 0.5) {
+      return;
+    }
+    this.player.setVelocity(0, 0);
+    this.player.setPosition(clamped.x, clamped.y);
+    this.player.body?.updateFromGameObject();
+  }
+
+  private clampToPlayableBounds(x: number, y: number, edgeMargin = 0): { x: number; y: number } {
+    return clampPointToPlayableBounds(authoredPlayableBounds, { x, y }, edgeMargin);
   }
 
   private checkPlayerBikeHarmToOthers(): void {
@@ -4048,8 +4081,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private spawnGroupLine(groupId: string, mode: GroupTravelMode): void {
-    const startX = Phaser.Math.Clamp(this.player.x + scaleDistance(92), scaleDistance(80), WORLD_WIDTH - scaleDistance(80));
-    const startY = Phaser.Math.Clamp(this.player.y + scaleDistance(8), scaleDistance(80), WORLD_HEIGHT - scaleDistance(240));
+    const start = this.clampToPlayableBounds(this.player.x + scaleDistance(92), this.player.y + scaleDistance(8), scaleDistance(80));
+    const startX = start.x;
+    const startY = start.y;
     const helperNames = ["Nina", "Gus", "Maya", "Leo"];
     const helperSprites = ["npc-made", "npc-kadek", "npc-sari", "npc-ari"];
 
@@ -5354,9 +5388,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private devTeleport(x: number, y: number): void {
-    const edgeMargin = scaleDistance(28);
+    const point = this.clampToPlayableBounds(x, y, scaleDistance(28));
     this.player.setVelocity(0, 0);
-    this.player.setPosition(Phaser.Math.Clamp(x, edgeMargin, WORLD_WIDTH - edgeMargin), Phaser.Math.Clamp(y, edgeMargin, WORLD_HEIGHT - edgeMargin));
+    this.player.setPosition(point.x, point.y);
     this.player.body?.updateFromGameObject();
     this.playerState.x = Math.round(this.player.x);
     this.playerState.y = Math.round(this.player.y);
