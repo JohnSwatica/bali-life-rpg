@@ -6,7 +6,7 @@ Copy/paste this into a new AI session to bring it up to speed.
 
 ## Start Here For New Tabs
 
-If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this file, `DECISIONS.md`, `STORY_ARC.md`, `ACT3_BUSINESS_DESIGN.md`, and `docs/ROADMAP.md`, then inspect `git status --short --branch` and recent commits.
+If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this file, `DECISIONS.md`, `STORY_ARC.md`, `STORY_BIBLE.md`, `ACT3_BUSINESS_DESIGN.md`, and `docs/ROADMAP.md`, then inspect `git status --short --branch` and recent commits.
 
 Current durable truth:
 
@@ -41,6 +41,7 @@ Immediate next move: run a human play-feel pass through the station-first first-
 
 ## What Was Added Recently
 
+- `STORY_BIBLE.md` v3 is now the canonical narrative/design source for the dramatic spine, cast, world systems, and hook architecture. It supersedes informal story notes where they conflict. Narrative and macro story decisions in this bible and future story packets are CSO/design specs for the coding agent to implement, not open briefs to reinterpret.
 - Act 1/2 access and sequencing fixes are complete on `feat/gameplay-stations`: Ibu Sari's Act 1 field Hustle Board now takes priority over unresolved legacy starter-quest progress chatter once the board is available, so the coconut restock quest can no longer permanently block the delivery board.
 - Act 2 guidance now treats `world.life.hustle.moveOutReady` as an Act 2 unlock signal even if `currentAct` and the milestone flag are briefly out of sync. A low scooter condition still blocks future board deliveries, but the immediate chapter-turn field objective stays on the social handoff (`Join a first crew`) instead of undercutting the payoff with `Repair scooter`.
 - Club membership debugging is now explicit: `world.life.joinedClubIds` remains the canonical Act 2 club field, while `playerState.joinedGroupIds` remains legacy interest-group/group-travel state. `__BALI_LIFE_DEBUG__` now exposes `joinedClubIds` plus `legacyJoinedGroupIds` so real venue-menu joins do not falsely look unjoined in debug.
