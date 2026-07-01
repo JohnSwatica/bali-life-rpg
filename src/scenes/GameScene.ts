@@ -515,6 +515,7 @@ export class GameScene extends Phaser.Scene {
   private committedActivityStatus?: HTMLDivElement;
   private committedMinigameMarker?: HTMLDivElement;
   private committedMinigameFeedback?: HTMLDivElement;
+  private nightOverlayLayer!: Phaser.GameObjects.Container;
   private nightOverlay!: Phaser.GameObjects.Graphics;
   private lanternGlow!: Phaser.GameObjects.Graphics;
   private objectiveArrowLayer!: Phaser.GameObjects.Graphics;
@@ -1506,7 +1507,9 @@ export class GameScene extends Phaser.Scene {
       this.promptText,
       this.toastText
     ]);
-    this.nightOverlay = this.add.graphics().setScrollFactor(0).setDepth(900);
+    this.nightOverlayLayer = this.createZoomCompensatedContainer(900);
+    this.nightOverlay = this.add.graphics();
+    this.nightOverlayLayer.add(this.nightOverlay);
     this.lanternGlow = this.add.graphics().setDepth(905);
     this.hudController = new HudController(this, UI_DEPTH, {
       action: () => this.handleAction(),
@@ -2517,6 +2520,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateLighting(): void {
+    this.syncZoomCompensatedContainer(this.nightOverlayLayer);
     const phase = getTimePhase(this.world.clock.minuteOfDay);
     const minute = this.world.clock.minuteOfDay;
     let alpha = 0;
@@ -5216,7 +5220,7 @@ export class GameScene extends Phaser.Scene {
     const panelHeight = Math.min(720, height - 44);
     const x = (width - panelWidth) / 2;
     const y = (height - panelHeight) / 2;
-    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 12);
+    const container = this.createZoomCompensatedContainer(UI_DEPTH + 12);
     const bg = this.add.graphics();
     bg.fillStyle(0x111820, 0.96);
     bg.fillRoundedRect(x, y, panelWidth, panelHeight, 8);
@@ -5462,7 +5466,7 @@ export class GameScene extends Phaser.Scene {
     button.setSize(width, height);
     container.add(button);
 
-    const hitZone = this.add.zone(x + width / 2, y + height / 2, width, height).setScrollFactor(0).setDepth(container.depth + 2);
+    const hitZone = this.add.zone(x + width / 2, y + height / 2, width, height);
     hitZone.setInteractive(new Phaser.Geom.Rectangle(0, 0, width, height), Phaser.Geom.Rectangle.Contains);
     if (hitZone.input) {
       hitZone.input.cursor = "pointer";
@@ -5474,7 +5478,7 @@ export class GameScene extends Phaser.Scene {
       pointer.event?.stopPropagation();
       onClick();
     });
-    container.once(Phaser.GameObjects.Events.DESTROY, () => hitZone.destroy());
+    container.add(hitZone);
   }
 
   private collectPickup(pickupId: string): void {
@@ -6023,6 +6027,7 @@ export class GameScene extends Phaser.Scene {
     const { width, height } = this.scale;
     this.cameras.main.setZoom(width < 720 ? STREET_CAMERA.mobileZoom : STREET_CAMERA.desktopZoom);
     this.syncHudLayerToCamera();
+    this.syncZoomCompensatedContainer(this.nightOverlayLayer);
     this.promptText.setPosition(20, height - 36);
     this.toastText.setPosition(width / 2, Math.max(92, height * 0.17));
     this.hudController.layoutTouchControls();
@@ -6044,10 +6049,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.hudLayer) {
       return;
     }
-    const camera = this.cameras.main;
-    this.hudLayer
-      .setPosition(camera.worldView.x, camera.worldView.y)
-      .setScale(getPhoneCameraScale(camera.zoom || 1));
+    this.syncZoomCompensatedContainer(this.hudLayer);
   }
 
   private createZoomCompensatedContainer(depth: number): Phaser.GameObjects.Container {
@@ -6056,6 +6058,13 @@ export class GameScene extends Phaser.Scene {
       .container(camera.worldView.x, camera.worldView.y)
       .setScrollFactor(1)
       .setDepth(depth)
+      .setScale(getPhoneCameraScale(camera.zoom || 1));
+  }
+
+  private syncZoomCompensatedContainer(container: Phaser.GameObjects.Container): void {
+    const camera = this.cameras.main;
+    container
+      .setPosition(camera.worldView.x, camera.worldView.y)
       .setScale(getPhoneCameraScale(camera.zoom || 1));
   }
 

@@ -487,3 +487,11 @@ The in-canvas HUD regression was a camera-space bug: `setScrollFactor(0)` kept H
 Interaction priority alone was not enough for venue-dwelling NPCs because routine routes move NPC sprites away from fixed venue nodes. `InteractionController` now gives NPCs a slightly wider talk radius and suppresses venue/shop candidates while an NPC occupies that venue footprint. The result should be "talk to the person standing here" before "open the building menu," while still allowing the venue menu when no NPC is there.
 
 The fresh-save cold open is now a led first step instead of a permissive open-world start. When the premise panel is shown in the current session, Act 0's `meet_ibu_sari` step blocks non-Ibu world interactions with a redirect toast until the player talks to Ibu Sari. This gate is intentionally session-only: loading an existing save that has already seen the premise does not re-enable it. No narrative content, save schema, backend, combat, multiplayer, real commerce, or Act 3 systems were added.
+
+## 2026-07-01 - Zoom-Safe UI Must Be A Class-Wide Rule
+
+The first HUD fix correctly solved the named HUD objects but missed other Phaser panels with the same root bug. `GameScene` now has one `createZoomCompensatedContainer()` helper for fixed-screen canvas panels under the zoomed main camera.
+
+The broken player-facing panels found and fixed in this follow-up were: Bag (`openInventory`), Community (`openCommunityBoard`), and Shop (`renderShopPanel`). The dev-only Godmode panel also uses the same helper for consistency. The sweep also removed the remaining raw `setScrollFactor(0)` usage from the night overlay and shared panel button hit zones: the overlay is now on a synced compensated layer, and hit zones live inside their owning panel container so button clicks line up with scaled modals.
+
+After this pass, `grep -n "setScrollFactor(0)" src/scenes/GameScene.ts` returns no hits. Future fixed-screen Phaser UI should use the zoom-compensated helper or an equivalent synced layer instead of raw `setScrollFactor(0)`.
