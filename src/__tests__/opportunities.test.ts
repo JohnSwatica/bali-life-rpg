@@ -97,6 +97,23 @@ describe("opportunity engine", () => {
     expect(isOpportunityEligible(gated, world, state)).toBe(true);
   });
 
+  it("gates the no-questions package on being broke enough after three deliveries", () => {
+    const world = createInitialWorldState();
+    const state = createDefaultOpportunityState();
+    const shadyPackage = template("no_questions_package");
+
+    world.players[world.localPlayerId].money = 41;
+    world.life.hustle.completedDeliveryCount = 3;
+    expect(isOpportunityEligible(shadyPackage, world, state)).toBe(false);
+
+    world.players[world.localPlayerId].money = 40;
+    world.life.hustle.completedDeliveryCount = 2;
+    expect(isOpportunityEligible(shadyPackage, world, state)).toBe(false);
+
+    world.life.hustle.completedDeliveryCount = 3;
+    expect(isOpportunityEligible(shadyPackage, world, state)).toBe(true);
+  });
+
   it("keeps a deterministic live pool and expires missed opportunities", () => {
     const world = createInitialWorldState();
     const state = createDefaultOpportunityState();

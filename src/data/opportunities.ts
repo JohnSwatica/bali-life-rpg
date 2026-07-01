@@ -156,6 +156,29 @@ export const opportunityTemplates: OpportunityTemplate[] = [
     cooldownMin: 720
   },
   {
+    id: "no_questions_package",
+    type: "gig",
+    title: "The No-Questions Package",
+    blurb:
+      "No name on it, no manifest, just an address and cash on delivery. The guy handing it over won't meet your eyes. You don't have to take it.",
+    trigger: { maxMoney: 40, minCompletedDeliveryCount: 3 },
+    locationVenueId: "bali_family_rental_scooter",
+    durationMin: 240,
+    timeCostMin: 55,
+    reward: {
+      money: 180,
+      meterDeltas: { energy: -10, wellbeing: -6 },
+      reputation: { delta: -3, reason: "Took the no-questions package" },
+      axisImpact: { rooted: -15, reason: "Took the no-questions package" }
+    },
+    declineReward: {
+      reputation: { delta: 3, tag: "reliable", reason: "Let the no-questions package expire and stayed clean" },
+      axisImpact: { rooted: 10, reason: "Let the no-questions package expire and stayed clean" }
+    },
+    weight: 1,
+    cooldownMin: 999999
+  },
+  {
     id: "baked_croissant_flash",
     type: "flash_deal",
     title: "Flash tray @ BAKED",
