@@ -173,6 +173,7 @@ import { isQuestActive, isQuestComplete, startQuest } from "../systems/QuestSyst
 import { resolveNpcQuestInteraction } from "../systems/quests/QuestRegistry";
 import { HudController } from "../ui/hud/HudController";
 import { PhoneShell } from "../ui/phone/PhoneShell";
+import { getPhoneCameraScale } from "../ui/phone/PhoneLayout";
 import { getAllVenues, getVenue } from "../systems/venues/VenueRegistry";
 import type {
   Direction,
@@ -490,6 +491,7 @@ export class GameScene extends Phaser.Scene {
   private opportunityUpdateTimer = 0;
   private phoneBuzzTimer = 0;
 
+  private hudLayer!: Phaser.GameObjects.Container;
   private hudChrome!: Phaser.GameObjects.Graphics;
   private timeText!: Phaser.GameObjects.Text;
   private moneyText!: Phaser.GameObjects.Text;
@@ -1466,11 +1468,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createHud(): void {
-    this.hudChrome = this.add.graphics().setScrollFactor(0).setDepth(UI_DEPTH);
-    this.timeText = this.add.text(20, 16, "", this.hudTextStyle(16)).setScrollFactor(0).setDepth(UI_DEPTH + 1);
-    this.moneyText = this.add.text(20, 42, "", this.hudTextStyle(16)).setScrollFactor(0).setDepth(UI_DEPTH + 1);
-    this.questText = this.add.text(20, 92, "", this.hudTextStyle(14)).setScrollFactor(0).setDepth(UI_DEPTH + 1);
-    this.promptText = this.add.text(20, 0, "", this.hudTextStyle(15)).setScrollFactor(0).setDepth(UI_DEPTH + 1);
+    this.hudLayer = this.add
+      .container(this.cameras.main.worldView.x, this.cameras.main.worldView.y)
+      .setScrollFactor(1)
+      .setDepth(UI_DEPTH);
+    this.hudChrome = this.add.graphics();
+    this.timeText = this.add.text(20, 16, "", this.hudTextStyle(16));
+    this.moneyText = this.add.text(20, 42, "", this.hudTextStyle(16));
+    this.questText = this.add.text(20, 92, "", this.hudTextStyle(14));
+    this.promptText = this.add.text(20, 0, "", this.hudTextStyle(15));
     this.toastText = this.add
       .text(0, 0, "", {
         fontFamily: "Inter, Arial, sans-serif",
@@ -1482,10 +1488,17 @@ export class GameScene extends Phaser.Scene {
         wordWrap: { width: 520 }
       })
       .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(UI_DEPTH + 3)
       .setAlpha(0);
-    this.objectiveArrowLayer = this.add.graphics().setScrollFactor(0).setDepth(UI_DEPTH + 2);
+    this.objectiveArrowLayer = this.add.graphics();
+    this.hudLayer.add([
+      this.hudChrome,
+      this.objectiveArrowLayer,
+      this.timeText,
+      this.moneyText,
+      this.questText,
+      this.promptText,
+      this.toastText
+    ]);
     this.nightOverlay = this.add.graphics().setScrollFactor(0).setDepth(900);
     this.lanternGlow = this.add.graphics().setDepth(905);
     this.hudController = new HudController(this, UI_DEPTH, {
@@ -2406,6 +2419,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateHud(delta: number): void {
+    this.syncHudLayerToCamera();
     this.timeText.setText(formatClock(this.world));
     const bikeLabel = this.getBikeStatusLabel();
     const wantedLevel = getWantedLevel(this.world.reputation);
@@ -5986,6 +6000,7 @@ export class GameScene extends Phaser.Scene {
   private layoutForViewport(): void {
     const { width, height } = this.scale;
     this.cameras.main.setZoom(width < 720 ? STREET_CAMERA.mobileZoom : STREET_CAMERA.desktopZoom);
+    this.syncHudLayerToCamera();
     this.promptText.setPosition(20, height - 36);
     this.toastText.setPosition(width / 2, Math.max(92, height * 0.17));
     this.hudController.layoutTouchControls();
@@ -6001,6 +6016,16 @@ export class GameScene extends Phaser.Scene {
     this.hudChrome.lineStyle(1, 0xf4d58d, 0.25);
     this.hudChrome.strokeRoundedRect(12, 10, Math.min(620, width - 24), 148, 8);
     this.hudChrome.strokeRoundedRect(12, height - 48, Math.min(620, width - 24), 38, 8);
+  }
+
+  private syncHudLayerToCamera(): void {
+    if (!this.hudLayer) {
+      return;
+    }
+    const camera = this.cameras.main;
+    this.hudLayer
+      .setPosition(camera.worldView.x, camera.worldView.y)
+      .setScale(getPhoneCameraScale(camera.zoom || 1));
   }
 
   private showToast(message: string): void {
