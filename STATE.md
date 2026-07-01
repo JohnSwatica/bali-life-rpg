@@ -14,7 +14,7 @@ Current durable truth:
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test` = 110 passing, 0 skipped; `npm run build` passes.
+- Current verification: `npm test -- --run` = 117 passing, 0 skipped; `npm run build` passes.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Canonical act order, set in stone for near-term work:
@@ -41,6 +41,10 @@ Immediate next move: run a human play-feel pass through the station-first first-
 
 ## What Was Added Recently
 
+- Corrected world-bounds/density pass is complete on `feat/gameplay-stations`: the beach was not missing; the dev-only godmode shortcuts were stale and dropped the player into undecorated field. Teleport buttons now resolve live authored venue nodes for Canggu Station, FINNS Beach Club, and Berawa Beach instead of old base-map coordinates.
+- Playable containment now comes from authored content instead of the raw `3840 x 2720` tile backing world. `src/data/playableBounds.ts` derives bounds from the active street template plus authored venues, pickups, home, spawn, NPC routine points, and ambient route points; `GameScene` uses those bounds for physics/camera setup and clamps save loads, knockback, water correction, group helpers, dev teleports, and live movement.
+- Current authored play bounds are `x=914..2528`, `y=0..2720`; the ordinary north/mid street corridor clamps more tightly to `x=1091..2502`, then expands near the beach approach at `y>=1952` so the beach-club/beach terminus content stays reachable. Layout invariant tests assert the bounds are narrower than the raw world and keep all authored venue/interaction points reachable.
+- Corridor density now lives in `src/systems/map/StreetRenderer.ts`: raw-world-edge trees were replaced with modest procedural benches, lanterns, planters, shade trees, palms, umbrellas, towels, and surfboards inside the authored corridor and beach approach. No venue positions, collision rects, save schema, economy, quest logic, new buildings, or new areas changed.
 - First-impression polish pass is complete on `feat/gameplay-stations`: the fresh-save cold-open now leads with an in-voice Act 0 arrival beat instead of a controls dump, the Phone/PDA panel is camera-zoom-safe and no longer clips left-edge text, raw NPC idle cue labels are hidden from default play while idle animations remain, and authored street signboards prioritize real venue names over station labels.
 - Phone layout now lives behind `src/ui/phone/PhoneLayout.ts` and is covered at the established viewport set (`1280x800`, `1440x900`, `1728x1117`, `2560x1440`, `1024x768`, `390x844`). The Phaser phone root is anchored to the camera world-view origin and inverse-scaled against camera zoom so it behaves like screen UI instead of world art.
 - Street signage now uses `getStreetSignPrimaryText()` for primary sign copy and `getPermanentlySignedVenueIds()` prevents separate floating discovery labels from stacking on top of permanently signed venue buildings such as Canggu Station. Station identity remains in station props/palettes, not as replacement signboard text.

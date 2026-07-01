@@ -451,3 +451,13 @@ The Phone/PDA clipping bug was another camera-zoom UI regression. The phone is s
 NPC idle behavior remains intact, but raw idle cue strings such as `tidies`, `types`, and `checks oven` are no longer player-facing by default. They are treated as debug presentation data; the shipped read is the idle animation and sprite motion, not sticky-note text over heads.
 
 Authored building signboards now prioritize real venue names. Station visuals can still control palette and props, but station labels like `FOCUS TABLE` and `WARUNG RESET` no longer replace Milk & Madu, Satu-Satu, or other venue signs. Permanently signed venues also skip the separate floating venue discovery label, which prevents Canggu Station-style double-label stacking.
+
+## 2026-07-01 - World Bounds Follow The Authored Corridor, Not The Raw Tile Backing Map
+
+The second live audit corrected an important false read: Berawa Beach was never missing. The godmode `Teleport Beach` and `Teleport FINNS` buttons were using stale pre-authored-street base coordinates, then scaling them into the current world, which dropped playtests into undecorated grass and made the beach look absent. Dev teleports now look up `canggu_station`, `finns_beach_club`, and `berawa_beach` from `venueMapNodes` and call raw `devTeleport(x, y)` at the live authored node coordinates.
+
+The raw `TILE_WORLD`/`WORLD_WIDTH`/`WORLD_HEIGHT` remains the backing tile canvas for rendering, minimap, and terrain data. Player/camera play space is now a derived authored-bounds shape: `PlayableBounds` merges the active street corridor, building slots, venues, pickups, home/spawn, named NPC route points, ambient route points, and the beach terminus. `GameScene` uses those bounds for physics/camera setup and clamps save loads, live movement, knockback, water correction, helper spawns, and dev teleports through the same helper.
+
+The current authored bounds are `x=914..2528`, `y=0..2720`, with normal street movement clamped to `x=1091..2502` until the beach approach expands at `y>=1952`. Tests assert the playable bounds are meaningfully narrower than the raw `3840px` width, all authored venue/interaction points remain reachable, north-street off-corridor movement clamps back to the corridor, and beach-height movement preserves the wider beach range.
+
+Sparse prop work stays inside that contained space. StreetRenderer no longer places ambient trees along the far raw-world edges; it places modest procedural benches, lanterns, planters, shade trees, palms, umbrellas, towels, and surfboards along the authored sidewalk, beach-club approach, and beach terminus. This is a texture pass over the existing street, not a new map area, new venue system, collision change, or content expansion.
