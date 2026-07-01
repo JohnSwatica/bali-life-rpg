@@ -5285,9 +5285,9 @@ export class GameScene extends Phaser.Scene {
       addItem(this.playerState, "coconut", 2);
       this.showToast("Dev grocery quest prepped.");
     }, 0x394155);
-    addGodButton("Teleport Canggu Station", () => this.devTeleportToBasePoint(610, 742), 0x394155);
-    addGodButton("Teleport FINNS", () => this.devTeleportToBasePoint(1768, 300), 0x394155);
-    addGodButton("Teleport Beach", () => this.devTeleportToBasePoint(350, 1225), 0x394155);
+    addGodButton("Teleport Canggu Station", () => this.devTeleportToVenue("canggu_station"), 0x394155);
+    addGodButton("Teleport FINNS", () => this.devTeleportToVenue("finns_beach_club"), 0x394155);
+    addGodButton("Teleport Beach", () => this.devTeleportToVenue("berawa_beach"), 0x394155);
     addGodButton("Clear Wanted", () => {
       clearWantedStanding(this.world.reputation, "Dev wanted state cleared.", this.getAbsoluteMinute());
       this.updatePlayerWantedSign();
@@ -5344,9 +5344,13 @@ export class GameScene extends Phaser.Scene {
     this.showToast(`Dev time set to ${formatClock(this.world)}.`);
   }
 
-  private devTeleportToBasePoint(x: number, y: number): void {
-    const point = scalePoint({ x, y });
-    this.devTeleport(point.x, point.y);
+  private devTeleportToVenue(venueId: string): void {
+    const node = venueMapNodes.find((candidate) => candidate.venueId === venueId);
+    if (!node) {
+      this.showToast(`Dev teleport failed: ${venueId} not found.`);
+      return;
+    }
+    this.devTeleport(node.x, node.y);
   }
 
   private devTeleport(x: number, y: number): void {
