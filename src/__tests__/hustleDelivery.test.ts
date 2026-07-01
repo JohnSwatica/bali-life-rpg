@@ -18,13 +18,29 @@ import {
   upgradeToDailyScooter
 } from "../systems/hustle/HustleEconomy";
 import { getHustleGoalStates, getHustleNextStep } from "../systems/hustle/HustleGoals";
-import { completeAct0Step, getAct0MealProgressKindForActivity, markAct0MealProgress } from "../systems/life/ActProgression";
+import {
+  completeAct0Step,
+  getAct0ColdOpenCopy,
+  getAct0MealProgressKindForActivity,
+  markAct0MealProgress
+} from "../systems/life/ActProgression";
 import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
 import { getRelationship } from "../systems/relationships/RelationshipMemory";
 import { createInitialWorldState } from "../systems/WorldState";
 import { playerHomeBase } from "../data/homeBase";
 
 describe("Act 0 hustle and deliveries", () => {
+  it("leads the first-run panel with arrival story before control reminders", () => {
+    const copy = getAct0ColdOpenCopy();
+
+    expect(copy.title).toContain("Berawa");
+    expect(copy.body.startsWith("WASD")).toBe(false);
+    expect(copy.body).toContain("Dusk");
+    expect(copy.body).toContain("Ibu Sari");
+    expect(copy.body).toContain("Canggu Station");
+    expect(copy.body.indexOf("Controls")).toBeGreaterThan(copy.body.indexOf("Ibu Sari"));
+  });
+
   it("accepts, picks up, completes, and rewards the first BAKED delivery", () => {
     const world = createInitialWorldState();
     const player = world.players[world.localPlayerId];

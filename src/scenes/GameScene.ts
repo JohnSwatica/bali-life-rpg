@@ -87,7 +87,13 @@ import {
 import { getSettlingInGoalTitle, updateSettlingInGoals } from "../systems/life/SettlingInGoals";
 import { getStationSocialBridgeOptions } from "../systems/life/StationSocialBridge";
 import { sleepAtHomeUntilMorning } from "../systems/life/SleepCycle";
-import { completeAct0Step, getAct0MealProgressKindForActivity, isAct0Complete, markAct0MealProgress } from "../systems/life/ActProgression";
+import {
+  completeAct0Step,
+  getAct0ColdOpenCopy,
+  getAct0MealProgressKindForActivity,
+  isAct0Complete,
+  markAct0MealProgress
+} from "../systems/life/ActProgression";
 import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
 import {
   acceptDelivery,
@@ -4389,10 +4395,8 @@ export class GameScene extends Phaser.Scene {
     }
     this.world.questFlags.firstRunHintSeen = true;
     saveWorldState(this.world);
-    this.openDialogue(
-      "Welcome to Berawa",
-      "WASD or arrows move. E interacts. P opens the phone. I opens the bag. B toggles your bike after rental. F5 saves locally. ESC closes panels."
-    );
+    const copy = getAct0ColdOpenCopy();
+    this.openDialogue(copy.title, copy.body);
   }
 
   private updateMapDiscovery(initial = false): void {

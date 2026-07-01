@@ -8,6 +8,19 @@ export interface Act0StepState {
   complete: boolean;
 }
 
+export interface Act0ColdOpenCopy {
+  title: string;
+  body: string;
+}
+
+const ACT0_COLD_OPEN: Act0ColdOpenCopy = {
+  title: "Dusk In Berawa",
+  body:
+    "Dusk drops you at the cheap kos with one bag, almost no rupiah, and Berawa traffic humming outside. " +
+    "Your phone buzzes: Ibu Sari can help if you reach her near Canggu Station before the evening rush.\n\n" +
+    "Walk toward the marker. Controls: WASD/arrow keys move, E / ACT talks, P opens the phone for backup, ESC closes panels."
+};
+
 const STEP_COPY: Record<Act0Step, { title: string; objective: string }> = {
   meet_ibu_sari: {
     title: "Find Ibu Sari",
@@ -51,6 +64,10 @@ const ACT0_MEAL_ACTIVITY_KIND: Record<string, "coffee" | "meal" | undefined> = {
   cafe_brunch_table: "meal",
   warung_nasi_reset: "meal"
 };
+
+export function getAct0ColdOpenCopy(): Act0ColdOpenCopy {
+  return ACT0_COLD_OPEN;
+}
 
 export function getAct0StepState(world: WorldState): Act0StepState {
   const id = world.life.actProgress.act0Step;
