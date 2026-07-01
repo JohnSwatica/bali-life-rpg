@@ -495,3 +495,9 @@ The first HUD fix correctly solved the named HUD objects but missed other Phaser
 The broken player-facing panels found and fixed in this follow-up were: Bag (`openInventory`), Community (`openCommunityBoard`), and Shop (`renderShopPanel`). The dev-only Godmode panel also uses the same helper for consistency. The sweep also removed the remaining raw `setScrollFactor(0)` usage from the night overlay and shared panel button hit zones: the overlay is now on a synced compensated layer, and hit zones live inside their owning panel container so button clicks line up with scaled modals.
 
 After this pass, `grep -n "setScrollFactor(0)" src/scenes/GameScene.ts` returns no hits. Future fixed-screen Phaser UI should use the zoom-compensated helper or an equivalent synced layer instead of raw `setScrollFactor(0)`.
+
+## 2026-07-02 - Ambient Line Shortening Preserves Decimal Numbers
+
+`shortenAmbientLine()` now treats digit-dot-digit runs as atomic while finding the first sentence for in-world NPC bubbles. This fixes a pre-existing presentation bug where decimal values in lines such as Rio's `Rated 4.9...` and Pak Bagus's `Berawa 2.0...` were mistaken for sentence-ending periods and truncated into broken ambient copy.
+
+This is a system-level dialogue presentation fix, not a content workaround. Decimal ratings, version-like place names, and similar NPC copy should remain valid authored text. Existing non-decimal NPC lines keep the same sentence-shortening behavior.

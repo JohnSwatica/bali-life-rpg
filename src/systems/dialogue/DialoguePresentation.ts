@@ -49,7 +49,7 @@ export function getAmbientNpcLine(world: WorldState, npcId: string, fallbackLine
 
 function shortenAmbientLine(line: string): string {
   const compact = line.replace(/\s+/g, " ").trim();
-  const firstSentence = compact.match(/^[^.!?]+[.!?]/)?.[0] ?? compact;
+  const firstSentence = compact.match(/^(?:\d+\.\d+|[^.!?])+[.!?]/)?.[0] ?? compact;
   if (firstSentence.length <= 92) {
     return firstSentence;
   }

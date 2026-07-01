@@ -27,6 +27,30 @@ describe("in-world dialogue presentation", () => {
     expect(line).toContain("checking the beach");
   });
 
+  it("does not truncate a decimal number as if it were a sentence end", () => {
+    const world = createInitialWorldState();
+
+    expect(
+      getAmbientNpcLine(
+        world,
+        "rio",
+        "Rated 4.9, delivered in record time. You keeping up, new guy?",
+        "showing off by Berawa Beach"
+      )
+    ).toBe("Rated 4.9, delivered in record time (showing off by Berawa Beach)");
+
+    expect(
+      getAmbientNpcLine(
+        world,
+        "pak_bagus",
+        "Berawa 2.0 isn't just buildings -- it's a promise to this street. You'll see.",
+        "holding court near FINNS Recreation Club"
+      )
+    ).toBe(
+      "Berawa 2.0 isn't just buildings -- it's a promise to this street (holding court near FINNS Recreation Club)"
+    );
+  });
+
   it("surfaces scooter and rating reactions as ambient lines", () => {
     const world = createInitialWorldState();
     const player = world.players[world.localPlayerId];
