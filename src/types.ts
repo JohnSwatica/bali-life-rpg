@@ -191,6 +191,8 @@ export interface OpportunityTrigger {
   minReputation?: number;
   requiresClubId?: string;
   requiresAffinity?: { npcId: string; tier: "stranger" | "acquaintance" | "friendly" | "regular" | "trusted" };
+  maxMoney?: number;
+  minCompletedDeliveryCount?: number;
 }
 
 export interface OpportunityReward {
@@ -201,6 +203,7 @@ export interface OpportunityReward {
     tag?: ReputationTag;
     reason: string;
   };
+  axisImpact?: { rooted?: number; relational?: number; reason: string };
   affinityBumps?: { npcId: string; amount: number }[];
   items?: InventoryEntry[];
 }
@@ -215,6 +218,7 @@ export interface OpportunityTemplate {
   durationMin: number;
   timeCostMin: number;
   reward: OpportunityReward;
+  declineReward?: OpportunityReward;
   chainTo?: string;
   weight?: number;
   cooldownMin?: number;

@@ -70,6 +70,33 @@ describe("opportunity engine", () => {
     expect(isOpportunityEligible(template("ari_sunset_ping"), world, state)).toBe(true);
   });
 
+  it("filters opportunity templates by money ceiling and completed delivery count gates", () => {
+    const world = createInitialWorldState();
+    const state = createDefaultOpportunityState();
+    const gated: OpportunityTemplate = {
+      id: "test_shady_gate",
+      type: "gig",
+      title: "Test Shady Gate",
+      blurb: "A test-only gate.",
+      trigger: { maxMoney: 40, minCompletedDeliveryCount: 3 },
+      locationVenueId: "bali_family_rental_scooter",
+      durationMin: 60,
+      timeCostMin: 10,
+      reward: { money: 1 }
+    };
+
+    world.players[world.localPlayerId].money = 41;
+    world.life.hustle.completedDeliveryCount = 3;
+    expect(isOpportunityEligible(gated, world, state)).toBe(false);
+
+    world.players[world.localPlayerId].money = 40;
+    world.life.hustle.completedDeliveryCount = 2;
+    expect(isOpportunityEligible(gated, world, state)).toBe(false);
+
+    world.life.hustle.completedDeliveryCount = 3;
+    expect(isOpportunityEligible(gated, world, state)).toBe(true);
+  });
+
   it("keeps a deterministic live pool and expires missed opportunities", () => {
     const world = createInitialWorldState();
     const state = createDefaultOpportunityState();

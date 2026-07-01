@@ -7,13 +7,14 @@ import {
   scaleMoneyDeltaForPerformance
 } from "../minigames/ActivityMinigames";
 import { bumpRelationshipAffinity, getAffinityTier, getRelationship, recordRelationshipMemory } from "../relationships/RelationshipMemory";
-import { adjustReputation, awardReputationTag } from "../reputation/ReputationState";
+import { adjustReputation, adjustReputationAxis, awardReputationTag } from "../reputation/ReputationState";
 import { getRentPressureState } from "../hustle/HustleEconomy";
 import { getHustleNextStep } from "../hustle/HustleGoals";
 import { advanceWorldMinutes } from "../time/DailyClock";
 import type {
   LiveOpportunity,
   OpportunityMessage,
+  OpportunityReward,
   OpportunityRuntimeState,
   OpportunityTemplate,
   OpportunityType,
@@ -271,6 +272,15 @@ export function isOpportunityEligible(
   if (trigger.minReputation != null && world.reputation.score < trigger.minReputation) {
     return false;
   }
+  if (trigger.maxMoney != null && world.players[world.localPlayerId].money > trigger.maxMoney) {
+    return false;
+  }
+  if (
+    trigger.minCompletedDeliveryCount != null &&
+    world.life.hustle.completedDeliveryCount < trigger.minCompletedDeliveryCount
+  ) {
+    return false;
+  }
   if (trigger.requiresClubId && !world.life.joinedClubIds.includes(trigger.requiresClubId)) {
     return false;
   }
@@ -333,7 +343,7 @@ export function resolveOpportunity(
     return { ok: false, message: `Need Rp ${Math.abs(moneyDelta)} to take that opportunity.` };
   }
 
-  applyOpportunityReward(world, template, now, performanceScore);
+  applyOpportunityReward(world, template.reward, template, now, performanceScore);
   live.status = "completed";
   live.completedAt = now;
   state.completedTemplateIds.push(template.id);
@@ -409,22 +419,34 @@ export function getLiveOpportunityCountdown(live: LiveOpportunity, clock: WorldC
   return Math.max(0, live.expiresAt - getAbsoluteMinute(clock));
 }
 
-function applyOpportunityReward(world: WorldState, template: OpportunityTemplate, now: number, performanceScore?: number): void {
+function applyOpportunityReward(
+  world: WorldState,
+  reward: OpportunityReward,
+  template: OpportunityTemplate,
+  now: number,
+  performanceScore?: number
+): void {
   const player = world.players[world.localPlayerId];
-  player.money = Math.max(0, player.money + scaleMoneyDeltaForPerformance(template.reward.money ?? 0, performanceScore));
-  if (template.reward.meterDeltas) {
-    adjustPlayerMeters(world, scaleMeterDeltasForPerformance(template.reward.meterDeltas, performanceScore));
+  player.money = Math.max(0, player.money + scaleMoneyDeltaForPerformance(reward.money ?? 0, performanceScore));
+  if (reward.meterDeltas) {
+    adjustPlayerMeters(world, scaleMeterDeltasForPerformance(reward.meterDeltas, performanceScore));
   }
-  for (const item of template.reward.items ?? []) {
+  for (const item of reward.items ?? []) {
     addItem(player, item.itemId, item.quantity);
   }
-  if (template.reward.reputation?.delta) {
-    adjustReputation(world.reputation, template.reward.reputation.delta, template.reward.reputation.reason, now);
+  if (reward.reputation?.delta) {
+    adjustReputation(world.reputation, reward.reputation.delta, reward.reputation.reason, now);
   }
-  if (template.reward.reputation?.tag) {
-    awardReputationTag(world.reputation, template.reward.reputation.tag, template.reward.reputation.reason, now);
+  if (reward.reputation?.tag) {
+    awardReputationTag(world.reputation, reward.reputation.tag, reward.reputation.reason, now);
   }
-  for (const bump of template.reward.affinityBumps ?? []) {
+  if (reward.axisImpact?.rooted) {
+    adjustReputationAxis(world.reputation, "rooted", reward.axisImpact.rooted, reward.axisImpact.reason, now);
+  }
+  if (reward.axisImpact?.relational) {
+    adjustReputationAxis(world.reputation, "relational", reward.axisImpact.relational, reward.axisImpact.reason, now);
+  }
+  for (const bump of reward.affinityBumps ?? []) {
     bumpRelationshipAffinity(world, "npc", bump.npcId, bump.amount, `Opportunity: ${template.title}`, now);
   }
   advanceWorldMinutes(world, template.timeCostMin);
@@ -445,6 +467,9 @@ function expireOpportunity(state: OpportunityRuntimeState, live: LiveOpportunity
     for (const npcId of npcIds) {
       recordRelationshipMemory(world, "npc", npcId, "missed_opportunity", `Missed ${template.title}`, now);
     }
+  }
+  if (world && template?.declineReward) {
+    applyOpportunityReward(world, template.declineReward, template, now);
   }
   appendOpportunityMessage(state, {
     id: createMessageId("missed", live.id, now),
