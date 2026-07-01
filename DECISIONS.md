@@ -434,3 +434,20 @@ This is a read/presentation bridge only. It does not auto-join clubs, add social
 The remaining scene-private test debt was also reduced during this pass. Event participation and sleep recovery now live in system helpers, and generic quest objective evaluation is exported from `QuestRegistry`.
 
 Older Settling In goals must keep recognizing new station activity IDs. `earn_your_keep` now counts station work (`cafe_deep_work`, `coworking_focus_sprint`) alongside the old generic work session, and `touch_grass` counts station beach reset actions alongside the old surf/beach activity. This keeps the station pass from fragmenting older progression. Automated baseline: 110 passing tests, zero skips.
+
+## 2026-07-01 - First-Impression Polish Protects The First Five Minutes
+
+The fresh-save opening now starts with story voice before controls. `getAct0ColdOpenCopy()` owns the arrival beat: dusk in Berawa, almost no money, Ibu Sari's phone buzz, and a reason to walk toward Canggu Station. Controls remain in the same early panel, but as a footer instead of the cold-open headline.
+
+The Phone/PDA clipping bug was another camera-zoom UI regression. The phone is still rendered in Phaser, but its layout now comes from a pure `PhoneLayout` helper and the root container anchors to the camera world-view origin while inverse-scaling against camera zoom. This makes phone children behave like screen coordinates instead of world art. Numeric layout bounds for the established viewport set:
+
+- `1280x800`: panel `(210,55)` size `860x690`, body `234..1046`, panel right/bottom `1070/745`.
+- `1440x900`: panel `(290,105)` size `860x690`, body `314..1126`, panel right/bottom `1150/795`.
+- `1728x1117`: panel `(434,214)` size `860x690`, body `458..1270`, panel right/bottom `1294/904`.
+- `2560x1440`: panel `(850,375)` size `860x690`, body `874..1686`, panel right/bottom `1710/1065`.
+- `1024x768`: panel `(82,39)` size `860x690`, body `106..918`, panel right/bottom `942/729`.
+- `390x844`: panel `(12,77)` size `366x690`, body `36..354`, panel right/bottom `378/767`.
+
+NPC idle behavior remains intact, but raw idle cue strings such as `tidies`, `types`, and `checks oven` are no longer player-facing by default. They are treated as debug presentation data; the shipped read is the idle animation and sprite motion, not sticky-note text over heads.
+
+Authored building signboards now prioritize real venue names. Station visuals can still control palette and props, but station labels like `FOCUS TABLE` and `WARUNG RESET` no longer replace Milk & Madu, Satu-Satu, or other venue signs. Permanently signed venues also skip the separate floating venue discovery label, which prevents Canggu Station-style double-label stacking.
