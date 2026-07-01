@@ -7,10 +7,11 @@ import { shopDefinitions } from "../../data/shops";
 import { scaleDistance } from "../map/WorldScale";
 import type { PickupDefinition } from "../../types";
 
-const NPC_INTERACTION_RADIUS = scaleDistance(82);
+const NPC_INTERACTION_RADIUS = scaleDistance(96);
 const OFFENDER_INTERACTION_RADIUS = scaleDistance(78);
 const PICKUP_INTERACTION_RADIUS = scaleDistance(64);
 const VENUE_INTERACTION_RADIUS = scaleDistance(70);
+const NPC_VENUE_SUPPRESSION_MARGIN = scaleDistance(40);
 
 export type InteractionTarget =
   | { type: "npc"; id: string; label: string; distance: number }
@@ -74,7 +75,7 @@ export class InteractionController {
 
     for (const shop of Object.values(shopDefinitions)) {
       const distance = Phaser.Math.Distance.Between(px, py, shop.x, shop.y);
-      if (distance <= shop.radius) {
+      if (distance <= shop.radius && !this.hasNpcOccupyingVenuePoint(shop.x, shop.y, shop.radius)) {
         candidates.push({ type: "shop", id: shop.id, label: `Enter ${shop.name}`, distance });
       }
     }
@@ -91,7 +92,8 @@ export class InteractionController {
         continue;
       }
       const distance = Phaser.Math.Distance.Between(px, py, venue.x, venue.y);
-      if (distance <= Math.min(venue.radius, VENUE_INTERACTION_RADIUS)) {
+      const venueRadius = Math.min(venue.radius, VENUE_INTERACTION_RADIUS);
+      if (distance <= venueRadius && !this.hasNpcOccupyingVenuePoint(venue.x, venue.y, venueRadius)) {
         candidates.push({ type: "venue", id: venue.venueId, label: `Check out ${venue.name}`, distance });
       }
     }
@@ -145,6 +147,14 @@ export class InteractionController {
     } else {
       handlers.pickup(target.id);
     }
+  }
+
+  private hasNpcOccupyingVenuePoint(x: number, y: number, interactionRadius: number): boolean {
+    const suppressionRadius = interactionRadius + NPC_VENUE_SUPPRESSION_MARGIN;
+    return Object.values(npcDefinitions).some((npc) => {
+      const sprite = this.options.getNpcSprite(npc.id);
+      return Boolean(sprite && Phaser.Math.Distance.Between(x, y, sprite.x, sprite.y) <= suppressionRadius);
+    });
   }
 }
 

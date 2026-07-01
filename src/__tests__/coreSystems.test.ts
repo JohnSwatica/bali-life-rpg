@@ -315,6 +315,32 @@ describe("InteractionController", () => {
     expect(shopDefinitions.canggu_station.radius).toBeGreaterThan(target?.distance ?? 0);
   });
 
+  it("prioritizes a venue-dwelling NPC over the shop menu while they roam near the venue", () => {
+    const baked = shopDefinitions.baked_berawa;
+    const controller = new InteractionController({
+      getPlayerPosition: () => ({ x: baked.x, y: baked.y }),
+      getNpcSprite: (npcId) => (npcId === "kadek" ? ({ x: baked.x + 145, y: baked.y } as never) : undefined),
+      isPickupAvailable: () => false,
+      getWantedOffenders: () => [],
+      getOffenderReward: () => 0
+    });
+
+    expect(controller.getNearestInteraction()).toMatchObject({ type: "npc", id: "kadek" });
+  });
+
+  it("keeps shop menus reachable when no NPC is occupying the venue", () => {
+    const station = shopDefinitions.canggu_station;
+    const controller = new InteractionController({
+      getPlayerPosition: () => ({ x: station.x, y: station.y }),
+      getNpcSprite: () => undefined,
+      isPickupAvailable: () => false,
+      getWantedOffenders: () => [],
+      getOffenderReward: () => 0
+    });
+
+    expect(controller.getNearestInteraction()).toMatchObject({ type: "shop", id: "canggu_station" });
+  });
+
   it("resolves non-shop venue visits when no higher-priority target is nearby", () => {
     const node = curatedVenueNodes.find((venue) => venue.venueId === "nude_cafe_berawa");
     expect(node).toBeDefined();
