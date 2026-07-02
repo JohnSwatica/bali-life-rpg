@@ -11,6 +11,7 @@ This file is the first stop for any new AI/Codex tab working on this repo.
    - `DECISIONS.md`
    - `STORY_ARC.md`
    - `STORY_BIBLE.md`
+   - `GAME_DESIGN.md`
    - `ACT3_BUSINESS_DESIGN.md`
    - `docs/ROADMAP.md`
 3. Run `git status --short --branch` and inspect the latest commits before editing.

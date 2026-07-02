@@ -41,6 +41,7 @@ Immediate next move: run a human play-feel pass through the station-first first-
 
 ## What Was Added Recently
 
+- `GAME_DESIGN.md` is now the canonical Game Design Document for game/systems/map/verbs, read alongside `STORY_BIBLE.md` for narrative. Where prior build decisions conflict with the GDD, the GDD wins; existing substrate such as the Discovery Ledger, reputation axes, shady-package choice, opportunities, relationships, meters, saves, and phone data should be restaged into the GDD frame rather than discarded. The world is entering an L1-L8 rebuild; the first step is the L1 interior/door primitive.
 - P4a UI Diet is complete on `feat/gameplay-stations`: roaming chrome was reduced to a slim status chip, a compact objective chip, contextual warning chips, a top-right minimap, and four micro meter bars. The permanent six-stat wall, desktop touch buttons, meter table money row, and bottom keybind strip are gone on desktop.
 - The HUD now uses contextual chips: status shows clock/money/rating plus unread mail, objective collapses to title-only after a short detail window, wanted/scooter warnings appear only when relevant, and the bottom prompt appears only for real nearby interactions, first-run guidance, home/sleep, bike-stuck, or non-world ESC hints.
 - DOM chrome is slimmer: touch controls are hidden on non-touch desktop devices, the minimap is `168px` wide and docked top-right, and Energy/Wellbeing/Focus/Social are micro-bars directly underneath it. Actual touch devices keep the mobile controls.
