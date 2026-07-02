@@ -489,6 +489,7 @@ export class GameScene extends Phaser.Scene {
   private hudController!: HudController;
   private phone?: PhoneShell;
   private act0FirstRunGateSessionActive = false;
+  private showMovementTutorialPrompt = false;
   private godmodePanel?: Phaser.GameObjects.Container;
   private movementSpeedMultiplier = 1;
   private discoveryLabels: Array<{ subjectType: "area" | "venue"; id: string; label: Phaser.GameObjects.Text }> = [];
@@ -1536,6 +1537,7 @@ export class GameScene extends Phaser.Scene {
     const movement = this.inputController.getMovementVector(this.mode, this.cursors, this.keys, this.hudController.joystickVector);
 
     if (movement.lengthSq() > 0) {
+      this.showMovementTutorialPrompt = false;
       movement.normalize();
       const baseSpeed = this.playerState.onBike && !this.playerState.bikeStuck ? BIKE_SPEED : WALK_SPEED;
       const speed = baseSpeed * this.movementSpeedMultiplier;
@@ -2485,13 +2487,13 @@ export class GameScene extends Phaser.Scene {
     } else if (this.mode === "world" && isPlayerAtHomeBase(this.world)) {
       this.promptText.setText(`E / ACT: use ${playerHomeBase.name}.`);
     } else if (this.mode === "world" && target) {
-      this.promptText.setText(`E / ACT: ${target.label}`);
+      this.promptText.setText(`E — ${target.label}`);
     } else if (this.mode === "world" && this.canSleepHere()) {
       this.promptText.setText("E / ACT: sleep until morning.");
-    } else if (this.mode === "world" && !isAct0Complete(this.world)) {
-      this.promptText.setText("Follow the field marker. P opens the phone later for deeper details.");
+    } else if (this.mode === "world" && this.showMovementTutorialPrompt) {
+      this.promptText.setText("WASD / arrows to move");
     } else if (this.mode === "world") {
-      this.promptText.setText("WASD/arrows move. B bike. P phone. I bag. C community. F5 save.");
+      this.promptText.setText("");
     } else if (this.mode === "phone") {
       this.promptText.setText("ESC closes the phone.");
     } else if (this.mode === "committedActivity") {
@@ -4501,6 +4503,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.act0FirstRunGateSessionActive = shouldStartAct0FirstRunGate(this.world);
+    this.showMovementTutorialPrompt = true;
     this.world.questFlags.firstRunHintSeen = true;
     saveWorldState(this.world);
     const copy = getAct0ColdOpenCopy();
