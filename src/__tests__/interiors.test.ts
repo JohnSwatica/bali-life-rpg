@@ -5,6 +5,7 @@ import {
   getInteriorByVenueId,
   getInteriorStationActivityContext,
   getOccupiedInteriorNpcSlots,
+  getScheduledInteriorForNpc,
   isInteriorPointInsideRoom
 } from "../systems/interiors/InteriorState";
 
@@ -30,6 +31,10 @@ describe("interior definitions", () => {
     expect(getOccupiedInteriorNpcSlots(world, interiorDefinitions.warung_sari_interior)).toEqual([
       expect.objectContaining({ npcId: "ibu_sari" })
     ]);
+    expect(getScheduledInteriorForNpc(world, "ibu_sari")).toMatchObject({
+      interior: expect.objectContaining({ id: "warung_sari_interior" }),
+      slot: expect.objectContaining({ npcId: "ibu_sari" })
+    });
   });
 
   it("routes the meal counter station to the existing Canggu Station activity context", () => {

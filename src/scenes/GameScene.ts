@@ -54,7 +54,7 @@ import { getPermanentlySignedVenueIds, renderStreetTemplate } from "../systems/m
 import { STREET_CAMERA, TILE_SIZE } from "../systems/map/TileStreetScale";
 import { clampPointToPlayableBounds } from "../systems/map/PlayableBounds";
 import { scaleDistance, scalePoint } from "../systems/map/WorldScale";
-import { getInteriorByVenueId, getOccupiedInteriorNpcSlots } from "../systems/interiors/InteriorState";
+import { getInteriorByVenueId, getOccupiedInteriorNpcSlots, getScheduledInteriorForNpc } from "../systems/interiors/InteriorState";
 import {
   advanceNpcRouteMotion,
   getActiveNpcRoute,
@@ -1450,7 +1450,7 @@ export class GameScene extends Phaser.Scene {
   private createInteractionController(): void {
     this.interactionController = new InteractionController({
       getPlayerPosition: () => ({ x: this.player.x, y: this.player.y }),
-      getNpcSprite: (npcId) => this.npcSprites.get(npcId),
+      getNpcSprite: (npcId) => (this.isNpcInsideClosedInterior(npcId) ? undefined : this.npcSprites.get(npcId)),
       isPickupAvailable: (pickup) => this.isPickupAvailable(pickup),
       getWantedOffenders: () => this.wantedOffenders.values(),
       getOffenderReward: (offender) => this.getOffenderReward(offender),
@@ -2161,6 +2161,13 @@ export class GameScene extends Phaser.Scene {
       const sprite = this.npcSprites.get(npc.id);
       const route = getActiveNpcRoute(npc, this.world.clock.minuteOfDay);
       if (!sprite || !route) {
+        continue;
+      }
+      const closedInteriorSlot = this.getClosedInteriorNpcSlot(npc.id);
+      if (closedInteriorSlot) {
+        sprite.setPosition(closedInteriorSlot.slot.x, closedInteriorSlot.slot.y);
+        sprite.body?.updateFromGameObject();
+        sprite.setVisible(false);
         continue;
       }
       const interiorSlot = this.getActiveInteriorNpcSlot(npc.id);
@@ -3173,6 +3180,18 @@ export class GameScene extends Phaser.Scene {
       return undefined;
     }
     return getOccupiedInteriorNpcSlots(this.world, interior).find((slot) => slot.npcId === npcId);
+  }
+
+  private getClosedInteriorNpcSlot(npcId: string): { interior: InteriorDefinition; slot: InteriorNpcSlotDefinition } | undefined {
+    const scheduled = getScheduledInteriorForNpc(this.world, npcId);
+    if (!scheduled || scheduled.interior.id === this.activeInteriorId) {
+      return undefined;
+    }
+    return scheduled;
+  }
+
+  private isNpcInsideClosedInterior(npcId: string): boolean {
+    return Boolean(this.getClosedInteriorNpcSlot(npcId));
   }
 
   private resetNpcSpritesToRoutineState(): void {
@@ -6167,6 +6186,20 @@ export class GameScene extends Phaser.Scene {
 
   private resolveFieldObjectiveTarget(target: FieldObjectiveTargetRef): FieldObjectiveTarget | null {
     if (target.type === "npc") {
+      const closedInteriorSlot = this.getClosedInteriorNpcSlot(target.npcId);
+      if (closedInteriorSlot) {
+        const node = venueMapNodes.find((candidate) => candidate.venueId === closedInteriorSlot.interior.venueId);
+        if (node) {
+          return {
+            id: target.id,
+            label: target.label,
+            x: node.x,
+            y: node.y,
+            radius: Math.min(node.radius, scaleDistance(92)),
+            type: target.type
+          };
+        }
+      }
       const sprite = this.npcSprites.get(target.npcId);
       const state = this.world.npcs[target.npcId];
       if (!sprite && !state) {

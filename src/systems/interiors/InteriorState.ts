@@ -4,6 +4,11 @@ import { getActiveNpcRoute } from "../npcs/NpcRoutineRoutes";
 import { getVenueActivityContext, type VenueActivityContext } from "../life/ActivityEngine";
 import type { InteriorDefinition, InteriorNpcSlotDefinition, InteriorStationDefinition, WorldState } from "../../types";
 
+export interface ScheduledInteriorNpcSlot {
+  interior: InteriorDefinition;
+  slot: InteriorNpcSlotDefinition;
+}
+
 export function getInteriorByVenueId(
   venueId: string,
   definitions: Record<string, InteriorDefinition> = interiorDefinitions
@@ -31,6 +36,20 @@ export function isNpcScheduledForInterior(world: WorldState, interior: InteriorD
 
 export function getOccupiedInteriorNpcSlots(world: WorldState, interior: InteriorDefinition): InteriorNpcSlotDefinition[] {
   return interior.npcSlots.filter((slot) => isNpcScheduledForInterior(world, interior, slot.npcId));
+}
+
+export function getScheduledInteriorForNpc(
+  world: WorldState,
+  npcId: string,
+  definitions: Record<string, InteriorDefinition> = interiorDefinitions
+): ScheduledInteriorNpcSlot | undefined {
+  for (const interior of Object.values(definitions)) {
+    const slot = interior.npcSlots.find((candidate) => candidate.npcId === npcId);
+    if (slot && isNpcScheduledForInterior(world, interior, npcId)) {
+      return { interior, slot };
+    }
+  }
+  return undefined;
 }
 
 export function getInteriorStationActivityContext(station: InteriorStationDefinition): VenueActivityContext | undefined {
