@@ -553,3 +553,9 @@ This is still presentation and staging over existing systems. `cheap_kos` remain
 Bali Family Rental Scooter now has `scooter_rental_interior`, so the Act 1 maintenance/upgrade place is a small room with a counter, helmet shelf, service board, parked scooters, and a Rio slot when his existing routine places him at the rental. This supports the GDD's rule that important interactables become scenes or playable beats rather than exterior menu text.
 
 The scooter rental station routes to the existing `bali_family_rental_scooter` activity/shop context. Repair, upgrade, shop rows, deliveries, and the no-questions-package opportunity still use their existing systems; this pass only changes staging and presentation. The shared interior tests now cover rental door mapping, Rio's scheduled interior slot, and the `scooter_counter` station's activity context.
+
+## 2026-07-02 - L1 Step 5 Gives The Focus Table A Room
+
+Satu-Satu Coffee Company now has `satu_satu_interior`, which turns the Act 2 focus-table destination into an interior scene rather than only an exterior marker or Phone objective. The room has a communal laptop table, coffee bar, notice board, and scheduled slots for Kadek, Made, and Pak Bagus when their existing routes place them at Satu-Satu.
+
+The focus table station routes to the existing `satu_satu_coffee` activity context, preserving the current cafe station choices, Focus Table group bridge, opportunities, events, and Act 2 guidance. No new club, relationship, minigame, save, backend, or Act 3 business system was added. This is another L1 staging pass over working substrate.
