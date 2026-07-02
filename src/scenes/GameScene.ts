@@ -58,6 +58,7 @@ import {
   getInteriorByVenueId,
   getInteriorDeliveryPickupForStation,
   getOccupiedInteriorNpcSlots,
+  getPrimaryInteriorStationForVenue,
   getScheduledInteriorForNpc
 } from "../systems/interiors/InteriorState";
 import {
@@ -6413,6 +6414,18 @@ export class GameScene extends Phaser.Scene {
       return { id: target.id, label: target.label, x, y, radius: scaleDistance(92), type: target.type };
     }
     if (target.type === "venue") {
+      const activeInterior = this.getActiveInterior();
+      const activeInteriorStation = activeInterior ? getPrimaryInteriorStationForVenue(activeInterior, target.venueId) : undefined;
+      if (activeInteriorStation) {
+        return {
+          id: target.id,
+          label: target.label,
+          x: activeInteriorStation.x,
+          y: activeInteriorStation.y,
+          radius: activeInteriorStation.radius,
+          type: target.type
+        };
+      }
       const node = venueMapNodes.find((candidate) => candidate.venueId === target.venueId);
       if (!node) {
         return null;

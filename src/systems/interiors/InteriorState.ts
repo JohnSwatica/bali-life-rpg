@@ -62,6 +62,16 @@ export function getInteriorStationActivityContext(station: InteriorStationDefini
   return getVenueActivityContext(station.activityVenueId) ?? undefined;
 }
 
+export function getPrimaryInteriorStationForVenue(
+  interior: InteriorDefinition,
+  venueId: string
+): InteriorStationDefinition | undefined {
+  if (interior.venueId !== venueId) {
+    return undefined;
+  }
+  return interior.stations.find((station) => station.activityVenueId === venueId) ?? interior.stations[0];
+}
+
 export function getInteriorDeliveryPickupForStation(
   world: WorldState,
   station: InteriorStationDefinition

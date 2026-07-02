@@ -7,6 +7,7 @@ import {
   getInteriorDeliveryPickupForStation,
   getInteriorStationActivityContext,
   getOccupiedInteriorNpcSlots,
+  getPrimaryInteriorStationForVenue,
   getScheduledInteriorForNpc,
   isInteriorPointInsideRoom
 } from "../systems/interiors/InteriorState";
@@ -120,6 +121,14 @@ describe("interior definitions", () => {
       "satu_satu_coffee",
       "bungalow_living"
     ]);
+  });
+
+  it("resolves venue objectives to the matching interior station while inside", () => {
+    expect(getPrimaryInteriorStationForVenue(interiorDefinitions.baked_berawa_interior, "baked_berawa")).toMatchObject({
+      id: "bakery_counter",
+      activityVenueId: "baked_berawa"
+    });
+    expect(getPrimaryInteriorStationForVenue(interiorDefinitions.baked_berawa_interior, "milk_madu_berawa")).toBeUndefined();
   });
 
   it("surfaces active delivery pickups at matching interior stations", () => {
