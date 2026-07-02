@@ -15,6 +15,8 @@ const RENTAL_X = OFFSCREEN_INTERIOR_X;
 const RENTAL_Y = OFFSCREEN_INTERIOR_Y + TILE_SIZE * 43;
 const SATU_SATU_X = OFFSCREEN_INTERIOR_X;
 const SATU_SATU_Y = OFFSCREEN_INTERIOR_Y + TILE_SIZE * 54;
+const BUNGALOW_X = OFFSCREEN_INTERIOR_X;
+const BUNGALOW_Y = OFFSCREEN_INTERIOR_Y + TILE_SIZE * 65;
 
 export const interiorDefinitions: Record<string, InteriorDefinition> = {
   warung_sari_interior: {
@@ -232,6 +234,40 @@ export const interiorDefinitions: Record<string, InteriorDefinition> = {
         npcId: "pak_bagus",
         x: SATU_SATU_X + TILE_SIZE * 8.6,
         y: SATU_SATU_Y + TILE_SIZE * 4.75
+      }
+    ]
+  },
+  bungalow_living_interior: {
+    id: "bungalow_living_interior",
+    venueId: "bungalow_living",
+    name: "Bungalow Living Bali",
+    origin: { x: BUNGALOW_X, y: BUNGALOW_Y },
+    width: TILE_SIZE * 12,
+    height: TILE_SIZE * 8,
+    entrance: {
+      x: BUNGALOW_X + TILE_SIZE * 6,
+      y: BUNGALOW_Y + TILE_SIZE * 6.5
+    },
+    exitMat: {
+      x: BUNGALOW_X + TILE_SIZE * 6,
+      y: BUNGALOW_Y + TILE_SIZE * 7.35,
+      radius: TILE_SIZE * 0.65
+    },
+    stations: [
+      {
+        id: "design_counter",
+        x: BUNGALOW_X + TILE_SIZE * 5.95,
+        y: BUNGALOW_Y + TILE_SIZE * 2.4,
+        radius: TILE_SIZE * 1.2,
+        label: "Use design counter",
+        activityVenueId: "bungalow_living"
+      }
+    ],
+    npcSlots: [
+      {
+        npcId: "made",
+        x: BUNGALOW_X + TILE_SIZE * 7.2,
+        y: BUNGALOW_Y + TILE_SIZE * 2.62
       }
     ]
   }

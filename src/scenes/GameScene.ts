@@ -3274,6 +3274,32 @@ export class GameScene extends Phaser.Scene {
       g.fillCircle(x + TILE_SIZE * 1.74, y + TILE_SIZE * 5.02, TILE_SIZE * 0.24);
       g.fillStyle(0x7f4f35, 1);
       g.fillRect(x + TILE_SIZE * 1.54, y + TILE_SIZE * 5.25, TILE_SIZE * 0.2, TILE_SIZE * 0.58);
+    } else if (interior.id === "bungalow_living_interior") {
+      g.fillStyle(0x8b5937, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 1.05, y + TILE_SIZE * 1.48, TILE_SIZE * 9.9, TILE_SIZE * 1.02, TILE_SIZE * 0.12);
+      g.fillStyle(0xfff0bd, 0.82);
+      g.fillRoundedRect(x + TILE_SIZE * 1.4, y + TILE_SIZE * 1.78, TILE_SIZE * 1.5, TILE_SIZE * 0.28, TILE_SIZE * 0.07);
+      g.fillRoundedRect(x + TILE_SIZE * 3.3, y + TILE_SIZE * 1.78, TILE_SIZE * 1.5, TILE_SIZE * 0.28, TILE_SIZE * 0.07);
+      g.fillRoundedRect(x + TILE_SIZE * 5.2, y + TILE_SIZE * 1.78, TILE_SIZE * 1.5, TILE_SIZE * 0.28, TILE_SIZE * 0.07);
+      g.fillStyle(0xe58fb1, 0.92);
+      g.fillRoundedRect(x + TILE_SIZE * 1.65, y + TILE_SIZE * 3.3, TILE_SIZE * 1.25, TILE_SIZE * 1.6, TILE_SIZE * 0.1);
+      g.fillStyle(0x6ab7ff, 0.78);
+      g.fillRoundedRect(x + TILE_SIZE * 3.15, y + TILE_SIZE * 3.15, TILE_SIZE * 1.1, TILE_SIZE * 1.95, TILE_SIZE * 0.1);
+      g.fillStyle(0x62c48f, 0.84);
+      g.fillRoundedRect(x + TILE_SIZE * 4.55, y + TILE_SIZE * 3.42, TILE_SIZE * 1.18, TILE_SIZE * 1.45, TILE_SIZE * 0.1);
+      g.fillStyle(0x253a35, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 8.35, y + TILE_SIZE * 3.0, TILE_SIZE * 1.85, TILE_SIZE * 1.55, TILE_SIZE * 0.12);
+      g.fillStyle(0xf4d58d, 0.76);
+      g.fillRoundedRect(x + TILE_SIZE * 8.65, y + TILE_SIZE * 3.32, TILE_SIZE * 1.24, TILE_SIZE * 0.18, TILE_SIZE * 0.04);
+      g.fillRoundedRect(x + TILE_SIZE * 8.65, y + TILE_SIZE * 3.82, TILE_SIZE * 0.9, TILE_SIZE * 0.18, TILE_SIZE * 0.04);
+      for (const cushion of [
+        { x: x + TILE_SIZE * 6.55, y: y + TILE_SIZE * 4.85, color: 0xf4b860 },
+        { x: x + TILE_SIZE * 7.25, y: y + TILE_SIZE * 4.65, color: 0x91b7dd },
+        { x: x + TILE_SIZE * 7.95, y: y + TILE_SIZE * 4.9, color: 0xe58fb1 }
+      ]) {
+        g.fillStyle(cushion.color, 0.92);
+        g.fillRoundedRect(cushion.x - TILE_SIZE * 0.28, cushion.y - TILE_SIZE * 0.18, TILE_SIZE * 0.56, TILE_SIZE * 0.36, TILE_SIZE * 0.08);
+      }
     }
   }
 

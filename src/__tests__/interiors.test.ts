@@ -17,6 +17,7 @@ describe("interior definitions", () => {
     expect(getInteriorByVenueId("cheap_kos")).toBe(interiorDefinitions.cheap_kos_interior);
     expect(getInteriorByVenueId("bali_family_rental_scooter")).toBe(interiorDefinitions.scooter_rental_interior);
     expect(getInteriorByVenueId("satu_satu_coffee")).toBe(interiorDefinitions.satu_satu_interior);
+    expect(getInteriorByVenueId("bungalow_living")).toBe(interiorDefinitions.bungalow_living_interior);
   });
 
   it("keeps entrances, exit mats, stations, and NPC slots inside each room rect", () => {
@@ -77,6 +78,15 @@ describe("interior definitions", () => {
       expect.objectContaining({ npcId: "made" }),
       expect.objectContaining({ npcId: "pak_bagus" })
     ]);
+
+    world.clock.minuteOfDay = 10 * 60;
+    expect(getOccupiedInteriorNpcSlots(world, interiorDefinitions.bungalow_living_interior)).toEqual([
+      expect.objectContaining({ npcId: "made" })
+    ]);
+    expect(getScheduledInteriorForNpc(world, "made")).toMatchObject({
+      interior: expect.objectContaining({ id: "bungalow_living_interior" }),
+      slot: expect.objectContaining({ npcId: "made" })
+    });
   });
 
   it("routes interior stations to existing venue activity contexts", () => {
@@ -86,7 +96,8 @@ describe("interior definitions", () => {
       interiorDefinitions.milk_madu_interior.stations.find((candidate) => candidate.id === "cafe_table"),
       interiorDefinitions.cheap_kos_interior.stations.find((candidate) => candidate.id === "kos_room_corner"),
       interiorDefinitions.scooter_rental_interior.stations.find((candidate) => candidate.id === "scooter_counter"),
-      interiorDefinitions.satu_satu_interior.stations.find((candidate) => candidate.id === "focus_table")
+      interiorDefinitions.satu_satu_interior.stations.find((candidate) => candidate.id === "focus_table"),
+      interiorDefinitions.bungalow_living_interior.stations.find((candidate) => candidate.id === "design_counter")
     ];
 
     expect(stations.map((station) => station?.activityVenueId)).toEqual([
@@ -95,7 +106,8 @@ describe("interior definitions", () => {
       "milk_madu_berawa",
       "cheap_kos",
       "bali_family_rental_scooter",
-      "satu_satu_coffee"
+      "satu_satu_coffee",
+      "bungalow_living"
     ]);
     expect(stations.map((station) => (station ? getInteriorStationActivityContext(station)?.venueId : undefined))).toEqual([
       "canggu_station",
@@ -103,7 +115,8 @@ describe("interior definitions", () => {
       "milk_madu_berawa",
       "cheap_kos",
       "bali_family_rental_scooter",
-      "satu_satu_coffee"
+      "satu_satu_coffee",
+      "bungalow_living"
     ]);
   });
 });
