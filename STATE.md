@@ -14,7 +14,7 @@ Current durable truth:
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test -- --run` = 138 passing, 0 skipped; `npm run build` passes.
+- Current verification: `npm test -- --run` = 145 passing, 0 skipped; `npm run build` passes.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Canonical act order, set in stone for near-term work:
@@ -41,6 +41,10 @@ Immediate next move: run a human play-feel pass through the station-first first-
 
 ## What Was Added Recently
 
+- L1 Step 1 is complete on `feat/gameplay-stations`: the first door/interior primitive exists inside the same `GameScene`, using a reserved offscreen world band rather than a separate Phaser Scene. `canggu_station` now opens `warung_sari_interior`, with fade-out/fade-in, interior camera/physics bounds, a saved exterior return point, an exit mat, and persistent player coordinates kept outside the interior so autosaves do not strand the player offscreen.
+- Warung Sari is the first proven interior: it has a warm wood/cane room shell, counter, tables, two decorative diner sprites, Ibu Sari staged at an interior NPC slot when her schedule places her at Canggu Station, and a `meal_counter` station that routes back to the existing Canggu Station activity menu. Closed-interior NPCs are suppressed from exterior proximity checks so the Canggu Station door remains reachable; the Act 0 first-run gate has a narrow exception for that door because it is now the path to Ibu.
+- Tone fixes from L1 Step 1 are also in: new saves start at `08:00` with morning cold-open copy, player-caused pedestrian bumps in Acts 0-1 no longer create wanted/bounty/reputation damage and instead produce a soft apology/stumble, while Act 2+ keeps the old flagging behavior. The large objective/reveal radius ring was reduced to a compact marker so fresh boot no longer shows a screen-dominating halo.
+- L1 Step 1 designer acceptance ran in the in-app browser at `1280x800` on `localhost:5173`: fresh boot showed morning light and compact objective cue, Canggu Station entered the offscreen Warung interior, Ibu Sari appeared inside and fired her normal Act 0 first-meet dialogue, and the exit mat returned the player outside. The meal station is covered by unit/helper tests mapping it to the existing Canggu Station activity context; the early-act no-wanted bump path is covered by `recklessRiding.test.ts`.
 - `GAME_DESIGN.md` is now the canonical Game Design Document for game/systems/map/verbs, read alongside `STORY_BIBLE.md` for narrative. Where prior build decisions conflict with the GDD, the GDD wins; existing substrate such as the Discovery Ledger, reputation axes, shady-package choice, opportunities, relationships, meters, saves, and phone data should be restaged into the GDD frame rather than discarded. The world is entering an L1-L8 rebuild; the first step is the L1 interior/door primitive.
 - P4a UI Diet is complete on `feat/gameplay-stations`: roaming chrome was reduced to a slim status chip, a compact objective chip, contextual warning chips, a top-right minimap, and four micro meter bars. The permanent six-stat wall, desktop touch buttons, meter table money row, and bottom keybind strip are gone on desktop.
 - The HUD now uses contextual chips: status shows clock/money/rating plus unread mail, objective collapses to title-only after a short detail window, wanted/scooter warnings appear only when relevant, and the bottom prompt appears only for real nearby interactions, first-run guidance, home/sleep, bike-stuck, or non-world ESC hints.
