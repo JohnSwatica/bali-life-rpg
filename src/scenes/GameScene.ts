@@ -16,6 +16,7 @@ import { itemDefinitions } from "../data/items";
 import { authoredPlayableBounds } from "../data/playableBounds";
 import { playerHomeBase } from "../data/homeBase";
 import { getGameplayStationLoop } from "../data/stationLoops";
+import { interiorDefinitions } from "../data/interiors";
 import { collisionRects, pickupDefinitions, WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
 import { npcDefinitions } from "../data/npcs";
 import { questDefinitions } from "../data/quests";
@@ -50,9 +51,10 @@ import { getMembershipDebugState, getSocialGroupsForVenue, isSocialGroupJoined }
 import { PLAYER_UNIT, POKEMON_SCALE } from "../systems/map/PlayerUnitScale";
 import { getPresentedRoads, getVenueSnapRoads } from "../systems/map/RoadPresentation";
 import { getPermanentlySignedVenueIds, renderStreetTemplate } from "../systems/map/StreetRenderer";
-import { STREET_CAMERA } from "../systems/map/TileStreetScale";
+import { STREET_CAMERA, TILE_SIZE } from "../systems/map/TileStreetScale";
 import { clampPointToPlayableBounds } from "../systems/map/PlayableBounds";
 import { scaleDistance, scalePoint } from "../systems/map/WorldScale";
+import { getInteriorByVenueId } from "../systems/interiors/InteriorState";
 import {
   advanceNpcRouteMotion,
   getActiveNpcRoute,
@@ -187,6 +189,7 @@ import type {
   GameEvent,
   GameIntent,
   GroupTravelMode,
+  InteriorDefinition,
   Meter,
   MemoryType,
   NpcDefinition,
@@ -199,7 +202,7 @@ import type {
   WorldState
 } from "../types";
 
-type Mode = "world" | "dialogue" | "shop" | "inventory" | "activity" | "committedActivity" | "community" | "phone" | "godmode";
+type Mode = "world" | "interior" | "dialogue" | "shop" | "inventory" | "activity" | "committedActivity" | "community" | "phone" | "godmode";
 
 const SHOW_NPC_IDLE_DEBUG_LABELS = shouldShowNpcIdleCueLabel();
 const TOAST_DURATION_MS = 2600;
@@ -310,6 +313,11 @@ interface NpcAmbientLineBubble {
   label: Phaser.GameObjects.Text;
   tail: Phaser.GameObjects.Graphics;
 }
+
+type InteriorInteractionTarget =
+  | { type: "exit"; label: string; interiorId: string }
+  | { type: "npc"; id: string; label: string }
+  | { type: "station"; id: string; label: string; activityVenueId: string };
 
 interface TrafficBikeRuntime {
   sprite: Phaser.GameObjects.Sprite;
@@ -500,6 +508,10 @@ export class GameScene extends Phaser.Scene {
   private phone?: PhoneShell;
   private act0FirstRunGateSessionActive = false;
   private showMovementTutorialPrompt = false;
+  private activeInteriorId: string | null = null;
+  private interiorReturnPoint?: { x: number; y: number };
+  private renderedInteriorIds = new Set<string>();
+  private interiorTransitioning = false;
   private godmodePanel?: Phaser.GameObjects.Container;
   private movementSpeedMultiplier = 1;
   private discoveryLabels: Array<{ subjectType: "area" | "venue"; id: string; label: Phaser.GameObjects.Text }> = [];
@@ -1469,6 +1481,11 @@ export class GameScene extends Phaser.Scene {
         clearSave();
         this.world = loadWorldState();
         this.playerState = getLocalPlayer(this.world);
+        this.activeInteriorId = null;
+        this.interiorReturnPoint = undefined;
+        this.interiorTransitioning = false;
+        this.mode = "world";
+        this.applyWorldCameraBounds();
         const start = this.clampToPlayableBounds(this.playerState.x, this.playerState.y, scaleDistance(28));
         this.playerState.x = Math.round(start.x);
         this.playerState.y = Math.round(start.y);
@@ -1561,15 +1578,24 @@ export class GameScene extends Phaser.Scene {
     const walkingOnFoot = movement.lengthSq() > 0 && !this.playerState.onBike;
     this.applyCharacterAnimation(this.player, "player", this.playerState.direction, walkingOnFoot, CHARACTER_SPRITE_SCALE);
 
-    this.enforceWaterBoundary();
-    this.enforcePlayableBounds();
+    if (this.activeInteriorId) {
+      this.enforceInteriorBounds();
+      this.tryAutoExitInterior();
+    } else {
+      this.enforceWaterBoundary();
+      this.enforcePlayableBounds();
+    }
 
-    this.playerState.x = Math.round(this.player.x);
-    this.playerState.y = Math.round(this.player.y);
+    if (!this.activeInteriorId) {
+      this.playerState.x = Math.round(this.player.x);
+      this.playerState.y = Math.round(this.player.y);
+    }
     this.player.setDepth(this.player.y);
     this.updatePlayerBikeVisual(delta);
-    this.checkBikeTerrain();
-    this.checkPlayerBikeHarmToOthers();
+    if (!this.activeInteriorId) {
+      this.checkBikeTerrain();
+      this.checkPlayerBikeHarmToOthers();
+    }
     this.updatePlayerWantedSign();
 
     this.networkPushTimer += delta;
@@ -2009,6 +2035,31 @@ export class GameScene extends Phaser.Scene {
 
   private clampToPlayableBounds(x: number, y: number, edgeMargin = 0): { x: number; y: number } {
     return clampPointToPlayableBounds(authoredPlayableBounds, { x, y }, edgeMargin);
+  }
+
+  private enforceInteriorBounds(): void {
+    const interior = this.getActiveInterior();
+    if (!interior) {
+      return;
+    }
+    const margin = scaleDistance(18);
+    const clamped = {
+      x: Phaser.Math.Clamp(this.player.x, interior.origin.x + margin, interior.origin.x + interior.width - margin),
+      y: Phaser.Math.Clamp(this.player.y, interior.origin.y + margin, interior.origin.y + interior.height - margin)
+    };
+    if (Math.abs(clamped.x - this.player.x) < 0.5 && Math.abs(clamped.y - this.player.y) < 0.5) {
+      return;
+    }
+    this.player.setVelocity(0, 0);
+    this.player.setPosition(clamped.x, clamped.y);
+    this.player.body?.updateFromGameObject();
+  }
+
+  private tryAutoExitInterior(): void {
+    const target = this.getNearestInteriorInteraction();
+    if (target?.type === "exit" && !this.interiorTransitioning) {
+      this.exitInterior();
+    }
   }
 
   private checkPlayerBikeHarmToOthers(): void {
@@ -2495,7 +2546,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     const homeSleepReady = this.isAct0HomeSleepReady();
-    const target = this.getNearestInteraction();
+    const target = this.mode === "world" ? this.getNearestInteraction() : undefined;
+    const interiorTarget = this.mode === "interior" ? this.getNearestInteriorInteraction() : undefined;
     if (this.mode === "world" && this.playerState.bikeStuck) {
       this.promptText.setText(`E / ACT: ask ${REQUIRED_BIKE_HELPERS} helpers to drag the bike out`);
     } else if (this.mode === "world" && isAct0FirstRunGateActive(this.world, this.act0FirstRunGateSessionActive)) {
@@ -2512,6 +2564,8 @@ export class GameScene extends Phaser.Scene {
       this.promptText.setText("WASD / arrows to move");
     } else if (this.mode === "world") {
       this.promptText.setText("");
+    } else if (this.mode === "interior") {
+      this.promptText.setText(interiorTarget ? `E — ${interiorTarget.label}` : "");
     } else if (this.mode === "phone") {
       this.promptText.setText("ESC closes the phone.");
     } else if (this.mode === "committedActivity") {
@@ -2598,8 +2652,17 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleAction(): void {
+    if (this.interiorTransitioning) {
+      return;
+    }
+
     if (this.mode === "dialogue") {
       this.closePanel();
+      return;
+    }
+
+    if (this.mode === "interior") {
+      this.handleInteriorAction();
       return;
     }
 
@@ -2647,8 +2710,8 @@ export class GameScene extends Phaser.Scene {
     this.interactionController.resolveTarget(target, {
       npc: (id) => this.interactWithNpc(id),
       delivery: (id) => this.handleDeliveryInteraction(id),
-      shop: (id) => this.openVenueActivityMenu(id),
-      venue: (id) => this.openVenueActivityMenu(id),
+      shop: (id) => this.openExteriorVenueInteraction(id),
+      venue: (id) => this.openExteriorVenueInteraction(id),
       activity: (id) => this.openActivity(id),
       offender: (id) => this.confrontWantedOffender(id),
       pickup: (id) => this.collectPickup(id)
@@ -2878,6 +2941,15 @@ export class GameScene extends Phaser.Scene {
     this.showToast("Borrowed scooter unlocked. First delivery accepted.");
   }
 
+  private openExteriorVenueInteraction(venueId: string): void {
+    const interior = getInteriorByVenueId(venueId);
+    if (interior?.id === "warung_sari_interior") {
+      this.enterInterior(interior.id);
+      return;
+    }
+    this.openVenueActivityMenu(venueId);
+  }
+
   private openVenueActivityMenu(venueId: string): void {
     const context = getVenueActivityContext(venueId);
     const shop = shopDefinitions[venueId];
@@ -2894,6 +2966,158 @@ export class GameScene extends Phaser.Scene {
 
     const availability = getActivityAvailability(this.world, context);
     this.createActivityMenuOverlay(venueId, context, availability, shop);
+  }
+
+  private handleInteriorAction(): void {
+    const target = this.getNearestInteriorInteraction();
+    if (!target) {
+      this.showToast("Nothing in reach here yet.");
+      return;
+    }
+    if (target.type === "exit") {
+      this.exitInterior();
+      return;
+    }
+    if (target.type === "npc") {
+      this.interactWithNpc(target.id);
+      return;
+    }
+    this.openVenueActivityMenu(target.activityVenueId);
+  }
+
+  private enterInterior(interiorId: string): void {
+    const interior = interiorDefinitions[interiorId];
+    if (!interior || this.interiorTransitioning) {
+      return;
+    }
+    this.renderInteriorIfNeeded(interior);
+    this.closePanel(false);
+    this.phone?.close();
+    this.interiorTransitioning = true;
+    this.interiorReturnPoint = { x: this.player.x, y: this.player.y };
+    this.playerState.onBike = false;
+    this.updatePlayerBikeVisual();
+    this.cameras.main.fadeOut(400, 0, 0, 0);
+    this.time.delayedCall(400, () => {
+      this.activeInteriorId = interior.id;
+      this.mode = "interior";
+      this.applyInteriorCameraBounds(interior);
+      this.placePlayerSprite(interior.entrance, false);
+      this.interiorTransitioning = false;
+      this.cameras.main.fadeIn(400, 0, 0, 0);
+      this.showToast(`Entered ${interior.name}.`);
+    });
+  }
+
+  private exitInterior(): void {
+    const interior = this.getActiveInterior();
+    if (!interior || this.interiorTransitioning) {
+      return;
+    }
+    const returnPoint = this.interiorReturnPoint ?? this.getExteriorDoorReturnPoint(interior);
+    this.interiorTransitioning = true;
+    this.cameras.main.fadeOut(400, 0, 0, 0);
+    this.time.delayedCall(400, () => {
+      this.activeInteriorId = null;
+      this.mode = "world";
+      this.applyWorldCameraBounds();
+      this.placePlayerSprite(returnPoint, true);
+      this.interiorReturnPoint = undefined;
+      this.interiorTransitioning = false;
+      this.cameras.main.fadeIn(400, 0, 0, 0);
+      this.showToast(`Left ${interior.name}.`);
+    });
+  }
+
+  private renderInteriorIfNeeded(interior: InteriorDefinition): void {
+    if (this.renderedInteriorIds.has(interior.id)) {
+      return;
+    }
+    this.renderedInteriorIds.add(interior.id);
+    this.drawInteriorShell(interior);
+  }
+
+  private drawInteriorShell(interior: InteriorDefinition): void {
+    const g = this.add.graphics().setDepth(35);
+    const { x, y } = interior.origin;
+    const width = interior.width;
+    const height = interior.height;
+    const wall = TILE_SIZE * 0.45;
+    const doorGap = TILE_SIZE * 1.35;
+    const doorLeft = interior.exitMat.x - doorGap / 2;
+    const doorRight = interior.exitMat.x + doorGap / 2;
+
+    g.fillStyle(0x101820, 1);
+    g.fillRect(x - TILE_SIZE * 8, y - TILE_SIZE * 7, width + TILE_SIZE * 16, height + TILE_SIZE * 14);
+    g.fillStyle(0xb9824f, 1);
+    g.fillRoundedRect(x, y, width, height, TILE_SIZE * 0.18);
+    g.fillStyle(0xdab277, 1);
+    g.fillRect(x + wall, y + wall, width - wall * 2, height - wall * 2);
+
+    g.lineStyle(1, 0xc99b62, 0.32);
+    for (let row = 1; row < 8; row += 1) {
+      g.lineBetween(x + wall, y + row * TILE_SIZE, x + width - wall, y + row * TILE_SIZE);
+    }
+    for (let column = 1; column < 12; column += 1) {
+      g.lineBetween(x + column * TILE_SIZE, y + wall, x + column * TILE_SIZE, y + height - wall);
+    }
+
+    g.fillStyle(0x5b3a29, 1);
+    g.fillRect(x, y, width, wall);
+    g.fillRect(x, y, wall, height);
+    g.fillRect(x + width - wall, y, wall, height);
+    g.fillRect(x, y + height - wall, Math.max(0, doorLeft - x), wall);
+    g.fillRect(doorRight, y + height - wall, Math.max(0, x + width - doorRight), wall);
+
+    g.fillStyle(0xf0d192, 1);
+    g.fillRoundedRect(x + TILE_SIZE * 1.1, y + TILE_SIZE * 0.8, TILE_SIZE * 9.8, TILE_SIZE * 0.56, TILE_SIZE * 0.12);
+    g.fillStyle(0x7f4f35, 1);
+    g.fillRoundedRect(x + TILE_SIZE * 1.35, y + TILE_SIZE * 1.12, TILE_SIZE * 9.3, TILE_SIZE * 0.28, TILE_SIZE * 0.08);
+
+    g.fillStyle(0x253a35, 0.82);
+    g.fillRoundedRect(interior.exitMat.x - TILE_SIZE * 0.55, interior.exitMat.y - TILE_SIZE * 0.26, TILE_SIZE * 1.1, TILE_SIZE * 0.52, TILE_SIZE * 0.08);
+    g.lineStyle(1, 0xfff0bd, 0.62);
+    g.strokeRoundedRect(interior.exitMat.x - TILE_SIZE * 0.55, interior.exitMat.y - TILE_SIZE * 0.26, TILE_SIZE * 1.1, TILE_SIZE * 0.52, TILE_SIZE * 0.08);
+  }
+
+  private getActiveInterior(): InteriorDefinition | undefined {
+    return this.activeInteriorId ? interiorDefinitions[this.activeInteriorId] : undefined;
+  }
+
+  private getExteriorDoorReturnPoint(interior: InteriorDefinition): { x: number; y: number } {
+    const node = venueMapNodes.find((candidate) => candidate.venueId === interior.venueId);
+    return node ? { x: node.x, y: node.y + Math.min(node.radius, scaleDistance(52)) } : { x: this.playerState.x, y: this.playerState.y };
+  }
+
+  private applyInteriorCameraBounds(interior: InteriorDefinition): void {
+    this.physics.world.setBounds(interior.origin.x, interior.origin.y, interior.width, interior.height);
+    this.cameras.main.setBounds(interior.origin.x, interior.origin.y, interior.width, interior.height);
+  }
+
+  private applyWorldCameraBounds(): void {
+    this.physics.world.setBounds(
+      authoredPlayableBounds.x,
+      authoredPlayableBounds.y,
+      authoredPlayableBounds.width,
+      authoredPlayableBounds.height
+    );
+    this.cameras.main.setBounds(
+      authoredPlayableBounds.x,
+      authoredPlayableBounds.y,
+      authoredPlayableBounds.width,
+      authoredPlayableBounds.height
+    );
+  }
+
+  private placePlayerSprite(point: { x: number; y: number }, updatePersistentState: boolean): void {
+    this.player.setVelocity(0, 0);
+    this.player.setPosition(point.x, point.y);
+    this.player.body?.updateFromGameObject();
+    if (updatePersistentState) {
+      this.playerState.x = Math.round(point.x);
+      this.playerState.y = Math.round(point.y);
+    }
+    this.updatePlayerBikeVisual();
   }
 
   private openHomeActivityMenu(): void {
@@ -4507,7 +4731,7 @@ export class GameScene extends Phaser.Scene {
     this.destroyDialogueOverlay();
     this.destroyActivityMenuOverlay();
     if (setWorldMode) {
-      this.mode = "world";
+      this.mode = this.activeInteriorId ? "interior" : "world";
     }
   }
 
@@ -5598,6 +5822,59 @@ export class GameScene extends Phaser.Scene {
     return this.interactionController.getNearestInteraction();
   }
 
+  private getNearestInteriorInteraction(): InteriorInteractionTarget | undefined {
+    const interior = this.getActiveInterior();
+    if (!interior) {
+      return undefined;
+    }
+
+    const candidates: Array<InteriorInteractionTarget & { distance: number; priority: number }> = [];
+    const exitDistance = Phaser.Math.Distance.Between(this.player.x, this.player.y, interior.exitMat.x, interior.exitMat.y);
+    if (exitDistance <= interior.exitMat.radius) {
+      candidates.push({
+        type: "exit",
+        interiorId: interior.id,
+        label: `Leave ${interior.name}`,
+        distance: exitDistance,
+        priority: 4
+      });
+    }
+
+    for (const station of interior.stations) {
+      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, station.x, station.y);
+      if (distance <= station.radius) {
+        candidates.push({
+          type: "station",
+          id: station.id,
+          label: station.label,
+          activityVenueId: station.activityVenueId,
+          distance,
+          priority: 2
+        });
+      }
+    }
+
+    for (const slot of interior.npcSlots) {
+      const npc = npcDefinitions[slot.npcId];
+      if (!npc) {
+        continue;
+      }
+      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, slot.x, slot.y);
+      if (distance <= scaleDistance(96)) {
+        candidates.push({
+          type: "npc",
+          id: slot.npcId,
+          label: `Talk to ${npc.name}`,
+          distance,
+          priority: 0
+        });
+      }
+    }
+
+    candidates.sort((a, b) => a.priority - b.priority || a.distance - b.distance);
+    return candidates[0];
+  }
+
   private *getActiveDeliveryTargets() {
     const active = this.world.life.hustle.activeDelivery;
     if (!active) {
@@ -5930,7 +6207,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private isOverlayOpen(): boolean {
-    return this.mode !== "world";
+    return this.mode !== "world" && this.mode !== "interior";
   }
 
   private updateOverlayChrome(): void {
@@ -6063,6 +6340,12 @@ export class GameScene extends Phaser.Scene {
   private layoutForViewport(): void {
     const { width, height } = this.scale;
     this.cameras.main.setZoom(width < 720 ? STREET_CAMERA.mobileZoom : STREET_CAMERA.desktopZoom);
+    const interior = this.getActiveInterior();
+    if (interior) {
+      this.applyInteriorCameraBounds(interior);
+    } else {
+      this.applyWorldCameraBounds();
+    }
     this.syncHudLayerToCamera();
     this.syncZoomCompensatedContainer(this.nightOverlayLayer);
     this.promptText.setPosition(16, height - 44);

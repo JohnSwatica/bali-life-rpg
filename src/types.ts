@@ -672,6 +672,34 @@ export interface NpcDefinition {
   defaultLine: string;
 }
 
+export interface InteriorStationDefinition {
+  id: string;
+  x: number;
+  y: number;
+  radius: number;
+  label: string;
+  activityVenueId: string;
+}
+
+export interface InteriorNpcSlotDefinition {
+  npcId: string;
+  x: number;
+  y: number;
+}
+
+export interface InteriorDefinition {
+  id: string;
+  venueId: string;
+  name: string;
+  origin: { x: number; y: number };
+  width: number;
+  height: number;
+  entrance: { x: number; y: number };
+  exitMat: { x: number; y: number; radius: number };
+  stations: InteriorStationDefinition[];
+  npcSlots: InteriorNpcSlotDefinition[];
+}
+
 export interface PickupDefinition {
   id: string;
   itemId: string;

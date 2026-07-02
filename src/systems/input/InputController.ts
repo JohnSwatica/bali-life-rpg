@@ -71,7 +71,7 @@ export class InputController {
     joystickVector: Phaser.Math.Vector2
   ): Phaser.Math.Vector2 {
     const movement = new Phaser.Math.Vector2(0, 0);
-    if (mode !== "world") {
+    if (mode !== "world" && mode !== "interior") {
       return movement;
     }
     if (cursors.left.isDown || keys.A.isDown) movement.x -= 1;
