@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { activeStreetTemplate, curatedVenueNodes, venueMapNodes } from "../data/authoredStreetLayout";
+import { interiorDefinitions } from "../data/interiors";
 import { authoredPlayableBounds, authoredPlayablePoints } from "../data/playableBounds";
 import { stationVisualDefinitions } from "../data/stationVisuals";
 import { getVenuePoint } from "../data/layoutLookup";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
 import { clampPointToPlayableBounds, isPointInsidePlayableBounds } from "../systems/map/PlayableBounds";
-import { getPermanentlySignedVenueIds, getStreetSignPrimaryText } from "../systems/map/StreetRenderer";
+import { getEnterableStreetVenueIds, getPermanentlySignedVenueIds, getStreetSignPrimaryText } from "../systems/map/StreetRenderer";
 import { createStreetSlots, type StreetSlotSpec, type StreetTemplate } from "../systems/map/StreetTemplate";
 import { TILE_SIZE } from "../systems/map/TileStreetScale";
 
@@ -108,6 +109,24 @@ describe("authored street layout invariants", () => {
     const duplicateTexts = signTexts.filter((text, index) => signTexts.indexOf(text) !== index);
     expect(duplicateTexts).toEqual([]);
     expect(getPermanentlySignedVenueIds(activeStreetTemplate).has("canggu_station")).toBe(true);
+  });
+
+  it("marks street venues with interiors as enterable doors", () => {
+    const enterableStreetVenueIds = getEnterableStreetVenueIds(activeStreetTemplate);
+    const interiorVenueIds = new Set(Object.values(interiorDefinitions).map((interior) => interior.venueId));
+
+    expect([...enterableStreetVenueIds].every((venueId) => interiorVenueIds.has(venueId))).toBe(true);
+    expect(enterableStreetVenueIds).toEqual(
+      new Set([
+        "canggu_station",
+        "baked_berawa",
+        "milk_madu_berawa",
+        "bali_family_rental_scooter",
+        "satu_satu_coffee",
+        "bungalow_living"
+      ])
+    );
+    expect(enterableStreetVenueIds.has("cheap_kos")).toBe(false);
   });
 
   it("contains playable bounds to the authored corridor while keeping venues and interaction points reachable", () => {

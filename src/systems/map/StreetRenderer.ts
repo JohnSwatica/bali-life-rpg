@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import type { CuratedCategory } from "../../data/curatedVenues";
+import { interiorDefinitions } from "../../data/interiors";
 import { getStationVisualForVenue, type StationVisualDefinition } from "../../data/stationVisuals";
 import type { MapFeatureDefinition, RoadPathDefinition } from "../../data/berawaLayout";
 import {
@@ -54,6 +55,8 @@ const AMBIENT_STREET_PALETTE: BuildingPalette = {
   sign: 0x23594f,
   accent: 0xf2c35d
 };
+
+const ENTERABLE_INTERIOR_VENUE_IDS = new Set(Object.values(interiorDefinitions).map((interior) => interior.venueId));
 
 export function renderStreetTemplate(scene: Phaser.Scene, template: StreetTemplate): StreetRenderHandle {
   createOriginalStreetTileset(scene);
@@ -268,8 +271,9 @@ function drawStreetBuildings(g: Phaser.GameObjects.Graphics, template: StreetTem
     }
     const stationVisual = getStationVisualForVenue(rect.slot.venueId, rect.slot.category);
     const palette = stationVisual?.palette ?? buildingPalette(rect.slot.category, rect.slot.isLandmark, hashString(rect.slot.venueId));
+    const isEnterable = isStreetBuildingEnterable(rect.slot);
     const shadowOffset = 4;
-    drawEntranceMat(g, rect, palette);
+    drawEntranceMat(g, rect, palette, isEnterable);
     g.fillStyle(0x24312a, 0.22);
     g.fillRoundedRect(rect.x + shadowOffset, rect.y + shadowOffset, rect.width, rect.height, 3);
     g.fillStyle(palette.wall, 1);
@@ -278,7 +282,7 @@ function drawStreetBuildings(g: Phaser.GameObjects.Graphics, template: StreetTem
     g.fillRoundedRect(rect.x - 3, rect.y, rect.width + 6, rect.height * 0.48, 4);
     g.fillStyle(palette.roofLight, 0.72);
     g.fillRect(rect.x + 6, rect.y + 7, Math.max(8, rect.width - 12), 5);
-    drawRoadFacingFacade(g, rect, palette);
+    drawRoadFacingFacade(g, rect, palette, isEnterable);
     drawCategoryDetails(g, rect, palette, stationVisual);
   }
 }
@@ -319,26 +323,46 @@ export function getPermanentlySignedVenueIds(template: StreetTemplate): Set<stri
   );
 }
 
-function drawEntranceMat(g: Phaser.GameObjects.Graphics, rect: StreetBuildingRect, palette: BuildingPalette): void {
+export function isStreetBuildingEnterable(slot: Pick<StreetBuildingSlot, "venueId">): boolean {
+  return Boolean(slot.venueId && ENTERABLE_INTERIOR_VENUE_IDS.has(slot.venueId));
+}
+
+export function getEnterableStreetVenueIds(template: StreetTemplate): Set<string> {
+  return new Set(
+    template.slots
+      .filter((slot) => slot.venueId && isStreetBuildingEnterable(slot))
+      .map((slot) => slot.venueId!)
+  );
+}
+
+function drawEntranceMat(g: Phaser.GameObjects.Graphics, rect: StreetBuildingRect, palette: BuildingPalette, isEnterable: boolean): void {
   const side = rect.slot.side;
-  const matWidth = 22;
-  const matHeight = 34;
+  const matWidth = isEnterable ? 28 : 22;
+  const matHeight = isEnterable ? 40 : 34;
   const matX = side === "left" ? rect.x + rect.width + 4 : rect.x - matWidth - 4;
   const matY = rect.centerY - matHeight / 2;
-  g.fillStyle(palette.accent, 0.38);
+  g.fillStyle(isEnterable ? 0xffe2a0 : palette.accent, isEnterable ? 0.5 : 0.38);
   g.fillRoundedRect(matX, matY, matWidth, matHeight, 3);
-  g.lineStyle(2, palette.trim, 0.45);
+  g.lineStyle(isEnterable ? 3 : 2, isEnterable ? palette.accent : palette.trim, isEnterable ? 0.75 : 0.45);
   g.strokeRoundedRect(matX, matY, matWidth, matHeight, 3);
 }
 
-function drawRoadFacingFacade(g: Phaser.GameObjects.Graphics, rect: StreetBuildingRect, palette: BuildingPalette): void {
+function drawRoadFacingFacade(
+  g: Phaser.GameObjects.Graphics,
+  rect: StreetBuildingRect,
+  palette: BuildingPalette,
+  isEnterable: boolean
+): void {
   const side = rect.slot.side;
   const isLeftSide = side === "left";
   const frontX = isLeftSide ? rect.x + rect.width : rect.x;
   const facadeX = isLeftSide ? frontX - 13 : frontX;
   const awningX = isLeftSide ? frontX - 38 : frontX + 2;
-  const doorX = isLeftSide ? frontX - 16 : frontX + 6;
+  const doorX = isLeftSide ? frontX - (isEnterable ? 20 : 16) : frontX + 6;
   const windowX = isLeftSide ? frontX - 18 : frontX + 8;
+  const doorY = rect.centerY + 6;
+  const doorWidth = isEnterable ? 14 : 10;
+  const doorHeight = isEnterable ? 28 : 25;
 
   g.fillStyle(palette.trim, 0.7);
   g.fillRect(facadeX, rect.y + 6, 13, rect.height - 12);
@@ -350,8 +374,28 @@ function drawRoadFacingFacade(g: Phaser.GameObjects.Graphics, rect: StreetBuildi
     g.fillRect(awningX + index * 9, rect.centerY - 30, 8, 9);
   }
 
+  if (isEnterable) {
+    const spillX = isLeftSide ? frontX + 34 : frontX - 34;
+    g.fillStyle(0xffefbd, 0.22);
+    g.beginPath();
+    g.moveTo(frontX, doorY + 2);
+    g.lineTo(spillX, doorY - 6);
+    g.lineTo(spillX, doorY + doorHeight + 8);
+    g.lineTo(frontX, doorY + doorHeight);
+    g.closePath();
+    g.fillPath();
+    g.lineStyle(2, 0xfff1c6, 0.38);
+    g.lineBetween(frontX, doorY + 3, spillX, doorY - 5);
+    g.lineBetween(frontX, doorY + doorHeight - 2, spillX, doorY + doorHeight + 6);
+  }
+
   g.fillStyle(0x5e3f2d, 0.86);
-  g.fillRoundedRect(doorX, rect.centerY + 6, 10, 25, 2);
+  g.fillRoundedRect(doorX, doorY, doorWidth, doorHeight, 2);
+  if (isEnterable) {
+    g.fillStyle(0xfff1c6, 0.86);
+    g.fillRoundedRect(doorX + 3, doorY + 4, 3, doorHeight - 8, 1);
+    g.fillCircle(doorX + doorWidth - 3, doorY + doorHeight * 0.55, 1.5);
+  }
   g.fillStyle(0xf7eac1, 0.9);
   g.fillRoundedRect(windowX, rect.centerY - 12, 10, 12, 2);
   g.fillRoundedRect(windowX, rect.centerY + 38, 10, 12, 2);
