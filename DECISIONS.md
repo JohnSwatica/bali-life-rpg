@@ -541,3 +541,9 @@ The interior primitive is no longer a Warung-only special case. `openExteriorVen
 This remains a restaging layer over existing systems. The bakery counter and cafe table are interior stations that route back to the existing venue activity contexts; no new minigame, economy, save schema, quest logic, or activity engine was added. Scheduled NPC slots also reuse existing route data: Kadek appears inside BAKED only when his routine is at BAKED, while Ari, Willow, and Ibu Sari appear inside Milk & Madu only when their routines are there.
 
 The automated contract now covers all first-day interiors: exterior-door mapping, entrances/exit mats/stations/NPC slots inside room bounds, scheduled NPC occupancy for BAKED and Milk & Madu, and station-to-activity-context routing. The latest verification is `npm test -- --run` with 146 passing tests and `npm run build` passing.
+
+## 2026-07-02 - L1 Step 3 Makes The Cheap Kos A Room, Not A Marker
+
+The home station now uses the same interior primitive as the first-day venues. Pressing the home interaction at `cheap_kos` enters `cheap_kos_interior`; the existing home activity menu is now reached from a room station instead of directly from the exterior marker. This lets the Act 0 first-night beat land inside an actual cramped kos room while preserving the old home actions: sleep, rent payment, planning, and snack prep.
+
+This is still presentation and staging over existing systems. `cheap_kos` remains the home station ID in the activity engine; rent and sleep use the same `HustleEconomy` and `SleepCycle` helpers; no save schema, economy values, or quest progression rules changed. `sleepToMorning()` now restores scene mode to `interior` or `world` after closing the DOM activity panel so sleeping from the interior does not leave the scene stuck in `activity` mode.
