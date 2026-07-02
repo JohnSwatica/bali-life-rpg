@@ -1,5 +1,6 @@
 import { interiorDefinitions } from "../../data/interiors";
 import { npcDefinitions } from "../../data/npcs";
+import { getDeliveryDefinition } from "../../data/deliveries";
 import { getActiveNpcRoute } from "../npcs/NpcRoutineRoutes";
 import { getVenueActivityContext, type VenueActivityContext } from "../life/ActivityEngine";
 import type { InteriorDefinition, InteriorNpcSlotDefinition, InteriorStationDefinition, WorldState } from "../../types";
@@ -7,6 +8,11 @@ import type { InteriorDefinition, InteriorNpcSlotDefinition, InteriorStationDefi
 export interface ScheduledInteriorNpcSlot {
   interior: InteriorDefinition;
   slot: InteriorNpcSlotDefinition;
+}
+
+export interface InteriorDeliveryPickupTarget {
+  deliveryId: string;
+  label: string;
 }
 
 export function getInteriorByVenueId(
@@ -54,4 +60,22 @@ export function getScheduledInteriorForNpc(
 
 export function getInteriorStationActivityContext(station: InteriorStationDefinition): VenueActivityContext | undefined {
   return getVenueActivityContext(station.activityVenueId) ?? undefined;
+}
+
+export function getInteriorDeliveryPickupForStation(
+  world: WorldState,
+  station: InteriorStationDefinition
+): InteriorDeliveryPickupTarget | undefined {
+  const active = world.life.hustle.activeDelivery;
+  if (!active || active.stage !== "accepted") {
+    return undefined;
+  }
+  const delivery = getDeliveryDefinition(active.deliveryId);
+  if (!delivery || delivery.pickupVenueId !== station.activityVenueId) {
+    return undefined;
+  }
+  return {
+    deliveryId: active.deliveryId,
+    label: delivery.pickupLabel
+  };
 }

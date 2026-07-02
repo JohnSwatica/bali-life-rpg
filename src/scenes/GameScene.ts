@@ -54,7 +54,12 @@ import { getPermanentlySignedVenueIds, renderStreetTemplate } from "../systems/m
 import { STREET_CAMERA, TILE_SIZE } from "../systems/map/TileStreetScale";
 import { clampPointToPlayableBounds } from "../systems/map/PlayableBounds";
 import { scaleDistance, scalePoint } from "../systems/map/WorldScale";
-import { getInteriorByVenueId, getOccupiedInteriorNpcSlots, getScheduledInteriorForNpc } from "../systems/interiors/InteriorState";
+import {
+  getInteriorByVenueId,
+  getInteriorDeliveryPickupForStation,
+  getOccupiedInteriorNpcSlots,
+  getScheduledInteriorForNpc
+} from "../systems/interiors/InteriorState";
 import {
   advanceNpcRouteMotion,
   getActiveNpcRoute,
@@ -317,6 +322,7 @@ interface NpcAmbientLineBubble {
 
 type InteriorInteractionTarget =
   | { type: "exit"; label: string; interiorId: string }
+  | { type: "delivery"; id: string; label: string }
   | { type: "npc"; id: string; label: string }
   | { type: "station"; id: string; label: string; activityVenueId: string };
 
@@ -3030,6 +3036,10 @@ export class GameScene extends Phaser.Scene {
     }
     if (target.type === "npc") {
       this.interactWithNpc(target.id);
+      return;
+    }
+    if (target.type === "delivery") {
+      this.handleDeliveryInteraction(target.id);
       return;
     }
     this.openVenueActivityMenu(target.activityVenueId);
@@ -6132,6 +6142,16 @@ export class GameScene extends Phaser.Scene {
     for (const station of interior.stations) {
       const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, station.x, station.y);
       if (distance <= station.radius) {
+        const deliveryPickup = getInteriorDeliveryPickupForStation(this.world, station);
+        if (deliveryPickup) {
+          candidates.push({
+            type: "delivery",
+            id: deliveryPickup.deliveryId,
+            label: deliveryPickup.label,
+            distance,
+            priority: 0
+          });
+        }
         candidates.push({
           type: "station",
           id: station.id,

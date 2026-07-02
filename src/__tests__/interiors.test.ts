@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { interiorDefinitions } from "../data/interiors";
 import { createInitialWorldState } from "../systems/WorldState";
+import { acceptDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
 import {
   getInteriorByVenueId,
+  getInteriorDeliveryPickupForStation,
   getInteriorStationActivityContext,
   getOccupiedInteriorNpcSlots,
   getScheduledInteriorForNpc,
@@ -118,5 +120,22 @@ describe("interior definitions", () => {
       "satu_satu_coffee",
       "bungalow_living"
     ]);
+  });
+
+  it("surfaces active delivery pickups at matching interior stations", () => {
+    const world = createInitialWorldState();
+    const station = interiorDefinitions.baked_berawa_interior.stations.find((candidate) => candidate.id === "bakery_counter");
+
+    expect(station).toBeDefined();
+    expect(getInteriorDeliveryPickupForStation(world, station!)).toBeUndefined();
+    expect(acceptDelivery(world, "first_baked_villa_delivery", 8 * 60)).toMatchObject({ ok: true });
+
+    expect(getInteriorDeliveryPickupForStation(world, station!)).toEqual({
+      deliveryId: "first_baked_villa_delivery",
+      label: "Pick up sealed pastries at BAKED."
+    });
+
+    expect(pickupDelivery(world, 8 * 60 + 4)).toMatchObject({ ok: true });
+    expect(getInteriorDeliveryPickupForStation(world, station!)).toBeUndefined();
   });
 });
