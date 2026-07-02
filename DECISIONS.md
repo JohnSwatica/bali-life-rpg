@@ -570,6 +570,8 @@ The design counter routes to the existing `bungalow_living` activity/shop contex
 
 Interior stations now participate in the existing delivery pickup flow. If the player has an accepted delivery whose pickup venue matches a station's `activityVenueId`, that station surfaces the pickup label and calls the same `handleDeliveryInteraction()` path used by exterior markers. This keeps delivery rewards, timing, Act 0 progression, inventory, and save behavior unchanged while making counters feel like the real pickup point.
 
+Venue objective targets also retarget to the active interior's primary station while the player is inside that matching venue. This keeps the field guidance coherent after entering a room: a BAKED pickup objective points to the bakery counter, not to the exterior street node behind the room camera.
+
 Street readability also moved one notch closer to the GDD door grammar. Venues with `InteriorDefinition`s now get a distinct enterable-door treatment on the authored street: warmer entrance mat, wider lit door, and light spill toward the sidewalk. Inside rooms, station points draw a small gold floor cue so usable counters/tables are readable without another text label or menu-first prompt.
 
 This remains L1 staging and presentation. No delivery economy values, save schema, quest logic, venue coordinates, Act 3 furniture placement, permit systems, backend, AI, real commerce, or multiplayer were added.
