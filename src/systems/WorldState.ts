@@ -60,7 +60,7 @@ export function createInitialWorldState(): WorldState {
     neighborhoodId: "berawa-finns-club",
     clock: {
       day: 1,
-      minuteOfDay: 18 * 60 + 10,
+      minuteOfDay: 8 * 60,
       minutesPerSecond: 4
     },
     localPlayerId: LOCAL_PLAYER_ID,

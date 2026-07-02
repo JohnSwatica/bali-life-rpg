@@ -39,7 +39,7 @@ describe("Act 0 hustle and deliveries", () => {
 
     expect(copy.title).toContain("Berawa");
     expect(copy.body.startsWith("WASD")).toBe(false);
-    expect(copy.body).toContain("Dusk");
+    expect(copy.body).toContain("Morning");
     expect(copy.body).toContain("Ibu Sari");
     expect(copy.body).toContain("Canggu Station");
     expect(copy.body.indexOf("Controls")).toBeGreaterThan(copy.body.indexOf("Ibu Sari"));
@@ -48,7 +48,7 @@ describe("Act 0 hustle and deliveries", () => {
   it("accepts, picks up, completes, and rewards the first BAKED delivery", () => {
     const world = createInitialWorldState();
     const player = world.players[world.localPlayerId];
-    const acceptedAt = 18 * 60 + 10;
+    const acceptedAt = 8 * 60;
 
     const accepted = acceptDelivery(world, "first_baked_villa_delivery", acceptedAt);
     expect(accepted).toMatchObject({ ok: true });

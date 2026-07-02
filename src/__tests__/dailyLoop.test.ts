@@ -27,6 +27,10 @@ function option(world: WorldState, venueId: string, activityId: string) {
 }
 
 describe("daily life meters and activities", () => {
+  it("starts a new save in morning light", () => {
+    expect(createInitialWorldState().clock.minuteOfDay).toBe(8 * 60);
+  });
+
   it("clamps meter changes to 0-100 and syncs legacy focus/social mirrors", () => {
     const world = createInitialWorldState();
 

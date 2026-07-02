@@ -86,7 +86,7 @@ describe("first-hour proof path", () => {
 });
 
 function completeAct0DeliveryAndMeal(world: WorldState): void {
-  const now = 18 * 60 + 10;
+  const now = 8 * 60;
   expect(completeAct0Step(world, "meet_ibu_sari")).toBe(true);
   expect(acceptDelivery(world, "first_baked_villa_delivery", now)).toMatchObject({ ok: true });
   expect(pickupDelivery(world, now + 10)).toMatchObject({ ok: true });

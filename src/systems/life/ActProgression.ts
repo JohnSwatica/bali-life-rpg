@@ -14,10 +14,10 @@ export interface Act0ColdOpenCopy {
 }
 
 const ACT0_COLD_OPEN: Act0ColdOpenCopy = {
-  title: "Dusk In Berawa",
+  title: "Morning In Berawa",
   body:
-    "Dusk drops you at the cheap kos with one bag, almost no rupiah, and Berawa traffic humming outside. " +
-    "Your phone buzzes: Ibu Sari can help if you reach her near Canggu Station before the evening rush.\n\n" +
+    "Morning drops you at the cheap kos with one bag, almost no rupiah, and Berawa traffic humming outside. " +
+    "Your phone buzzes: Ibu Sari can help if you reach her near Canggu Station before the first rush.\n\n" +
     "Walk toward the marker. Controls: WASD/arrow keys move, E / ACT talks, P opens the phone for backup, ESC closes panels."
 };
 
