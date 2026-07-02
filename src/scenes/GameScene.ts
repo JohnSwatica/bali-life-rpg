@@ -2993,7 +2993,7 @@ export class GameScene extends Phaser.Scene {
 
   private openExteriorVenueInteraction(venueId: string): void {
     const interior = getInteriorByVenueId(venueId);
-    if (interior?.id === "warung_sari_interior") {
+    if (interior) {
       this.enterInterior(interior.id);
       return;
     }
@@ -3150,18 +3150,78 @@ export class GameScene extends Phaser.Scene {
         g.fillStyle(0xfff0bd, 0.9);
         g.fillCircle(table.x, table.y - TILE_SIZE * 0.02, TILE_SIZE * 0.12);
       }
+    } else if (interior.id === "baked_berawa_interior") {
+      g.fillStyle(0xf3e3c0, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 1.25, y + TILE_SIZE * 1.62, TILE_SIZE * 9.5, TILE_SIZE * 1.08, TILE_SIZE * 0.1);
+      g.fillStyle(0x7a432f, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 1.55, y + TILE_SIZE * 2.02, TILE_SIZE * 2.45, TILE_SIZE * 0.36, TILE_SIZE * 0.08);
+      g.fillRoundedRect(x + TILE_SIZE * 4.45, y + TILE_SIZE * 2.02, TILE_SIZE * 2.45, TILE_SIZE * 0.36, TILE_SIZE * 0.08);
+      g.fillRoundedRect(x + TILE_SIZE * 7.35, y + TILE_SIZE * 2.02, TILE_SIZE * 2.45, TILE_SIZE * 0.36, TILE_SIZE * 0.08);
+      g.fillStyle(0xd88d4c, 1);
+      for (const tray of [
+        { x: x + TILE_SIZE * 2.2, y: y + TILE_SIZE * 2.18 },
+        { x: x + TILE_SIZE * 5.1, y: y + TILE_SIZE * 2.18 },
+        { x: x + TILE_SIZE * 8, y: y + TILE_SIZE * 2.18 }
+      ]) {
+        g.fillEllipse(tray.x, tray.y, TILE_SIZE * 0.38, TILE_SIZE * 0.16, 16);
+      }
+      g.fillStyle(0x2d2620, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 8.35, y + TILE_SIZE * 3.25, TILE_SIZE * 1.6, TILE_SIZE * 1.35, TILE_SIZE * 0.12);
+      g.fillStyle(0xffb45c, 0.74);
+      g.fillRoundedRect(x + TILE_SIZE * 8.62, y + TILE_SIZE * 3.55, TILE_SIZE * 1.06, TILE_SIZE * 0.42, TILE_SIZE * 0.08);
+      g.fillStyle(0x8b5937, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 2.1, y + TILE_SIZE * 4.8, TILE_SIZE * 2.3, TILE_SIZE * 0.72, TILE_SIZE * 0.12);
+      g.fillStyle(0xfff0bd, 0.88);
+      g.fillCircle(x + TILE_SIZE * 3.25, y + TILE_SIZE * 5.05, TILE_SIZE * 0.16);
+    } else if (interior.id === "milk_madu_interior") {
+      g.fillStyle(0xf4d58d, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 1.1, y + TILE_SIZE * 1.5, TILE_SIZE * 9.8, TILE_SIZE * 0.72, TILE_SIZE * 0.14);
+      g.fillStyle(0x345c54, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 1.35, y + TILE_SIZE * 1.78, TILE_SIZE * 3.1, TILE_SIZE * 0.22, TILE_SIZE * 0.08);
+      g.fillRoundedRect(x + TILE_SIZE * 5.1, y + TILE_SIZE * 1.78, TILE_SIZE * 2.2, TILE_SIZE * 0.22, TILE_SIZE * 0.08);
+      const tables = [
+        { x: x + TILE_SIZE * 3.4, y: y + TILE_SIZE * 4.85 },
+        { x: x + TILE_SIZE * 6, y: y + TILE_SIZE * 4.2 },
+        { x: x + TILE_SIZE * 8.65, y: y + TILE_SIZE * 4.9 }
+      ];
+      for (const table of tables) {
+        g.fillStyle(0x8b5937, 1);
+        g.fillRoundedRect(table.x - TILE_SIZE * 0.55, table.y - TILE_SIZE * 0.3, TILE_SIZE * 1.1, TILE_SIZE * 0.6, TILE_SIZE * 0.12);
+        g.fillStyle(0xfff0bd, 0.9);
+        g.fillCircle(table.x - TILE_SIZE * 0.14, table.y - TILE_SIZE * 0.04, TILE_SIZE * 0.12);
+        g.fillStyle(0x6ab7ff, 0.82);
+        g.fillRoundedRect(table.x + TILE_SIZE * 0.08, table.y - TILE_SIZE * 0.15, TILE_SIZE * 0.34, TILE_SIZE * 0.22, TILE_SIZE * 0.05);
+      }
+      g.fillStyle(0x4f8f66, 1);
+      g.fillCircle(x + TILE_SIZE * 1.55, y + TILE_SIZE * 5.55, TILE_SIZE * 0.32);
+      g.fillCircle(x + TILE_SIZE * 1.75, y + TILE_SIZE * 5.28, TILE_SIZE * 0.28);
+      g.fillStyle(0x7f4f35, 1);
+      g.fillRect(x + TILE_SIZE * 1.58, y + TILE_SIZE * 5.55, TILE_SIZE * 0.22, TILE_SIZE * 0.62);
     }
   }
 
   private createInteriorDiners(interior: InteriorDefinition): void {
-    if (interior.id !== "warung_sari_interior" || this.interiorDinerSprites.has(interior.id)) {
+    if (this.interiorDinerSprites.has(interior.id)) {
       return;
     }
     const { x, y } = interior.origin;
-    const diners = [
-      { key: "npc-ari", x: x + TILE_SIZE * 1.9, y: y + TILE_SIZE * 5.1, tint: 0xe58fb1 },
-      { key: "npc-made", x: x + TILE_SIZE * 9.15, y: y + TILE_SIZE * 5.35, tint: 0x62c48f }
-    ];
+    const diners =
+      interior.id === "warung_sari_interior"
+        ? [
+            { key: "npc-ari", x: x + TILE_SIZE * 1.9, y: y + TILE_SIZE * 5.1, tint: 0xe58fb1 },
+            { key: "npc-made", x: x + TILE_SIZE * 9.15, y: y + TILE_SIZE * 5.35, tint: 0x62c48f }
+          ]
+        : interior.id === "baked_berawa_interior"
+          ? [{ key: "npc-made", x: x + TILE_SIZE * 2.75, y: y + TILE_SIZE * 5.25, tint: 0xf4b860 }]
+          : interior.id === "milk_madu_interior"
+            ? [
+                { key: "npc-sari", x: x + TILE_SIZE * 2.85, y: y + TILE_SIZE * 5.4, tint: 0x91b7dd },
+                { key: "npc-made", x: x + TILE_SIZE * 9.25, y: y + TILE_SIZE * 5.45, tint: 0xe58fb1 }
+              ]
+            : [];
+    if (diners.length === 0) {
+      return;
+    }
     const sprites = diners.map((diner) => {
       const sprite = this.add.sprite(diner.x, diner.y, diner.key).setDepth(diner.y).setTint(diner.tint).setAlpha(0.82);
       this.applyCharacterAnimation(sprite, diner.key, "down", false, CHARACTER_SPRITE_SCALE * 0.82);
