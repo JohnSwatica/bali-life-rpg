@@ -23,5 +23,8 @@ export function shouldRedirectAct0FirstRunInteraction(
   if (target?.type === "npc" && target.id === "ibu_sari") {
     return false;
   }
+  if ((target?.type === "venue" || target?.type === "shop") && target.id === "canggu_station") {
+    return false;
+  }
   return atHomeBase || Boolean(target);
 }

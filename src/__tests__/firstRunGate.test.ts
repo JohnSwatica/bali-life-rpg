@@ -49,6 +49,18 @@ describe("first-run Act 0 gate", () => {
         }
       )
     ).toBe(false);
+    expect(
+      shouldRedirectAct0FirstRunInteraction(
+        world,
+        firstRunSessionActive,
+        {
+          type: "shop",
+          id: "canggu_station",
+          label: "Enter Warung Sari",
+          distance: 18
+        }
+      )
+    ).toBe(false);
     expect(FIRST_RUN_IBU_REDIRECT_TOAST).toContain("Ibu Sari");
   });
 
