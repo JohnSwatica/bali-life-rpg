@@ -559,3 +559,9 @@ The scooter rental station routes to the existing `bali_family_rental_scooter` a
 Satu-Satu Coffee Company now has `satu_satu_interior`, which turns the Act 2 focus-table destination into an interior scene rather than only an exterior marker or Phone objective. The room has a communal laptop table, coffee bar, notice board, and scheduled slots for Kadek, Made, and Pak Bagus when their existing routes place them at Satu-Satu.
 
 The focus table station routes to the existing `satu_satu_coffee` activity context, preserving the current cafe station choices, Focus Table group bridge, opportunities, events, and Act 2 guidance. No new club, relationship, minigame, save, backend, or Act 3 business system was added. This is another L1 staging pass over working substrate.
+
+## 2026-07-03 - L1 Step 6 Stages Bungalow Living Without Starting Act 3
+
+Bungalow Living Bali now has `bungalow_living_interior`, giving Made's homeware/fixer venue a room with textile racks, cushions, a design counter, and a small back-office board. Made appears inside only when her existing routine places her at Bungalow Living.
+
+The design counter routes to the existing `bungalow_living` activity/shop context. This intentionally stops short of the GDD's later furniture-placement, permit-office, and Act 3 business hooks; the slice is only L1 staging over an existing shop/relationship/opportunity venue. The shared interior tests cover door mapping, Made's scheduled slot, and the design counter's activity context.
