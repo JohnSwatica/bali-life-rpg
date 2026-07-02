@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { interiorDefinitions } from "../data/interiors";
 import { createInitialWorldState } from "../systems/WorldState";
 import { acceptDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
-import { calculateInteriorCameraZoom } from "../systems/interiors/InteriorCamera";
+import { calculateInteriorCameraBounds, calculateInteriorCameraZoom } from "../systems/interiors/InteriorCamera";
 import { scaleDistance } from "../systems/map/WorldScale";
 import {
   getInteriorByVenueId,
@@ -63,6 +63,18 @@ describe("interior definitions", () => {
     expect(calculateInteriorCameraZoom(1280, 720, interiorDefinitions.warung_sari_interior)).toBeCloseTo(2.5875);
     expect(calculateInteriorCameraZoom(390, 844, interiorDefinitions.warung_sari_interior)).toBeCloseTo(0.934375);
     expect(calculateInteriorCameraZoom(2560, 1440, interiorDefinitions.warung_sari_interior)).toBe(2.8);
+  });
+
+  it("centers small interiors in a viewport-sized camera bounds rect", () => {
+    const interior = interiorDefinitions.cheap_kos_interior;
+    const zoom = calculateInteriorCameraZoom(1280, 800, interior);
+    const bounds = calculateInteriorCameraBounds(1280, 800, zoom, interior);
+
+    expect(zoom).toBe(2.8);
+    expect(bounds.width).toBeCloseTo(1280 / zoom);
+    expect(bounds.height).toBeCloseTo(800 / zoom);
+    expect(bounds.x).toBeCloseTo(interior.origin.x - (bounds.width - interior.width) / 2);
+    expect(bounds.y).toBeCloseTo(interior.origin.y - (bounds.height - interior.height) / 2);
   });
 
   it("occupies Ibu Sari's counter slot when her schedule is at Canggu Station", () => {

@@ -62,7 +62,7 @@ import {
   getScheduledInteriorForNpc,
   isInteriorPointInsideRoom
 } from "../systems/interiors/InteriorState";
-import { calculateInteriorCameraZoom } from "../systems/interiors/InteriorCamera";
+import { calculateInteriorCameraBounds, calculateInteriorCameraZoom } from "../systems/interiors/InteriorCamera";
 import {
   advanceNpcRouteMotion,
   getActiveNpcRoute,
@@ -3413,9 +3413,10 @@ export class GameScene extends Phaser.Scene {
 
   private applyInteriorCameraBounds(interior: InteriorDefinition): void {
     const zoom = calculateInteriorCameraZoom(this.scale.width, this.scale.height, interior);
+    const bounds = calculateInteriorCameraBounds(this.scale.width, this.scale.height, zoom, interior);
     this.cameras.main.setZoom(zoom);
     this.physics.world.setBounds(interior.origin.x, interior.origin.y, interior.width, interior.height);
-    this.cameras.main.setBounds(interior.origin.x, interior.origin.y, interior.width, interior.height);
+    this.cameras.main.setBounds(bounds.x, bounds.y, bounds.width, bounds.height);
     this.cameras.main.centerOn(interior.origin.x + interior.width / 2, interior.origin.y + interior.height / 2);
   }
 
@@ -3985,8 +3986,10 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    const node = venueMapNodes.find((candidate) => candidate.venueId === context.venueId);
-    this.placePlayerAtCommittedVenue(node);
+    if (!this.activeInteriorId) {
+      const node = venueMapNodes.find((candidate) => candidate.venueId === context.venueId);
+      this.placePlayerAtCommittedVenue(node);
+    }
 
     this.closePanel(false);
     this.mode = "committedActivity";
@@ -4045,8 +4048,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     const context = getVenueActivityContext(venueId);
-    const node = venueMapNodes.find((candidate) => candidate.venueId === venueId);
-    this.placePlayerAtCommittedVenue(node);
+    if (!this.activeInteriorId) {
+      const node = venueMapNodes.find((candidate) => candidate.venueId === venueId);
+      this.placePlayerAtCommittedVenue(node);
+    }
 
     this.closePanel(false);
     this.mode = "committedActivity";
@@ -4108,7 +4113,7 @@ export class GameScene extends Phaser.Scene {
     this.committedActivity = undefined;
     this.world.activeActivity = null;
     this.destroyCommittedActivityOverlay();
-    this.mode = "world";
+    this.mode = this.activeInteriorId ? "interior" : "world";
     const performanceScore = resolvePerformanceScore(active.minigame);
     active.performanceScore = performanceScore;
     if (active.source === "activity") {
@@ -4140,7 +4145,7 @@ export class GameScene extends Phaser.Scene {
     this.committedActivity = undefined;
     this.world.activeActivity = null;
     this.destroyCommittedActivityOverlay();
-    this.mode = "world";
+    this.mode = this.activeInteriorId ? "interior" : "world";
     saveWorldState(this.world);
     this.showToast(`${label} cancelled. No reward earned.`);
   }
@@ -6224,6 +6229,9 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     if (active.stage === "accepted") {
+      if (getInteriorByVenueId(delivery.pickupVenueId)) {
+        return;
+      }
       const node = venueMapNodes.find((candidate) => candidate.venueId === delivery.pickupVenueId);
       if (!node) {
         return;
