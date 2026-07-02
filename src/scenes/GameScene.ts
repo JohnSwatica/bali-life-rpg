@@ -3244,6 +3244,36 @@ export class GameScene extends Phaser.Scene {
       g.fillCircle(x + TILE_SIZE * 2.1, y + TILE_SIZE * 2.95, TILE_SIZE * 0.18);
       g.fillCircle(x + TILE_SIZE * 2.65, y + TILE_SIZE * 2.95, TILE_SIZE * 0.18);
       g.fillCircle(x + TILE_SIZE * 3.2, y + TILE_SIZE * 2.95, TILE_SIZE * 0.18);
+    } else if (interior.id === "satu_satu_interior") {
+      g.fillStyle(0x6f4a2f, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 1.1, y + TILE_SIZE * 1.42, TILE_SIZE * 9.8, TILE_SIZE * 0.82, TILE_SIZE * 0.12);
+      g.fillStyle(0xf4d58d, 0.88);
+      g.fillRoundedRect(x + TILE_SIZE * 1.45, y + TILE_SIZE * 1.72, TILE_SIZE * 2.2, TILE_SIZE * 0.24, TILE_SIZE * 0.06);
+      g.fillRoundedRect(x + TILE_SIZE * 4.1, y + TILE_SIZE * 1.72, TILE_SIZE * 1.6, TILE_SIZE * 0.24, TILE_SIZE * 0.06);
+      g.fillStyle(0x253a35, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 8.55, y + TILE_SIZE * 2.75, TILE_SIZE * 1.55, TILE_SIZE * 2.05, TILE_SIZE * 0.12);
+      g.fillStyle(0xfff0bd, 0.76);
+      g.fillRoundedRect(x + TILE_SIZE * 8.82, y + TILE_SIZE * 3.08, TILE_SIZE * 1.02, TILE_SIZE * 0.18, TILE_SIZE * 0.04);
+      g.fillRoundedRect(x + TILE_SIZE * 8.82, y + TILE_SIZE * 3.58, TILE_SIZE * 0.78, TILE_SIZE * 0.18, TILE_SIZE * 0.04);
+      g.fillRoundedRect(x + TILE_SIZE * 8.82, y + TILE_SIZE * 4.08, TILE_SIZE * 0.96, TILE_SIZE * 0.18, TILE_SIZE * 0.04);
+      g.fillStyle(0x8b5937, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 2.35, y + TILE_SIZE * 4.02, TILE_SIZE * 4.9, TILE_SIZE * 0.82, TILE_SIZE * 0.14);
+      g.fillStyle(0x6ab7ff, 0.86);
+      for (const laptop of [
+        { x: x + TILE_SIZE * 3.15, y: y + TILE_SIZE * 4.0 },
+        { x: x + TILE_SIZE * 4.65, y: y + TILE_SIZE * 4.0 },
+        { x: x + TILE_SIZE * 6.15, y: y + TILE_SIZE * 4.0 }
+      ]) {
+        g.fillRoundedRect(laptop.x, laptop.y, TILE_SIZE * 0.42, TILE_SIZE * 0.28, TILE_SIZE * 0.05);
+      }
+      g.fillStyle(0xfff0bd, 0.88);
+      g.fillCircle(x + TILE_SIZE * 2.75, y + TILE_SIZE * 4.42, TILE_SIZE * 0.11);
+      g.fillCircle(x + TILE_SIZE * 5.35, y + TILE_SIZE * 4.42, TILE_SIZE * 0.11);
+      g.fillStyle(0x4f8f66, 1);
+      g.fillCircle(x + TILE_SIZE * 1.5, y + TILE_SIZE * 5.25, TILE_SIZE * 0.28);
+      g.fillCircle(x + TILE_SIZE * 1.74, y + TILE_SIZE * 5.02, TILE_SIZE * 0.24);
+      g.fillStyle(0x7f4f35, 1);
+      g.fillRect(x + TILE_SIZE * 1.54, y + TILE_SIZE * 5.25, TILE_SIZE * 0.2, TILE_SIZE * 0.58);
     }
   }
 

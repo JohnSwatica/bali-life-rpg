@@ -13,6 +13,8 @@ const KOS_X = OFFSCREEN_INTERIOR_X;
 const KOS_Y = OFFSCREEN_INTERIOR_Y + TILE_SIZE * 33;
 const RENTAL_X = OFFSCREEN_INTERIOR_X;
 const RENTAL_Y = OFFSCREEN_INTERIOR_Y + TILE_SIZE * 43;
+const SATU_SATU_X = OFFSCREEN_INTERIOR_X;
+const SATU_SATU_Y = OFFSCREEN_INTERIOR_Y + TILE_SIZE * 54;
 
 export const interiorDefinitions: Record<string, InteriorDefinition> = {
   warung_sari_interior: {
@@ -186,6 +188,50 @@ export const interiorDefinitions: Record<string, InteriorDefinition> = {
         npcId: "rio",
         x: RENTAL_X + TILE_SIZE * 7.1,
         y: RENTAL_Y + TILE_SIZE * 2.55
+      }
+    ]
+  },
+  satu_satu_interior: {
+    id: "satu_satu_interior",
+    venueId: "satu_satu_coffee",
+    name: "Satu-Satu Coffee Company",
+    origin: { x: SATU_SATU_X, y: SATU_SATU_Y },
+    width: TILE_SIZE * 12,
+    height: TILE_SIZE * 8,
+    entrance: {
+      x: SATU_SATU_X + TILE_SIZE * 6,
+      y: SATU_SATU_Y + TILE_SIZE * 6.5
+    },
+    exitMat: {
+      x: SATU_SATU_X + TILE_SIZE * 6,
+      y: SATU_SATU_Y + TILE_SIZE * 7.35,
+      radius: TILE_SIZE * 0.65
+    },
+    stations: [
+      {
+        id: "focus_table",
+        x: SATU_SATU_X + TILE_SIZE * 5.85,
+        y: SATU_SATU_Y + TILE_SIZE * 4.15,
+        radius: TILE_SIZE * 1.25,
+        label: "Use focus table",
+        activityVenueId: "satu_satu_coffee"
+      }
+    ],
+    npcSlots: [
+      {
+        npcId: "kadek",
+        x: SATU_SATU_X + TILE_SIZE * 3.4,
+        y: SATU_SATU_Y + TILE_SIZE * 4.85
+      },
+      {
+        npcId: "made",
+        x: SATU_SATU_X + TILE_SIZE * 6.25,
+        y: SATU_SATU_Y + TILE_SIZE * 4.25
+      },
+      {
+        npcId: "pak_bagus",
+        x: SATU_SATU_X + TILE_SIZE * 8.6,
+        y: SATU_SATU_Y + TILE_SIZE * 4.75
       }
     ]
   }
