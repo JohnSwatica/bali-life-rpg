@@ -565,3 +565,11 @@ The focus table station routes to the existing `satu_satu_coffee` activity conte
 Bungalow Living Bali now has `bungalow_living_interior`, giving Made's homeware/fixer venue a room with textile racks, cushions, a design counter, and a small back-office board. Made appears inside only when her existing routine places her at Bungalow Living.
 
 The design counter routes to the existing `bungalow_living` activity/shop context. This intentionally stops short of the GDD's later furniture-placement, permit-office, and Act 3 business hooks; the slice is only L1 staging over an existing shop/relationship/opportunity venue. The shared interior tests cover door mapping, Made's scheduled slot, and the design counter's activity context.
+
+## 2026-07-03 - L1 Step 7 Connects Interiors To The Hustle Loop
+
+Interior stations now participate in the existing delivery pickup flow. If the player has an accepted delivery whose pickup venue matches a station's `activityVenueId`, that station surfaces the pickup label and calls the same `handleDeliveryInteraction()` path used by exterior markers. This keeps delivery rewards, timing, Act 0 progression, inventory, and save behavior unchanged while making counters feel like the real pickup point.
+
+Street readability also moved one notch closer to the GDD door grammar. Venues with `InteriorDefinition`s now get a distinct enterable-door treatment on the authored street: warmer entrance mat, wider lit door, and light spill toward the sidewalk. Inside rooms, station points draw a small gold floor cue so usable counters/tables are readable without another text label or menu-first prompt.
+
+This remains L1 staging and presentation. No delivery economy values, save schema, quest logic, venue coordinates, Act 3 furniture placement, permit systems, backend, AI, real commerce, or multiplayer were added.

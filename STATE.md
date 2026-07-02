@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-02
+Last updated: 2026-07-03
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -14,7 +14,7 @@ Current durable truth:
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test -- --run` = 146 passing, 0 skipped; `npm run build` passes.
+- Current verification: `npm test -- --run` = 148 passing, 0 skipped; `npm run build` passes.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Canonical act order, set in stone for near-term work:
@@ -26,7 +26,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: run a human play-feel pass through the station-first first-hour path now that the first-day venues are interiorized: new save -> Canggu Station/Warung Sari -> first delivery pickup pressure around BAKED -> meal/coffee inside Milk & Madu or BAKED -> Ibu Sari field Hustle Board -> 5-run Act 1 hustle -> recover at stations when meters are low -> pay first rent at the cheap kos -> service/upgrade scooter at the rental counter -> Act 2 crew/event/bond -> one crew-opened opportunity. Tune pacing, visual density, and emotional clarity from that run before adding broader content. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, or Act 3 management sim yet.
+Immediate next move: run a human play-feel pass through the station-first first-hour path now that the first-day venues are interiorized and active delivery pickups can resolve at interior counters: new save -> Canggu Station/Warung Sari -> first delivery pickup at BAKED's counter -> meal/coffee inside Milk & Madu or BAKED -> Ibu Sari field Hustle Board -> 5-run Act 1 hustle -> recover at stations when meters are low -> pay first rent at the cheap kos -> service/upgrade scooter at the rental counter -> Act 2 crew/event/bond -> one crew-opened opportunity. Tune pacing, visual density, and emotional clarity from that run before adding broader content. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, or Act 3 management sim yet.
 
 ## Project
 
@@ -48,6 +48,7 @@ Immediate next move: run a human play-feel pass through the station-first first-
 - L1 Step 4 added `scooter_rental_interior` for Bali Family Rental Scooter. The rental now has an interior counter, helmet/service-board props, parked scooters, a `scooter_counter` station routed to the existing scooter rental activity/shop context, and a Rio slot when his routine places him at the rental. This stages Act 1 repair/upgrade and the shady-package location as a place without adding new economy or UI logic.
 - L1 Step 5 added `satu_satu_interior` for Satu-Satu Coffee Company. It has a focus-table station routed to the existing `satu_satu_coffee` cafe/focus activity context, laptop/table/notice-board props, and scheduled slots for Kadek, Made, and Pak Bagus when their routines converge there. This stages the Act 2 focus-table/social bridge as an interior scene without adding new club or relationship systems.
 - L1 Step 6 added `bungalow_living_interior` for Bungalow Living Bali. It has a design-counter station routed to the existing `bungalow_living` activity/shop context, textile/cushion/back-office props, and a Made slot when her routine places her at Bungalow. This covers the roadmap's current Bungalow interior target without starting the Act 3 furniture-placement or permit systems.
+- L1 Step 7 bridges interiors back into the core hustle loop and street readability. Active accepted deliveries now surface at matching interior stations, so the first BAKED pickup can be taken from the bakery counter using the existing delivery handler. Enterable street venues now get a distinct door/light-spill treatment, and all interior stations draw a subtle floor cue so counters/tables read as usable without adding more HUD text.
 - Tone fixes from L1 Step 1 are also in: new saves start at `08:00` with morning cold-open copy, player-caused pedestrian bumps in Acts 0-1 no longer create wanted/bounty/reputation damage and instead produce a soft apology/stumble, while Act 2+ keeps the old flagging behavior. The large objective/reveal radius ring was reduced to a compact marker so fresh boot no longer shows a screen-dominating halo.
 - L1 Step 1 designer acceptance ran in the in-app browser at `1280x800` on `localhost:5173`: fresh boot showed morning light and compact objective cue, Canggu Station entered the offscreen Warung interior, Ibu Sari appeared inside and fired her normal Act 0 first-meet dialogue, and the exit mat returned the player outside. The meal station is covered by unit/helper tests mapping it to the existing Canggu Station activity context; the early-act no-wanted bump path is covered by `recklessRiding.test.ts`.
 - `GAME_DESIGN.md` is now the canonical Game Design Document for game/systems/map/verbs, read alongside `STORY_BIBLE.md` for narrative. Where prior build decisions conflict with the GDD, the GDD wins; existing substrate such as the Discovery Ledger, reputation axes, shady-package choice, opportunities, relationships, meters, saves, and phone data should be restaged into the GDD frame rather than discarded. The world is entering an L1-L8 rebuild; the first step is the L1 interior/door primitive.
