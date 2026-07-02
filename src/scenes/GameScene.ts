@@ -501,11 +501,14 @@ export class GameScene extends Phaser.Scene {
   private hudLayer!: Phaser.GameObjects.Container;
   private hudChrome!: Phaser.GameObjects.Graphics;
   private timeText!: Phaser.GameObjects.Text;
-  private moneyText!: Phaser.GameObjects.Text;
   private questText!: Phaser.GameObjects.Text;
+  private wantedChipText!: Phaser.GameObjects.Text;
+  private bikeChipText!: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
   private toastText!: Phaser.GameObjects.Text;
   private toastTimer = 0;
+  private hudObjectiveTitle = "";
+  private hudObjectiveDetailUntil = 0;
   private panel?: Phaser.GameObjects.Container;
   private dialogueOverlay?: HTMLElement;
   private activityMenuOverlay?: HTMLElement;
@@ -1481,10 +1484,11 @@ export class GameScene extends Phaser.Scene {
       .setScrollFactor(1)
       .setDepth(UI_DEPTH);
     this.hudChrome = this.add.graphics();
-    this.timeText = this.add.text(20, 16, "", this.hudTextStyle(16));
-    this.moneyText = this.add.text(20, 42, "", this.hudTextStyle(16));
-    this.questText = this.add.text(20, 92, "", this.hudTextStyle(14));
-    this.promptText = this.add.text(20, 0, "", this.hudTextStyle(15));
+    this.timeText = this.add.text(16, 12, "", this.hudTextStyle(15));
+    this.questText = this.add.text(16, 46, "", this.hudTextStyle(14));
+    this.wantedChipText = this.add.text(16, 0, "", this.hudTextStyle(13)).setColor("#ff8f80").setVisible(false);
+    this.bikeChipText = this.add.text(16, 0, "", this.hudTextStyle(13)).setColor("#f4b860").setVisible(false);
+    this.promptText = this.add.text(16, 0, "", this.hudTextStyle(15));
     this.toastText = this.add
       .text(0, 0, "", {
         fontFamily: "Inter, Arial, sans-serif",
@@ -1502,8 +1506,9 @@ export class GameScene extends Phaser.Scene {
       this.hudChrome,
       this.objectiveArrowLayer,
       this.timeText,
-      this.moneyText,
       this.questText,
+      this.wantedChipText,
+      this.bikeChipText,
       this.promptText,
       this.toastText
     ]);
@@ -2430,14 +2435,12 @@ export class GameScene extends Phaser.Scene {
 
   private updateHud(delta: number): void {
     this.syncHudLayerToCamera();
-    this.timeText.setText(formatClock(this.world));
-    const bikeLabel = this.getBikeStatusLabel();
+    const unreadCount = getUnreadOpportunityMessageCount(this.world.opportunities);
     const wantedLevel = getWantedLevel(this.world.reputation);
     const bounty = getBounty(this.world.reputation);
-    const wantedLabel =
-      wantedLevel > 0 ? `Wanted ${wantedLevel} Rp ${bounty}` : "Clean";
-    this.moneyText.setText(
-      `Rp ${this.playerState.money}  Rep ${getReputationScore(this.world.reputation)}  Rating ${this.world.life.hustle.driverRating.toFixed(1)}★  Safety ${this.playerState.safety}  ${wantedLabel}\n${bikeLabel}`
+    const mailSuffix = unreadCount > 0 ? `   ✉ ${unreadCount}` : "";
+    this.timeText.setText(
+      `${formatClock(this.world)}   Rp ${this.playerState.money}   ★ ${this.world.life.hustle.driverRating.toFixed(1)}${mailSuffix}`
     );
     this.hudController.updateMeterReadout({
       money: this.playerState.money,
@@ -2446,12 +2449,30 @@ export class GameScene extends Phaser.Scene {
       focus: this.world.meters.focus,
       social: this.world.meters.social
     });
-    this.hudController.updatePhoneBadge(getUnreadOpportunityMessageCount(this.world.opportunities), this.phoneBuzzTimer > 0);
+    this.hudController.updatePhoneBadge(unreadCount, this.phoneBuzzTimer > 0);
     this.updateOverlayChrome();
     const fieldObjective = getFieldObjective(this.world);
-    this.questText.setText(formatFieldObjectiveLine(fieldObjective));
+    if (fieldObjective.title !== this.hudObjectiveTitle) {
+      this.hudObjectiveTitle = fieldObjective.title;
+      this.hudObjectiveDetailUntil = this.time.now + 6000;
+    }
+    const showObjectiveDetail = this.time.now < this.hudObjectiveDetailUntil;
+    this.questText.setText(showObjectiveDetail ? `▸ ${fieldObjective.title}\n${fieldObjective.detail}` : `▸ ${fieldObjective.title}`);
     this.questText.setColor(this.objectiveColor(fieldObjective));
-    this.questText.setWordWrapWidth(Math.min(520, this.scale.width - 40));
+    this.questText.setWordWrapWidth(Math.min(420, this.scale.width - 40));
+
+    let warningY = this.questText.y + this.questText.height + 8;
+    if (wantedLevel > 0) {
+      this.wantedChipText.setText(`WANTED ${wantedLevel} · Rp ${bounty}`).setPosition(16, warningY).setVisible(true);
+      warningY += this.wantedChipText.height + 8;
+    } else {
+      this.wantedChipText.setText("").setVisible(false);
+    }
+    if (this.playerState.onBike && this.playerState.bikeCondition < 50) {
+      this.bikeChipText.setText(`Scooter ${this.playerState.bikeCondition}%`).setPosition(16, warningY).setVisible(true);
+    } else {
+      this.bikeChipText.setText("").setVisible(false);
+    }
 
     const homeSleepReady = this.isAct0HomeSleepReady();
     const target = this.getNearestInteraction();
@@ -6028,21 +6049,36 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setZoom(width < 720 ? STREET_CAMERA.mobileZoom : STREET_CAMERA.desktopZoom);
     this.syncHudLayerToCamera();
     this.syncZoomCompensatedContainer(this.nightOverlayLayer);
-    this.promptText.setPosition(20, height - 36);
+    this.promptText.setPosition(16, height - 44);
     this.toastText.setPosition(width / 2, Math.max(92, height * 0.17));
     this.hudController.layoutTouchControls();
     this.redrawHudChrome();
   }
 
   private redrawHudChrome(): void {
-    const { width, height } = this.scale;
     this.hudChrome.clear();
-    this.hudChrome.fillStyle(0x101820, 0.62);
-    this.hudChrome.fillRoundedRect(12, 10, Math.min(620, width - 24), 148, 8);
-    this.hudChrome.fillRoundedRect(12, height - 48, Math.min(620, width - 24), 38, 8);
-    this.hudChrome.lineStyle(1, 0xf4d58d, 0.25);
-    this.hudChrome.strokeRoundedRect(12, 10, Math.min(620, width - 24), 148, 8);
-    this.hudChrome.strokeRoundedRect(12, height - 48, Math.min(620, width - 24), 38, 8);
+    this.drawHudChipBackplate(this.timeText);
+    this.drawHudChipBackplate(this.questText);
+    this.drawHudChipBackplate(this.wantedChipText);
+    this.drawHudChipBackplate(this.bikeChipText);
+    this.drawHudChipBackplate(this.promptText);
+  }
+
+  private drawHudChipBackplate(text: Phaser.GameObjects.Text): void {
+    if (!text.visible || text.text.trim().length === 0) {
+      return;
+    }
+    const padX = 8;
+    const padY = 5;
+    const x = text.x - text.displayWidth * text.originX - padX;
+    const y = text.y - text.displayHeight * text.originY - padY;
+    const width = text.displayWidth + padX * 2;
+    const height = text.displayHeight + padY * 2;
+    text.getBounds();
+    this.hudChrome.fillStyle(0x101820, 0.72);
+    this.hudChrome.fillRoundedRect(x, y, width, height, 6);
+    this.hudChrome.lineStyle(1, 0xf4d58d, 0.28);
+    this.hudChrome.strokeRoundedRect(x, y, width, height, 6);
   }
 
   private syncHudLayerToCamera(): void {
