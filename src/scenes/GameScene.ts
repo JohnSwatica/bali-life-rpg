@@ -3311,6 +3311,23 @@ export class GameScene extends Phaser.Scene {
         g.fillRoundedRect(cushion.x - TILE_SIZE * 0.28, cushion.y - TILE_SIZE * 0.18, TILE_SIZE * 0.56, TILE_SIZE * 0.36, TILE_SIZE * 0.08);
       }
     }
+
+    this.drawInteriorStationMarkers(g, interior);
+  }
+
+  private drawInteriorStationMarkers(g: Phaser.GameObjects.Graphics, interior: InteriorDefinition): void {
+    for (const station of interior.stations) {
+      g.fillStyle(0x000000, 0.12);
+      g.fillEllipse(station.x, station.y + TILE_SIZE * 0.14, TILE_SIZE * 0.72, TILE_SIZE * 0.28, 20);
+      g.fillStyle(0xfff0bd, 0.2);
+      g.fillCircle(station.x, station.y, TILE_SIZE * 0.34);
+      g.lineStyle(2, 0xf4d58d, 0.68);
+      g.strokeCircle(station.x, station.y, TILE_SIZE * 0.34);
+      g.fillStyle(0x101820, 0.72);
+      g.fillCircle(station.x, station.y, TILE_SIZE * 0.14);
+      g.fillStyle(0xfff0bd, 0.92);
+      g.fillCircle(station.x, station.y, TILE_SIZE * 0.055);
+    }
   }
 
   private createInteriorDiners(interior: InteriorDefinition): void {
