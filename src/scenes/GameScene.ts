@@ -202,6 +202,10 @@ import type {
 type Mode = "world" | "dialogue" | "shop" | "inventory" | "activity" | "committedActivity" | "community" | "phone" | "godmode";
 
 const SHOW_NPC_IDLE_DEBUG_LABELS = shouldShowNpcIdleCueLabel();
+const TOAST_DURATION_MS = 2600;
+const TOAST_GAP_MS = 180;
+const TOAST_FADE_IN_MS = 150;
+const TOAST_FADE_OUT_MS = 350;
 
 interface BaliLifeDebugSnapshot {
   schemaVersion: number;
@@ -508,6 +512,8 @@ export class GameScene extends Phaser.Scene {
   private promptText!: Phaser.GameObjects.Text;
   private toastText!: Phaser.GameObjects.Text;
   private toastTimer = 0;
+  private toastGapTimer = 0;
+  private toastQueue: string[] = [];
   private hudObjectiveTitle = "";
   private hudObjectiveDetailUntil = 0;
   private panel?: Phaser.GameObjects.Container;
@@ -2502,12 +2508,7 @@ export class GameScene extends Phaser.Scene {
       this.promptText.setText("ESC closes the current panel.");
     }
 
-    if (this.toastTimer > 0) {
-      this.toastTimer -= delta;
-      this.toastText.setAlpha(Math.min(1, this.toastTimer / 250));
-    } else {
-      this.toastText.setAlpha(0);
-    }
+    this.updateToastVisual(delta);
 
     this.redrawHudChrome();
     this.drawOpportunityMarkers();
@@ -6108,8 +6109,47 @@ export class GameScene extends Phaser.Scene {
   }
 
   private showToast(message: string): void {
-    this.toastText?.setText(message);
-    this.toastTimer = 2600;
+    if (this.toastTimer > 0 && this.toastText?.text === message) {
+      return;
+    }
+    if (this.toastQueue.at(-1) === message) {
+      return;
+    }
+    this.toastQueue.push(message);
+    while (this.toastQueue.length > 4) {
+      this.toastQueue.shift();
+    }
+  }
+
+  private updateToastVisual(delta: number): void {
+    if (this.toastTimer > 0) {
+      this.toastTimer = Math.max(0, this.toastTimer - delta);
+      const elapsed = TOAST_DURATION_MS - this.toastTimer;
+      const fadeIn = Math.min(1, elapsed / TOAST_FADE_IN_MS);
+      const fadeOut = this.toastTimer < TOAST_FADE_OUT_MS ? Math.max(0, this.toastTimer / TOAST_FADE_OUT_MS) : 1;
+      this.toastText.setAlpha(Math.min(fadeIn, fadeOut));
+      if (this.toastTimer <= 0) {
+        this.toastText.setAlpha(0);
+        this.toastGapTimer = TOAST_GAP_MS;
+      }
+      return;
+    }
+
+    if (this.toastGapTimer > 0) {
+      this.toastGapTimer = Math.max(0, this.toastGapTimer - delta);
+      this.toastText.setAlpha(0);
+      return;
+    }
+
+    const nextToast = this.toastQueue.shift();
+    if (nextToast) {
+      this.toastText.setText(nextToast);
+      this.toastTimer = TOAST_DURATION_MS;
+      this.toastText.setAlpha(0);
+      return;
+    }
+
+    this.toastText.setAlpha(0);
   }
 
   private publishDebugSnapshot(target: InteractionTarget | undefined, fieldObjective: FieldObjectiveState): void {
