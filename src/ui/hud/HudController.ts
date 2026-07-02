@@ -1,12 +1,10 @@
 import Phaser from "phaser";
 
 const TOUCH_JOYSTICK_RADIUS = 56;
-const MINIMAP_MAX_WIDTH = 280;
+const MINIMAP_MAX_WIDTH = 168;
 const MINIMAP_MIN_WIDTH = 104;
 const MINIMAP_PADDING = 7;
 const MINIMAP_MARGIN = 16;
-const MINIMAP_DESKTOP_TOP = 170;
-const MINIMAP_COMPACT_TOP = 132;
 
 export interface DomMinimapLayout {
   x: number;
@@ -137,7 +135,7 @@ export class HudController {
       return;
     }
     const { width, height } = this.scene.scale;
-    const showTouch = width < 900 || this.scene.sys.game.device.input.touch;
+    const showTouch = this.scene.sys.game.device.input.touch;
     this.touchContainer.setVisible(showTouch);
 
     const baseX = 96;
@@ -195,22 +193,27 @@ export class HudController {
     if (!this.meterOverlay) {
       return;
     }
-    const rows: Array<[string, string]> = [
-      ["Rp", `${readout.money}`],
-      ["Energy", `${readout.energy}`],
-      ["Wellbeing", `${readout.wellbeing}`],
-      ["Focus", `${readout.focus}`],
-      ["Social", `${readout.social}`]
+    const rows: Array<{ label: string; value: number; color: string; title: string }> = [
+      { label: "E", value: readout.energy, color: "#f4b860", title: `Energy ${readout.energy}` },
+      { label: "W", value: readout.wellbeing, color: "#62c48f", title: `Wellbeing ${readout.wellbeing}` },
+      { label: "F", value: readout.focus, color: "#6ab7ff", title: `Focus ${readout.focus}` },
+      { label: "S", value: readout.social, color: "#e58fb1", title: `Social ${readout.social}` }
     ];
     this.meterOverlay.replaceChildren(
-      ...rows.map(([label, value]) => {
+      ...rows.map(({ label, value, color, title }) => {
         const row = document.createElement("div");
         row.className = "bali-life-meter-row";
+        row.title = title;
         const name = document.createElement("span");
         name.textContent = label;
-        const amount = document.createElement("strong");
-        amount.textContent = value;
-        row.append(name, amount);
+        const track = document.createElement("div");
+        track.className = "bali-life-meter-bar-track";
+        const fill = document.createElement("div");
+        fill.className = "bali-life-meter-bar-fill";
+        fill.style.width = `${Math.max(0, Math.min(100, value))}%`;
+        fill.style.backgroundColor = color;
+        track.append(fill);
+        row.append(name, track);
         return row;
       })
     );
@@ -263,6 +266,9 @@ export class HudController {
     this.buttonOverlay = document.createElement("div");
     this.buttonOverlay.id = "bali-life-hud-buttons";
     this.buttonOverlay.className = "bali-life-hud-buttons";
+    if (!this.scene.sys.game.device.input.touch) {
+      this.buttonOverlay.classList.add("is-desktop-hidden");
+    }
     this.buttonOverlay.dataset.uiSurface = "hud-buttons";
     this.buttonOverlay.setAttribute("aria-label", "Game actions");
 
@@ -333,9 +339,8 @@ export class HudController {
     const baseHeight = Math.round(baseWidth * (viewport.height < 760 ? 0.72 : 0.708));
     const minimapWidth = Math.min(baseWidth, Math.max(80, viewport.width - MINIMAP_MARGIN * 2));
     const minimapHeight = Math.min(baseHeight, Math.max(64, viewport.height - MINIMAP_MARGIN * 2));
-    const preferredTop = viewport.height < 760 ? MINIMAP_COMPACT_TOP : MINIMAP_DESKTOP_TOP;
-    const x = Phaser.Math.Clamp(MINIMAP_MARGIN, 0, Math.max(0, viewport.width - minimapWidth - MINIMAP_MARGIN));
-    const y = Phaser.Math.Clamp(preferredTop, MINIMAP_MARGIN, Math.max(MINIMAP_MARGIN, viewport.height - minimapHeight - MINIMAP_MARGIN));
+    const x = Phaser.Math.Clamp(viewport.width - minimapWidth - 14, 0, Math.max(0, viewport.width - minimapWidth));
+    const y = Phaser.Math.Clamp(14, 0, Math.max(0, viewport.height - minimapHeight));
     this.minimapDpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 3));
 
     this.minimapFrame.style.left = `${x}px`;
@@ -355,6 +360,11 @@ export class HudController {
       offsetY: MINIMAP_PADDING,
       scale: 1
     };
+
+    if (this.meterOverlay) {
+      this.meterOverlay.style.top = `${14 + minimapHeight + 8}px`;
+      this.meterOverlay.style.right = "14px";
+    }
   }
 
   private getViewportSize(): { width: number; height: number } {

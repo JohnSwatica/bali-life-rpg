@@ -55,6 +55,10 @@ canvas {
   pointer-events: none;
 }
 
+.bali-life-hud-buttons.is-desktop-hidden {
+  display: none;
+}
+
 body.bali-life-overlay-open .bali-life-hud-buttons,
 body.bali-life-overlay-open .bali-life-hud-meters {
   opacity: 0;
@@ -68,9 +72,9 @@ body.bali-life-overlay-open .bali-life-hud-meters {
   right: max(14px, env(safe-area-inset-right));
   z-index: 1000;
   display: grid;
-  min-width: 148px;
-  gap: 4px;
-  padding: 9px 11px;
+  min-width: 110px;
+  gap: 5px;
+  padding: 7px 9px;
   border: 1px solid rgba(244, 213, 141, 0.48);
   border-radius: 8px;
   background: rgba(16, 24, 32, 0.72);
@@ -84,19 +88,28 @@ body.bali-life-overlay-open .bali-life-hud-meters {
 .bali-life-meter-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 7px;
   font: 700 12px/1.2 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: 0;
 }
 
 .bali-life-meter-row span {
+  width: 12px;
   color: rgba(255, 248, 223, 0.78);
 }
 
-.bali-life-meter-row strong {
-  color: #fff0bd;
-  font-weight: 800;
+.bali-life-meter-bar-track {
+  width: 64px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 248, 223, 0.14);
+}
+
+.bali-life-meter-bar-fill {
+  height: 100%;
+  border-radius: inherit;
 }
 
 .bali-life-hud-button {
@@ -501,7 +514,7 @@ body.bali-life-overlay-open .bali-life-hud-meters {
   .bali-life-hud-meters {
     top: max(10px, env(safe-area-inset-top));
     right: max(10px, env(safe-area-inset-right));
-    min-width: 124px;
+    min-width: 104px;
     padding: 7px 9px;
   }
 
