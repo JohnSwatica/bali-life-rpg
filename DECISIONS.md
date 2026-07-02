@@ -511,3 +511,15 @@ Opportunity templates can now express moral-choice mechanics without a new UI su
 The first content using this is Act 1's `no_questions_package`: taking it is a decisive Extractive/Rooted-axis hit with cash attached, while letting it expire is the quieter clean branch with no consolation money. This follows the Story Bible rule that both branches are remembered and neither dead-ends.
 
 The golden thread also advances without starting larger systems. `elena_notebook_2` unlocks at three completed deliveries, and Kadek's Act 1 ambient line names Rumah's bike during the 5-9 delivery window. This does not add Rio's leaderboard, the permit obstacle, collective-action meter, Made's reckoning, Act 3 business simulation, backend, AI, or multiplayer.
+
+## 2026-07-02 - P4a UI Diet Lets The World Fill The Screen
+
+Roaming UI now follows the benchmark rule: the world owns the frame, and chrome is small, corner-docked, and contextual. `GameScene` no longer draws the permanent stat wall or bottom keybind strip. The status chip carries clock, money, rating, and unread mail; the objective chip carries the current objective and only temporarily expands with detail; wanted and scooter-condition chips appear only when relevant.
+
+Desktop and touch chrome are now separated. Non-touch desktop hides the six touch buttons and never summons the joystick just because the window is narrow. Touch devices keep their controls. The minimap is smaller and top-right, with four micro meter bars underneath it, so left-edge world labels such as BAKED/BUNGALOW are no longer beheaded by permanent HUD panels.
+
+Prompts are contextual rather than instructional wallpaper. In world mode, the bottom-left chip appears for actual targets (`E - Talk to ...`, pickups, venue actions), first-run guidance, home/sleep, and bike-stuck recovery; otherwise it stays hidden. A fresh save still gets the movement reminder until first movement, and non-world modes keep their ESC hints.
+
+Message presentation is less abrasive. Toasts now pass through a small deduped queue with fade-in/fade-out and a gap, so back-to-back events stop overwriting the current line. Minor NPC touches use dark in-world speech bubbles with a tail and no routine/debug parenthetical; relationship beats, quest-critical dialogue, and Act 0 critical dialogue still keep full panels.
+
+The designer acceptance pass ran in-browser at `1280x800` on an isolated local test URL. Quiet roaming showed only the status chip, objective chip, top-right minimap, and meter micro-bars; standing near an NPC produced exactly one contextual prompt; Ari's minor line rendered as a dark bubble without routine text; and contextual warning chips appeared only after an actual wanted/scooter state. The long-running test save made one paired-toast screenshot inconclusive because live relationship/panel state intervened, but the queue implementation was reviewed against the state-machine spec and individual toast fade behavior was captured.
