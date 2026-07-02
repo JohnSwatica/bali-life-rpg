@@ -157,9 +157,9 @@ import {
   getBounty,
   getReputationScore,
   getWantedLevel,
-  recordRecklessDamageFlag,
   reduceWantedStanding
 } from "../systems/reputation/ReputationState";
+import { applyPlayerBikeHitConsequence } from "../systems/reputation/RecklessRiding";
 import {
   directionFromDelta,
   npcIdleAnimationKey,
@@ -2075,32 +2075,56 @@ export class GameScene extends Phaser.Scene {
         continue;
       }
       if (Phaser.Math.Distance.Between(this.player.x, this.player.y, sprite.x, sprite.y) < scaleDistance(34)) {
-        this.flagLocalPlayerForBikeHit(npc.name);
+        this.flagLocalPlayerForBikeHit(npc.name, sprite);
         return;
       }
     }
 
     for (const traveler of this.getGroupTravelers()) {
       if (Phaser.Math.Distance.Between(this.player.x, this.player.y, traveler.sprite.x, traveler.sprite.y) < scaleDistance(34)) {
-        this.flagLocalPlayerForBikeHit(traveler.name);
+        this.flagLocalPlayerForBikeHit(traveler.name, traveler.sprite);
         return;
       }
     }
   }
 
-  private flagLocalPlayerForBikeHit(victimName: string): void {
+  private flagLocalPlayerForBikeHit(victimName: string, victim?: { x: number; y: number }): void {
     this.bikeHarmCooldown = 2400;
-    const standing = recordRecklessDamageFlag(this.world.reputation, victimName, this.getAbsoluteMinute(), {
+    const result = applyPlayerBikeHitConsequence(this.world, victimName, this.getAbsoluteMinute(), {
       maxWantedLevel: MAX_PLAYER_WANTED_LEVEL,
       maxBounty: MAX_PLAYER_BOUNTY,
       firstFlagBounty: FIRST_FLAG_BOUNTY,
       repeatFlagBounty: REPEAT_FLAG_BOUNTY
     });
-    this.dispatchIntent({ kind: "AdjustReputation", delta: -8, reason: `Flagged by ${victimName} for reckless riding` });
-    adjustPlayerMeters(this.world, { focus: -6 });
+    if (!result.flagged) {
+      this.applyPedestrianBumpKnockback(victim);
+      this.cameras.main.shake(110, 0.002);
+      this.spawnFloatingText("Sorry!", this.player.x, this.player.y - scaleDistance(32), "#fff0bd");
+    }
     saveWorldState(this.world);
     this.updatePlayerWantedSign();
-    this.showToast(`${victimName} flagged you for reckless bike damage. Wanted level ${standing.wantedLevel}.`);
+    this.showToast(result.toast);
+  }
+
+  private applyPedestrianBumpKnockback(victim?: { x: number; y: number }): void {
+    const sourceX = victim?.x ?? this.player.x - 1;
+    const sourceY = victim?.y ?? this.player.y;
+    const away = new Phaser.Math.Vector2(this.player.x - sourceX || 1, this.player.y - sourceY);
+    if (away.lengthSq() <= 0.01) {
+      away.set(1, 0);
+    }
+    away.normalize();
+    const next = this.clampToPlayableBounds(
+      this.player.x + away.x * scaleDistance(36),
+      this.player.y + away.y * scaleDistance(36),
+      scaleDistance(24)
+    );
+    this.player.setVelocity(0, 0);
+    this.player.setPosition(next.x, next.y);
+    this.player.body?.updateFromGameObject();
+    this.playerState.x = Math.round(this.player.x);
+    this.playerState.y = Math.round(this.player.y);
+    this.updatePlayerBikeVisual();
   }
 
   private updatePlayerWantedSign(): void {
