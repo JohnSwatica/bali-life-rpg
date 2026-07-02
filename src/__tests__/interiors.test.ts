@@ -15,6 +15,7 @@ describe("interior definitions", () => {
     expect(getInteriorByVenueId("baked_berawa")).toBe(interiorDefinitions.baked_berawa_interior);
     expect(getInteriorByVenueId("milk_madu_berawa")).toBe(interiorDefinitions.milk_madu_interior);
     expect(getInteriorByVenueId("cheap_kos")).toBe(interiorDefinitions.cheap_kos_interior);
+    expect(getInteriorByVenueId("bali_family_rental_scooter")).toBe(interiorDefinitions.scooter_rental_interior);
   });
 
   it("keeps entrances, exit mats, stations, and NPC slots inside each room rect", () => {
@@ -44,7 +45,7 @@ describe("interior definitions", () => {
     });
   });
 
-  it("occupies first-day cafe and bakery slots when those NPC schedules are active", () => {
+  it("occupies authored interior slots when those NPC schedules are active", () => {
     const world = createInitialWorldState();
     world.clock.minuteOfDay = 13 * 60;
 
@@ -59,6 +60,15 @@ describe("interior definitions", () => {
       interior: expect.objectContaining({ id: "baked_berawa_interior" }),
       slot: expect.objectContaining({ npcId: "kadek" })
     });
+
+    world.clock.minuteOfDay = 8 * 60;
+    expect(getOccupiedInteriorNpcSlots(world, interiorDefinitions.scooter_rental_interior)).toEqual([
+      expect.objectContaining({ npcId: "rio" })
+    ]);
+    expect(getScheduledInteriorForNpc(world, "rio")).toMatchObject({
+      interior: expect.objectContaining({ id: "scooter_rental_interior" }),
+      slot: expect.objectContaining({ npcId: "rio" })
+    });
   });
 
   it("routes interior stations to existing venue activity contexts", () => {
@@ -66,20 +76,23 @@ describe("interior definitions", () => {
       interiorDefinitions.warung_sari_interior.stations.find((candidate) => candidate.id === "meal_counter"),
       interiorDefinitions.baked_berawa_interior.stations.find((candidate) => candidate.id === "bakery_counter"),
       interiorDefinitions.milk_madu_interior.stations.find((candidate) => candidate.id === "cafe_table"),
-      interiorDefinitions.cheap_kos_interior.stations.find((candidate) => candidate.id === "kos_room_corner")
+      interiorDefinitions.cheap_kos_interior.stations.find((candidate) => candidate.id === "kos_room_corner"),
+      interiorDefinitions.scooter_rental_interior.stations.find((candidate) => candidate.id === "scooter_counter")
     ];
 
     expect(stations.map((station) => station?.activityVenueId)).toEqual([
       "canggu_station",
       "baked_berawa",
       "milk_madu_berawa",
-      "cheap_kos"
+      "cheap_kos",
+      "bali_family_rental_scooter"
     ]);
     expect(stations.map((station) => (station ? getInteriorStationActivityContext(station)?.venueId : undefined))).toEqual([
       "canggu_station",
       "baked_berawa",
       "milk_madu_berawa",
-      "cheap_kos"
+      "cheap_kos",
+      "bali_family_rental_scooter"
     ]);
   });
 });

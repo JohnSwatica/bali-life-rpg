@@ -3216,6 +3216,34 @@ export class GameScene extends Phaser.Scene {
       g.lineStyle(2, 0xf4d58d, 0.45);
       g.lineBetween(x + TILE_SIZE * 8.15, y + TILE_SIZE * 1.3, x + TILE_SIZE * 8.15, y + TILE_SIZE * 1.9);
       g.lineBetween(x + TILE_SIZE * 7.86, y + TILE_SIZE * 1.92, x + TILE_SIZE * 8.44, y + TILE_SIZE * 1.92);
+    } else if (interior.id === "scooter_rental_interior") {
+      g.fillStyle(0x253a47, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 1.1, y + TILE_SIZE * 1.55, TILE_SIZE * 9.8, TILE_SIZE * 1.05, TILE_SIZE * 0.1);
+      g.fillStyle(0xf4d58d, 0.88);
+      g.fillRoundedRect(x + TILE_SIZE * 1.45, y + TILE_SIZE * 1.82, TILE_SIZE * 2.1, TILE_SIZE * 0.32, TILE_SIZE * 0.08);
+      g.fillRoundedRect(x + TILE_SIZE * 4.1, y + TILE_SIZE * 1.82, TILE_SIZE * 2.1, TILE_SIZE * 0.32, TILE_SIZE * 0.08);
+      g.fillRoundedRect(x + TILE_SIZE * 6.75, y + TILE_SIZE * 1.82, TILE_SIZE * 2.1, TILE_SIZE * 0.32, TILE_SIZE * 0.08);
+      g.fillStyle(0x101820, 0.9);
+      g.fillRoundedRect(x + TILE_SIZE * 8.65, y + TILE_SIZE * 3.25, TILE_SIZE * 1.55, TILE_SIZE * 1.2, TILE_SIZE * 0.1);
+      g.fillStyle(0x6ab7ff, 0.76);
+      g.fillRoundedRect(x + TILE_SIZE * 8.9, y + TILE_SIZE * 3.52, TILE_SIZE * 1.05, TILE_SIZE * 0.2, TILE_SIZE * 0.04);
+      g.fillRoundedRect(x + TILE_SIZE * 8.9, y + TILE_SIZE * 3.92, TILE_SIZE * 0.72, TILE_SIZE * 0.2, TILE_SIZE * 0.04);
+      for (const scooter of [
+        { x: x + TILE_SIZE * 2.7, y: y + TILE_SIZE * 4.95, color: 0x4f8f66 },
+        { x: x + TILE_SIZE * 5.2, y: y + TILE_SIZE * 5.2, color: 0xd95c8a }
+      ]) {
+        g.fillStyle(scooter.color, 1);
+        g.fillRoundedRect(scooter.x - TILE_SIZE * 0.55, scooter.y - TILE_SIZE * 0.18, TILE_SIZE * 1.1, TILE_SIZE * 0.36, TILE_SIZE * 0.12);
+        g.fillStyle(0x101820, 1);
+        g.fillCircle(scooter.x - TILE_SIZE * 0.42, scooter.y + TILE_SIZE * 0.17, TILE_SIZE * 0.17);
+        g.fillCircle(scooter.x + TILE_SIZE * 0.42, scooter.y + TILE_SIZE * 0.17, TILE_SIZE * 0.17);
+        g.lineStyle(2, 0xfff0bd, 0.6);
+        g.lineBetween(scooter.x + TILE_SIZE * 0.22, scooter.y - TILE_SIZE * 0.18, scooter.x + TILE_SIZE * 0.48, scooter.y - TILE_SIZE * 0.48);
+      }
+      g.fillStyle(0xfff0bd, 0.86);
+      g.fillCircle(x + TILE_SIZE * 2.1, y + TILE_SIZE * 2.95, TILE_SIZE * 0.18);
+      g.fillCircle(x + TILE_SIZE * 2.65, y + TILE_SIZE * 2.95, TILE_SIZE * 0.18);
+      g.fillCircle(x + TILE_SIZE * 3.2, y + TILE_SIZE * 2.95, TILE_SIZE * 0.18);
     }
   }
 

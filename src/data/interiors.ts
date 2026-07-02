@@ -11,6 +11,8 @@ const MILK_MADU_X = OFFSCREEN_INTERIOR_X;
 const MILK_MADU_Y = OFFSCREEN_INTERIOR_Y + TILE_SIZE * 22;
 const KOS_X = OFFSCREEN_INTERIOR_X;
 const KOS_Y = OFFSCREEN_INTERIOR_Y + TILE_SIZE * 33;
+const RENTAL_X = OFFSCREEN_INTERIOR_X;
+const RENTAL_Y = OFFSCREEN_INTERIOR_Y + TILE_SIZE * 43;
 
 export const interiorDefinitions: Record<string, InteriorDefinition> = {
   warung_sari_interior: {
@@ -152,5 +154,39 @@ export const interiorDefinitions: Record<string, InteriorDefinition> = {
       }
     ],
     npcSlots: []
+  },
+  scooter_rental_interior: {
+    id: "scooter_rental_interior",
+    venueId: "bali_family_rental_scooter",
+    name: "Bali Family Rental Scooter",
+    origin: { x: RENTAL_X, y: RENTAL_Y },
+    width: TILE_SIZE * 12,
+    height: TILE_SIZE * 8,
+    entrance: {
+      x: RENTAL_X + TILE_SIZE * 6,
+      y: RENTAL_Y + TILE_SIZE * 6.5
+    },
+    exitMat: {
+      x: RENTAL_X + TILE_SIZE * 6,
+      y: RENTAL_Y + TILE_SIZE * 7.35,
+      radius: TILE_SIZE * 0.65
+    },
+    stations: [
+      {
+        id: "scooter_counter",
+        x: RENTAL_X + TILE_SIZE * 5.95,
+        y: RENTAL_Y + TILE_SIZE * 2.35,
+        radius: TILE_SIZE * 1.25,
+        label: "Use scooter counter",
+        activityVenueId: "bali_family_rental_scooter"
+      }
+    ],
+    npcSlots: [
+      {
+        npcId: "rio",
+        x: RENTAL_X + TILE_SIZE * 7.1,
+        y: RENTAL_Y + TILE_SIZE * 2.55
+      }
+    ]
   }
 };
