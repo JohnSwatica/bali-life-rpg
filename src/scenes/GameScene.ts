@@ -6042,10 +6042,11 @@ export class GameScene extends Phaser.Scene {
     const targets = this.getFieldObjectiveTargets();
     for (const target of targets) {
       const pulse = 0.55 + Math.sin(Date.now() / 180) * 0.12;
+      const markerRadius = scaleDistance(9);
       this.deliveryMarkerLayer.fillStyle(0xfff0bd, 0.18);
-      this.deliveryMarkerLayer.fillCircle(target.x, target.y, target.radius);
-      this.deliveryMarkerLayer.lineStyle(4, 0xfff0bd, pulse);
-      this.deliveryMarkerLayer.strokeCircle(target.x, target.y, target.radius);
+      this.deliveryMarkerLayer.fillCircle(target.x, target.y, markerRadius);
+      this.deliveryMarkerLayer.lineStyle(2, 0xfff0bd, Math.min(0.9, pulse));
+      this.deliveryMarkerLayer.strokeCircle(target.x, target.y, markerRadius);
       this.deliveryMarkerLayer.fillStyle(0x253a35, 0.94);
       this.deliveryMarkerLayer.fillTriangle(target.x, target.y - 34, target.x - 16, target.y - 8, target.x + 16, target.y - 8);
       this.deliveryMarkerLayer.lineStyle(2, 0xfff0bd, 0.9);
