@@ -6153,7 +6153,7 @@ export class GameScene extends Phaser.Scene {
         interiorId: interior.id,
         label: `Leave ${interior.name}`,
         distance: exitDistance,
-        priority: 4
+        priority: 1
       });
     }
 
@@ -6187,13 +6187,13 @@ export class GameScene extends Phaser.Scene {
         continue;
       }
       const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, slot.x, slot.y);
-      if (distance <= scaleDistance(96)) {
+      if (distance <= scaleDistance(40)) {
         candidates.push({
           type: "npc",
           id: slot.npcId,
           label: `Talk to ${npc.name}`,
           distance,
-          priority: 0
+          priority: 3
         });
       }
     }

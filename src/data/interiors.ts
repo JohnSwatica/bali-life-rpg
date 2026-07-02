@@ -38,7 +38,7 @@ export const interiorDefinitions: Record<string, InteriorDefinition> = {
     stations: [
       {
         id: "meal_counter",
-        x: WARUNG_X + TILE_SIZE * 5.9,
+        x: WARUNG_X + TILE_SIZE * 4.45,
         y: WARUNG_Y + TILE_SIZE * 2.2,
         radius: TILE_SIZE * 1.1,
         label: "Use meal counter",
@@ -72,7 +72,7 @@ export const interiorDefinitions: Record<string, InteriorDefinition> = {
     stations: [
       {
         id: "bakery_counter",
-        x: BAKED_X + TILE_SIZE * 6.1,
+        x: BAKED_X + TILE_SIZE * 4.75,
         y: BAKED_Y + TILE_SIZE * 2.2,
         radius: TILE_SIZE * 1.1,
         label: "Use bakery counter",
@@ -106,8 +106,8 @@ export const interiorDefinitions: Record<string, InteriorDefinition> = {
     stations: [
       {
         id: "cafe_table",
-        x: MILK_MADU_X + TILE_SIZE * 5.95,
-        y: MILK_MADU_Y + TILE_SIZE * 4.2,
+        x: MILK_MADU_X + TILE_SIZE * 6.2,
+        y: MILK_MADU_Y + TILE_SIZE * 5.75,
         radius: TILE_SIZE * 1.2,
         label: "Use cafe table",
         activityVenueId: "milk_madu_berawa"
@@ -178,7 +178,7 @@ export const interiorDefinitions: Record<string, InteriorDefinition> = {
     stations: [
       {
         id: "scooter_counter",
-        x: RENTAL_X + TILE_SIZE * 5.95,
+        x: RENTAL_X + TILE_SIZE * 4.75,
         y: RENTAL_Y + TILE_SIZE * 2.35,
         radius: TILE_SIZE * 1.25,
         label: "Use scooter counter",
@@ -227,8 +227,8 @@ export const interiorDefinitions: Record<string, InteriorDefinition> = {
       },
       {
         npcId: "made",
-        x: SATU_SATU_X + TILE_SIZE * 6.25,
-        y: SATU_SATU_Y + TILE_SIZE * 4.25
+        x: SATU_SATU_X + TILE_SIZE * 8,
+        y: SATU_SATU_Y + TILE_SIZE * 5.55
       },
       {
         npcId: "pak_bagus",
@@ -256,7 +256,7 @@ export const interiorDefinitions: Record<string, InteriorDefinition> = {
     stations: [
       {
         id: "design_counter",
-        x: BUNGALOW_X + TILE_SIZE * 5.95,
+        x: BUNGALOW_X + TILE_SIZE * 4.8,
         y: BUNGALOW_Y + TILE_SIZE * 2.4,
         radius: TILE_SIZE * 1.2,
         label: "Use design counter",

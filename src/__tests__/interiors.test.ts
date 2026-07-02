@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { interiorDefinitions } from "../data/interiors";
 import { createInitialWorldState } from "../systems/WorldState";
 import { acceptDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
+import { scaleDistance } from "../systems/map/WorldScale";
 import {
   getInteriorByVenueId,
   getInteriorDeliveryPickupForStation,
@@ -11,6 +12,10 @@ import {
   getScheduledInteriorForNpc,
   isInteriorPointInsideRoom
 } from "../systems/interiors/InteriorState";
+
+function distance(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
 
 describe("interior definitions", () => {
   it("maps first-day venue interiors to their exterior doors", () => {
@@ -33,6 +38,22 @@ describe("interior definitions", () => {
       }
       for (const slot of interior.npcSlots) {
         expect(isInteriorPointInsideRoom(interior, slot)).toBe(true);
+      }
+    }
+  });
+
+  it("keeps interior stations, entrances, and exits out of NPC talk radius", () => {
+    const stationClearance = scaleDistance(45);
+    const matClearance = scaleDistance(40);
+
+    for (const interior of Object.values(interiorDefinitions)) {
+      for (const slot of interior.npcSlots) {
+        expect(distance(interior.entrance, slot), `${interior.id} entrance vs ${slot.npcId}`).toBeGreaterThanOrEqual(matClearance);
+        expect(distance(interior.exitMat, slot), `${interior.id} exit vs ${slot.npcId}`).toBeGreaterThanOrEqual(matClearance);
+
+        for (const station of interior.stations) {
+          expect(distance(station, slot), `${interior.id} ${station.id} vs ${slot.npcId}`).toBeGreaterThanOrEqual(stationClearance);
+        }
       }
     }
   });
