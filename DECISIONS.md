@@ -547,3 +547,9 @@ The automated contract now covers all first-day interiors: exterior-door mapping
 The home station now uses the same interior primitive as the first-day venues. Pressing the home interaction at `cheap_kos` enters `cheap_kos_interior`; the existing home activity menu is now reached from a room station instead of directly from the exterior marker. This lets the Act 0 first-night beat land inside an actual cramped kos room while preserving the old home actions: sleep, rent payment, planning, and snack prep.
 
 This is still presentation and staging over existing systems. `cheap_kos` remains the home station ID in the activity engine; rent and sleep use the same `HustleEconomy` and `SleepCycle` helpers; no save schema, economy values, or quest progression rules changed. `sleepToMorning()` now restores scene mode to `interior` or `world` after closing the DOM activity panel so sleeping from the interior does not leave the scene stuck in `activity` mode.
+
+## 2026-07-02 - L1 Step 4 Stages Scooter Upkeep At The Rental Counter
+
+Bali Family Rental Scooter now has `scooter_rental_interior`, so the Act 1 maintenance/upgrade place is a small room with a counter, helmet shelf, service board, parked scooters, and a Rio slot when his existing routine places him at the rental. This supports the GDD's rule that important interactables become scenes or playable beats rather than exterior menu text.
+
+The scooter rental station routes to the existing `bali_family_rental_scooter` activity/shop context. Repair, upgrade, shop rows, deliveries, and the no-questions-package opportunity still use their existing systems; this pass only changes staging and presentation. The shared interior tests now cover rental door mapping, Rio's scheduled interior slot, and the `scooter_counter` station's activity context.
