@@ -305,6 +305,12 @@ interface FieldObjectiveTarget {
   type: FieldObjectiveTargetRef["type"];
 }
 
+interface NpcAmbientLineBubble {
+  container: Phaser.GameObjects.Container;
+  label: Phaser.GameObjects.Text;
+  tail: Phaser.GameObjects.Graphics;
+}
+
 interface TrafficBikeRuntime {
   sprite: Phaser.GameObjects.Sprite;
   route: TrafficRouteDefinition;
@@ -463,7 +469,7 @@ export class GameScene extends Phaser.Scene {
   private npcFacingDirections = new Map<string, Direction>();
   private npcTalkBobTimers = new Map<string, number>();
   private npcAmbientLines = new Map<string, { text: string; remainingMs: number }>();
-  private npcAmbientLineLabels = new Map<string, Phaser.GameObjects.Text>();
+  private npcAmbientLineBubbles = new Map<string, NpcAmbientLineBubble>();
   private ambientNpcSprites = new Map<string, Phaser.Physics.Arcade.Sprite>();
   private ambientNpcRouteMotion = new Map<string, NpcRouteMotionState>();
   private ambientNpcIdlePhases = new Map<string, number>();
@@ -2197,52 +2203,58 @@ export class GameScene extends Phaser.Scene {
   }
 
   private showNpcAmbientLine(npcId: string, text: string): void {
-    this.npcAmbientLines.set(npcId, { text, remainingMs: 2600 });
+    this.npcAmbientLines.set(npcId, { text, remainingMs: 3600 });
   }
 
   private updateNpcAmbientLineVisual(npcId: string, sprite: Phaser.GameObjects.Sprite, delta: number): void {
     const line = this.npcAmbientLines.get(npcId);
-    const existingLabel = this.npcAmbientLineLabels.get(npcId);
+    const existingBubble = this.npcAmbientLineBubbles.get(npcId);
     if (!line) {
-      existingLabel?.setVisible(false);
+      existingBubble?.container.setVisible(false);
       return;
     }
 
     const remainingMs = line.remainingMs - delta;
     if (remainingMs <= 0) {
       this.npcAmbientLines.delete(npcId);
-      existingLabel?.setVisible(false);
+      existingBubble?.container.setVisible(false);
       return;
     }
 
     this.npcAmbientLines.set(npcId, { ...line, remainingMs });
-    const label = this.getNpcAmbientLineLabel(npcId);
-    label
-      .setText(line.text)
+    const bubble = this.getNpcAmbientLineBubble(npcId);
+    const elapsedMs = 3600 - remainingMs;
+    const alpha = Math.min(1, elapsedMs / 150, remainingMs / 350);
+    bubble.label.setText(line.text);
+    bubble.container
       .setPosition(sprite.x, sprite.y - scaleDistance(76))
       .setDepth(sprite.y + 9)
-      .setAlpha(Math.min(1, remainingMs / 350))
+      .setAlpha(alpha)
       .setVisible(true);
   }
 
-  private getNpcAmbientLineLabel(npcId: string): Phaser.GameObjects.Text {
-    const existing = this.npcAmbientLineLabels.get(npcId);
+  private getNpcAmbientLineBubble(npcId: string): NpcAmbientLineBubble {
+    const existing = this.npcAmbientLineBubbles.get(npcId);
     if (existing) {
       return existing;
     }
     const label = this.add
       .text(0, 0, "", {
         fontFamily: "Inter, Arial, sans-serif",
-        fontSize: "11px",
-        color: "#123026",
-        backgroundColor: "rgba(230,255,244,0.92)",
-        padding: { x: 6, y: 3 },
-        wordWrap: { width: scaleDistance(160) }
+        fontSize: "12px",
+        color: "#fff8df",
+        backgroundColor: "rgba(16,24,32,0.92)",
+        padding: { x: 8, y: 5 },
+        wordWrap: { width: scaleDistance(140) }
       })
-      .setOrigin(0.5, 1)
-      .setVisible(false);
-    this.npcAmbientLineLabels.set(npcId, label);
-    return label;
+      .setOrigin(0.5, 1);
+    const tail = this.add.graphics();
+    tail.fillStyle(0x101820, 0.92);
+    tail.fillTriangle(-5, 0, 5, 0, 0, 7);
+    const container = this.add.container(0, 0, [label, tail]).setVisible(false);
+    const bubble = { container, label, tail };
+    this.npcAmbientLineBubbles.set(npcId, bubble);
+    return bubble;
   }
 
   private updateNpcIdleVisual(npc: NpcDefinition, sprite: Phaser.Physics.Arcade.Sprite, isIdle: boolean, delta: number): void {
@@ -2737,7 +2749,7 @@ export class GameScene extends Phaser.Scene {
     }
     const baseLine = this.getNpcDialogueLine(npcId);
     if (getNpcDialogueSurface({ relationshipBeat: Boolean(arcBeat) }).surface === "ambient") {
-      this.showNpcAmbientLine(npcId, getAmbientNpcLine(this.world, npcId, baseLine, routineLabel));
+      this.showNpcAmbientLine(npcId, getAmbientNpcLine(this.world, npcId, baseLine));
       return;
     }
     const arcCopy = arcBeat
