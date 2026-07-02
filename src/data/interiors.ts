@@ -9,6 +9,8 @@ const BAKED_X = OFFSCREEN_INTERIOR_X;
 const BAKED_Y = OFFSCREEN_INTERIOR_Y + TILE_SIZE * 11;
 const MILK_MADU_X = OFFSCREEN_INTERIOR_X;
 const MILK_MADU_Y = OFFSCREEN_INTERIOR_Y + TILE_SIZE * 22;
+const KOS_X = OFFSCREEN_INTERIOR_X;
+const KOS_Y = OFFSCREEN_INTERIOR_Y + TILE_SIZE * 33;
 
 export const interiorDefinitions: Record<string, InteriorDefinition> = {
   warung_sari_interior: {
@@ -122,5 +124,33 @@ export const interiorDefinitions: Record<string, InteriorDefinition> = {
         y: MILK_MADU_Y + TILE_SIZE * 2.45
       }
     ]
+  },
+  cheap_kos_interior: {
+    id: "cheap_kos_interior",
+    venueId: "cheap_kos",
+    name: "Cheap Kos Room",
+    origin: { x: KOS_X, y: KOS_Y },
+    width: TILE_SIZE * 10,
+    height: TILE_SIZE * 7,
+    entrance: {
+      x: KOS_X + TILE_SIZE * 5,
+      y: KOS_Y + TILE_SIZE * 5.65
+    },
+    exitMat: {
+      x: KOS_X + TILE_SIZE * 5,
+      y: KOS_Y + TILE_SIZE * 6.35,
+      radius: TILE_SIZE * 0.65
+    },
+    stations: [
+      {
+        id: "kos_room_corner",
+        x: KOS_X + TILE_SIZE * 4.95,
+        y: KOS_Y + TILE_SIZE * 3.55,
+        radius: TILE_SIZE * 1.35,
+        label: "Use kos room",
+        activityVenueId: "cheap_kos"
+      }
+    ],
+    npcSlots: []
   }
 };

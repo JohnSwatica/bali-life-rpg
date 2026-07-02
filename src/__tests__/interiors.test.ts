@@ -14,6 +14,7 @@ describe("interior definitions", () => {
     expect(getInteriorByVenueId("canggu_station")).toBe(interiorDefinitions.warung_sari_interior);
     expect(getInteriorByVenueId("baked_berawa")).toBe(interiorDefinitions.baked_berawa_interior);
     expect(getInteriorByVenueId("milk_madu_berawa")).toBe(interiorDefinitions.milk_madu_interior);
+    expect(getInteriorByVenueId("cheap_kos")).toBe(interiorDefinitions.cheap_kos_interior);
   });
 
   it("keeps entrances, exit mats, stations, and NPC slots inside each room rect", () => {
@@ -64,18 +65,21 @@ describe("interior definitions", () => {
     const stations = [
       interiorDefinitions.warung_sari_interior.stations.find((candidate) => candidate.id === "meal_counter"),
       interiorDefinitions.baked_berawa_interior.stations.find((candidate) => candidate.id === "bakery_counter"),
-      interiorDefinitions.milk_madu_interior.stations.find((candidate) => candidate.id === "cafe_table")
+      interiorDefinitions.milk_madu_interior.stations.find((candidate) => candidate.id === "cafe_table"),
+      interiorDefinitions.cheap_kos_interior.stations.find((candidate) => candidate.id === "kos_room_corner")
     ];
 
     expect(stations.map((station) => station?.activityVenueId)).toEqual([
       "canggu_station",
       "baked_berawa",
-      "milk_madu_berawa"
+      "milk_madu_berawa",
+      "cheap_kos"
     ]);
     expect(stations.map((station) => (station ? getInteriorStationActivityContext(station)?.venueId : undefined))).toEqual([
       "canggu_station",
       "baked_berawa",
-      "milk_madu_berawa"
+      "milk_madu_berawa",
+      "cheap_kos"
     ]);
   });
 });

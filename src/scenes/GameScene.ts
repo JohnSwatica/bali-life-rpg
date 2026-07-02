@@ -2603,9 +2603,9 @@ export class GameScene extends Phaser.Scene {
     } else if (this.mode === "world" && isAct0FirstRunGateActive(this.world, this.act0FirstRunGateSessionActive)) {
       this.promptText.setText("Find Ibu Sari first - follow the arrow and press E / ACT.");
     } else if (this.mode === "world" && homeSleepReady) {
-      this.promptText.setText(`E / ACT: sleep at ${playerHomeBase.name}.`);
+      this.promptText.setText(`E — Enter ${playerHomeBase.name}`);
     } else if (this.mode === "world" && isPlayerAtHomeBase(this.world)) {
-      this.promptText.setText(`E / ACT: use ${playerHomeBase.name}.`);
+      this.promptText.setText(`E — Enter ${playerHomeBase.name}`);
     } else if (this.mode === "world" && target) {
       this.promptText.setText(`E — ${target.label}`);
     } else if (this.mode === "world" && this.canSleepHere()) {
@@ -2738,12 +2738,12 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (this.isAct0HomeSleepReady()) {
-      this.sleepToMorning();
-      return;
-    }
-
     if (isPlayerAtHomeBase(this.world)) {
+      const homeInterior = getInteriorByVenueId(playerHomeBase.id);
+      if (homeInterior) {
+        this.enterInterior(homeInterior.id);
+        return;
+      }
       this.openHomeActivityMenu();
       return;
     }
@@ -3197,6 +3197,25 @@ export class GameScene extends Phaser.Scene {
       g.fillCircle(x + TILE_SIZE * 1.75, y + TILE_SIZE * 5.28, TILE_SIZE * 0.28);
       g.fillStyle(0x7f4f35, 1);
       g.fillRect(x + TILE_SIZE * 1.58, y + TILE_SIZE * 5.55, TILE_SIZE * 0.22, TILE_SIZE * 0.62);
+    } else if (interior.id === "cheap_kos_interior") {
+      g.fillStyle(0x9f8d76, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 0.95, y + TILE_SIZE * 1.15, TILE_SIZE * 2.35, TILE_SIZE * 4.25, TILE_SIZE * 0.12);
+      g.fillStyle(0xfff0bd, 0.78);
+      g.fillRoundedRect(x + TILE_SIZE * 1.18, y + TILE_SIZE * 1.42, TILE_SIZE * 1.92, TILE_SIZE * 1.08, TILE_SIZE * 0.12);
+      g.fillStyle(0x6ab7ff, 0.46);
+      g.fillRoundedRect(x + TILE_SIZE * 1.18, y + TILE_SIZE * 2.7, TILE_SIZE * 1.92, TILE_SIZE * 2.25, TILE_SIZE * 0.08);
+      g.fillStyle(0x8b5937, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 5.65, y + TILE_SIZE * 1.35, TILE_SIZE * 2.55, TILE_SIZE * 0.72, TILE_SIZE * 0.1);
+      g.fillStyle(0x101820, 0.9);
+      g.fillRoundedRect(x + TILE_SIZE * 6.1, y + TILE_SIZE * 1.08, TILE_SIZE * 0.86, TILE_SIZE * 0.28, TILE_SIZE * 0.05);
+      g.fillStyle(0x6f4a2f, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 5.35, y + TILE_SIZE * 3.65, TILE_SIZE * 1.05, TILE_SIZE * 0.92, TILE_SIZE * 0.1);
+      g.fillRoundedRect(x + TILE_SIZE * 7.05, y + TILE_SIZE * 3.35, TILE_SIZE * 0.95, TILE_SIZE * 1.25, TILE_SIZE * 0.1);
+      g.fillStyle(0xf4d58d, 0.86);
+      g.fillCircle(x + TILE_SIZE * 8.15, y + TILE_SIZE * 1.12, TILE_SIZE * 0.18);
+      g.lineStyle(2, 0xf4d58d, 0.45);
+      g.lineBetween(x + TILE_SIZE * 8.15, y + TILE_SIZE * 1.3, x + TILE_SIZE * 8.15, y + TILE_SIZE * 1.9);
+      g.lineBetween(x + TILE_SIZE * 7.86, y + TILE_SIZE * 1.92, x + TILE_SIZE * 8.44, y + TILE_SIZE * 1.92);
     }
   }
 
@@ -3269,6 +3288,9 @@ export class GameScene extends Phaser.Scene {
 
   private getExteriorDoorReturnPoint(interior: InteriorDefinition): { x: number; y: number } {
     const node = venueMapNodes.find((candidate) => candidate.venueId === interior.venueId);
+    if (!node && interior.venueId === playerHomeBase.id) {
+      return { x: playerHomeBase.x, y: playerHomeBase.y };
+    }
     return node ? { x: node.x, y: node.y + Math.min(node.radius, scaleDistance(52)) } : { x: this.playerState.x, y: this.playerState.y };
   }
 
@@ -6349,6 +6371,7 @@ export class GameScene extends Phaser.Scene {
   private sleepToMorning(): void {
     const { morningPenaltyMessage } = sleepAtHomeUntilMorning(this.world);
     const completedAct0 = completeAct0Step(this.world, "sleep_first_night");
+    this.mode = this.activeInteriorId ? "interior" : "world";
     this.updateLighting();
     saveWorldState(this.world);
     this.showToast(
