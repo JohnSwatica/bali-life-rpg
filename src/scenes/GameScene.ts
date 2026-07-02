@@ -54,7 +54,7 @@ import { getPermanentlySignedVenueIds, renderStreetTemplate } from "../systems/m
 import { STREET_CAMERA, TILE_SIZE } from "../systems/map/TileStreetScale";
 import { clampPointToPlayableBounds } from "../systems/map/PlayableBounds";
 import { scaleDistance, scalePoint } from "../systems/map/WorldScale";
-import { getInteriorByVenueId } from "../systems/interiors/InteriorState";
+import { getInteriorByVenueId, getOccupiedInteriorNpcSlots } from "../systems/interiors/InteriorState";
 import {
   advanceNpcRouteMotion,
   getActiveNpcRoute,
@@ -190,6 +190,7 @@ import type {
   GameIntent,
   GroupTravelMode,
   InteriorDefinition,
+  InteriorNpcSlotDefinition,
   Meter,
   MemoryType,
   NpcDefinition,
@@ -511,6 +512,7 @@ export class GameScene extends Phaser.Scene {
   private activeInteriorId: string | null = null;
   private interiorReturnPoint?: { x: number; y: number };
   private renderedInteriorIds = new Set<string>();
+  private interiorDinerSprites = new Map<string, Phaser.GameObjects.Sprite[]>();
   private interiorTransitioning = false;
   private godmodePanel?: Phaser.GameObjects.Container;
   private movementSpeedMultiplier = 1;
@@ -2137,6 +2139,23 @@ export class GameScene extends Phaser.Scene {
       if (!sprite || !route) {
         continue;
       }
+      const interiorSlot = this.getActiveInteriorNpcSlot(npc.id);
+      if (interiorSlot) {
+        const distanceToPlayer = Phaser.Math.Distance.Between(this.player.x, this.player.y, interiorSlot.x, interiorSlot.y);
+        let facingDirection = this.npcFacingDirections.get(npc.id) ?? "down";
+        if (distanceToPlayer <= NPC_PROXIMITY_REACTION_RADIUS) {
+          facingDirection = directionFromDelta(this.player.x - interiorSlot.x, this.player.y - interiorSlot.y, facingDirection);
+        }
+        this.npcFacingDirections.set(npc.id, facingDirection);
+        sprite.setPosition(interiorSlot.x, interiorSlot.y);
+        sprite.body?.updateFromGameObject();
+        sprite.setDepth(sprite.y);
+        sprite.setVisible(true);
+        this.updateNpcIdleVisual(npc, sprite, true, delta);
+        this.updateNpcTalkBobVisual(npc.id, sprite, delta);
+        this.updateNpcAmbientLineVisual(npc.id, sprite, delta);
+        continue;
+      }
 
       const previousMotion = this.npcRouteMotion.get(npc.id) ?? {
         routeId: null,
@@ -3021,6 +3040,7 @@ export class GameScene extends Phaser.Scene {
       this.activeInteriorId = null;
       this.mode = "world";
       this.applyWorldCameraBounds();
+      this.resetNpcSpritesToRoutineState();
       this.placePlayerSprite(returnPoint, true);
       this.interiorReturnPoint = undefined;
       this.interiorTransitioning = false;
@@ -3035,6 +3055,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.renderedInteriorIds.add(interior.id);
     this.drawInteriorShell(interior);
+    this.createInteriorDiners(interior);
   }
 
   private drawInteriorShell(interior: InteriorDefinition): void {
@@ -3078,10 +3099,69 @@ export class GameScene extends Phaser.Scene {
     g.fillRoundedRect(interior.exitMat.x - TILE_SIZE * 0.55, interior.exitMat.y - TILE_SIZE * 0.26, TILE_SIZE * 1.1, TILE_SIZE * 0.52, TILE_SIZE * 0.08);
     g.lineStyle(1, 0xfff0bd, 0.62);
     g.strokeRoundedRect(interior.exitMat.x - TILE_SIZE * 0.55, interior.exitMat.y - TILE_SIZE * 0.26, TILE_SIZE * 1.1, TILE_SIZE * 0.52, TILE_SIZE * 0.08);
+
+    if (interior.id === "warung_sari_interior") {
+      g.fillStyle(0x6f4a2f, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 1.2, y + TILE_SIZE * 1.65, TILE_SIZE * 9.6, TILE_SIZE * 1.05, TILE_SIZE * 0.1);
+      g.fillStyle(0xf6d79b, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 1.5, y + TILE_SIZE * 1.82, TILE_SIZE * 2.2, TILE_SIZE * 0.36, TILE_SIZE * 0.08);
+      g.fillRoundedRect(x + TILE_SIZE * 4.2, y + TILE_SIZE * 1.82, TILE_SIZE * 2.6, TILE_SIZE * 0.36, TILE_SIZE * 0.08);
+      g.fillStyle(0x253a35, 0.72);
+      g.fillRoundedRect(x + TILE_SIZE * 4.9, y + TILE_SIZE * 2.75, TILE_SIZE * 2.2, TILE_SIZE * 0.24, TILE_SIZE * 0.07);
+
+      const tables = [
+        { x: x + TILE_SIZE * 2.35, y: y + TILE_SIZE * 4.55 },
+        { x: x + TILE_SIZE * 8.75, y: y + TILE_SIZE * 4.8 }
+      ];
+      for (const table of tables) {
+        g.fillStyle(0x8b5937, 1);
+        g.fillRoundedRect(table.x - TILE_SIZE * 0.5, table.y - TILE_SIZE * 0.28, TILE_SIZE, TILE_SIZE * 0.56, TILE_SIZE * 0.12);
+        g.fillStyle(0xfff0bd, 0.9);
+        g.fillCircle(table.x, table.y - TILE_SIZE * 0.02, TILE_SIZE * 0.12);
+      }
+    }
+  }
+
+  private createInteriorDiners(interior: InteriorDefinition): void {
+    if (interior.id !== "warung_sari_interior" || this.interiorDinerSprites.has(interior.id)) {
+      return;
+    }
+    const { x, y } = interior.origin;
+    const diners = [
+      { key: "npc-ari", x: x + TILE_SIZE * 1.9, y: y + TILE_SIZE * 5.1, tint: 0xe58fb1 },
+      { key: "npc-made", x: x + TILE_SIZE * 9.15, y: y + TILE_SIZE * 5.35, tint: 0x62c48f }
+    ];
+    const sprites = diners.map((diner) => {
+      const sprite = this.add.sprite(diner.x, diner.y, diner.key).setDepth(diner.y).setTint(diner.tint).setAlpha(0.82);
+      this.applyCharacterAnimation(sprite, diner.key, "down", false, CHARACTER_SPRITE_SCALE * 0.82);
+      return sprite;
+    });
+    this.interiorDinerSprites.set(interior.id, sprites);
   }
 
   private getActiveInterior(): InteriorDefinition | undefined {
     return this.activeInteriorId ? interiorDefinitions[this.activeInteriorId] : undefined;
+  }
+
+  private getActiveInteriorNpcSlot(npcId: string): InteriorNpcSlotDefinition | undefined {
+    const interior = this.getActiveInterior();
+    if (!interior) {
+      return undefined;
+    }
+    return getOccupiedInteriorNpcSlots(this.world, interior).find((slot) => slot.npcId === npcId);
+  }
+
+  private resetNpcSpritesToRoutineState(): void {
+    for (const npc of Object.values(npcDefinitions)) {
+      const sprite = this.npcSprites.get(npc.id);
+      const state = this.world.npcs[npc.id];
+      if (!sprite || !state) {
+        continue;
+      }
+      sprite.setPosition(state.x, state.y);
+      sprite.body?.updateFromGameObject();
+      sprite.setDepth(sprite.y);
+    }
   }
 
   private getExteriorDoorReturnPoint(interior: InteriorDefinition): { x: number; y: number } {
@@ -5854,7 +5934,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    for (const slot of interior.npcSlots) {
+    for (const slot of getOccupiedInteriorNpcSlots(this.world, interior)) {
       const npc = npcDefinitions[slot.npcId];
       if (!npc) {
         continue;
