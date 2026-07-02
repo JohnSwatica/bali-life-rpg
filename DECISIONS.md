@@ -575,3 +575,15 @@ Venue objective targets also retarget to the active interior's primary station w
 Street readability also moved one notch closer to the GDD door grammar. Venues with `InteriorDefinition`s now get a distinct enterable-door treatment on the authored street: warmer entrance mat, wider lit door, and light spill toward the sidewalk. Inside rooms, station points draw a small gold floor cue so usable counters/tables are readable without another text label or menu-first prompt.
 
 This remains L1 staging and presentation. No delivery economy values, save schema, quest logic, venue coordinates, Act 3 furniture placement, permit systems, backend, AI, real commerce, or multiplayer were added.
+
+## 2026-07-03 - Interior Rooms Use Small-Room Interaction And Centered Camera Rules
+
+Interior rooms now have their own interaction grammar instead of inheriting exterior distances. In rooms, delivery pickup targets keep priority `0`, exit mats are priority `1`, stations are priority `2`, and NPC talk is priority `3` with a reduced `scaleDistance(40)` radius. The data rule is now explicit and tested: station centers must stay at least `scaleDistance(45)` from NPC slots, and entrances/exit mats must stay at least `scaleDistance(40)` from NPC slots. Future interiors should move room data to respect this rule rather than widening NPC radii or relying on registration order.
+
+Delivery pickups at venues with authored interiors should happen inside. The exterior delivery target generator now skips accepted pickup targets whose pickup venue has an `InteriorDefinition`; the venue door remains the exterior interaction, and the matching interior station exposes the delivery pickup. This is why the first BAKED delivery now goes through the bakery counter instead of being picked up from the sidewalk.
+
+Interior camera framing uses two separate rectangles. Physics remains clamped to the real room rect, while the camera gets a centered bounds rect large enough for the viewport at the chosen capped zoom. This prevents small rooms such as the cheap kos from being pinned to the top-left of the screen. The minimap remains hidden indoors, and objective arrows are suppressed indoors unless their target is inside the active room.
+
+Committed activities started from an interior now keep the player in that room and return scene mode to `interior` on complete/cancel. The browser proof caught the old bug in Milk & Madu: after a table activity, the player stayed at interior coordinates while `mode` became `world`, which broke the next room interaction. That behavior is fixed as part of the interior foundation standard.
+
+Browser proof ran at `1280x800` with screenshots saved under `tmp/interior-proof-2026-07-03/`. Verified path: Warung/Sari counter -> BAKED counter pickup -> villa dropoff -> Milk & Madu table prompt -> meal/coffee progression -> kos sleep -> Act 1 rent objective. The in-app browser could not hold movement keys cleanly, so dev speed/time controls were used to compensate for automation drift; prompts, money changes, Act 0 step changes, and room framing were verified via screenshots and the hidden debug DOM snapshot.
