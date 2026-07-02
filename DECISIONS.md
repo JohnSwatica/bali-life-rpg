@@ -533,3 +533,11 @@ Warung Sari is the template interior. Its data lives in `src/data/interiors.ts`,
 The tone fixes are deliberately presentation/pacing changes, not new systems. New saves now open at 08:00 with morning copy. Player-caused pedestrian bumps in Acts 0-1 no longer call the permanent wanted/bounty/reputation flagging path; they use a soft stumble/apology result while Act 2+ keeps the existing flagging behavior. The large objective radius halo was replaced by a compact node marker, leaving the objective arrow and target logic intact.
 
 Designer acceptance ran in the in-app browser at `1280x800` on `localhost:5173`. Fresh boot showed morning light and no screen-dominating objective halo; Canggu Station entered the Warung interior; the room showed walls/floor, Ibu Sari, diner decor, and a dark matte instead of the outside world; Ibu's normal Act 0 first-meet dialogue fired from inside and started the first delivery; and the exit mat returned outside. Meal station mapping and early-act no-wanted bump behavior are covered by automated tests rather than browser movement, which remained awkward for station positioning.
+
+## 2026-07-02 - L1 Step 2 Extends Interiors To The First-Day Cafe/Bakery Loop
+
+The interior primitive is no longer a Warung-only special case. `openExteriorVenueInteraction()` now enters any venue that has an `InteriorDefinition`, and the first-day station path has two more enterable rooms: `baked_berawa_interior` for BAKED and `milk_madu_interior` for Milk & Madu.
+
+This remains a restaging layer over existing systems. The bakery counter and cafe table are interior stations that route back to the existing venue activity contexts; no new minigame, economy, save schema, quest logic, or activity engine was added. Scheduled NPC slots also reuse existing route data: Kadek appears inside BAKED only when his routine is at BAKED, while Ari, Willow, and Ibu Sari appear inside Milk & Madu only when their routines are there.
+
+The automated contract now covers all first-day interiors: exterior-door mapping, entrances/exit mats/stations/NPC slots inside room bounds, scheduled NPC occupancy for BAKED and Milk & Madu, and station-to-activity-context routing. The latest verification is `npm test -- --run` with 146 passing tests and `npm run build` passing.
