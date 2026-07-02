@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { interiorDefinitions } from "../data/interiors";
 import { createInitialWorldState } from "../systems/WorldState";
 import { acceptDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
+import { calculateInteriorCameraZoom } from "../systems/interiors/InteriorCamera";
 import { scaleDistance } from "../systems/map/WorldScale";
 import {
   getInteriorByVenueId,
@@ -56,6 +57,12 @@ describe("interior definitions", () => {
         }
       }
     }
+  });
+
+  it("calculates an interior camera zoom that fills the viewport without exceeding the pixel-art cap", () => {
+    expect(calculateInteriorCameraZoom(1280, 720, interiorDefinitions.warung_sari_interior)).toBeCloseTo(2.5875);
+    expect(calculateInteriorCameraZoom(390, 844, interiorDefinitions.warung_sari_interior)).toBeCloseTo(0.934375);
+    expect(calculateInteriorCameraZoom(2560, 1440, interiorDefinitions.warung_sari_interior)).toBe(2.8);
   });
 
   it("occupies Ibu Sari's counter slot when her schedule is at Canggu Station", () => {

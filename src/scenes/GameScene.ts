@@ -59,8 +59,10 @@ import {
   getInteriorDeliveryPickupForStation,
   getOccupiedInteriorNpcSlots,
   getPrimaryInteriorStationForVenue,
-  getScheduledInteriorForNpc
+  getScheduledInteriorForNpc,
+  isInteriorPointInsideRoom
 } from "../systems/interiors/InteriorState";
+import { calculateInteriorCameraZoom } from "../systems/interiors/InteriorCamera";
 import {
   advanceNpcRouteMotion,
   getActiveNpcRoute,
@@ -3063,6 +3065,7 @@ export class GameScene extends Phaser.Scene {
       this.activeInteriorId = interior.id;
       this.mode = "interior";
       this.applyInteriorCameraBounds(interior);
+      this.hudController.setMinimapHidden(true);
       this.placePlayerSprite(interior.entrance, false);
       this.interiorTransitioning = false;
       this.cameras.main.fadeIn(400, 0, 0, 0);
@@ -3082,6 +3085,8 @@ export class GameScene extends Phaser.Scene {
       this.activeInteriorId = null;
       this.mode = "world";
       this.applyWorldCameraBounds();
+      this.layoutForViewport();
+      this.hudController.setMinimapHidden(false);
       this.resetNpcSpritesToRoutineState();
       this.placePlayerSprite(returnPoint, true);
       this.interiorReturnPoint = undefined;
@@ -3407,8 +3412,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private applyInteriorCameraBounds(interior: InteriorDefinition): void {
+    const zoom = calculateInteriorCameraZoom(this.scale.width, this.scale.height, interior);
+    this.cameras.main.setZoom(zoom);
     this.physics.world.setBounds(interior.origin.x, interior.origin.y, interior.width, interior.height);
     this.cameras.main.setBounds(interior.origin.x, interior.origin.y, interior.width, interior.height);
+    this.cameras.main.centerOn(interior.origin.x + interior.width / 2, interior.origin.y + interior.height / 2);
   }
 
   private applyWorldCameraBounds(): void {
@@ -5517,6 +5525,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawMinimap(): void {
+    if (this.getActiveInterior()) {
+      this.hudController.setMinimapHidden(true);
+      return;
+    }
     const surface = this.hudController.getMinimapSurface(WORLD_WIDTH, WORLD_HEIGHT);
     if (!surface) {
       return;
@@ -6343,7 +6355,14 @@ export class GameScene extends Phaser.Scene {
     if (this.isOverlayOpen()) {
       return;
     }
-    const targets = this.getFieldObjectiveTargets();
+    let targets = this.getFieldObjectiveTargets();
+    const activeInterior = this.getActiveInterior();
+    if (activeInterior) {
+      targets = targets.filter((target) => isInteriorPointInsideRoom(activeInterior, target));
+      if (targets.length === 0) {
+        return;
+      }
+    }
     const view = this.cameras.main.worldView;
     const offscreenTarget = targets.find((target) => !Phaser.Geom.Rectangle.Contains(view, target.x, target.y));
     if (!offscreenTarget) {
@@ -6694,11 +6713,12 @@ export class GameScene extends Phaser.Scene {
 
   private layoutForViewport(): void {
     const { width, height } = this.scale;
-    this.cameras.main.setZoom(width < 720 ? STREET_CAMERA.mobileZoom : STREET_CAMERA.desktopZoom);
     const interior = this.getActiveInterior();
     if (interior) {
       this.applyInteriorCameraBounds(interior);
+      this.hudController?.setMinimapHidden(true);
     } else {
+      this.cameras.main.setZoom(width < 720 ? STREET_CAMERA.mobileZoom : STREET_CAMERA.desktopZoom);
       this.applyWorldCameraBounds();
     }
     this.syncHudLayerToCamera();
