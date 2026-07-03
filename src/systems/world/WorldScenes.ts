@@ -6,6 +6,7 @@ import type { GameEvent, OpportunityType, WorldState } from "../../types";
 
 export type OpportunityWorldSceneKind =
   | "gig_help_wanted"
+  | "shady_package"
   | "social_gathering"
   | "help_distress"
   | "deal_signal"
@@ -71,10 +72,10 @@ export function getOpportunityWorldScenes(world: WorldState): OpportunityWorldSc
         venueId: template.locationVenueId,
         title: template.title,
         opportunityType: template.type,
-        sceneKind: opportunitySceneKind(template.type),
-        cue: opportunitySceneCue(template.type, live.status === "accepted"),
+        sceneKind: opportunitySceneKind(template),
+        cue: opportunitySceneCue(template, live.status === "accepted"),
         accepted: live.status === "accepted",
-        actors: opportunitySceneActors(template.type, template.reward.affinityBumps?.map((bump) => bump.npcId) ?? [])
+        actors: opportunitySceneActors(template, template.reward.affinityBumps?.map((bump) => bump.npcId) ?? [])
       };
     })
     .filter((scene): scene is OpportunityWorldScene => Boolean(scene));
@@ -125,39 +126,44 @@ export function getFieldFirstDiscoveryAudit(world: WorldState): FieldFirstDiscov
   };
 }
 
-function opportunitySceneKind(type: OpportunityType): OpportunityWorldSceneKind {
-  if (type === "gig") return "gig_help_wanted";
-  if (type === "social") return "social_gathering";
-  if (type === "help_out") return "help_distress";
-  if (type === "flash_deal") return "deal_signal";
-  if (type === "rumor") return "rumor_whisper";
+function opportunitySceneKind(template: { id: string; type: OpportunityType }): OpportunityWorldSceneKind {
+  if (template.id === "no_questions_package") return "shady_package";
+  if (template.type === "gig") return "gig_help_wanted";
+  if (template.type === "social") return "social_gathering";
+  if (template.type === "help_out") return "help_distress";
+  if (template.type === "flash_deal") return "deal_signal";
+  if (template.type === "rumor") return "rumor_whisper";
   return "trade_swap";
 }
 
-function opportunitySceneCue(type: OpportunityType, accepted: boolean): string {
+function opportunitySceneCue(template: { id: string; type: OpportunityType }, accepted: boolean): string {
   if (accepted) return "TRACKED";
-  if (type === "gig") return "HELP";
-  if (type === "social") return "GATHER";
-  if (type === "help_out") return "HELP?";
-  if (type === "flash_deal") return "DEAL";
-  if (type === "rumor") return "RUMOR";
+  if (template.id === "no_questions_package") return "CHOICE";
+  if (template.type === "gig") return "HELP";
+  if (template.type === "social") return "GATHER";
+  if (template.type === "help_out") return "HELP?";
+  if (template.type === "flash_deal") return "DEAL";
+  if (template.type === "rumor") return "RUMOR";
   return "SWAP";
 }
 
-function opportunitySceneActors(type: OpportunityType, preferredNpcIds: string[]): WorldSceneActor[] {
-  if (type === "flash_deal") {
+function opportunitySceneActors(template: { id: string; type: OpportunityType }, preferredNpcIds: string[]): WorldSceneActor[] {
+  if (template.type === "flash_deal") {
     return [];
   }
-  if (type === "social") {
+  if (template.id === "no_questions_package") {
+    return buildActors(uniqueNpcIds(["rio", ...preferredNpcIds, ...fallbackNpcIds()]), "social", 1);
+  }
+  if (template.type === "social") {
     return buildActors(uniqueNpcIds([...preferredNpcIds, ...fallbackNpcIds()]), "gathering", 3);
   }
-  if (type === "help_out") {
+  if (template.type === "help_out") {
     return buildActors(uniqueNpcIds([...preferredNpcIds, "ibu_sari", ...fallbackNpcIds()]), "distressed", 1);
   }
-  if (type === "gig") {
+  if (template.type === "gig") {
     return buildActors(uniqueNpcIds([...preferredNpcIds, "made", ...fallbackNpcIds()]), "waving", 1);
   }
-  return buildActors(uniqueNpcIds([...preferredNpcIds, ...fallbackNpcIds()]), type === "trade" ? "social" : "gathering", 2);
+  return buildActors(uniqueNpcIds([...preferredNpcIds, ...fallbackNpcIds()]), template.type === "trade" ? "social" : "gathering", 2);
 }
 
 function eventSceneKind(event: GameEvent): EventWorldSceneKind {

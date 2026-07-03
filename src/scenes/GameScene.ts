@@ -5652,6 +5652,20 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    if (scene.sceneKind === "shady_package") {
+      this.drawWorldSceneActors(scene.actors, x - scaleDistance(18), y, phase, 1);
+      this.worldSceneLayer.fillStyle(0x231917, 0.92);
+      this.worldSceneLayer.fillRoundedRect(x + scaleDistance(2), y + scaleDistance(6), scaleDistance(34), scaleDistance(22), scaleDistance(4));
+      this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(2)), 0xffc6a6, 0.82 + Math.sin(phase * 5) * 0.08);
+      this.worldSceneLayer.strokeRoundedRect(x + scaleDistance(2), y + scaleDistance(6), scaleDistance(34), scaleDistance(22), scaleDistance(4));
+      this.worldSceneLayer.fillStyle(0xffc6a6, 0.86);
+      this.worldSceneLayer.fillCircle(x + scaleDistance(28), y + scaleDistance(13), scaleDistance(3));
+      this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(1)), 0xffc6a6, 0.52);
+      this.worldSceneLayer.lineBetween(x + scaleDistance(8), y + scaleDistance(17), x + scaleDistance(22), y + scaleDistance(17));
+      this.drawWorldSceneSign(scene, x, y - scaleDistance(26), activeLabelIds, 0xffc6a6);
+      return;
+    }
+
     if (scene.sceneKind === "help_distress") {
       this.drawWorldSceneActors(scene.actors, x, y, phase, 1);
       this.drawWorldSceneSign(scene, x, y - scaleDistance(22), activeLabelIds, 0xffc6a6);
@@ -5840,6 +5854,7 @@ export class GameScene extends Phaser.Scene {
     if (spriteKey === "npc-kadek") return 0x6ab7ff;
     if (spriteKey === "npc-made") return 0x8bd17c;
     if (spriteKey === "npc-ari") return 0xffd166;
+    if (spriteKey === "npc-rio") return 0xff8f6b;
     return 0xf4d58d;
   }
 

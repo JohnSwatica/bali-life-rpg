@@ -80,6 +80,21 @@ describe("world-surfaced opportunity scenes", () => {
       })
     );
   });
+
+  it("stages the no-questions package as its own shady rental scene", () => {
+    const world = createInitialWorldState();
+    addLiveOpportunity(world, "no_questions_package");
+
+    expect(getOpportunityWorldScenes(world)).toContainEqual(
+      expect.objectContaining({
+        opportunityType: "gig",
+        venueId: "bali_family_rental_scooter",
+        sceneKind: "shady_package",
+        cue: "CHOICE",
+        actors: [expect.objectContaining({ npcId: "rio", role: "social" })]
+      })
+    );
+  });
 });
 
 describe("world-surfaced event and club scenes", () => {
