@@ -95,14 +95,14 @@ function drawGrass(g: Phaser.GameObjects.Graphics, tileId: number, base: number,
 
 function drawRoad(g: Phaser.GameObjects.Graphics, tileId: number): void {
   const x = offset(tileId);
-  g.fillStyle(0xf0dfb9, 1);
+  g.fillStyle(0x8f8878, 1);
   g.fillRect(x, 0, TILE_SIZE, TILE_SIZE);
-  g.fillStyle(0xe0cfa8, 1);
+  g.fillStyle(0x746e5f, 1);
   g.fillRect(x, 0, TILE_SIZE, 3);
   g.fillRect(x, TILE_SIZE - 3, TILE_SIZE, 3);
-  g.fillStyle(0xfff6d0, 0.65);
-  g.fillRect(x + 14, 6, 4, 8);
-  g.fillRect(x + 14, 21, 4, 7);
+  g.fillStyle(0xfff6d0, 0.84);
+  g.fillRect(x + 13, 6, 6, 8);
+  g.fillRect(x + 13, 21, 6, 7);
 }
 
 function drawSidewalk(g: Phaser.GameObjects.Graphics, tileId: number): void {
