@@ -595,3 +595,13 @@ The tan parking-lot read on the authored street was a tile-painting bug, not a v
 Building access is now side-aware: left-side buildings paint only to the left curb, right-side buildings paint only from the right curb, and the road band stays road/terrain instead of sidewalk. A layout invariant asserts that generated street tile data never contains `TILE_IDS.sidewalk` inside the road band across the authored street length, so future door/access styling cannot silently erase the road again.
 
 Road contrast is a rendering-only presentation choice. The road tile now uses warm asphalt gray with darker edge bands and brighter lane markers, while sidewalks, plots, building palettes, props, venue coordinates, collision, and authored layout data remain unchanged. Browser proof ran at `1280x800` after a fresh F9 reset, with screenshots saved under `tmp/road-continuity-proof-2026-07-03/`; the dense Canggu/BAKED/Bungalow/Scooter/Satu-Satu corridor read as a continuous gray road distinct from the lighter sidewalk.
+
+## Vertical slice: RIDE checkpoint + Kadek TALK choice at BAKED
+
+Deliberately out-of-sequence against GAME_DESIGN.md's L1-L8 build order, per explicit CEO decision: rather than keep building L1 width (more empty interior shells), prove L4 (RIDE) and L5 (TALK) can deliver real depth on one existing touchpoint before investing further in width. Landed on Kadek/BAKED because it already had the most invested data (schedule, quest, delivery affinity hooks) and BAKED was already a built interior.
+
+Finished two seams that were already half-built rather than inventing new systems: `completeDelivery()`'s `performanceScore` parameter (previously always `undefined`) is now fed by two ride checkpoints on the Act 0 tutorial delivery; `adjustReputationAxis()` (previously only reachable from the opportunity engine) now has a `GameIntent` so player-facing scenes can write to it directly.
+
+Deliberately did not reuse the existing `ActivityMinigameKind: "choice"` system for Kadek's scene -- that system scores toward one correct answer, which STORY_BIBLE §G's Choice Authoring Template explicitly forbids for moral choices. Built a small, separate `RelationshipChoiceScene` primitive instead.
+
+Scope is exactly one delivery and one NPC turn-in. No other delivery, NPC, weather, or fuel content changed.
