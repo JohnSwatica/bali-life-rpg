@@ -95,6 +95,11 @@ import {
   resolveRideCheckpointPosition,
   type RideCheckpointDefinition
 } from "../systems/ride/DeliveryRideCheckpoints";
+import {
+  getRelationshipChoiceSceneForNpc,
+  type RelationshipChoiceOption,
+  type RelationshipChoiceScene
+} from "../systems/relationships/RelationshipChoiceScenes";
 import { getActiveEvents, getActiveEventsAtVenue, isEventActive } from "../systems/events/EventScheduler";
 import { applyEventParticipation } from "../systems/events/EventParticipation";
 import { canSleepNow } from "../systems/time/DailyClock";
@@ -562,6 +567,7 @@ export class GameScene extends Phaser.Scene {
   private committedMinigameFeedback?: HTMLDivElement;
   private activeDeliveryResolvedCheckpointIds: string[] = [];
   private activeDeliveryPerformanceScores: number[] = [];
+  private awaitingRelationshipChoice = false;
   private nightOverlayLayer!: Phaser.GameObjects.Container;
   private nightOverlay!: Phaser.GameObjects.Graphics;
   private lanternGlow!: Phaser.GameObjects.Graphics;
@@ -2725,6 +2731,9 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.mode === "dialogue") {
+      if (this.awaitingRelationshipChoice) {
+        return;
+      }
       this.closePanel();
       return;
     }
@@ -2865,11 +2874,20 @@ export class GameScene extends Phaser.Scene {
       for (const intent of questInteraction.intents) {
         this.dispatchIntent(intent);
       }
-      this.openDialogue(npc.name, questInteraction.dialogue);
       if (questInteraction.shouldSave) {
         this.refreshSettlingInGoals();
         saveWorldState(this.world);
       }
+      const justCompletedQuest = questInteraction.intents.some(
+        (intent) => intent.kind === "RecordMemory" && intent.memory === "completed_quest"
+      );
+      const choiceScene = justCompletedQuest ? getRelationshipChoiceSceneForNpc(npcId) : undefined;
+      const alreadyShownChoice = choiceScene ? Boolean(this.world.collectedPickups[choiceScene.id]) : false;
+      if (choiceScene && !alreadyShownChoice) {
+        this.openRelationshipChoiceScene(choiceScene);
+        return;
+      }
+      this.openDialogue(npc.name, questInteraction.dialogue);
       return;
     }
 
@@ -2904,6 +2922,91 @@ export class GameScene extends Phaser.Scene {
     this.closePanel();
     this.mode = "dialogue";
     this.createDialogueOverlay(title, body);
+  }
+
+  private openRelationshipChoiceScene(scene: RelationshipChoiceScene): void {
+    this.closePanel(false);
+    this.mode = "dialogue";
+    this.awaitingRelationshipChoice = true;
+    this.createRelationshipChoiceOverlay(scene);
+  }
+
+  private createRelationshipChoiceOverlay(scene: RelationshipChoiceScene): void {
+    this.destroyDialogueOverlay();
+    if (typeof document === "undefined") {
+      return;
+    }
+    const npc = npcDefinitions[scene.npcId];
+
+    const overlay = document.createElement("section");
+    overlay.className = "bali-life-dialogue";
+    overlay.dataset.dialoguePanel = "true";
+    overlay.dataset.uiSurface = "dialogue";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-label", npc?.name ?? scene.npcId);
+    overlay.addEventListener("pointerdown", (event) => event.stopPropagation());
+    overlay.addEventListener("click", (event) => event.stopPropagation());
+
+    const titleEl = document.createElement("h2");
+    titleEl.className = "bali-life-dialogue-title";
+    titleEl.textContent = npc?.name ?? scene.npcId;
+
+    const bodyEl = document.createElement("div");
+    bodyEl.className = "bali-life-dialogue-body";
+    bodyEl.dataset.dialogueBody = "true";
+    bodyEl.textContent = `${scene.npcOpeningLine}\n\n${scene.prompt}`;
+
+    const choiceRow = document.createElement("div");
+    choiceRow.className = "bali-life-dialogue-choices";
+    for (const option of scene.options) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "bali-life-dialogue-choice";
+      button.textContent = option.label;
+      button.addEventListener("click", () => this.resolveRelationshipChoice(scene, option));
+      choiceRow.appendChild(button);
+    }
+
+    overlay.append(titleEl, bodyEl, choiceRow);
+    document.body.appendChild(overlay);
+    this.dialogueOverlay = overlay;
+  }
+
+  private resolveRelationshipChoice(scene: RelationshipChoiceScene, option: RelationshipChoiceOption): void {
+    this.awaitingRelationshipChoice = false;
+    this.world.collectedPickups[scene.id] = (this.world.collectedPickups[scene.id] ?? 0) + 1;
+    const meterDeltas: Partial<Record<"energy" | "focus", number>> = {};
+    if (option.energyDelta) {
+      meterDeltas.energy = option.energyDelta;
+    }
+    if (option.focusDelta) {
+      meterDeltas.focus = option.focusDelta;
+    }
+    if (Object.keys(meterDeltas).length > 0) {
+      adjustPlayerMeters(this.world, meterDeltas);
+    }
+    if (option.affinityBonus) {
+      bumpRelationshipAffinity(this.world, "npc", scene.npcId, option.affinityBonus, `Chose: ${option.label}`, this.getAbsoluteMinute());
+    }
+    if (option.axis) {
+      this.dispatchIntent({
+        kind: "AdjustReputationAxis",
+        axis: option.axis.kind,
+        delta: option.axis.delta,
+        reason: `${npcDefinitions[scene.npcId]?.name ?? scene.npcId}: ${option.label}`
+      });
+    }
+    if (option.memory) {
+      this.dispatchIntent({
+        kind: "RecordMemory",
+        subjectType: "npc",
+        subjectId: scene.npcId,
+        memory: option.memory.type,
+        detail: option.memory.detail
+      });
+    }
+    saveWorldState(this.world);
+    this.openDialogue(npcDefinitions[scene.npcId]?.name ?? scene.npcId, option.resultLine);
   }
 
   private createDialogueOverlay(title: string, body: string): void {
@@ -5148,6 +5251,7 @@ export class GameScene extends Phaser.Scene {
   private closePanel(setWorldMode = true): void {
     this.panel?.destroy(true);
     this.panel = undefined;
+    this.awaitingRelationshipChoice = false;
     this.destroyDialogueOverlay();
     this.destroyActivityMenuOverlay();
     if (setWorldMode) {
