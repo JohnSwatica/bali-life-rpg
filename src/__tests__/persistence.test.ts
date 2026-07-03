@@ -410,4 +410,34 @@ describe("Persistence migration", () => {
 
     expect(loaded.activeActivity).toEqual(world.activeActivity);
   });
+
+  it("migrates scooter-repair committed activity state", () => {
+    const world = createInitialWorldState();
+    world.activeActivity = {
+      source: "scooterRepair",
+      venueId: "bali_family_rental_scooter",
+      venueName: "Bali Family Rental Scooter",
+      label: "Wrench Repair",
+      durationMin: 25,
+      elapsedMs: 900,
+      realDurationMs: 4200,
+      startedAt: 8 * 60,
+      minigame: {
+        kind: "timing",
+        title: "Wrench Repair",
+        prompt: "Tap as the wrench lines up with the sweet spot.",
+        actionLabel: "Tighten",
+        attempts: 1,
+        bestScore: 0.75,
+        markerPhase: 0.45,
+        targetStart: 0.43,
+        targetEnd: 0.57
+      }
+    };
+
+    saveWorldState(world);
+    const loaded = loadWorldState();
+
+    expect(loaded.activeActivity).toEqual(world.activeActivity);
+  });
 });

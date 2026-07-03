@@ -11,6 +11,7 @@ import {
   previewDeliveryCondition
 } from "../systems/hustle/DeliverySystem";
 import {
+  calculateScooterRepairOutcomeCondition,
   getRentPressureState,
   getScooterRepairStatus,
   getScooterUpgradeStatus,
@@ -341,6 +342,26 @@ describe("Act 0 hustle and deliveries", () => {
     expect(getDeliveryOfferAvailability(world).find((offer) => offer.delivery.id === "milk_madu_brunch_bag")).toMatchObject({
       available: true
     });
+  });
+
+  it("scales scooter repair quality with the wrench timing beat while preserving fail-forward repairs", () => {
+    expect(calculateScooterRepairOutcomeCondition(20, 78, 1)).toBe(78);
+    expect(calculateScooterRepairOutcomeCondition(20, 78, 0)).toBeGreaterThan(20);
+    expect(calculateScooterRepairOutcomeCondition(20, 78, 0)).toBeLessThan(78);
+    expect(calculateScooterRepairOutcomeCondition(20, 78)).toBe(78);
+
+    const world = createInitialWorldState();
+    const player = world.players[world.localPlayerId];
+    player.hasBike = true;
+    player.money = 200;
+    player.bikeCondition = 20;
+
+    const result = repairScooter(world, 8 * 60, 0.25);
+
+    expect(result).toMatchObject({ ok: true });
+    expect(player.bikeCondition).toBeGreaterThan(20);
+    expect(player.bikeCondition).toBeLessThan(78);
+    expect(result.message).toContain("Rough patch");
   });
 
   it("labels rent pressure without creating a fail state", () => {

@@ -138,6 +138,14 @@ const ACTIVITY_MINIGAMES: Record<string, ActivityMinigameDefinition | undefined>
       { id: "avoid", label: "Rearrange the room again", score: 0.2, feedback: "Cozy, but the work is still waiting." }
     ]
   },
+  scooter_repair_timing: {
+    kind: "timing",
+    title: "Wrench Repair",
+    prompt: "Tap as the wrench lines up with the sweet spot. A clean hit gives the rattletrap its best patch.",
+    actionLabel: "Tighten",
+    targetStart: 0.43,
+    targetEnd: 0.57
+  },
   relax_hangout: {
     kind: "choice",
     title: "Read the Table",

@@ -309,6 +309,12 @@ export type ActiveActivityState =
       checkpointId: string;
       activityId?: never;
       opportunityId?: never;
+    })
+  | (ActiveActivityBaseState & {
+      source: "scooterRepair";
+      activityId?: never;
+      opportunityId?: never;
+      checkpointId?: never;
     });
 
 export type RelationshipArcPayoffKind = "club_invite" | "recurring_hangout" | "discount_hook" | "housing_lead_tease";

@@ -143,22 +143,47 @@ export function getScooterRepairStatus(world: WorldState): ScooterRepairStatus {
   return { available: true, reason: null, cost, targetCondition };
 }
 
-export function repairScooter(world: WorldState, now: number): HustleActionResult {
+export function repairScooter(world: WorldState, now: number, performanceScore?: number): HustleActionResult {
   const status = getScooterRepairStatus(world);
   if (!status.available) {
     return { ok: false, message: status.reason ?? "Scooter repair is not available yet." };
   }
   const player = world.players[world.localPlayerId];
+  const repairedCondition = calculateScooterRepairOutcomeCondition(player.bikeCondition, status.targetCondition, performanceScore);
   player.money -= status.cost;
-  player.bikeCondition = status.targetCondition;
+  player.bikeCondition = repairedCondition;
   player.bikeStuck = false;
   player.hasBike = true;
   adjustPlayerMeters(world, { wellbeing: 3, focus: 1 });
   adjustReputation(world.reputation, 1, "Kept the scooter maintained for delivery work", now);
+  const qualityCopy =
+    performanceScore == null
+      ? ""
+      : performanceScore >= 0.85
+        ? " Clean wrench work."
+        : performanceScore >= 0.5
+          ? " Good enough for the road."
+          : " Rough patch, but it rolls.";
   return {
     ok: true,
-    message: `Scooter patched up to ${status.targetCondition}%. Rp -${status.cost}.`
+    message: `Scooter patched up to ${repairedCondition}%. Rp -${status.cost}.${qualityCopy}`
   };
+}
+
+export function calculateScooterRepairOutcomeCondition(currentCondition: number, targetCondition: number, performanceScore?: number): number {
+  const current = Math.max(0, Math.min(100, Math.round(currentCondition)));
+  const target = Math.max(current, Math.min(100, Math.round(targetCondition)));
+  if (performanceScore == null) {
+    return target;
+  }
+  const missing = target - current;
+  if (missing <= 0) {
+    return target;
+  }
+  const score = Math.max(0, Math.min(1, performanceScore));
+  const repairRatio = 0.72 + score * 0.28;
+  const repaired = current + Math.round(missing * repairRatio);
+  return Math.max(Math.min(target, current + 12), Math.min(target, repaired));
 }
 
 export function applyDeliveryScooterWear(world: WorldState, extraWear = 0): number {

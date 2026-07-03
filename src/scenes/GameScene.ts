@@ -3954,13 +3954,7 @@ export class GameScene extends Phaser.Scene {
           this.showToast(repairStatus.reason ?? "Scooter repair is not available.");
           return;
         }
-        const result = repairScooter(this.world, this.getAbsoluteMinute());
-        this.showToast(result.message);
-        if (result.ok) {
-          this.updatePlayerBikeVisual();
-        }
-        saveWorldState(this.world);
-        this.openVenueActivityMenu("bali_family_rental_scooter");
+        this.startScooterRepairMinigame();
       }
     });
     this.appendActivityMenuRow(parent, {
@@ -4045,6 +4039,41 @@ export class GameScene extends Phaser.Scene {
     this.showToast(result.message);
     saveWorldState(this.world);
     this.openHomeActivityMenu();
+  }
+
+  private startScooterRepairMinigame(): void {
+    const repairStatus = getScooterRepairStatus(this.world);
+    if (!repairStatus.available) {
+      this.showToast(repairStatus.reason ?? "Scooter repair is not available.");
+      return;
+    }
+    this.closePanel(false);
+    this.mode = "committedActivity";
+    this.committedActivity = {
+      source: "scooterRepair",
+      venueId: "bali_family_rental_scooter",
+      venueName: "Bali Family Rental Scooter",
+      label: "Wrench Repair",
+      durationMin: 25,
+      elapsedMs: 0,
+      realDurationMs: 4200,
+      startedAt: this.getAbsoluteMinute(),
+      minigame: createActiveMinigame(getActivityMinigameDefinition("scooter_repair_timing"))
+    };
+    this.world.activeActivity = { ...this.committedActivity };
+    this.createCommittedActivityOverlay(this.committedActivity);
+    this.playActivityCommitFlourish(this.player.x, this.player.y, "Repair");
+    saveWorldState(this.world);
+    this.showToast("Wrench Repair started. Hit the timing window for a cleaner patch.");
+  }
+
+  private finishScooterRepair(performanceScore?: number): void {
+    const result = repairScooter(this.world, this.getAbsoluteMinute(), performanceScore);
+    if (result.ok) {
+      this.updatePlayerBikeVisual();
+    }
+    saveWorldState(this.world);
+    this.showToast(result.message);
   }
 
   private appendActivityOptionRow(parent: HTMLElement, context: VenueActivityContext, option: ActivityAvailability): void {
@@ -4327,6 +4356,10 @@ export class GameScene extends Phaser.Scene {
     active.performanceScore = performanceScore;
     if (active.source === "rideCheckpoint") {
       this.finishRideCheckpoint(active.checkpointId, performanceScore);
+      return;
+    }
+    if (active.source === "scooterRepair") {
+      this.finishScooterRepair(performanceScore);
       return;
     }
     if (active.source === "activity") {
