@@ -6,9 +6,20 @@ import { stationVisualDefinitions } from "../data/stationVisuals";
 import { getVenuePoint } from "../data/layoutLookup";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
 import { clampPointToPlayableBounds, isPointInsidePlayableBounds } from "../systems/map/PlayableBounds";
-import { getEnterableStreetVenueIds, getPermanentlySignedVenueIds, getStreetSignPrimaryText } from "../systems/map/StreetRenderer";
-import { createStreetSlots, type StreetSlotSpec, type StreetTemplate } from "../systems/map/StreetTemplate";
-import { TILE_SIZE } from "../systems/map/TileStreetScale";
+import {
+  buildStreetTileData,
+  getEnterableStreetVenueIds,
+  getPermanentlySignedVenueIds,
+  getStreetSignPrimaryText
+} from "../systems/map/StreetRenderer";
+import {
+  createStreetSlots,
+  roadRightTile,
+  streetEndTile,
+  type StreetSlotSpec,
+  type StreetTemplate
+} from "../systems/map/StreetTemplate";
+import { TILE_IDS, TILE_SIZE } from "../systems/map/TileStreetScale";
 
 interface Rect {
   id: string;
@@ -127,6 +138,18 @@ describe("authored street layout invariants", () => {
       ])
     );
     expect(enterableStreetVenueIds.has("cheap_kos")).toBe(false);
+  });
+
+  it("keeps building access strips from painting sidewalk over the road band", () => {
+    const data = buildStreetTileData(activeStreetTemplate);
+    const roadLeft = activeStreetTemplate.roadLeftTile;
+    const roadRight = roadRightTile(activeStreetTemplate);
+
+    for (let y = activeStreetTemplate.start.tileY; y <= streetEndTile(activeStreetTemplate); y += 1) {
+      for (let x = roadLeft; x <= roadRight; x += 1) {
+        expect(data[y][x], `road band ${x},${y}`).not.toBe(TILE_IDS.sidewalk);
+      }
+    }
   });
 
   it("contains playable bounds to the authored corridor while keeping venues and interaction points reachable", () => {

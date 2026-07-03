@@ -229,13 +229,17 @@ function paintSlotAccess(data: number[][], template: StreetTemplate, slot: Stree
     return;
   }
   const entranceY = slot.entrance.tileY;
-  const leftEdge = Math.min(slot.entrance.tileX, template.roadLeftTile);
-  const rightEdge = Math.max(slot.entrance.tileX, roadRightTile(template));
+  const roadLeft = template.roadLeftTile;
+  const roadRight = roadRightTile(template);
+  const isLeftSide = slot.side === "left";
+  const nearRoadEdge = isLeftSide ? roadLeft - 1 : roadRight + 1;
+  const leftEdge = isLeftSide ? Math.min(slot.entrance.tileX, nearRoadEdge) : nearRoadEdge;
+  const rightEdge = isLeftSide ? nearRoadEdge : Math.max(slot.entrance.tileX, nearRoadEdge);
   for (let x = leftEdge; x <= rightEdge; x += 1) {
     setTile(data, x, entranceY, TILE_IDS.sidewalk);
   }
   if (entranceY < template.start.tileY) {
-    for (let x = template.roadLeftTile; x <= roadRightTile(template); x += 1) {
+    for (let x = roadLeft; x <= roadRight; x += 1) {
       setTile(data, x, entranceY, TILE_IDS.road);
     }
   }
