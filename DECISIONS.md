@@ -605,3 +605,13 @@ Finished two seams that were already half-built rather than inventing new system
 Deliberately did not reuse the existing `ActivityMinigameKind: "choice"` system for Kadek's scene -- that system scores toward one correct answer, which STORY_BIBLE §G's Choice Authoring Template explicitly forbids for moral choices. Built a small, separate `RelationshipChoiceScene` primitive instead.
 
 Scope is exactly one delivery and one NPC turn-in. No other delivery, NPC, weather, or fuel content changed.
+
+## 2026-07-03 - Act 1 Mornings Become A Decision Hand, Not A Passive Checklist
+
+Act 1 now begins its day loop with a sleep-triggered morning hand instead of asking the player to infer the day from Phone tabs. `MorningHand.ts` is a pure read model over existing state: it chooses delivery offers, repair pressure, rent pressure, and the no-questions package if it is live. It does not add a new save field; sleeping is the trigger, and closing the hand starts the day.
+
+Board deliveries now inherit the RIDE principle proven by the BAKED tutorial slice. Each repeatable Act 1 delivery has at least one route checkpoint, and condition-heavy jobs can add extra beats such as rain slicks. This keeps the existing delivery state machine, payout math, scooter wear, and fail-forward completion; it only makes the ride itself playable more often.
+
+Scooter repair is now staged as a `Wrench Repair` timing beat at the rental counter. The phone/direct repair path remains as a fallback and preserves the previous "repair to tier cap" behavior, but the field-first version scales the patched condition by performance. This gives scooter condition a playable maintenance moment without turning it into a punitive failure system.
+
+The No-Questions Package remains an opt-in opportunity and still uses accept/expire as the moral choice. Its discovery presentation changed: the rental now renders a distinct shady-package scene with Rio and a `CHOICE` cue instead of a generic gig marker. No new decline button, Act 2 content, Rio leaderboard, permit system, backend, AI, multiplayer, real commerce, or Act 3 business simulation was added.
