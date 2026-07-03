@@ -484,6 +484,16 @@ export interface HustleState {
   moveOutReady: boolean;
 }
 
+export interface DayLedgerBaseline {
+  day: number;
+  money: number;
+  driverRating: number;
+  completedDeliveryCount: number;
+  deliveryEarnings: number;
+  bikeCondition: number;
+  relationshipCount: number;
+}
+
 export interface LifeLoopState {
   activityHistory: Record<string, LifeActivityRecord>;
   pendingMorningPenalties: PendingMorningPenalty[];
@@ -493,6 +503,7 @@ export interface LifeLoopState {
   settledIn: boolean;
   actProgress: ActProgressState;
   hustle: HustleState;
+  dayLedger: DayLedgerBaseline | null;
 }
 
 export type GameIntent =

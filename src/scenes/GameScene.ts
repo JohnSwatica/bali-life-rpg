@@ -148,6 +148,12 @@ import { shouldOpenIbuHustleBoard as canOpenIbuHustleBoard } from "../systems/hu
 import { isAct1MoveOutReady } from "../systems/hustle/HustleMilestones";
 import { getMorningHandCards, shouldShowMorningHand, type MorningHandCard } from "../systems/hustle/MorningHand";
 import {
+  buildDayLedgerSummary,
+  captureDayLedgerBaseline,
+  type DayLedgerRow,
+  type DayLedgerSummary
+} from "../systems/life/DayLedger";
+import {
   acceptOpportunity,
   appendOpportunityMessage,
   generateOpportunityPhoneTexts,
@@ -3687,6 +3693,81 @@ export class GameScene extends Phaser.Scene {
     this.activityMenuOverlay = overlay;
   }
 
+  private openDayLedger(summary: DayLedgerSummary): void {
+    this.closePanel(false);
+    this.mode = "activity";
+    this.destroyActivityMenuOverlay();
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const overlay = document.createElement("section");
+    overlay.id = "bali-life-activity-menu";
+    overlay.className = "bali-life-activity-menu";
+    overlay.dataset.activityPanel = "true";
+    overlay.dataset.uiSurface = "activity-panel";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-label", "Day ledger");
+    overlay.addEventListener("pointerdown", (event) => event.stopPropagation());
+    overlay.addEventListener("click", (event) => event.stopPropagation());
+
+    const header = document.createElement("div");
+    header.className = "bali-life-activity-menu-header";
+    const title = document.createElement("h2");
+    title.className = "bali-life-activity-menu-title";
+    title.textContent = `Day ${summary.closedDay} Ledger`;
+    const meta = document.createElement("div");
+    meta.className = "bali-life-activity-menu-meta";
+    meta.textContent =
+      `${summary.runsCompleted} run${summary.runsCompleted === 1 ? "" : "s"} | ` +
+      `${this.world.life.hustle.driverRating.toFixed(1)} stars | Rent Day ${this.world.life.hustle.rentDueDay}`;
+    header.append(title, meta);
+
+    const content = document.createElement("div");
+    content.className = "bali-life-activity-menu-content";
+    this.appendActivityMenuSection(content, "How the day closed");
+    for (const row of summary.rows) {
+      this.appendDayLedgerRow(content, row);
+    }
+
+    const footer = document.createElement("div");
+    footer.className = "bali-life-activity-menu-footer";
+    const next = document.createElement("button");
+    next.type = "button";
+    next.className = "bali-life-activity-menu-button is-close";
+    next.textContent = "See Today's Hand";
+    next.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.closePanel(false);
+      this.openMorningHand();
+      if (!this.activityMenuOverlay) {
+        this.mode = this.activeInteriorId ? "interior" : "world";
+      }
+    });
+    footer.appendChild(next);
+
+    overlay.append(header, content, footer);
+    document.body.appendChild(overlay);
+    this.activityMenuOverlay = overlay;
+  }
+
+  private appendDayLedgerRow(parent: HTMLElement, row: DayLedgerRow): void {
+    const article = document.createElement("article");
+    article.className = "bali-life-activity-menu-row";
+    const copy = document.createElement("div");
+    copy.className = "bali-life-activity-menu-copy";
+    const title = document.createElement("h3");
+    title.className = "bali-life-activity-menu-row-title";
+    title.textContent = row.title;
+    const body = document.createElement("p");
+    body.className = "bali-life-activity-menu-row-body";
+    body.textContent = row.body;
+    copy.append(title, body);
+    article.appendChild(copy);
+    parent.appendChild(article);
+  }
+
   private appendMorningHandCard(parent: HTMLElement, card: MorningHandCard): void {
     this.appendActivityMenuRow(parent, {
       title: card.title,
@@ -6905,6 +6986,8 @@ export class GameScene extends Phaser.Scene {
     const completedAct0 = completeAct0Step(this.world, "sleep_first_night");
     this.mode = this.activeInteriorId ? "interior" : "world";
     this.updateLighting();
+    const ledgerSummary = buildDayLedgerSummary(this.world);
+    captureDayLedgerBaseline(this.world);
     saveWorldState(this.world);
     this.showToast(
       completedAct0
@@ -6912,6 +6995,10 @@ export class GameScene extends Phaser.Scene {
         : `Slept until ${formatClock(this.world)}. Energy restored.${morningPenaltyMessage}`
     );
     this.updateOpportunityFeed(0, true);
+    if (ledgerSummary) {
+      this.openDayLedger(ledgerSummary);
+      return;
+    }
     this.openMorningHand();
   }
 

@@ -1,4 +1,4 @@
-import type { ActiveDeliveryState, Act0Step, ActProgressState, HustleState, LifeLoopState } from "../../types";
+import type { ActiveDeliveryState, Act0Step, ActProgressState, DayLedgerBaseline, HustleState, LifeLoopState } from "../../types";
 
 const ACT0_STEPS: Act0Step[] = [
   "meet_ibu_sari",
@@ -18,7 +18,8 @@ export function createDefaultLifeLoopState(): LifeLoopState {
     relationshipArcProgress: {},
     settledIn: false,
     actProgress: createDefaultActProgressState(),
-    hustle: createDefaultHustleState()
+    hustle: createDefaultHustleState(),
+    dayLedger: null
   };
 }
 
@@ -60,7 +61,29 @@ export function migrateLifeLoopState(rawLife: unknown): LifeLoopState {
     relationshipArcProgress: partial.relationshipArcProgress ?? {},
     settledIn: partial.settledIn ?? false,
     actProgress: migrateActProgressState(partial.actProgress, legacyLifeProgress, partial.settledIn ?? false),
-    hustle: migrateHustleState(partial.hustle)
+    hustle: migrateHustleState(partial.hustle),
+    dayLedger: migrateDayLedgerBaseline(partial.dayLedger)
+  };
+}
+
+function migrateDayLedgerBaseline(raw: unknown): DayLedgerBaseline | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const value = raw as Partial<DayLedgerBaseline>;
+  if (typeof value.day !== "number" || !Number.isFinite(value.day)) {
+    return null;
+  }
+  const readNumber = (candidate: unknown, fallback: number): number =>
+    typeof candidate === "number" && Number.isFinite(candidate) ? candidate : fallback;
+  return {
+    day: value.day,
+    money: readNumber(value.money, 0),
+    driverRating: readNumber(value.driverRating, 3.2),
+    completedDeliveryCount: readNumber(value.completedDeliveryCount, 0),
+    deliveryEarnings: readNumber(value.deliveryEarnings, 0),
+    bikeCondition: readNumber(value.bikeCondition, 100),
+    relationshipCount: readNumber(value.relationshipCount, 0)
   };
 }
 
