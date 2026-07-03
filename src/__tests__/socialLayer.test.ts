@@ -14,6 +14,20 @@ import { createInitialWorldState } from "../systems/WorldState";
 import type { GroupPurpose } from "../types";
 
 describe("social events", () => {
+  it("dispatches hidden reputation-axis intents", () => {
+    const world = createInitialWorldState();
+    const result = new IntentDispatcher().dispatch(
+      { kind: "AdjustReputationAxis", axis: "relational", delta: 4, reason: "Asked Kadek about baking" },
+      world,
+      8 * 60
+    );
+
+    expect(result).toMatchObject({ ok: true });
+    expect(world.reputation.relationalAxis).toBe(4);
+    expect(world.reputation.score).toBe(60);
+    expect(world.reputation.history.at(-1)).toEqual({ at: 8 * 60, change: "Asked Kadek about baking", delta: 0 });
+  });
+
   it("activates events on the authored day/time window", () => {
     const world = createInitialWorldState();
     world.clock.day = 1;

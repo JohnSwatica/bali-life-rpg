@@ -36,6 +36,7 @@ import {
 } from "../systems/reputation/ReputationState";
 import { bumpRelationshipAffinity } from "../systems/relationships/RelationshipMemory";
 import { completeNextRelationshipArcBeat } from "../systems/relationships/RelationshipArcs";
+import { getRelationshipChoiceSceneForNpc } from "../systems/relationships/RelationshipChoiceScenes";
 import {
   consumeQuestObjective,
   getQuestObjectives,
@@ -92,6 +93,15 @@ describe("QuestRegistry", () => {
     expect(player.completedQuestIds).toContain("berawa_bakery_run");
     expect(getQuantity(player, "surf_sticker")).toBe(2);
     expect(player.money).toBe(startingMoney + 90 + 75);
+  });
+
+  it("authors the Kadek turn-in choice without intercepting Ibu Sari's quest", () => {
+    const kadekScene = getRelationshipChoiceSceneForNpc("kadek");
+
+    expect(kadekScene?.id).toBe("kadek_bakery_turnin");
+    expect(kadekScene?.options).toHaveLength(2);
+    expect(kadekScene?.options.map((option) => option.axis?.kind)).toEqual(["relational", "relational"]);
+    expect(getRelationshipChoiceSceneForNpc("ibu_sari")).toBeUndefined();
   });
 
   it("exercises the generic objective evaluator without requiring extra quest fixtures", () => {
