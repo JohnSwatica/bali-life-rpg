@@ -15,8 +15,27 @@ describe("DeliveryRideCheckpoints", () => {
     expect(checkpoints).toHaveLength(2);
   });
 
-  it("returns no checkpoints for a delivery with none authored", () => {
-    expect(getRideCheckpointsForDelivery("milk_madu_brunch_bag")).toHaveLength(0);
+  it("gives every repeatable board delivery at least one route beat", () => {
+    const boardDeliveryIds = [
+      "milk_madu_brunch_bag",
+      "satu_satu_invoice_pouch",
+      "nude_cold_bag_run",
+      "beach_wristband_pouch",
+      "finns_linen_bundle"
+    ];
+
+    for (const deliveryId of boardDeliveryIds) {
+      expect(getRideCheckpointsForDelivery(deliveryId).length).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("adds condition-specific route beats only for the matching condition", () => {
+    expect(getRideCheckpointsForDelivery("satu_satu_invoice_pouch").map((checkpoint) => checkpoint.id)).not.toContain(
+      "satu_satu_invoice_rain_slick"
+    );
+    expect(getRideCheckpointsForDelivery("satu_satu_invoice_pouch", "rain_window").map((checkpoint) => checkpoint.id)).toContain(
+      "satu_satu_invoice_rain_slick"
+    );
   });
 
   it("resolves each checkpoint to a position strictly between pickup and dropoff", () => {

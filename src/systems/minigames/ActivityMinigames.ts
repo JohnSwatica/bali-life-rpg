@@ -175,6 +175,30 @@ const ACTIVITY_MINIGAMES: Record<string, ActivityMinigameDefinition | undefined>
     actionLabel: "Lean",
     targetStart: 0.4,
     targetEnd: 0.56
+  },
+  ride_checkpoint_pothole: {
+    kind: "timing",
+    title: "Broken Asphalt",
+    prompt: "Tap when the front wheel lines up with the clean strip between potholes.",
+    actionLabel: "Thread",
+    targetStart: 0.48,
+    targetEnd: 0.6
+  },
+  ride_checkpoint_cargo_balance: {
+    kind: "balance",
+    title: "Cargo Balance",
+    prompt: "Tap while the marker is centered to settle the load before it shifts.",
+    actionLabel: "Steady",
+    targetStart: 0.38,
+    targetEnd: 0.62
+  },
+  ride_checkpoint_rain_slick: {
+    kind: "timing",
+    title: "Rain Slick",
+    prompt: "Tap in the grip window to feather the brake before the painted line.",
+    actionLabel: "Brake",
+    targetStart: 0.34,
+    targetEnd: 0.49
   }
 };
 

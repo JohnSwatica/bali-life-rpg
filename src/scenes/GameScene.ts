@@ -4349,7 +4349,7 @@ export class GameScene extends Phaser.Scene {
     if (!active || active.stage !== "picked_up") {
       return;
     }
-    const checkpoints = getRideCheckpointsForDelivery(active.deliveryId);
+    const checkpoints = getRideCheckpointsForDelivery(active.deliveryId, active.conditionId);
     for (const checkpoint of checkpoints) {
       if (this.activeDeliveryResolvedCheckpointIds.includes(checkpoint.id)) {
         continue;
@@ -4390,7 +4390,8 @@ export class GameScene extends Phaser.Scene {
     const score = performanceScore ?? 0.72;
     this.activeDeliveryResolvedCheckpointIds.push(checkpointId);
     this.activeDeliveryPerformanceScores.push(score);
-    const checkpoint = getRideCheckpointsForDelivery(this.world.life.hustle.activeDelivery?.deliveryId ?? "").find(
+    const activeDelivery = this.world.life.hustle.activeDelivery;
+    const checkpoint = getRideCheckpointsForDelivery(activeDelivery?.deliveryId ?? "", activeDelivery?.conditionId).find(
       (candidate) => candidate.id === checkpointId
     );
     if (checkpoint) {
@@ -6572,6 +6573,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.deliveryMarkerLayer.clear();
+    this.drawRideCheckpointMarkers();
     const targets = this.getFieldObjectiveTargets();
     for (const target of targets) {
       const pulse = 0.55 + Math.sin(Date.now() / 180) * 0.12;
@@ -6584,6 +6586,37 @@ export class GameScene extends Phaser.Scene {
       this.deliveryMarkerLayer.fillTriangle(target.x, target.y - 34, target.x - 16, target.y - 8, target.x + 16, target.y - 8);
       this.deliveryMarkerLayer.lineStyle(2, 0xfff0bd, 0.9);
       this.deliveryMarkerLayer.strokeTriangle(target.x, target.y - 34, target.x - 16, target.y - 8, target.x + 16, target.y - 8);
+    }
+  }
+
+  private drawRideCheckpointMarkers(): void {
+    const active = this.world.life.hustle.activeDelivery;
+    if (!active || active.stage !== "picked_up") {
+      return;
+    }
+    const pulse = 0.5 + Math.sin(Date.now() / 160) * 0.14;
+    for (const checkpoint of getRideCheckpointsForDelivery(active.deliveryId, active.conditionId)) {
+      if (this.activeDeliveryResolvedCheckpointIds.includes(checkpoint.id)) {
+        continue;
+      }
+      const position = resolveRideCheckpointPosition(checkpoint);
+      if (!position) {
+        continue;
+      }
+      const radius = scaleDistance(15);
+      this.deliveryMarkerLayer.fillStyle(0x101820, 0.28);
+      this.deliveryMarkerLayer.fillCircle(position.x, position.y, radius + scaleDistance(5));
+      this.deliveryMarkerLayer.lineStyle(Math.max(1, scaleDistance(2)), 0x8ee6ff, 0.48 + pulse * 0.28);
+      this.deliveryMarkerLayer.strokeCircle(position.x, position.y, radius);
+      this.deliveryMarkerLayer.fillStyle(0x8ee6ff, 0.88);
+      this.deliveryMarkerLayer.fillTriangle(
+        position.x,
+        position.y - scaleDistance(8),
+        position.x - scaleDistance(7),
+        position.y + scaleDistance(6),
+        position.x + scaleDistance(7),
+        position.y + scaleDistance(6)
+      );
     }
   }
 
