@@ -1,7 +1,7 @@
 import { getEvent } from "../events/EventScheduler";
 import { joinSocialGroup } from "../groups/GroupRegistry";
 import { switchPortalMode } from "../portal/PortalState";
-import { adjustReputation, awardReputationTag } from "../reputation/ReputationState";
+import { adjustReputation, adjustReputationAxis, awardReputationTag } from "../reputation/ReputationState";
 import { recordRelationshipMemory } from "../relationships/RelationshipMemory";
 import type { GameIntent, ReputationTag, WorldState } from "../../types";
 
@@ -35,6 +35,11 @@ export class IntentDispatcher {
     this.register("AdjustReputation", (intent, world, at) => {
       adjustReputation(world.reputation, intent.delta, intent.reason, at);
       return { ok: true, message: `Reputation ${intent.delta >= 0 ? "+" : ""}${intent.delta}.` };
+    });
+
+    this.register("AdjustReputationAxis", (intent, world, at) => {
+      adjustReputationAxis(world.reputation, intent.axis, intent.delta, intent.reason, at);
+      return { ok: true, message: `${intent.axis} axis ${intent.delta >= 0 ? "+" : ""}${intent.delta}.` };
     });
 
     this.register("VisitVenue", (intent, world, at) => {

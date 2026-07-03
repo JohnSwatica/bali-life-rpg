@@ -488,7 +488,8 @@ export type GameIntent =
   | { kind: "VisitVenue"; venueId: string }
   | { kind: "RecordMemory"; subjectType: "npc" | "venue"; subjectId: string; memory: MemoryType; detail?: string }
   | { kind: "AwardReputationTag"; tag: ReputationTag; reason: string }
-  | { kind: "AdjustReputation"; delta: number; reason: string };
+  | { kind: "AdjustReputation"; delta: number; reason: string }
+  | { kind: "AdjustReputationAxis"; axis: "rooted" | "relational"; delta: number; reason: string };
 
 export interface InventoryEntry {
   itemId: string;
