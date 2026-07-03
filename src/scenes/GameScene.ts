@@ -146,6 +146,7 @@ import {
 } from "../systems/hustle/HustleEconomy";
 import { shouldOpenIbuHustleBoard as canOpenIbuHustleBoard } from "../systems/hustle/IbuHustleBoard";
 import { isAct1MoveOutReady } from "../systems/hustle/HustleMilestones";
+import { getMorningHandCards, shouldShowMorningHand, type MorningHandCard } from "../systems/hustle/MorningHand";
 import {
   acceptOpportunity,
   appendOpportunityMessage,
@@ -3628,6 +3629,97 @@ export class GameScene extends Phaser.Scene {
     this.activityMenuOverlay = overlay;
   }
 
+  private openMorningHand(): void {
+    if (!shouldShowMorningHand(this.world)) {
+      return;
+    }
+    this.closePanel(false);
+    this.mode = "activity";
+    this.destroyActivityMenuOverlay();
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const overlay = document.createElement("section");
+    overlay.id = "bali-life-activity-menu";
+    overlay.className = "bali-life-activity-menu";
+    overlay.dataset.activityPanel = "true";
+    overlay.dataset.uiSurface = "activity-panel";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-label", "Morning hand");
+    overlay.addEventListener("pointerdown", (event) => event.stopPropagation());
+    overlay.addEventListener("click", (event) => event.stopPropagation());
+
+    const header = document.createElement("div");
+    header.className = "bali-life-activity-menu-header";
+    const title = document.createElement("h2");
+    title.className = "bali-life-activity-menu-title";
+    title.textContent = "Today's Hand";
+    const meta = document.createElement("div");
+    meta.className = "bali-life-activity-menu-meta";
+    meta.textContent =
+      `${formatClock(this.world)} | ${this.world.life.hustle.completedDeliveryCount} runs | ` +
+      `${this.world.life.hustle.driverRating.toFixed(1)} stars | Rent Day ${this.world.life.hustle.rentDueDay}`;
+    header.append(title, meta);
+
+    const content = document.createElement("div");
+    content.className = "bali-life-activity-menu-content";
+    this.appendActivityMenuSection(content, "Choose the shape of the morning");
+    for (const card of getMorningHandCards(this.world, this.getAbsoluteMinute())) {
+      this.appendMorningHandCard(content, card);
+    }
+
+    const footer = document.createElement("div");
+    footer.className = "bali-life-activity-menu-footer";
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "bali-life-activity-menu-button is-close";
+    close.textContent = "Start Day";
+    close.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.closePanel();
+    });
+    footer.appendChild(close);
+
+    overlay.append(header, content, footer);
+    document.body.appendChild(overlay);
+    this.activityMenuOverlay = overlay;
+  }
+
+  private appendMorningHandCard(parent: HTMLElement, card: MorningHandCard): void {
+    this.appendActivityMenuRow(parent, {
+      title: card.title,
+      body: card.body,
+      actionLabel: card.actionLabel,
+      variant: card.available ? "primary" : "blocked",
+      onAction: () => this.resolveMorningHandCard(card)
+    });
+  }
+
+  private resolveMorningHandCard(card: MorningHandCard): void {
+    if (card.action === "accept_delivery" && card.deliveryId) {
+      const result = acceptDelivery(this.world, card.deliveryId, this.getAbsoluteMinute());
+      this.showToast(result.ok ? `${result.message} Follow the delivery marker.` : result.message);
+      saveWorldState(this.world);
+      this.closePanel();
+      return;
+    }
+    if (card.action === "pay_rent") {
+      this.payHomeRent();
+      return;
+    }
+    if (card.action === "track_opportunity" && card.opportunityId) {
+      this.world.opportunities.trackedOpportunityId = card.opportunityId;
+      this.showToast("Tracked on the field. Ride to the rental counter if you want to face it.");
+      saveWorldState(this.world);
+      this.closePanel();
+      return;
+    }
+    this.showToast(card.venueId ? `Head to ${card.venueId.replace(/_/g, " ")} when ready.` : "Day started.");
+    this.closePanel();
+  }
+
   private createActivityMenuOverlay(
     venueId: string,
     context: VenueActivityContext,
@@ -6738,6 +6830,8 @@ export class GameScene extends Phaser.Scene {
         ? `Slept until ${formatClock(this.world)}. Act 1 begins: keep hustling toward rent and your own place.${morningPenaltyMessage}`
         : `Slept until ${formatClock(this.world)}. Energy restored.${morningPenaltyMessage}`
     );
+    this.updateOpportunityFeed(0, true);
+    this.openMorningHand();
   }
 
   private isPickupAvailable(pickup: PickupDefinition): boolean {
