@@ -89,6 +89,12 @@ import {
   scoreChoice,
   scoreTimingAttempt
 } from "../systems/minigames/ActivityMinigames";
+import {
+  getRideCheckpointsForDelivery,
+  pickOutcomeToast,
+  resolveRideCheckpointPosition,
+  type RideCheckpointDefinition
+} from "../systems/ride/DeliveryRideCheckpoints";
 import { getActiveEvents, getActiveEventsAtVenue, isEventActive } from "../systems/events/EventScheduler";
 import { applyEventParticipation } from "../systems/events/EventParticipation";
 import { canSleepNow } from "../systems/time/DailyClock";
@@ -554,6 +560,8 @@ export class GameScene extends Phaser.Scene {
   private committedActivityStatus?: HTMLDivElement;
   private committedMinigameMarker?: HTMLDivElement;
   private committedMinigameFeedback?: HTMLDivElement;
+  private activeDeliveryResolvedCheckpointIds: string[] = [];
+  private activeDeliveryPerformanceScores: number[] = [];
   private nightOverlayLayer!: Phaser.GameObjects.Container;
   private nightOverlay!: Phaser.GameObjects.Graphics;
   private lanternGlow!: Phaser.GameObjects.Graphics;
@@ -647,6 +655,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.updatePlayer(delta);
+    this.updateRideCheckpoints();
     this.updateMapDiscovery();
     this.updateTraffic(delta);
     this.updateWantedOffenders(delta);
@@ -4098,7 +4107,10 @@ export class GameScene extends Phaser.Scene {
       this.committedActivityProgress.style.width = `${Math.round(progress * 100)}%`;
     }
     if (this.committedActivityStatus) {
-      this.committedActivityStatus.textContent = `Fast-forwarding ${elapsedMinutes}/${active.durationMin} in-game minutes`;
+      this.committedActivityStatus.textContent =
+        active.source === "rideCheckpoint"
+          ? "React now -- this resolves in a moment."
+          : `Fast-forwarding ${elapsedMinutes}/${active.durationMin} in-game minutes`;
     }
     if (progress >= 1) {
       this.completeCommittedActivity();
@@ -4116,6 +4128,10 @@ export class GameScene extends Phaser.Scene {
     this.mode = this.activeInteriorId ? "interior" : "world";
     const performanceScore = resolvePerformanceScore(active.minigame);
     active.performanceScore = performanceScore;
+    if (active.source === "rideCheckpoint") {
+      this.finishRideCheckpoint(active.checkpointId, performanceScore);
+      return;
+    }
     if (active.source === "activity") {
       const context = getVenueActivityContext(active.venueId);
       if (!context) {
@@ -4126,6 +4142,72 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.finishCommittedOpportunity(active.opportunityId, performanceScore);
+  }
+
+  private updateRideCheckpoints(): void {
+    if (this.mode !== "world") {
+      return;
+    }
+    const active = this.world.life.hustle.activeDelivery;
+    if (!active || active.stage !== "picked_up") {
+      return;
+    }
+    const checkpoints = getRideCheckpointsForDelivery(active.deliveryId);
+    for (const checkpoint of checkpoints) {
+      if (this.activeDeliveryResolvedCheckpointIds.includes(checkpoint.id)) {
+        continue;
+      }
+      const position = resolveRideCheckpointPosition(checkpoint);
+      if (!position) {
+        continue;
+      }
+      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, position.x, position.y);
+      if (distance <= scaleDistance(checkpoint.radius)) {
+        this.startRideCheckpoint(checkpoint);
+        return;
+      }
+    }
+  }
+
+  private startRideCheckpoint(checkpoint: RideCheckpointDefinition): void {
+    this.closePanel(false);
+    this.mode = "committedActivity";
+    this.committedActivity = {
+      source: "rideCheckpoint",
+      checkpointId: checkpoint.id,
+      venueId: checkpoint.deliveryId,
+      venueName: "En route",
+      label: "Ride Checkpoint",
+      durationMin: 0,
+      elapsedMs: 0,
+      realDurationMs: 3200,
+      startedAt: this.getAbsoluteMinute(),
+      minigame: createActiveMinigame(getActivityMinigameDefinition(checkpoint.minigameId))
+    };
+    this.world.activeActivity = { ...this.committedActivity };
+    this.createCommittedActivityOverlay(this.committedActivity);
+    this.showToast(checkpoint.arriveToast);
+  }
+
+  private finishRideCheckpoint(checkpointId: string, performanceScore: number | undefined): void {
+    const score = performanceScore ?? 0.72;
+    this.activeDeliveryResolvedCheckpointIds.push(checkpointId);
+    this.activeDeliveryPerformanceScores.push(score);
+    const checkpoint = getRideCheckpointsForDelivery(this.world.life.hustle.activeDelivery?.deliveryId ?? "").find(
+      (candidate) => candidate.id === checkpointId
+    );
+    if (checkpoint) {
+      this.showToast(pickOutcomeToast(checkpoint, score));
+    }
+    saveWorldState(this.world);
+  }
+
+  private averageRideCheckpointPerformance(): number | undefined {
+    if (this.activeDeliveryPerformanceScores.length === 0) {
+      return undefined;
+    }
+    const sum = this.activeDeliveryPerformanceScores.reduce((total, score) => total + score, 0);
+    return sum / this.activeDeliveryPerformanceScores.length;
   }
 
   private finishCommittedOpportunity(opportunityId: string, performanceScore?: number): void {
@@ -4139,6 +4221,9 @@ export class GameScene extends Phaser.Scene {
   private cancelCommittedActivity(): void {
     if (!this.committedActivity) {
       this.closePanel();
+      return;
+    }
+    if (this.committedActivity.source === "rideCheckpoint") {
       return;
     }
     const label = this.committedActivity.label;
@@ -4254,7 +4339,10 @@ export class GameScene extends Phaser.Scene {
 
     const status = document.createElement("div");
     status.className = "bali-life-activity-progress-status";
-    status.textContent = `Fast-forwarding 0/${active.durationMin} in-game minutes`;
+    status.textContent =
+      active.source === "rideCheckpoint"
+        ? "React now -- this resolves in a moment."
+        : `Fast-forwarding 0/${active.durationMin} in-game minutes`;
 
     const minigame = this.createCommittedMinigameElement(active);
 
@@ -4272,7 +4360,9 @@ export class GameScene extends Phaser.Scene {
     if (minigame) {
       overlay.appendChild(minigame);
     }
-    overlay.appendChild(cancel);
+    if (active.source !== "rideCheckpoint") {
+      overlay.appendChild(cancel);
+    }
     document.body.appendChild(overlay);
     this.committedActivityOverlay = overlay;
     this.committedActivityProgress = fill;
@@ -6264,8 +6354,10 @@ export class GameScene extends Phaser.Scene {
     const result =
       wasPickup
         ? pickupDelivery(this.world, this.getAbsoluteMinute())
-        : completeDelivery(this.world, this.getAbsoluteMinute());
+        : completeDelivery(this.world, this.getAbsoluteMinute(), this.averageRideCheckpointPerformance());
     if (result.ok && wasPickup) {
+      this.activeDeliveryResolvedCheckpointIds = [];
+      this.activeDeliveryPerformanceScores = [];
       completeAct0Step(this.world, "pickup_first_delivery");
       this.spawnInteractionFlourish("pickup", this.player.x, this.player.y, "Picked up");
     } else if (result.ok && !this.world.life.hustle.activeDelivery) {

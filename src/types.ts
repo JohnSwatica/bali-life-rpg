@@ -296,11 +296,19 @@ export type ActiveActivityState =
       source: "activity";
       activityId: string;
       opportunityId?: never;
+      checkpointId?: never;
     })
   | (ActiveActivityBaseState & {
       source: "opportunity";
       opportunityId: string;
       activityId?: never;
+      checkpointId?: never;
+    })
+  | (ActiveActivityBaseState & {
+      source: "rideCheckpoint";
+      checkpointId: string;
+      activityId?: never;
+      opportunityId?: never;
     });
 
 export type RelationshipArcPayoffKind = "club_invite" | "recurring_hangout" | "discount_hook" | "housing_lead_tease";

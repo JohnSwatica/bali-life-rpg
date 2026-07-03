@@ -159,6 +159,22 @@ const ACTIVITY_MINIGAMES: Record<string, ActivityMinigameDefinition | undefined>
       { id: "story", label: "Invite a story", score: 1, feedback: "Perfect. The group opens up." },
       { id: "flex", label: "Name-drop loudly", score: 0.18, feedback: "That cooled the room fast." }
     ]
+  },
+  ride_checkpoint_traffic_gap: {
+    kind: "timing",
+    title: "Threading the Junction",
+    prompt: "A truck is easing out of a side lane. Tap when the gap opens to slide through clean.",
+    actionLabel: "Go",
+    targetStart: 0.46,
+    targetEnd: 0.6
+  },
+  ride_checkpoint_corner_lean: {
+    kind: "timing",
+    title: "The Tight Corner",
+    prompt: "The lane narrows into a blind corner. Tap as the turn lines up to lean it through smooth.",
+    actionLabel: "Lean",
+    targetStart: 0.4,
+    targetEnd: 0.56
   }
 };
 

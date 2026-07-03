@@ -109,7 +109,7 @@ function migrateActiveActivityState(raw: unknown): ActiveActivityState | null {
   }
   const value = raw as Partial<ActiveActivityState>;
   if (
-    (value.source !== "activity" && value.source !== "opportunity") ||
+    (value.source !== "activity" && value.source !== "opportunity" && value.source !== "rideCheckpoint") ||
     typeof value.venueId !== "string" ||
     typeof value.venueName !== "string" ||
     typeof value.label !== "string" ||
@@ -136,6 +136,9 @@ function migrateActiveActivityState(raw: unknown): ActiveActivityState | null {
   }
   if (value.source === "opportunity" && typeof value.opportunityId === "string") {
     return { ...base, source: "opportunity", opportunityId: value.opportunityId };
+  }
+  if (value.source === "rideCheckpoint" && typeof value.checkpointId === "string") {
+    return { ...base, source: "rideCheckpoint", checkpointId: value.checkpointId };
   }
   return null;
 }
