@@ -1496,6 +1496,8 @@ export class GameScene extends Phaser.Scene {
           this.closeGodmodePanel();
         } else if (this.mode === "committedActivity") {
           this.cancelCommittedActivity();
+        } else if (this.awaitingRelationshipChoice) {
+          return;
         } else if (this.phone?.isOpen) {
           this.phone.close();
         } else {
