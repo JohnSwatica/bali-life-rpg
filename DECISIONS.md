@@ -587,3 +587,11 @@ Interior camera framing uses two separate rectangles. Physics remains clamped to
 Committed activities started from an interior now keep the player in that room and return scene mode to `interior` on complete/cancel. The browser proof caught the old bug in Milk & Madu: after a table activity, the player stayed at interior coordinates while `mode` became `world`, which broke the next room interaction. That behavior is fixed as part of the interior foundation standard.
 
 Browser proof ran at `1280x800` with screenshots saved under `tmp/interior-proof-2026-07-03/`. Verified path: Warung/Sari counter -> BAKED counter pickup -> villa dropoff -> Milk & Madu table prompt -> meal/coffee progression -> kos sleep -> Act 1 rent objective. The in-app browser could not hold movement keys cleanly, so dev speed/time controls were used to compensate for automation drift; prompts, money changes, Act 0 step changes, and room framing were verified via screenshots and the hidden debug DOM snapshot.
+
+## 2026-07-03 - Building Access Must Never Repaint The Road
+
+The tan parking-lot read on the authored street was a tile-painting bug, not a venue-placement problem. `paintSlotAccess()` used to draw a sidewalk strip from a building entrance to the far road edge for every side; on left-side buildings that repainted the full road row as sidewalk, cutting beige gaps across the road on many entrance rows.
+
+Building access is now side-aware: left-side buildings paint only to the left curb, right-side buildings paint only from the right curb, and the road band stays road/terrain instead of sidewalk. A layout invariant asserts that generated street tile data never contains `TILE_IDS.sidewalk` inside the road band across the authored street length, so future door/access styling cannot silently erase the road again.
+
+Road contrast is a rendering-only presentation choice. The road tile now uses warm asphalt gray with darker edge bands and brighter lane markers, while sidewalks, plots, building palettes, props, venue coordinates, collision, and authored layout data remain unchanged. Browser proof ran at `1280x800` after a fresh F9 reset, with screenshots saved under `tmp/road-continuity-proof-2026-07-03/`; the dense Canggu/BAKED/Bungalow/Scooter/Satu-Satu corridor read as a continuous gray road distinct from the lighter sidewalk.
