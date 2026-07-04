@@ -96,6 +96,7 @@ import {
   type RideCheckpointDefinition
 } from "../systems/ride/DeliveryRideCheckpoints";
 import {
+  getRelationshipChoiceScene,
   getRelationshipChoiceSceneForNpc,
   type RelationshipChoiceOption,
   type RelationshipChoiceScene
@@ -156,6 +157,7 @@ import {
 import {
   acceptOpportunity,
   appendOpportunityMessage,
+  declineOpportunity,
   generateOpportunityPhoneTexts,
   getAbsoluteMinute as getOpportunityAbsoluteMinute,
   getLiveOpportunityCountdown,
@@ -575,6 +577,7 @@ export class GameScene extends Phaser.Scene {
   private activeDeliveryResolvedCheckpointIds: string[] = [];
   private activeDeliveryPerformanceScores: number[] = [];
   private awaitingRelationshipChoice = false;
+  private pendingChoiceOpportunityId?: string;
   private nightOverlayLayer!: Phaser.GameObjects.Container;
   private nightOverlay!: Phaser.GameObjects.Graphics;
   private lanternGlow!: Phaser.GameObjects.Graphics;
@@ -3014,8 +3017,31 @@ export class GameScene extends Phaser.Scene {
         detail: option.memory.detail
       });
     }
+    let followUpLine = "";
+    if (option.actionId === "accept_no_questions" && this.pendingChoiceOpportunityId) {
+      const result = acceptOpportunity(
+        this.world.opportunities,
+        this.pendingChoiceOpportunityId,
+        getOpportunityAbsoluteMinute(this.world.clock)
+      );
+      followUpLine = result.ok
+        ? "\n\n(The package is yours now. Commit to the run at the rental counter before the window closes.)"
+        : `\n\n(${result.message})`;
+    }
+    if (option.actionId === "decline_no_questions" && this.pendingChoiceOpportunityId) {
+      const result = declineOpportunity(
+        this.world.opportunities,
+        this.world,
+        this.pendingChoiceOpportunityId,
+        getOpportunityAbsoluteMinute(this.world.clock)
+      );
+      if (result.ok) {
+        followUpLine = "\n\n(You stayed clean. Word gets around Berawa either way.)";
+      }
+    }
+    this.pendingChoiceOpportunityId = undefined;
     saveWorldState(this.world);
-    this.openDialogue(npcDefinitions[scene.npcId]?.name ?? scene.npcId, option.resultLine);
+    this.openDialogue(npcDefinitions[scene.npcId]?.name ?? scene.npcId, option.resultLine + followUpLine);
   }
 
   private createDialogueOverlay(title: string, body: string): void {
@@ -3893,13 +3919,20 @@ export class GameScene extends Phaser.Scene {
         const template = getOpportunityTemplate(opportunity.templateId);
         const countdown = getLiveOpportunityCountdown(opportunity, this.world.clock);
         const canResolve = opportunity.status === "accepted";
+        const facedScene =
+          !canResolve && template?.id === "no_questions_package"
+            ? getRelationshipChoiceScene("rio_no_questions_package")
+            : undefined;
         this.appendActivityMenuRow(content, {
           title: template?.title ?? opportunity.templateId,
           body: `${template?.blurb ?? "Resolve this before the timer runs out."}\n${opportunity.status} | ${Math.ceil(countdown)} min left`,
-          actionLabel: canResolve ? "Resolve" : "Accept",
+          actionLabel: canResolve ? "Resolve" : facedScene ? "Face it" : "Accept",
           onAction: () => {
             if (canResolve) {
               this.startCommittedOpportunity(opportunity.id, venueId);
+            } else if (facedScene) {
+              this.pendingChoiceOpportunityId = opportunity.id;
+              this.openRelationshipChoiceScene(facedScene);
             } else {
               const result = acceptOpportunity(this.world.opportunities, opportunity.id, getOpportunityAbsoluteMinute(this.world.clock));
               saveWorldState(this.world);

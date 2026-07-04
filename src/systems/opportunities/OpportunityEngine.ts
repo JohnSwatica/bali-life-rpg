@@ -378,6 +378,43 @@ export function resolveOpportunity(
   };
 }
 
+export function declineOpportunity(
+  state: OpportunityRuntimeState,
+  world: WorldState,
+  opportunityId: string,
+  now: number
+): OpportunityResolveResult {
+  const live = state.live.find((entry) => entry.id === opportunityId);
+  if (!live) {
+    return { ok: false, message: "That offer is gone." };
+  }
+  if (live.status !== "live") {
+    return { ok: false, message: "That offer is already in motion." };
+  }
+  const template = getOpportunityTemplate(live.templateId);
+  live.status = "missed";
+  live.missedAt = now;
+  state.missedTemplateIds.push(live.templateId);
+  state.templateCooldownUntil[live.templateId] = now + (template?.cooldownMin ?? DEFAULT_COOLDOWN_MIN);
+  state.live = state.live.filter((entry) => entry.id !== live.id);
+  if (state.trackedOpportunityId === live.id) {
+    state.trackedOpportunityId = null;
+  }
+  if (template?.declineReward) {
+    applyOpportunityReward(world, template.declineReward, template, now);
+  }
+  appendOpportunityMessage(state, {
+    id: createMessageId("declined", live.id, now),
+    at: now,
+    from: "Bali Life Phone",
+    body: template ? `Declined: ${template.title}. You turned it down in person.` : "You turned an offer down in person.",
+    opportunityId: live.id,
+    venueId: live.locationVenueId,
+    read: false
+  });
+  return { ok: true, message: template ? `You turned down ${template.title}.` : "You turned it down.", opportunity: live };
+}
+
 export function expireOpportunities(state: OpportunityRuntimeState, world: WorldState, now = getAbsoluteMinute(world.clock)): LiveOpportunity[] {
   const expired: LiveOpportunity[] = [];
   for (const live of [...state.live]) {

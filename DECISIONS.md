@@ -615,3 +615,9 @@ Board deliveries now inherit the RIDE principle proven by the BAKED tutorial sli
 Scooter repair is now staged as a `Wrench Repair` timing beat at the rental counter. The phone/direct repair path remains as a fallback and preserves the previous "repair to tier cap" behavior, but the field-first version scales the patched condition by performance. This gives scooter condition a playable maintenance moment without turning it into a punitive failure system.
 
 The No-Questions Package remains an opt-in opportunity and still uses accept/expire as the moral choice. Its discovery presentation changed: the rental now renders a distinct shady-package scene with Rio and a `CHOICE` cue instead of a generic gig marker. No new decline button, Act 2 content, Rio leaderboard, permit system, backend, AI, multiplayer, real commerce, or Act 3 business simulation was added.
+
+## 2026-07-04 - Rio Presents The First Moral Fork In Person
+
+The No-Questions Package should not be accepted from a generic list row. It is now staged as a manual `RelationshipChoiceScene` with Rio at the scooter rental: the rental menu says `Face it`, then Rio offers the package in person. Manual choice scenes are explicitly excluded from `getRelationshipChoiceSceneForNpc()`, so quest-turn-in scenes such as Kadek's bakery beat remain the only automatic NPC quest-completion choice triggers.
+
+Accepting Rio's offer uses the existing opportunity accept path and keeps the authored package reward untouched: the Rooted -15 and reputation -3 still land only when the accepted run is resolved. Refusing uses the new `declineOpportunity()` path, which applies the template's opt-in `declineReward` immediately and then removes the live opportunity under its authored cooldown. This avoids adding a new Decline button or new opportunity UI while making the choice felt in-world.
