@@ -8,6 +8,8 @@ Copy/paste this into a new AI session to bring it up to speed.
 
 If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this file, `DECISIONS.md`, `STORY_ARC.md`, `STORY_BIBLE.md`, `ACT3_BUSINESS_DESIGN.md`, and `docs/ROADMAP.md`, then inspect `git status --short --branch` and recent commits.
 
+`CLAUDE_PROJECT_REVIEW_2026-07-06.md` is Claude's full project review (bottlenecks, gap analysis, sequencing recommendation). It is a supervisory assessment, not a canonical design source — `GAME_DESIGN.md`/`STORY_BIBLE.md` still win on narrative/systems conflicts — but its top recommendation (no recorded human playtest yet; a `PLAYTEST_01.md` should exist before more systems work) should be treated as live until the user says otherwise.
+
 Current durable truth:
 
 - Branch: `feat/gameplay-stations`.
