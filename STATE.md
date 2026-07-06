@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-03
+Last updated: 2026-07-06
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -12,12 +12,21 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 
 Current durable truth:
 
-- Branch: `feat/gameplay-stations`.
+- Branch: `main` — `feat/gameplay-stations` was fast-forward merged into `main` on 2026-07-06; `main` is now the working truth again.
+- Remote: `https://github.com/JohnSwatica/bali-life-rpg` (created 2026-07-06). All branches pushed. New work should branch from `main` and open PRs; John remains sole merge authority.
+- Public playable build: `https://johnswatica.github.io/bali-life-rpg/` — auto-deploys from `main` via `.github/workflows/deploy-pages.yml` (CI runs tests, then builds with `--base=/bali-life-rpg/`; local dev/build unchanged). Verified live 2026-07-06 with assets resolving.
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test -- --run` = 152 passing, 0 skipped; `npm run build` passes.
+- Current verification: `npm test -- --run` = 176 passing, 0 skipped; `npm run build` passes (verified on `main` post-merge, 2026-07-06).
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
+
+Execution plan from the 2026-07-06 review is now staged as Codex packets:
+
+- `docs/prompts/RPG-20260706-01` … `-06` — Phase 1 "juice sprint": procedural audio, payout celebration, riding feel v1, cargo-care soft failure, paddies/villa gates/street texture, portraits (Ibu Sari/Kadek/Rio). See `docs/prompts/README.md` for sequencing and dependencies.
+- `docs/prompts/RPG-20260706-07` … `-09` — Phase 2: L2 presentation kit (letterbox/act cards), early-game meter diet, Rio's street race setpiece (hard-depends on 03 + 07).
+- `docs/PHASE3_REEVALUATION_GATE.md` — after packet 09 lands, **stop building**. The gate requires John: a real 60-min `PLAYTEST_01.md`, 3-5 outside players on the public URL, and answers to the review's three open decisions. Any tab that reaches the gate should say so and stop, not write packet 10.
+- `docs/AI_WALKTHROUGH_NOTES_2026-07-06.md` — Claude's static structural pass (objective findings only). It is explicitly NOT the human playtest and does not satisfy the gate.
 
 Canonical act order, set in stone for near-term work:
 
@@ -28,7 +37,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: run a human play-feel pass through the station-first first-hour path now that the first-day venues are interiorized and active delivery pickups can resolve at interior counters: new save -> Canggu Station/Warung Sari -> first delivery pickup at BAKED's counter -> meal/coffee inside Milk & Madu or BAKED -> Ibu Sari field Hustle Board -> 5-run Act 1 hustle -> recover at stations when meters are low -> pay first rent at the cheap kos -> service/upgrade scooter at the rental counter -> Act 2 crew/event/bond -> one crew-opened opportunity. Tune pacing, visual density, and emotional clarity from that run before adding broader content. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, or Act 3 management sim yet.
+Immediate next move: execute the packet queue in `docs/prompts/` (RPG-20260706-01 first, or 01/03/05/06 in parallel tabs on separate branches). The human play-feel pass remains outstanding and is now formalized as the Phase 3 gate (`docs/PHASE3_REEVALUATION_GATE.md`): John plays a fresh save for ~60 minutes and writes `PLAYTEST_01.md`, plus 3-5 outsiders on the public URL. That gate blocks all feature work beyond packet 09. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, or Act 3 management sim yet.
 
 ## Project
 
@@ -39,7 +48,8 @@ Immediate next move: run a human play-feel pass through the station-first first-
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
-- Current branch: `feat/gameplay-stations`.
+- Current branch: `main` (post 2026-07-06 merge; historical feature branches remain pushed to origin for reference).
+- Public URL: `https://johnswatica.github.io/bali-life-rpg/` (GitHub Pages, deploys on push to `main`).
 
 ## What Was Added Recently
 

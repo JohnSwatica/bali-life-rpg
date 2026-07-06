@@ -1,0 +1,64 @@
+# Phase 3 — Re-evaluation Gate (do not build past this line)
+
+Created 2026-07-06 as part of executing `CLAUDE_PROJECT_REVIEW_2026-07-06.md` §5.
+This document is deliberately **not** a packet. Phase 3 is a stop-and-look, not a build.
+
+## What Phase 3 is
+
+After the Phase 1 packets (RPG-20260706-01 … 06) and Phase 2 packets
+(RPG-20260706-07 … 09) have landed, **no further feature packets get written until
+the evidence below exists.** The point of the whole sequence was to make the game
+*feelable* and *reachable*; Phase 3 is where John actually feels it and outsiders
+actually reach it.
+
+## The gate — all four required
+
+1. **`PLAYTEST_01.md` exists.** John (not an AI, not a screenshot pass) plays a
+   fresh save for ~60 minutes on a real device and voice-notes/writes raw
+   reactions: where bored, where confused, where nothing happened, where
+   something landed. Rawness is the value — no tidying into tickets during play.
+   `docs/AI_WALKTHROUGH_NOTES_2026-07-06.md` lists what NOT to spend that hour on
+   (things already verified statically).
+2. **The public build has been played by 3–5 outside people.** The deploy URL is
+   `https://johnswatica.github.io/bali-life-rpg/` (auto-deploys from `main` via
+   `.github/workflows/deploy-pages.yml`). Canggu friends are the ideal testers —
+   they'll judge the *Bali* of it, not just the game of it. Collect unprompted
+   reactions; a WhatsApp voice note is a valid artifact. Log them (even as quotes)
+   in `PLAYTEST_01.md` or a sibling file.
+3. **The three review decisions get answered by John** (from
+   `CLAUDE_PROJECT_REVIEW_2026-07-06.md` §6), *after* seeing the evidence:
+   - Identity: hobby vs. audience-building front door for the NomadNest universe.
+   - Stakes ceiling: did the cargo-care channel (RPG-20260706-04) feel right?
+     More teeth, fewer, or as-is?
+   - Weekly time budget for this project vs. match.co GTM — a number, held.
+4. **A tuning-ticket list, not a feature list, comes out of it.** Per the
+   review and the older `CLAUDE_ASSESSMENT_BRIEF.md` recommendation 1: the output
+   of playtesting is adjustments to what exists (payouts, timers, copy, pacing,
+   camera, audio mix), not pitches for new systems.
+
+## What stays frozen until the gate opens
+
+Unchanged from the review's freeze list: the six-district map, minigames beyond
+ride/repair/one social, any sixth guidance surface, crafting, the OSM pipeline,
+Act 3 business sim (still CEO-locked per `AGENTS.md`), Act 4/5 content, and any
+further design-doc scope expansion.
+
+## After the gate
+
+Whatever the evidence says, wins. Expected shapes (not commitments):
+- If feel is good but Act 2 is flat → an Act 2 emotional-payoff packet series
+  (post-event dialogue, ritual beats — see assessment brief Milestone B).
+- If feel is still weak → a second juice/tuning pass; no new content.
+- If outsiders bounce in the first 5 minutes → Act 0 pacing surgery before
+  anything else.
+- If John answers "audience asset" on identity → a small shareable-slice/
+  distribution packet (itch.io page, share copy, a clean 15-minute demo cut)
+  *before* deeper story work.
+
+## Sequencing note for AI tabs
+
+If you are a Codex/Claude tab reading this after finishing RPG-20260706-09:
+your next action is to tell John this gate is waiting on him, then stop. Building
+past this line without `PLAYTEST_01.md` reproduces the exact failure mode the
+2026-07-06 review identified (13 days of systems while the playtest stayed
+undone). Do not be the tab that does that.

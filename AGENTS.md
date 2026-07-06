@@ -44,14 +44,16 @@ Near-term priority is **Act 0 / Act 1 playability and tuning**, then making exis
 
 ## Current Technical Truth
 
-- Current branch: `feat/act0-hustle-loop`.
+- Working branch: `main` (since the 2026-07-06 merge). New work branches from `main`; open PRs against `https://github.com/JohnSwatica/bali-life-rpg` (origin, added 2026-07-06). John is sole merge authority.
+- Public build: `https://johnswatica.github.io/bali-life-rpg/`, auto-deployed from `main` by `.github/workflows/deploy-pages.yml`. Do not remove the `--base=/bali-life-rpg/` CI build flag.
 - Current save schema: `CURRENT_SCHEMA_VERSION = 11` in `src/systems/Persistence.ts`.
 - Save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Current test command: `npm test -- --run`.
 - Current build command: `npm run build`.
-- Latest known automated result: 53 passing tests, 3 intentional skips; build passes.
+- Latest known automated result: 176 passing tests, 0 skips; build passes (2026-07-06, on `main`).
 - Active playable map: authored tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM data is retained for coordinates/sequencing/reference only. Do not make runtime map network calls.
+- Active work queue: `docs/prompts/` packets RPG-20260706-01…09 (see `docs/prompts/README.md`), then STOP at `docs/PHASE3_REEVALUATION_GATE.md` — the gate needs John, not more packets.
 
 ## Hard Boundaries
 
