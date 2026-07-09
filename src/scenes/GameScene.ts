@@ -28,6 +28,7 @@ import { LocalNetworkAdapter, type NetworkAdapter } from "../systems/NetworkAdap
 import { clearSave, loadWorldState, saveWorldState } from "../systems/Persistence";
 import { ScriptedDialogueProvider, type DialogueProvider } from "../systems/dialogue/DialogueProvider";
 import { getAmbientNpcLine, getNpcDialogueSurface } from "../systems/dialogue/DialoguePresentation";
+import { getPortraitDataUrl, getPortraitDefinition, portraitVariantForTier } from "../systems/dialogue/PortraitArt";
 import { SoundManager, type SoundCue } from "../systems/audio/SoundManager";
 import { InteractionController, type InteractionTarget } from "../systems/interaction/InteractionController";
 import { InputController, type GameKeyMap } from "../systems/input/InputController";
@@ -186,7 +187,7 @@ import {
   resolveWaterBoundaryPosition,
   type WaterBoundaryGuard
 } from "../systems/map/WaterBoundary";
-import { bumpRelationshipAffinity, getRelationship } from "../systems/relationships/RelationshipMemory";
+import { bumpRelationshipAffinity, getAffinityTier, getRelationship } from "../systems/relationships/RelationshipMemory";
 import { completeNextRelationshipArcBeat } from "../systems/relationships/RelationshipArcs";
 import {
   clearWantedStanding,
@@ -3197,7 +3198,7 @@ export class GameScene extends Phaser.Scene {
         this.openRelationshipChoiceScene(choiceScene);
         return;
       }
-      this.openDialogue(npc.name, questInteraction.dialogue);
+      this.openDialogue(npc.name, questInteraction.dialogue, npcId);
       return;
     }
 
@@ -3216,7 +3217,8 @@ export class GameScene extends Phaser.Scene {
       : "";
     this.openDialogue(
       npc.name,
-      `${baseLine}\n\nRight now ${npc.name} is ${routineLabel ?? "taking in the neighborhood"}.${arcCopy}`
+      `${baseLine}\n\nRight now ${npc.name} is ${routineLabel ?? "taking in the neighborhood"}.${arcCopy}`,
+      npcId
     );
   }
 
@@ -3228,10 +3230,10 @@ export class GameScene extends Phaser.Scene {
     return npcDefinitions[npcId]?.defaultLine ?? "The neighborhood hums around you.";
   }
 
-  private openDialogue(title: string, body: string): void {
+  private openDialogue(title: string, body: string, npcId?: string): void {
     this.closePanel();
     this.mode = "dialogue";
-    this.createDialogueOverlay(title, body);
+    this.createDialogueOverlay(title, body, npcId);
   }
 
   private openRelationshipChoiceScene(scene: RelationshipChoiceScene): void {
@@ -3277,7 +3279,19 @@ export class GameScene extends Phaser.Scene {
       choiceRow.appendChild(button);
     }
 
-    overlay.append(titleEl, bodyEl, choiceRow);
+    const content = document.createElement("div");
+    content.className = "bali-life-dialogue-content";
+    const portrait = this.createDialoguePortraitElement(scene.npcId);
+    if (portrait) {
+      overlay.classList.add("has-portrait");
+      content.appendChild(portrait);
+    }
+    const copy = document.createElement("div");
+    copy.className = "bali-life-dialogue-copy";
+    copy.append(titleEl, bodyEl);
+    content.appendChild(copy);
+
+    overlay.append(content, choiceRow);
     document.body.appendChild(overlay);
     this.dialogueOverlay = overlay;
   }
@@ -3339,10 +3353,10 @@ export class GameScene extends Phaser.Scene {
     }
     this.pendingChoiceOpportunityId = undefined;
     saveWorldState(this.world);
-    this.openDialogue(npcDefinitions[scene.npcId]?.name ?? scene.npcId, option.resultLine + followUpLine);
+    this.openDialogue(npcDefinitions[scene.npcId]?.name ?? scene.npcId, option.resultLine + followUpLine, scene.npcId);
   }
 
-  private createDialogueOverlay(title: string, body: string): void {
+  private createDialogueOverlay(title: string, body: string, npcId?: string): void {
     this.destroyDialogueOverlay();
     if (typeof document === "undefined") {
       return;
@@ -3370,9 +3384,44 @@ export class GameScene extends Phaser.Scene {
     hint.className = "bali-life-dialogue-hint";
     hint.textContent = "E / ESC";
 
-    overlay.append(titleEl, bodyEl, hint);
+    const content = document.createElement("div");
+    content.className = "bali-life-dialogue-content";
+    const portrait = this.createDialoguePortraitElement(npcId);
+    if (portrait) {
+      overlay.classList.add("has-portrait");
+      content.appendChild(portrait);
+    }
+    const copy = document.createElement("div");
+    copy.className = "bali-life-dialogue-copy";
+    copy.append(titleEl, bodyEl);
+    content.appendChild(copy);
+
+    overlay.append(content, hint);
     document.body.appendChild(overlay);
     this.dialogueOverlay = overlay;
+  }
+
+  private createDialoguePortraitElement(npcId: string | undefined): HTMLImageElement | null {
+    if (!npcId || typeof document === "undefined") {
+      return null;
+    }
+    const definition = getPortraitDefinition(npcId);
+    if (!definition) {
+      return null;
+    }
+    const tier = getAffinityTier(getRelationship(this.world, "npc", npcId));
+    const variant = portraitVariantForTier(tier);
+    const src = getPortraitDataUrl(npcId, variant);
+    if (!src) {
+      return null;
+    }
+    const img = document.createElement("img");
+    img.className = "bali-life-dialogue-portrait";
+    img.src = src;
+    img.alt = definition.alt;
+    img.dataset.npcId = npcId;
+    img.dataset.variant = variant;
+    return img;
   }
 
   private destroyDialogueOverlay(): void {
@@ -3440,7 +3489,8 @@ export class GameScene extends Phaser.Scene {
         accepted.ok
           ? "Your first gig is already on the phone: pick up pastries at BAKED and take them to the villa gate. Do this clean and you get your first rating."
           : accepted.message
-      ].join("\n\n")
+      ].join("\n\n"),
+      "ibu_sari"
     );
     this.showToast("Borrowed scooter unlocked. First delivery accepted.");
   }
