@@ -10,6 +10,12 @@ import { adjustPlayerMeters } from "../meters/PlayerMeters";
 import { bumpRelationshipAffinity } from "../relationships/RelationshipMemory";
 import { adjustReputation, awardReputationTag } from "../reputation/ReputationState";
 import { advanceWorldMinutes } from "../time/DailyClock";
+import {
+  calculateCargoCareAdjustment,
+  describeCargoCareLoss,
+  isCargoCareEligible,
+  type CargoCareAdjustment
+} from "../ride/CargoCare";
 import { applyDeliveryScooterWear, MIN_DELIVERY_BIKE_CONDITION } from "./HustleEconomy";
 import { getAct1MoveOutReadiness } from "./HustleMilestones";
 import type { ActiveDeliveryState, WorldState } from "../../types";
@@ -20,6 +26,7 @@ export interface DeliveryResult {
   activeDelivery?: ActiveDeliveryState;
   starRating?: number;
   payout?: number;
+  cargoCare?: CargoCareAdjustment;
 }
 
 export interface DeliveryOfferAvailability {
@@ -90,6 +97,11 @@ export function pickupDelivery(world: WorldState, now: number): DeliveryResult {
   if (getQuantity(world.players[world.localPlayerId], definition.itemId) === 0) {
     addItem(world.players[world.localPlayerId], definition.itemId, 1);
   }
+  const condition = getDeliveryCondition(definition, active.conditionId);
+  if (isCargoCareEligible(world.life.actProgress.currentAct, definition, condition)) {
+    active.cargoIntegrity = active.cargoIntegrity ?? 100;
+    active.cargoDamageEvents = active.cargoDamageEvents ?? 0;
+  }
   active.stage = "picked_up";
   active.pickedUpAt = now;
   advanceWorldMinutes(world, 8);
@@ -116,7 +128,14 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
   const condition = getDeliveryCondition(definition, active.conditionId);
   const terms = getEffectiveDeliveryTerms(definition, condition);
   const starRating = calculateDeliveryStarRating(active, now, performanceScore, condition);
-  const payout = calculateDeliveryPayout(terms.payout, starRating);
+  const cargoCare = calculateCargoCareAdjustment(
+    definition,
+    condition,
+    active.cargoIntegrity ?? 100,
+    isCargoCareEligible(world.life.actProgress.currentAct, definition, condition)
+  );
+  const payoutBase = cargoCare.eligible ? cargoCare.adjustedPayoutBase : terms.payout;
+  const payout = calculateDeliveryPayout(payoutBase, starRating);
   player.money += payout;
   adjustPlayerMeters(world, terms.meterDeltas);
   const scooterWear = applyDeliveryScooterWear(world, terms.scooterWear);
@@ -160,11 +179,13 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
       : "";
   const wearCopy = scooterWear > 0 ? ` Scooter -${scooterWear}% (${player.bikeCondition}%).` : "";
 
+  const cargoCopy = describeCargoCareLoss(cargoCare);
   return {
     ok: true,
-    message: `Delivered ${definition.title}${condition ? ` (${condition.label})` : ""}. Rp +${payout}. Driver rating ${starRating.toFixed(1)}★.${wearCopy}${moveOutCopy}`,
+    message: `Delivered ${definition.title}${condition ? ` (${condition.label})` : ""}. Rp +${payout}. Driver rating ${starRating.toFixed(1)}★.${cargoCopy}${wearCopy}${moveOutCopy}`,
     starRating,
-    payout
+    payout,
+    cargoCare: cargoCare.eligible ? cargoCare : undefined
   };
 }
 

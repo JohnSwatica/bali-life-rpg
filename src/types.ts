@@ -470,6 +470,8 @@ export interface ActiveDeliveryState {
   pickedUpAt?: number;
   completedAt?: number;
   starRating?: number;
+  cargoIntegrity?: number;
+  cargoDamageEvents?: number;
 }
 
 export interface HustleState {

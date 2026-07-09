@@ -198,7 +198,10 @@ function migrateActiveDelivery(raw: unknown): ActiveDeliveryState | null {
     conditionId: typeof value.conditionId === "string" ? value.conditionId : undefined,
     pickedUpAt: typeof value.pickedUpAt === "number" ? value.pickedUpAt : undefined,
     completedAt: typeof value.completedAt === "number" ? value.completedAt : undefined,
-    starRating: typeof value.starRating === "number" ? clamp(value.starRating, 1, 5) : undefined
+    starRating: typeof value.starRating === "number" ? clamp(value.starRating, 1, 5) : undefined,
+    cargoIntegrity: typeof value.cargoIntegrity === "number" ? clamp(value.cargoIntegrity, 0, 100) : undefined,
+    cargoDamageEvents:
+      typeof value.cargoDamageEvents === "number" ? Math.max(0, Math.floor(value.cargoDamageEvents)) : undefined
   };
 }
 

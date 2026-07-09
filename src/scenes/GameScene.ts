@@ -21,7 +21,7 @@ import { collisionRects, pickupDefinitions, WORLD_HEIGHT, WORLD_WIDTH } from "..
 import { npcDefinitions } from "../data/npcs";
 import { questDefinitions } from "../data/quests";
 import { shopDefinitions } from "../data/shops";
-import { getDeliveryDefinition } from "../data/deliveries";
+import { getDeliveryCondition, getDeliveryDefinition } from "../data/deliveries";
 import { getStreetVenueFlavor } from "../data/streetVenueFlavors";
 import { addItem, formatInventory, getQuantity, removeItem } from "../systems/Inventory";
 import { LocalNetworkAdapter, type NetworkAdapter } from "../systems/NetworkAdapter";
@@ -102,6 +102,7 @@ import {
   type RideModelOutput,
   type RideModelState
 } from "../systems/ride/RideModel";
+import { applyCargoDamage, isCargoCareEligible } from "../systems/ride/CargoCare";
 import {
   getRelationshipChoiceScene,
   getRelationshipChoiceSceneForNpc,
@@ -411,6 +412,8 @@ const REPEAT_FLAG_BOUNTY = 35;
 const TRAFFIC_HIT_COOLDOWN_MS = 2200;
 const TRAFFIC_HIT_MONEY_LOSS = 10;
 const TRAFFIC_KNOCKBACK_DISTANCE = scaleDistance(76);
+const CARGO_HARD_COLLISION_COOLDOWN_MS = 1200;
+const CARGO_HARD_COLLISION_SPEED = scaleDistance(280);
 const WATER_BOUNDARY_TOAST_COOLDOWN_MS = 1800;
 const VENUE_LABEL_NEAR_RADIUS = scaleDistance(210);
 const NPC_PROXIMITY_REACTION_RADIUS = scaleDistance(112);
@@ -533,6 +536,7 @@ export class GameScene extends Phaser.Scene {
   private trafficBikes: TrafficBikeRuntime[] = [];
   private trafficRouteCursor = 0;
   private trafficHitCooldown = 0;
+  private cargoHardCollisionCooldown = 0;
   private bikeHarmCooldown = 0;
   private groupLeader?: GroupTravelerRuntime;
   private groupFollowers: GroupTravelerRuntime[] = [];
@@ -573,6 +577,7 @@ export class GameScene extends Phaser.Scene {
   private questText!: Phaser.GameObjects.Text;
   private wantedChipText!: Phaser.GameObjects.Text;
   private bikeChipText!: Phaser.GameObjects.Text;
+  private cargoChipText!: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
   private toastText!: Phaser.GameObjects.Text;
   private toastTimer = 0;
@@ -1411,7 +1416,7 @@ export class GameScene extends Phaser.Scene {
     this.player.body?.setOffset(PLAYER_BODY_OFFSET_X, PLAYER_BODY_OFFSET_Y);
     this.playerBike = this.add.sprite(this.playerState.x, this.playerState.y + scaleDistance(10), "player-bike").setVisible(false);
     this.playerBikeSpeedCue = this.add.graphics().setVisible(false);
-    this.physics.add.collider(this.player, this.obstacleGroup);
+    this.physics.add.collider(this.player, this.obstacleGroup, () => this.handleHardCargoCollision());
     this.updatePlayerBikeVisual();
   }
 
@@ -1591,6 +1596,7 @@ export class GameScene extends Phaser.Scene {
     this.questText = this.add.text(16, 46, "", this.hudTextStyle(14));
     this.wantedChipText = this.add.text(16, 0, "", this.hudTextStyle(13)).setColor("#ff8f80").setVisible(false);
     this.bikeChipText = this.add.text(16, 0, "", this.hudTextStyle(13)).setColor("#f4b860").setVisible(false);
+    this.cargoChipText = this.add.text(16, 0, "", this.hudTextStyle(13)).setColor("#62c48f").setVisible(false);
     this.promptText = this.add.text(16, 0, "", this.hudTextStyle(15));
     this.toastText = this.add
       .text(0, 0, "", {
@@ -1612,6 +1618,7 @@ export class GameScene extends Phaser.Scene {
       this.questText,
       this.wantedChipText,
       this.bikeChipText,
+      this.cargoChipText,
       this.promptText,
       this.toastText
     ]);
@@ -1653,6 +1660,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.player.body) {
       return;
     }
+    this.cargoHardCollisionCooldown = Math.max(0, this.cargoHardCollisionCooldown - delta);
 
     const movement = this.inputController.getMovementVector(this.mode, this.cursors, this.keys, this.hudController.joystickVector);
     const hasMovementInput = movement.lengthSq() > 0;
@@ -1958,6 +1966,25 @@ export class GameScene extends Phaser.Scene {
     bike.sprite.setAngle(Phaser.Math.RadToDeg(Math.atan2(bike.velocity.y, bike.velocity.x)));
   }
 
+  private handleHardCargoCollision(): void {
+    if (this.cargoHardCollisionCooldown > 0 || !this.playerState.onBike || this.mode !== "world") {
+      return;
+    }
+    const speed = Math.hypot(this.player.body?.velocity.x ?? 0, this.player.body?.velocity.y ?? 0);
+    if (speed < CARGO_HARD_COLLISION_SPEED) {
+      return;
+    }
+    const cargoDamage = this.damageActiveDeliveryCargo("hard_collision");
+    if (!cargoDamage?.damaged) {
+      return;
+    }
+    this.cargoHardCollisionCooldown = CARGO_HARD_COLLISION_COOLDOWN_MS;
+    this.spawnFloatingText(`Cargo -${cargoDamage.amount}%`, this.player.x, this.player.y - scaleDistance(34), "#f4b860");
+    this.cameras.main.shake(120, 0.003);
+    saveWorldState(this.world);
+    this.showToast(`Hard stop. Cargo ${cargoDamage.after}%.`);
+  }
+
   private updateWantedOffenders(delta: number): void {
     for (const offender of this.wantedOffenders.values()) {
       if (offender.wantedLevel <= 0) {
@@ -2019,16 +2046,21 @@ export class GameScene extends Phaser.Scene {
         this.playerState.onBike = false;
       }
     }
+    const cargoDamage = this.damageActiveDeliveryCargo("traffic_hit");
     this.applyTrafficKnockback(source);
     this.cameras.main.shake(180, 0.006);
     this.spawnHitSplash(this.player.x, this.player.y);
     this.spawnFloatingText("Ouch!", this.player.x, this.player.y - scaleDistance(34), "#ffdfb3");
+    if (cargoDamage?.damaged) {
+      this.spawnFloatingText(`Cargo -${cargoDamage.amount}%`, this.player.x - scaleDistance(20), this.player.y - scaleDistance(6), "#f4b860");
+    }
     if (moneyLoss > 0) {
       this.spawnCashBurst(this.player.x, this.player.y, moneyLoss);
       this.spawnFloatingText(`-Rp ${moneyLoss}`, this.player.x + scaleDistance(20), this.player.y - scaleDistance(12), "#fff0bd");
     }
     saveWorldState(this.world);
-    this.showToast(`A passing scooter clipped you. Safety -12, Focus -5${moneyLoss > 0 ? `, Rp -${moneyLoss}` : ""}.`);
+    const cargoCopy = cargoDamage?.damaged ? ` Cargo ${cargoDamage.after}%.` : "";
+    this.showToast(`A passing scooter clipped you. Safety -12, Focus -5${moneyLoss > 0 ? `, Rp -${moneyLoss}` : ""}.${cargoCopy}`);
   }
 
   private applyTrafficKnockback(source: TrafficBikeRuntime): void {
@@ -2881,8 +2913,20 @@ export class GameScene extends Phaser.Scene {
     }
     if (this.playerState.onBike && this.playerState.bikeCondition < 50) {
       this.bikeChipText.setText(`Scooter ${this.playerState.bikeCondition}%`).setPosition(16, warningY).setVisible(true);
+      warningY += this.bikeChipText.height + 8;
     } else {
       this.bikeChipText.setText("").setVisible(false);
+    }
+    const cargoIntegrity = this.getActiveCargoIntegrity();
+    if (cargoIntegrity != null) {
+      const color = cargoIntegrity >= 70 ? "#62c48f" : cargoIntegrity >= 35 ? "#f4b860" : "#ff8f80";
+      this.cargoChipText
+        .setText(`Cargo ${cargoIntegrity}%`)
+        .setColor(color)
+        .setPosition(16, warningY)
+        .setVisible(true);
+    } else {
+      this.cargoChipText.setText("").setVisible(false);
     }
 
     const homeSleepReady = this.isAct0HomeSleepReady();
@@ -4812,6 +4856,33 @@ export class GameScene extends Phaser.Scene {
   private isRideSurfaceSlick(): boolean {
     const active = this.world.life.hustle.activeDelivery;
     return Boolean(active?.conditionId?.includes("rain"));
+  }
+
+  private getActiveCargoIntegrity(): number | null {
+    const active = this.world.life.hustle.activeDelivery;
+    if (!active || active.stage !== "picked_up" || active.cargoIntegrity == null) {
+      return null;
+    }
+    return Phaser.Math.Clamp(Math.round(active.cargoIntegrity), 0, 100);
+  }
+
+  private damageActiveDeliveryCargo(reason: "traffic_hit" | "hard_collision"): ReturnType<typeof applyCargoDamage> | null {
+    const active = this.world.life.hustle.activeDelivery;
+    if (!active || active.stage !== "picked_up") {
+      return null;
+    }
+    const delivery = getDeliveryDefinition(active.deliveryId);
+    if (!delivery) {
+      return null;
+    }
+    const condition = getDeliveryCondition(delivery, active.conditionId);
+    if (!isCargoCareEligible(this.world.life.actProgress.currentAct, delivery, condition)) {
+      return null;
+    }
+    const result = applyCargoDamage(active.cargoIntegrity ?? 100, reason);
+    active.cargoIntegrity = result.after;
+    active.cargoDamageEvents = (active.cargoDamageEvents ?? 0) + (result.damaged ? 1 : 0);
+    return result;
   }
 
   private finishCommittedOpportunity(opportunityId: string, performanceScore?: number): void {
@@ -6999,9 +7070,25 @@ export class GameScene extends Phaser.Scene {
         performanceScore
       });
       this.playDeliveryFlourish(this.player.x, this.player.y, result.payout, celebration);
+      this.showCargoCareDeliveryReaction(active.deliveryId, result);
     }
     saveWorldState(this.world);
     this.showToast(result.message);
+  }
+
+  private showCargoCareDeliveryReaction(deliveryId: string, result: ReturnType<typeof completeDelivery>): void {
+    const cargo = result.cargoCare;
+    if (!cargo || !cargo.eligible || cargo.originalBonus <= 0) {
+      return;
+    }
+    if (cargo.lostBonus > 0 && cargo.integrity < 45) {
+      this.showNpcAmbientLine("kadek", "\"That box sounds like it met every pothole on the lane.\"");
+      return;
+    }
+    const delivery = getDeliveryDefinition(deliveryId);
+    if (cargo.integrity >= 95 && delivery?.dropoffName.toLowerCase().includes("villa")) {
+      this.spawnFloatingText("Villa staff: \"Still perfect.\"", this.player.x, this.player.y - scaleDistance(52), "#fff0bd");
+    }
   }
 
   private drawObjectiveMarkers(): void {
@@ -7514,6 +7601,7 @@ export class GameScene extends Phaser.Scene {
     this.drawHudChipBackplate(this.questText);
     this.drawHudChipBackplate(this.wantedChipText);
     this.drawHudChipBackplate(this.bikeChipText);
+    this.drawHudChipBackplate(this.cargoChipText);
     this.drawHudChipBackplate(this.promptText);
   }
 

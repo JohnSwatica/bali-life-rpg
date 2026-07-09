@@ -32,6 +32,7 @@ import { startQuest } from "../systems/QuestSystem";
 import { resolveNpcQuestInteraction } from "../systems/quests/QuestRegistry";
 import { getRelationship } from "../systems/relationships/RelationshipMemory";
 import { createInitialWorldState } from "../systems/WorldState";
+import { getDeliveryDefinition } from "../data/deliveries";
 import { playerHomeBase } from "../data/homeBase";
 
 describe("Act 0 hustle and deliveries", () => {
@@ -67,6 +68,7 @@ describe("Act 0 hustle and deliveries", () => {
       stage: "picked_up",
       pickedUpAt: acceptedAt + 12
     });
+    expect(world.life.hustle.activeDelivery?.cargoIntegrity).toBeUndefined();
     expect(getQuantity(player, "delivery_pastry_box")).toBe(1);
 
     const completed = completeDelivery(world, acceptedAt + 35, 1);
@@ -229,6 +231,42 @@ describe("Act 0 hustle and deliveries", () => {
     expect(completed.payout).toBe(calculateDeliveryPayout(terms.payout, completed.starRating!));
     expect(world.life.hustle.deliveryEarnings).toBe(completed.payout);
     expect(player.bikeCondition).toBeLessThan(100);
+  });
+
+  it("lets cargo care reduce only the condition bonus while delivery still completes", () => {
+    const world = createInitialWorldState();
+    const player = world.players[world.localPlayerId];
+    player.hasBike = true;
+    world.life.actProgress.firstDayComplete = true;
+    world.life.actProgress.currentAct = 1;
+    world.life.hustle.completedDeliveryCount = 1;
+    world.life.hustle.driverRating = 3.6;
+    const now = 2 * 1440 + 9 * 60;
+    const definition = getDeliveryDefinition("milk_madu_brunch_bag");
+    expect(definition).toBeDefined();
+
+    expect(acceptDelivery(world, definition!.id, now)).toMatchObject({ ok: true });
+    expect(pickupDelivery(world, now + 8)).toMatchObject({ ok: true });
+    expect(world.life.hustle.activeDelivery?.cargoIntegrity).toBe(100);
+    if (world.life.hustle.activeDelivery) {
+      world.life.hustle.activeDelivery.cargoIntegrity = 0;
+      world.life.hustle.activeDelivery.cargoDamageEvents = 5;
+    }
+
+    const completed = completeDelivery(world, now + 40, 0.82);
+
+    expect(completed.ok).toBe(true);
+    expect(completed.cargoCare).toMatchObject({
+      eligible: true,
+      retainedBonus: 0,
+      adjustedPayoutBase: definition!.payout
+    });
+    expect(completed.payout).toBe(calculateDeliveryPayout(definition!.payout, completed.starRating!));
+    expect(completed.message).toContain("Box took some hits");
+    expect(world.life.hustle.activeDelivery).toBeNull();
+    expect(world.life.hustle.completedDeliveryIds).toContain(definition!.id);
+    expect(world.life.hustle.completedDeliveryCount).toBe(2);
+    expect(getQuantity(player, definition!.itemId)).toBe(0);
   });
 
   it("announces move-out readiness when a delivery crosses the Act 1 threshold", () => {
