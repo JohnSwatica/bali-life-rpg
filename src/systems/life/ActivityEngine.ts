@@ -6,6 +6,7 @@ import { getGameplayStationLoopForVenue, type GameplayStationId, type StationTim
 import { venueDefinitions } from "../../data/venues";
 import { addItem } from "../Inventory";
 import { adjustPlayerMeters } from "../meters/PlayerMeters";
+import { formatVisibleMeterDeltas } from "../guidance/MeterVisibility";
 import {
   formatPerformanceSummary,
   scaleMeterDeltasForPerformance,
@@ -133,10 +134,11 @@ export function applyActivity(
 
   const morningPenaltySummary = queueNextMorningPenalty(world, context, activity);
 
+  const visibleMeterSummary = meterSummary(world, meterDeltas);
   return {
     ok: true,
-    message: `${activity.label}: ${formatClockTime(world.clock.minuteOfDay)}. ${formatMoneyDelta(moneyDelta)}${meterSummary(meterDeltas)}${formatTimeModifierSummary(availability.timeModifier)}${morningPenaltySummary}${formatPerformanceSummary(options.performanceScore)}`,
-    meterSummary: meterSummary(meterDeltas),
+    message: `${activity.label}: ${formatClockTime(world.clock.minuteOfDay)}. ${formatMoneyDelta(moneyDelta)}${visibleMeterSummary}${formatTimeModifierSummary(availability.timeModifier)}${morningPenaltySummary}${formatPerformanceSummary(options.performanceScore)}`,
+    meterSummary: visibleMeterSummary,
     moneyDelta,
     morningPenaltySummary
   };
@@ -183,7 +185,7 @@ export function applyPendingMorningPenalties(world: WorldState): string {
   }
   adjustPlayerMeters(world, combined);
   world.life.pendingMorningPenalties = [];
-  return ` Morning consequences applied: ${meterSummary(combined).replace(/^ \| /, "")}.`;
+  return ` Morning consequences applied: ${meterSummary(world, combined).replace(/^ \| /, "")}.`;
 }
 
 export function getActiveActivityTimeModifier(world: WorldState, activity: Activity): StationTimeOfDayModifier | null {
@@ -340,9 +342,9 @@ function openHoursFromTypicalHours(typicalHours: string | null | undefined): Ope
   };
 }
 
-function meterSummary(deltas: Partial<Record<string, number>>): string {
-  const parts = Object.entries(deltas).map(([meter, delta]) => `${meter} ${Number(delta) >= 0 ? "+" : ""}${delta}`);
-  return parts.length ? ` | ${parts.join(", ")}` : "";
+function meterSummary(world: WorldState, deltas: Partial<Record<Meter, number>>): string {
+  const summary = formatVisibleMeterDeltas(world, deltas);
+  return summary ? ` | ${summary}` : "";
 }
 
 function formatMoneyDelta(delta: number): string {

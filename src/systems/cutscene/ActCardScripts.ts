@@ -32,7 +32,7 @@ export function buildAct2IntroCutscene(target: { x: number; y: number }): Cutsce
         kind: "act_card",
         durationMs: 2200,
         title: "ACT 2 -- FINDING YOUR PEOPLE",
-        subtitle: "The beach, crews, and regulars start to open."
+        subtitle: "The beach, crews, and regulars start to open.\nThere's more to a life here than energy and rupiah."
       },
       { id: "camera_return", kind: "camera_return", durationMs: 620 },
       { id: "letterbox_out", kind: "letterbox_out", durationMs: 420 }

@@ -68,5 +68,8 @@ describe("cutscene sequencer", () => {
       "letterbox_out"
     ]);
     expect(script.steps[1]).toMatchObject({ target: { x: 1808, y: 2200 } });
+    expect(script.steps.find((step) => step.id === "act2_card")).toMatchObject({
+      subtitle: "The beach, crews, and regulars start to open.\nThere's more to a life here than energy and rupiah."
+    });
   });
 });

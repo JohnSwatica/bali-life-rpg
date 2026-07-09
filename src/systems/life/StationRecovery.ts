@@ -1,4 +1,5 @@
 import { canSleepNow } from "../time/DailyClock";
+import { areAdvancedMetersVisible, hiddenMeterRestCopy } from "../guidance/MeterVisibility";
 import type { WorldState } from "../../types";
 
 export interface StationRecoveryNudge {
@@ -28,10 +29,11 @@ export function getStationRecoveryNudge(world: WorldState): StationRecoveryNudge
   }
 
   if (world.meters.wellbeing <= 30) {
+    const detail = "Wellbeing is shaky. Berawa Beach or a cheap warung stop can steady the day before more hustle.";
     return {
       id: "wellbeing",
-      title: "Reset your head",
-      detail: "Wellbeing is shaky. Berawa Beach or a cheap warung stop can steady the day before more hustle.",
+      title: areAdvancedMetersVisible(world) ? "Reset your head" : "Recover before the next run",
+      detail: hiddenMeterRestCopy(world, detail),
       urgency: "normal",
       venueIds: ["berawa_beach", "ulekan_berawa"],
       includeHome: false
@@ -39,10 +41,11 @@ export function getStationRecoveryNudge(world: WorldState): StationRecoveryNudge
   }
 
   if (world.meters.focus <= 25) {
+    const detail = "Focus is thin. Use Satu-Satu's cafe table or a coworking sprint to turn the next hour into progress.";
     return {
       id: "focus",
-      title: "Refocus before drifting",
-      detail: "Focus is thin. Use Satu-Satu's cafe table or a coworking sprint to turn the next hour into progress.",
+      title: areAdvancedMetersVisible(world) ? "Refocus before drifting" : "Recover before the next run",
+      detail: hiddenMeterRestCopy(world, detail),
       urgency: "normal",
       venueIds: ["satu_satu_coffee", "tropical_nomad_coworking_space"],
       includeHome: false

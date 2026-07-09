@@ -47,6 +47,12 @@ import {
   type FieldObjectiveState,
   type FieldObjectiveTargetRef
 } from "../systems/guidance/FieldObjective";
+import {
+  areAdvancedMetersVisible,
+  formatVisibleMeterDeltas,
+  formatVisibleMeterValues,
+  getVisibleMeters
+} from "../systems/guidance/MeterVisibility";
 import { getFieldIndicators, type VenueFieldIndicator } from "../systems/guidance/FieldIndicators";
 import {
   getEventWorldScenes,
@@ -516,11 +522,8 @@ function formatSigned(value: number): string {
   return value >= 0 ? `+${value}` : `${value}`;
 }
 
-function formatMeterDeltaSummary(deltas: Partial<Record<Meter, number>>): string {
-  const parts = Object.entries(deltas)
-    .filter(([, value]) => typeof value === "number" && value !== 0)
-    .map(([meter, value]) => `${meter} ${formatSigned(Number(value))}`);
-  return parts.join(", ");
+function formatMeterDeltaSummary(world: WorldState, deltas: Partial<Record<Meter, number>>): string {
+  return formatVisibleMeterDeltas(world, deltas);
 }
 
 function buildTrafficJunctionIndex(routes: TrafficRouteDefinition[]): Map<string, TrafficJunctionOption[]> {
@@ -2936,7 +2939,8 @@ export class GameScene extends Phaser.Scene {
       energy: this.world.meters.energy,
       wellbeing: this.world.meters.wellbeing,
       focus: this.world.meters.focus,
-      social: this.world.meters.social
+      social: this.world.meters.social,
+      visibleMeters: getVisibleMeters(this.world)
     });
     this.hudController.updatePhoneBadge(unreadCount, this.phoneBuzzTimer > 0);
     this.updateOverlayChrome();
@@ -3509,8 +3513,14 @@ export class GameScene extends Phaser.Scene {
     }
 
     saveWorldState(this.world);
+    const firstVisitMeterCopy = formatVisibleMeterDeltas(this.world, {
+      focus: flavor.focusDelta,
+      social: flavor.socialEnergyDelta
+    });
     const statLine = isFirstVisit
-      ? `\n\nFirst visit: Focus ${formatSigned(flavor.focusDelta)}  |  Social ${formatSigned(flavor.socialEnergyDelta)}  |  Links ${formatSigned(flavor.connectionDelta)}`
+      ? `\n\nFirst visit: ${
+          firstVisitMeterCopy ? `${firstVisitMeterCopy.replace(/, /g, "  |  ")}  |  ` : ""
+        }Links ${formatSigned(flavor.connectionDelta)}`
       : "\n\nYou have already mapped this stop. It still feels useful as a landmark.";
     this.openDialogue(venue?.name ?? node.name, `${flavor.body}${statLine}`);
     this.showToast(isFirstVisit ? flavor.firstVisitToast : flavor.repeatToast);
@@ -4255,13 +4265,12 @@ export class GameScene extends Phaser.Scene {
     const meta = document.createElement("div");
     meta.className = "bali-life-activity-menu-meta";
     const rhythm = getStationRhythmState(this.world, context);
-    const rhythmCopy = rhythm
+    const rhythmCopy = rhythm && areAdvancedMetersVisible(this.world)
       ? `${rhythm.stationTitle} | Best: ${rhythm.bestTimeOfDay}${rhythm.activeModifierLabels.length ? ` | Active: ${rhythm.activeModifierLabels.join(", ")}` : ""}`
       : `${context.category.replace(/_/g, " ")} activities`;
     meta.textContent =
       `${rhythmCopy} | ${formatClock(this.world)} | ` +
-      `Energy ${this.world.meters.energy}  Wellbeing ${this.world.meters.wellbeing}  ` +
-      `Focus ${this.world.meters.focus}  Social ${this.world.meters.social}  Rp ${this.playerState.money}`;
+      `${formatVisibleMeterValues(this.world)}  Rp ${this.playerState.money}`;
 
     header.append(title, meta);
 
@@ -4292,7 +4301,7 @@ export class GameScene extends Phaser.Scene {
         const cost = event.participation.cost ?? 0;
         const canAfford = cost <= 0 || this.playerState.money >= cost;
         const moneyCopy = cost < 0 ? `Earn Rp ${Math.abs(cost)}` : cost > 0 ? `Cost Rp ${cost}` : "Free";
-        const meterCopy = formatMeterDeltaSummary(event.participation.meterDeltas);
+        const meterCopy = formatMeterDeltaSummary(this.world, event.participation.meterDeltas);
         this.appendActivityMenuRow(content, {
           title: event.title,
           body: `${event.description}\n${event.participation.timeCost} min | ${moneyCopy}${meterCopy ? ` | ${meterCopy}` : ""}`,
@@ -4599,7 +4608,7 @@ export class GameScene extends Phaser.Scene {
         : `Cost Rp ${activity.cost}`
       : "Free";
     const status = option.available ? `${activity.timeCost} min | ${moneyCopy}` : option.reason ?? "Unavailable";
-    const preview = formatActivityPreview(activity, option.timeModifier);
+    const preview = areAdvancedMetersVisible(this.world) ? formatActivityPreview(activity, option.timeModifier) : "";
     this.appendActivityMenuRow(parent, {
       title: activity.label,
       body: `${activity.description}\n${preview ? `${preview}\n` : ""}${status}`,
@@ -5251,7 +5260,7 @@ export class GameScene extends Phaser.Scene {
     saveWorldState(this.world);
 
     const moneyCopy = cost < 0 ? `Rp ${Math.abs(cost)} earned` : cost > 0 ? `Rp ${cost} spent` : "free";
-    const meterCopy = formatMeterDeltaSummary(event.participation.meterDeltas);
+    const meterCopy = formatMeterDeltaSummary(this.world, event.participation.meterDeltas);
     const details = `${moneyCopy}${meterCopy ? ` | ${meterCopy}` : ""}`;
     this.showToast(goalMessage ? `${intentResult.message} ${details}. ${goalMessage}` : `${intentResult.message} ${details}.`);
     this.openVenueActivityMenu(event.locationVenueId);
@@ -5396,10 +5405,12 @@ export class GameScene extends Phaser.Scene {
     const joined = group ? this.playerState.joinedGroupIds.includes(group.id) : false;
     const matchingShop = Object.values(shopDefinitions).find((shop) => shop.name === activity.venueName);
     const costLine = activity.moneyCost > 0 ? `Cost: Rp ${activity.moneyCost}` : "Cost: free";
-    const energyLine =
-      activity.socialEnergyDelta < 0
+    const advancedMetersVisible = areAdvancedMetersVisible(this.world);
+    const energyLine = advancedMetersVisible
+      ? activity.socialEnergyDelta < 0
         ? `Social energy: ${activity.socialEnergyDelta}`
-        : `Social energy: +${activity.socialEnergyDelta}`;
+        : `Social energy: +${activity.socialEnergyDelta}`
+      : "Rest cost: handled by Energy";
     const redemptionLine = activity.isRedemption
       ? `\nRepair: Rep +${activity.reputationReward ?? 0}  |  Wanted -${activity.wantedReduction ?? 0}  |  Bounty -Rp ${activity.bountyReduction ?? 0}`
       : "";
@@ -5428,7 +5439,9 @@ export class GameScene extends Phaser.Scene {
     content.className = "bali-life-activity-menu-content";
     this.appendActivityMenuRow(content, {
       title: "Plan",
-      body: `${activity.description}\n${costLine} | Focus ${activity.focusReward >= 0 ? "+" : ""}${activity.focusReward} | ${energyLine} | Links +${activity.connectionReward}${redemptionLine}`,
+      body: `${activity.description}\n${costLine}${
+        advancedMetersVisible ? ` | Focus ${activity.focusReward >= 0 ? "+" : ""}${activity.focusReward}` : ""
+      } | ${energyLine} | Links +${activity.connectionReward}${redemptionLine}`,
       actionLabel: "Do Activity",
       onAction: () => this.participateInActivity(activity)
     });
@@ -5476,7 +5489,11 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (activity.socialEnergyDelta < 0 && this.world.meters.social < Math.abs(activity.socialEnergyDelta)) {
+    if (
+      areAdvancedMetersVisible(this.world) &&
+      activity.socialEnergyDelta < 0 &&
+      this.world.meters.social < Math.abs(activity.socialEnergyDelta)
+    ) {
       this.showToast("Your social battery is too low. Try a calmer activity first.");
       return;
     }
@@ -5885,7 +5902,7 @@ export class GameScene extends Phaser.Scene {
       this.add.text(
         x + 22,
         y + 56,
-        `Money: Rp ${this.playerState.money}  |  Energy ${this.world.meters.energy}  |  Wellbeing ${this.world.meters.wellbeing}  |  Focus ${this.world.meters.focus}  |  Social ${this.world.meters.social}\nRep ${getReputationScore(this.world.reputation)}  |  Wanted ${getWantedLevel(this.world.reputation)}  |  Bounty Rp ${getBounty(this.world.reputation)}  |  ${this.getBikeStatusLabel()}`,
+        `Money: Rp ${this.playerState.money}  |  ${formatVisibleMeterValues(this.world)}\nRep ${getReputationScore(this.world.reputation)}  |  Wanted ${getWantedLevel(this.world.reputation)}  |  Bounty Rp ${getBounty(this.world.reputation)}  |  ${this.getBikeStatusLabel()}`,
         {
           ...this.panelBodyStyle(),
           wordWrap: { width: panelWidth - 44 }

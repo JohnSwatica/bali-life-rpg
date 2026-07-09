@@ -1,4 +1,6 @@
 import Phaser from "phaser";
+import { METER_PRESENTATION } from "../../systems/guidance/MeterVisibility";
+import type { Meter } from "../../types";
 
 const TOUCH_JOYSTICK_RADIUS = 56;
 const MINIMAP_MAX_WIDTH = 168;
@@ -29,6 +31,7 @@ interface HudMeterReadout {
   wellbeing: number;
   focus: number;
   social: number;
+  visibleMeters: Meter[];
 }
 
 interface HudControllerCallbacks {
@@ -193,12 +196,12 @@ export class HudController {
     if (!this.meterOverlay) {
       return;
     }
-    const rows: Array<{ label: string; value: number; color: string; title: string }> = [
-      { label: "E", value: readout.energy, color: "#f4b860", title: `Energy ${readout.energy}` },
-      { label: "W", value: readout.wellbeing, color: "#62c48f", title: `Wellbeing ${readout.wellbeing}` },
-      { label: "F", value: readout.focus, color: "#6ab7ff", title: `Focus ${readout.focus}` },
-      { label: "S", value: readout.social, color: "#e58fb1", title: `Social ${readout.social}` }
-    ];
+    const rows = readout.visibleMeters.map((meter) => ({
+      label: METER_PRESENTATION[meter].shortLabel,
+      value: readout[meter],
+      color: METER_PRESENTATION[meter].color,
+      title: `${METER_PRESENTATION[meter].label} ${readout[meter]}`
+    }));
     this.meterOverlay.replaceChildren(
       ...rows.map(({ label, value, color, title }) => {
         const row = document.createElement("div");

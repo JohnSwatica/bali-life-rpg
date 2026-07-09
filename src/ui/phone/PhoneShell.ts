@@ -19,6 +19,7 @@ import { getSettlingInGoalStates } from "../../systems/life/SettlingInGoals";
 import { getAct2GoalStates, getAct2NextStep } from "../../systems/life/Act2Goals";
 import { getAct3ReadinessGoalStates, getAct3ReadinessNextStep } from "../../systems/life/Act3Readiness";
 import { getAct0StepState } from "../../systems/life/ActProgression";
+import { formatVisibleMeterValues } from "../../systems/guidance/MeterVisibility";
 import { getDeliveryDefinition } from "../../data/deliveries";
 import { getDeliveryOfferAvailability, getEffectiveDeliveryTerms, previewDeliveryCondition } from "../../systems/hustle/DeliverySystem";
 import { getRentPressureState, getScooterRepairStatus, getScooterUpgradeStatus } from "../../systems/hustle/HustleEconomy";
@@ -507,6 +508,7 @@ export class PhoneShell {
       `Bio: ${profile.bio}`,
       `Lifestyle tags: ${profile.lifestyleTags.length ? profile.lifestyleTags.join(", ") : "none"}`,
       `Reputation score: ${reputation.score}`,
+      `Meters: ${formatVisibleMeterValues(world)}`,
       `Visible reputation tags: ${reputation.tags.length ? reputation.tags.join(", ") : "none yet"}`,
       `Audio: ${this.options.isAudioMuted?.() ? "muted" : "on"}`,
       "Tap tags below to edit local profile tags."
