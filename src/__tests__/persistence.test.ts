@@ -440,4 +440,24 @@ describe("Persistence migration", () => {
 
     expect(loaded.activeActivity).toEqual(world.activeActivity);
   });
+
+  it("migrates rival-race transient activity state", () => {
+    const world = createInitialWorldState();
+    world.activeActivity = {
+      source: "rivalRace",
+      raceId: "rio_streak_duel",
+      venueId: "bali_family_rental_scooter",
+      venueName: "Bali Family Rental Scooter",
+      label: "Rio's Streak Duel",
+      durationMin: 0,
+      elapsedMs: 12000,
+      realDurationMs: 70000,
+      startedAt: 8 * 60
+    };
+
+    saveWorldState(world);
+    const loaded = loadWorldState();
+
+    expect(loaded.activeActivity).toEqual(world.activeActivity);
+  });
 });

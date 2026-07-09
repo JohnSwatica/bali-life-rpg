@@ -58,6 +58,7 @@ import {
   getEventWorldScenes,
   getFieldFirstDiscoveryAudit,
   getOpportunityWorldScenes,
+  getRivalRaceWorldScenes,
   type EventWorldScene,
   type FieldFirstDiscoveryAudit,
   type OpportunityWorldScene,
@@ -118,6 +119,15 @@ import {
   type RideModelState
 } from "../systems/ride/RideModel";
 import { applyCargoDamage, isCargoCareEligible } from "../systems/ride/CargoCare";
+import {
+  advanceRivalRaceGhost,
+  applyRivalRaceOutcome,
+  getRioRaceEligibility,
+  getRivalRaceRoutePosition,
+  resolveRivalRaceOutcome,
+  RIO_RACE,
+  type RivalRaceConfig
+} from "../systems/ride/RivalRace";
 import {
   getRelationshipChoiceScene,
   getRelationshipChoiceSceneForNpc,
@@ -429,6 +439,14 @@ interface WantedOffenderRuntime {
   speed: number;
 }
 
+interface RivalRaceRuntime {
+  config: RivalRaceConfig;
+  elapsedMs: number;
+  checkpointIndex: number;
+  ghostProgress: number;
+  ghostFinishedAtMs?: number;
+}
+
 interface MinimapLayout {
   x: number;
   y: number;
@@ -647,6 +665,9 @@ export class GameScene extends Phaser.Scene {
   private committedMinigameFeedback?: HTMLDivElement;
   private activeDeliveryResolvedCheckpointIds: string[] = [];
   private activeDeliveryPerformanceScores: number[] = [];
+  private activeRivalRace?: RivalRaceRuntime;
+  private rivalRaceGhost?: Phaser.GameObjects.Sprite;
+  private rivalRaceMarkerLayer!: Phaser.GameObjects.Graphics;
   private rideModelState: RideModelState = createRideModelState();
   private rideCameraOffsetX = 0;
   private rideCameraOffsetY = 0;
@@ -751,6 +772,7 @@ export class GameScene extends Phaser.Scene {
     this.updateCutscene(delta);
 
     this.updatePlayer(delta);
+    this.updateRivalRace(delta);
     this.updateRideCheckpoints();
     this.updateMapDiscovery();
     this.updateTraffic(delta);
@@ -780,6 +802,7 @@ export class GameScene extends Phaser.Scene {
     renderStreetTemplate(this, activeStreetTemplate);
     this.opportunityMarkerLayer = this.add.graphics().setDepth(210);
     this.deliveryMarkerLayer = this.add.graphics().setDepth(211);
+    this.rivalRaceMarkerLayer = this.add.graphics().setDepth(211.5);
     this.fieldIndicatorLayer = this.add.graphics().setDepth(212);
     this.worldSceneLayer = this.add.graphics().setDepth(213);
     this.addAreaLabels();
@@ -1587,6 +1610,8 @@ export class GameScene extends Phaser.Scene {
       escape: () => {
         if (this.activeCutscene) {
           this.skipActiveCutscene();
+        } else if (this.activeRivalRace) {
+          this.finishRivalRace({ conceded: true });
         } else if (this.godmodePanel) {
           this.closeGodmodePanel();
         } else if (this.mode === "committedActivity") {
@@ -2982,7 +3007,10 @@ export class GameScene extends Phaser.Scene {
     const homeSleepReady = this.isAct0HomeSleepReady();
     const target = this.mode === "world" ? this.getNearestInteraction() : undefined;
     const interiorTarget = this.mode === "interior" ? this.getNearestInteriorInteraction() : undefined;
-    if (this.mode === "world" && this.playerState.bikeStuck) {
+    if (this.activeRivalRace) {
+      const next = this.activeRivalRace.config.route[this.activeRivalRace.checkpointIndex];
+      this.promptText.setText(`Race Rio: ${next ? `hit ${next.label}` : "finish the lap"}. ESC concedes.`);
+    } else if (this.mode === "world" && this.playerState.bikeStuck) {
       this.promptText.setText(`E / ACT: ask ${REQUIRED_BIKE_HELPERS} helpers to drag the bike out`);
     } else if (this.mode === "world" && isAct0FirstRunGateActive(this.world, this.act0FirstRunGateSessionActive)) {
       this.promptText.setText("Find Ibu Sari first - follow the arrow and press E / ACT.");
@@ -3012,6 +3040,7 @@ export class GameScene extends Phaser.Scene {
 
     this.redrawHudChrome();
     this.drawOpportunityMarkers();
+    this.drawRivalRaceMarkers();
     this.drawFieldIndicators();
     this.drawWorldInteractionScenes();
     this.drawObjectiveMarkers();
@@ -3296,6 +3325,15 @@ export class GameScene extends Phaser.Scene {
     this.createRelationshipChoiceOverlay(scene);
   }
 
+  private openRioRaceChallenge(): void {
+    const scene = getRelationshipChoiceScene("rio_streak_duel_challenge");
+    if (!scene) {
+      this.showToast("Rio's race scene is missing.");
+      return;
+    }
+    this.openRelationshipChoiceScene(scene);
+  }
+
   private createRelationshipChoiceOverlay(scene: RelationshipChoiceScene): void {
     this.destroyDialogueOverlay();
     if (typeof document === "undefined") {
@@ -3351,7 +3389,10 @@ export class GameScene extends Phaser.Scene {
 
   private resolveRelationshipChoice(scene: RelationshipChoiceScene, option: RelationshipChoiceOption): void {
     this.awaitingRelationshipChoice = false;
-    this.world.collectedPickups[scene.id] = (this.world.collectedPickups[scene.id] ?? 0) + 1;
+    const consumesScene = option.actionId !== "start_rio_race" && option.actionId !== "decline_rio_race";
+    if (consumesScene) {
+      this.world.collectedPickups[scene.id] = (this.world.collectedPickups[scene.id] ?? 0) + 1;
+    }
     const meterDeltas: Partial<Record<"energy" | "focus", number>> = {};
     if (option.energyDelta) {
       meterDeltas.energy = option.energyDelta;
@@ -3381,6 +3422,18 @@ export class GameScene extends Phaser.Scene {
         memory: option.memory.type,
         detail: option.memory.detail
       });
+    }
+    if (option.actionId === "start_rio_race") {
+      this.pendingChoiceOpportunityId = undefined;
+      this.destroyDialogueOverlay();
+      this.startRioRace();
+      return;
+    }
+    if (option.actionId === "decline_rio_race") {
+      this.pendingChoiceOpportunityId = undefined;
+      saveWorldState(this.world);
+      this.openDialogue(npcDefinitions[scene.npcId]?.name ?? scene.npcId, option.resultLine, scene.npcId);
+      return;
     }
     let followUpLine = "";
     if (option.actionId === "accept_no_questions" && this.pendingChoiceOpportunityId) {
@@ -4292,6 +4345,16 @@ export class GameScene extends Phaser.Scene {
 
     if (context.venueId === "bali_family_rental_scooter") {
       this.appendScooterCounterActions(content);
+      const raceEligibility = getRioRaceEligibility(this.world);
+      if (raceEligibility.eligible) {
+        this.appendActivityMenuSection(content, "Rio's streak");
+        this.appendActivityMenuRow(content, {
+          title: RIO_RACE.title,
+          body: "Rio is posted by the timing board with his helmet already on. Bail = he wins. He'll mention it.",
+          actionLabel: "Hear him out",
+          onAction: () => this.openRioRaceChallenge()
+        });
+      }
     }
 
     const activeEvents = getActiveEventsAtVenue(this.world.clock, venueId, this.world);
@@ -4600,6 +4663,174 @@ export class GameScene extends Phaser.Scene {
     this.showToast(result.message);
   }
 
+  private startRioRace(): void {
+    const eligibility = getRioRaceEligibility(this.world);
+    if (!eligibility.eligible) {
+      this.openDialogue("Rio", eligibility.reason ?? "Rio is not ready to race right now.", "rio");
+      return;
+    }
+    if (this.playerState.money < RIO_RACE.stake) {
+      this.openDialogue("Rio", `"Bring Rp ${RIO_RACE.stake} if you want to put your mouth on the road."`, "rio");
+      return;
+    }
+
+    this.playerState.money -= RIO_RACE.stake;
+    this.prepareExteriorRaceStart();
+    saveWorldState(this.world);
+    this.startCutscene(this.buildRioRaceCountdownCutscene(), () => this.beginRioRaceRun());
+  }
+
+  private prepareExteriorRaceStart(): void {
+    this.closePanel(false);
+    this.destroyDialogueOverlay();
+    this.activeInteriorId = null;
+    this.interiorReturnPoint = undefined;
+    this.interiorTransitioning = false;
+    this.mode = "world";
+    this.applyWorldCameraBounds();
+    this.layoutForViewport();
+    this.hudController.setMinimapHidden(false);
+    this.resetNpcSpritesToRoutineState();
+    const start = RIO_RACE.route[0];
+    this.playerState.hasBike = true;
+    this.playerState.onBike = true;
+    this.playerState.bikeStuck = false;
+    this.updatePlayerBikeVisual();
+    this.placePlayerSprite(start, true);
+  }
+
+  private buildRioRaceCountdownCutscene(): CutsceneScript {
+    return {
+      id: "rio_streak_duel_countdown",
+      after: "world",
+      timeoutMs: 3600,
+      steps: [
+        { id: "letterbox_in", kind: "letterbox_in", durationMs: 260 },
+        {
+          id: "three",
+          kind: "act_card",
+          durationMs: 620,
+          title: "3",
+          subtitle: "Rio revs beside you."
+        },
+        {
+          id: "two",
+          kind: "act_card",
+          durationMs: 620,
+          title: "2",
+          subtitle: "Hit the route markers. ESC concedes."
+        },
+        {
+          id: "one",
+          kind: "act_card",
+          durationMs: 620,
+          title: "1",
+          subtitle: "Rental, station, Bungalow, beach, back."
+        },
+        {
+          id: "go",
+          kind: "act_card",
+          durationMs: 520,
+          title: "GO",
+          subtitle: "Beat Rio clean."
+        },
+        { id: "letterbox_out", kind: "letterbox_out", durationMs: 260 }
+      ]
+    };
+  }
+
+  private beginRioRaceRun(): void {
+    this.mode = "world";
+    this.activeRivalRace = {
+      config: RIO_RACE,
+      elapsedMs: 0,
+      checkpointIndex: 1,
+      ghostProgress: 0
+    };
+    const start = RIO_RACE.route[0];
+    this.rivalRaceGhost?.destroy();
+    this.rivalRaceGhost = this.add.sprite(start.x - scaleDistance(28), start.y, "npc-rio").setDepth(start.y + 2);
+    this.setSpriteFacing(this.rivalRaceGhost, false, CHARACTER_SPRITE_SCALE);
+    this.world.activeActivity = {
+      source: "rivalRace",
+      raceId: RIO_RACE.id,
+      venueId: RIO_RACE.venueId,
+      venueName: "Bali Family Rental Scooter",
+      label: RIO_RACE.title,
+      durationMin: 0,
+      elapsedMs: 0,
+      realDurationMs: RIO_RACE.maxRaceMs,
+      startedAt: this.getAbsoluteMinute()
+    };
+    this.showToast("Race started. Hit the route markers. ESC concedes.");
+  }
+
+  private updateRivalRace(delta: number): void {
+    const race = this.activeRivalRace;
+    if (!race) {
+      return;
+    }
+    race.elapsedMs += delta;
+    const playerProgress = Math.max(0, (race.checkpointIndex - 1) / Math.max(1, race.config.route.length - 1));
+    const ghost = advanceRivalRaceGhost(race.config, race.ghostProgress, race.elapsedMs, playerProgress, delta);
+    race.ghostProgress = ghost.progress;
+    if (ghost.finished && race.ghostFinishedAtMs == null) {
+      race.ghostFinishedAtMs = race.elapsedMs;
+    }
+    const ghostPosition = getRivalRaceRoutePosition(race.config, race.ghostProgress);
+    this.rivalRaceGhost?.setPosition(ghostPosition.x, ghostPosition.y).setDepth(ghostPosition.y + 2);
+
+    const next = race.config.route[race.checkpointIndex];
+    if (next) {
+      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, next.x, next.y);
+      if (distance <= scaleDistance(race.config.checkpointRadius)) {
+        race.checkpointIndex += 1;
+        this.showToast(race.checkpointIndex >= race.config.route.length ? "Finish line." : `Checkpoint: ${next.label}.`);
+      }
+    }
+
+    this.world.activeActivity = this.world.activeActivity?.source === "rivalRace"
+      ? { ...this.world.activeActivity, elapsedMs: race.elapsedMs }
+      : this.world.activeActivity;
+
+    if (race.checkpointIndex >= race.config.route.length) {
+      this.finishRivalRace({ playerFinishMs: race.elapsedMs, ghostFinishMs: race.ghostFinishedAtMs });
+      return;
+    }
+    if (race.elapsedMs >= race.config.maxRaceMs) {
+      this.finishRivalRace({ playerFinishMs: race.elapsedMs, ghostFinishMs: race.ghostFinishedAtMs, timedOut: true });
+    }
+  }
+
+  private finishRivalRace(input: { playerFinishMs?: number; ghostFinishMs?: number; conceded?: boolean; timedOut?: boolean }): void {
+    const race = this.activeRivalRace;
+    if (!race) {
+      return;
+    }
+    const outcome = resolveRivalRaceOutcome(input);
+    applyRivalRaceOutcome(this.world, outcome, this.getAbsoluteMinute());
+    this.activeRivalRace = undefined;
+    this.world.activeActivity = null;
+    this.rivalRaceGhost?.destroy();
+    this.rivalRaceGhost = undefined;
+    this.rivalRaceMarkerLayer?.clear();
+    saveWorldState(this.world);
+
+    if (outcome.result === "win") {
+      this.openDialogue(
+        "Rio",
+        'Rio pulls in half a breath after you, smile gone sharp instead of gone. "Clean line. Annoying." He tosses the side-bet cash at you. "Do not make a speech. I still have the better rating."',
+        "rio"
+      );
+      return;
+    }
+    const line =
+      outcome.reason === "conceded"
+        ? 'Rio circles back before you can park. "Bailed? Good strategy if the goal was me winning." He taps your mirror. "Rematch stays open. Try courage next time."'
+        : 'Rio is waiting at the rental, one foot on the curb. "See? Streaks are not luck." He grins, too pleased. "Rematch stays open, new guy."';
+    this.openDialogue("Rio", line, "rio");
+  }
+
   private appendActivityOptionRow(parent: HTMLElement, context: VenueActivityContext, option: ActivityAvailability): void {
     const activity = option.activity;
     const moneyCopy = activity.cost
@@ -4895,6 +5126,9 @@ export class GameScene extends Phaser.Scene {
       this.resolveVenueActivity(context, active.activityId, performanceScore);
       return;
     }
+    if (active.source === "rivalRace") {
+      return;
+    }
     this.finishCommittedOpportunity(active.opportunityId, performanceScore);
   }
 
@@ -5026,11 +5260,31 @@ export class GameScene extends Phaser.Scene {
     if (!this.world.activeActivity) {
       return;
     }
+    if (this.world.activeActivity.source === "rivalRace") {
+      this.resumeRivalRace(this.world.activeActivity);
+      return;
+    }
     this.committedActivity = { ...this.world.activeActivity };
     this.mode = "committedActivity";
     const node = venueMapNodes.find((candidate) => candidate.venueId === this.committedActivity?.venueId);
     this.placePlayerAtCommittedVenue(node);
     this.createCommittedActivityOverlay(this.committedActivity);
+  }
+
+  private resumeRivalRace(active: Extract<ActiveActivityState, { source: "rivalRace" }>): void {
+    this.prepareExteriorRaceStart();
+    const progress = Math.max(0, Math.min(1, active.elapsedMs / Math.max(1, RIO_RACE.maxRaceMs)));
+    this.activeRivalRace = {
+      config: RIO_RACE,
+      elapsedMs: active.elapsedMs,
+      checkpointIndex: Math.max(1, Math.min(RIO_RACE.route.length - 1, Math.round(progress * (RIO_RACE.route.length - 1)))),
+      ghostProgress: Math.min(0.92, progress)
+    };
+    const ghostPosition = getRivalRaceRoutePosition(RIO_RACE, this.activeRivalRace.ghostProgress);
+    this.rivalRaceGhost?.destroy();
+    this.rivalRaceGhost = this.add.sprite(ghostPosition.x, ghostPosition.y, "npc-rio").setDepth(ghostPosition.y + 2);
+    this.setSpriteFacing(this.rivalRaceGhost, false, CHARACTER_SPRITE_SCALE);
+    this.showToast("Race resumed. Hit the next marker. ESC concedes.");
   }
 
   private updateCommittedMinigame(delta: number): void {
@@ -6161,6 +6415,43 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private drawRivalRaceMarkers(): void {
+    if (!this.rivalRaceMarkerLayer) {
+      return;
+    }
+    this.rivalRaceMarkerLayer.clear();
+    const race = this.activeRivalRace;
+    if (!race) {
+      return;
+    }
+    race.config.route.forEach((point, index) => {
+      if (index === 0) {
+        return;
+      }
+      const isNext = index === race.checkpointIndex;
+      const reached = index < race.checkpointIndex;
+      const radius = scaleDistance(isNext ? 24 : 16);
+      this.rivalRaceMarkerLayer.fillStyle(0x101820, reached ? 0.26 : 0.62);
+      this.rivalRaceMarkerLayer.fillCircle(point.x, point.y, radius + scaleDistance(5));
+      this.rivalRaceMarkerLayer.lineStyle(scaleDistance(isNext ? 4 : 2), isNext ? 0xfff0bd : 0xff5d5d, isNext ? 0.95 : 0.5);
+      this.rivalRaceMarkerLayer.strokeCircle(point.x, point.y, radius);
+      this.rivalRaceMarkerLayer.fillStyle(reached ? 0x62c48f : isNext ? 0xfff0bd : 0xff5d5d, reached ? 0.72 : 0.92);
+      this.rivalRaceMarkerLayer.fillCircle(point.x, point.y, scaleDistance(isNext ? 8 : 5));
+      if (isNext) {
+        this.rivalRaceMarkerLayer.lineStyle(scaleDistance(2), 0xfff0bd, 0.82);
+        this.rivalRaceMarkerLayer.lineBetween(point.x - scaleDistance(16), point.y - scaleDistance(28), point.x - scaleDistance(16), point.y + scaleDistance(8));
+        this.rivalRaceMarkerLayer.fillTriangle(
+          point.x - scaleDistance(16),
+          point.y - scaleDistance(28),
+          point.x + scaleDistance(12),
+          point.y - scaleDistance(20),
+          point.x - scaleDistance(16),
+          point.y - scaleDistance(12)
+        );
+      }
+    });
+  }
+
   private drawWorldInteractionScenes(): void {
     if (!this.worldSceneLayer) {
       return;
@@ -6178,6 +6469,15 @@ export class GameScene extends Phaser.Scene {
       const x = node.x;
       const y = node.y - yOffset;
       this.drawOpportunityWorldScene(scene, x, y, phase, activeLabelIds);
+    }
+
+    for (const scene of getRivalRaceWorldScenes(this.world)) {
+      const node = venueMapNodes.find((candidate) => candidate.venueId === scene.venueId);
+      if (!node) {
+        continue;
+      }
+      const yOffset = Math.min(node.radius + scaleDistance(24), scaleDistance(92));
+      this.drawOpportunityWorldScene(scene, node.x, node.y - yOffset, phase, activeLabelIds);
     }
 
     for (const scene of getEventWorldScenes(this.world)) {
@@ -6227,6 +6527,22 @@ export class GameScene extends Phaser.Scene {
       this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(1)), 0xffc6a6, 0.52);
       this.worldSceneLayer.lineBetween(x + scaleDistance(8), y + scaleDistance(17), x + scaleDistance(22), y + scaleDistance(17));
       this.drawWorldSceneSign(scene, x, y - scaleDistance(26), activeLabelIds, 0xffc6a6);
+      return;
+    }
+
+    if (scene.sceneKind === "race_challenge") {
+      this.drawWorldSceneActors(scene.actors, x - scaleDistance(24), y, phase, 1);
+      const flagX = x + scaleDistance(18);
+      const flagY = y + scaleDistance(4);
+      this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(2)), 0xfff0bd, 0.9);
+      this.worldSceneLayer.lineBetween(flagX, flagY - scaleDistance(26), flagX, flagY + scaleDistance(24));
+      for (let index = 0; index < 3; index += 1) {
+        this.worldSceneLayer.fillStyle(index % 2 === 0 ? 0xfff0bd : 0x101820, 0.95);
+        this.worldSceneLayer.fillRect(flagX, flagY - scaleDistance(26) + index * scaleDistance(7), scaleDistance(22), scaleDistance(7));
+      }
+      this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(2)), 0xff5d5d, 0.72 + Math.sin(phase * 7) * 0.14);
+      this.worldSceneLayer.strokeCircle(x + scaleDistance(14), y + scaleDistance(18), scaleDistance(24));
+      this.drawWorldSceneSign(scene, x, y - scaleDistance(30), activeLabelIds, 0xff5d5d);
       return;
     }
 

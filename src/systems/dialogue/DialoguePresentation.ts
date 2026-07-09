@@ -48,6 +48,18 @@ export function getAmbientNpcLine(world: WorldState, npcId: string, fallbackLine
   ) {
     return "\"That's Rumah's old bike.\" He says it plainly this time, then goes quiet.";
   }
+  if (npcId === "rio") {
+    const rioMemory = world.relationships.find((memory) => memory.subjectType === "npc" && memory.subjectId === "rio");
+    const raceMemory = [...(rioMemory?.memories ?? [])]
+      .reverse()
+      .find((memory) => memory.type === "lost_to_you_clean" || memory.type === "beat_you");
+    const now = Math.floor((Math.max(1, world.clock.day) - 1) * 1440 + world.clock.minuteOfDay);
+    if (raceMemory && now - raceMemory.at >= 1440) {
+      return raceMemory.type === "lost_to_you_clean"
+        ? "Still dining out on that lap? Good. Means you know it was close."
+        : "Rematch stays open, new guy. I like my streak with witnesses.";
+    }
+  }
   if (routineLabel) {
     return appendRoutineContext(shortenAmbientLine(fallbackLine), routineLabel);
   }

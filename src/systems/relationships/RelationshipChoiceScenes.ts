@@ -1,6 +1,6 @@
 import type { MemoryType } from "../../types";
 
-export type RelationshipChoiceActionId = "accept_no_questions" | "decline_no_questions";
+export type RelationshipChoiceActionId = "accept_no_questions" | "decline_no_questions" | "start_rio_race" | "decline_rio_race";
 
 export interface RelationshipChoiceOption {
   id: string;
@@ -80,6 +80,28 @@ export const RELATIONSHIP_CHOICE_SCENES: Record<string, RelationshipChoiceScene>
         affinityBonus: 1,
         axis: { kind: "relational", delta: 1 },
         memory: { type: "visited", detail: "Turned down the no-questions package to Rio's face" }
+      }
+    ]
+  },
+  rio_streak_duel_challenge: {
+    id: "rio_streak_duel_challenge",
+    npcId: "rio",
+    trigger: "manual",
+    npcOpeningLine:
+      'Rio is already sitting on his scooter, helmet strap loose, grin worse. "Three runs, rating above gutter level. Fine. One lap: rental, station, Bungalow, club gate, beach, back here."',
+    prompt: '"Bail and I win. Finish behind me and I still win. Beat me clean and I shut up for, I don\'t know, ten minutes."',
+    options: [
+      {
+        id: "race_him",
+        label: "Race him. Rp 25 on the line.",
+        resultLine: "Rio kicks his stand up. \"Try not to make this embarrassing for both of us.\"",
+        actionId: "start_rio_race"
+      },
+      {
+        id: "not_today",
+        label: "Not today.",
+        resultLine: "Rio laughs through his nose. \"Good. I was worried you were about to become interesting.\"",
+        actionId: "decline_rio_race"
       }
     ]
   }

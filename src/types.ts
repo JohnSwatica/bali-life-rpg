@@ -82,7 +82,9 @@ export type MemoryType =
   | "bought_item"
   | "helped"
   | "attended_event"
-  | "missed_opportunity";
+  | "missed_opportunity"
+  | "lost_to_you_clean"
+  | "beat_you";
 export type OfflineActivityType =
   | "venue_challenge"
   | "neighborhood_ritual"
@@ -312,6 +314,13 @@ export type ActiveActivityState =
     })
   | (ActiveActivityBaseState & {
       source: "scooterRepair";
+      activityId?: never;
+      opportunityId?: never;
+      checkpointId?: never;
+    })
+  | (ActiveActivityBaseState & {
+      source: "rivalRace";
+      raceId: string;
       activityId?: never;
       opportunityId?: never;
       checkpointId?: never;

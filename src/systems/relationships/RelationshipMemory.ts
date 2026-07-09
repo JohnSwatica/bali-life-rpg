@@ -119,8 +119,14 @@ function affinityForMemory(memory: MemoryType): number {
   if (memory === "completed_quest" || memory === "helped") {
     return 8;
   }
+  if (memory === "lost_to_you_clean") {
+    return 6;
+  }
   if (memory === "bought_item" || memory === "attended_event") {
     return 4;
+  }
+  if (memory === "beat_you") {
+    return 2;
   }
   if (memory === "visited") {
     return 2;
