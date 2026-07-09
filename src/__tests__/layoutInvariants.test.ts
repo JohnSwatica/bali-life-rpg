@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { activeStreetTemplate, curatedVenueNodes, venueMapNodes } from "../data/authoredStreetLayout";
+import { deliveryDefinitions } from "../data/deliveries";
 import { interiorDefinitions } from "../data/interiors";
 import { authoredPlayableBounds, authoredPlayablePoints } from "../data/playableBounds";
+import { paddyFieldPatches, villaGateDressings } from "../data/worldDressing";
 import { stationVisualDefinitions } from "../data/stationVisuals";
 import { getVenuePoint } from "../data/layoutLookup";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
+import { paddyFieldState } from "../systems/map/PaddyFields";
 import { clampPointToPlayableBounds, isPointInsidePlayableBounds } from "../systems/map/PlayableBounds";
 import {
   buildStreetTileData,
@@ -149,6 +152,54 @@ describe("authored street layout invariants", () => {
       for (let x = roadLeft; x <= roadRight; x += 1) {
         expect(data[y][x], `road band ${x},${y}`).not.toBe(TILE_IDS.sidewalk);
       }
+    }
+  });
+
+  it("keeps authored paddy fields off road, sidewalk, venue plots, and beach tiles", () => {
+    const data = buildStreetTileData(activeStreetTemplate);
+    const forbiddenTiles: Set<number> = new Set([
+      TILE_IDS.road,
+      TILE_IDS.sidewalk,
+      TILE_IDS.plot,
+      TILE_IDS.sand,
+      TILE_IDS.shallowWater,
+      TILE_IDS.deepWater,
+      TILE_IDS.waterEdge,
+      TILE_IDS.dock
+    ]);
+    const templatePaddies = paddyFieldPatches.filter((patch) => patch.templateId === activeStreetTemplate.id);
+
+    expect(templatePaddies.length).toBeGreaterThan(0);
+    for (const patch of templatePaddies) {
+      for (let y = patch.tileY; y < patch.tileY + patch.heightTiles; y += 1) {
+        for (let x = patch.tileX; x < patch.tileX + patch.widthTiles; x += 1) {
+          expect(forbiddenTiles.has(data[y][x]), `${patch.id} at ${x},${y}`).toBe(false);
+        }
+      }
+    }
+  });
+
+  it("seeds one yellowing paddy patch while keeping the rest green by default", () => {
+    const states = paddyFieldPatches.map((patch) => [patch.id, paddyFieldState(patch)] as const);
+
+    expect(states.filter(([, state]) => state === "yellowing").map(([id]) => id)).toEqual(["corner_yellowing_paddy"]);
+    expect(states.filter(([, state]) => state === "green").length).toBe(paddyFieldPatches.length - 1);
+  });
+
+  it("keeps villa gate dressing aligned to existing villa delivery dropoff points", () => {
+    const villaDeliveries = deliveryDefinitions.filter(
+      (delivery) => delivery.dropoffId.toLowerCase().includes("villa") || delivery.dropoffName.toLowerCase().includes("villa")
+    );
+
+    expect(villaGateDressings.map((gate) => gate.deliveryId).sort()).toEqual(villaDeliveries.map((delivery) => delivery.id).sort());
+    for (const delivery of villaDeliveries) {
+      const gate = villaGateDressings.find((candidate) => candidate.deliveryId === delivery.id);
+      expect(gate).toBeDefined();
+      expect(gate).toMatchObject({
+        dropoffId: delivery.dropoffId,
+        x: delivery.dropoffPoint.x,
+        y: delivery.dropoffPoint.y
+      });
     }
   });
 

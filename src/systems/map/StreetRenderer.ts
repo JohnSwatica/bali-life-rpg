@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import type { CuratedCategory } from "../../data/curatedVenues";
 import { interiorDefinitions } from "../../data/interiors";
 import { getStationVisualForVenue, type StationVisualDefinition } from "../../data/stationVisuals";
+import { paddyFieldPatches, streetTextureProps, villaGateDressings } from "../../data/worldDressing";
 import type { MapFeatureDefinition, RoadPathDefinition } from "../../data/berawaLayout";
 import {
   TILESET_KEY,
@@ -11,6 +12,7 @@ import {
   createOriginalStreetTileset,
   tileToWorld
 } from "./TileStreetScale";
+import { paddyFieldState } from "./PaddyFields";
 import {
   type StreetBuildingSlot,
   type StreetTemplate,
@@ -653,8 +655,137 @@ function drawStreetProps(g: Phaser.GameObjects.Graphics, template: StreetTemplat
     return;
   }
 
+  drawPaddyFields(g, template);
+  drawVillaDropoffGates(g, template);
   drawCorridorAmbientProps(g, template);
+  drawStreetTextureProps(g);
   drawBeachAmbientProps(g, template);
+}
+
+function drawPaddyFields(g: Phaser.GameObjects.Graphics, template: StreetTemplate): void {
+  for (const patch of paddyFieldPatches.filter((candidate) => candidate.templateId === template.id)) {
+    const x = patch.tileX * TILE_SIZE;
+    const y = patch.tileY * TILE_SIZE;
+    const width = patch.widthTiles * TILE_SIZE;
+    const height = patch.heightTiles * TILE_SIZE;
+    drawPaddyPatch(g, x, y, width, height, paddyFieldState(patch), hashString(patch.id));
+  }
+}
+
+function drawPaddyPatch(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  state: "green" | "yellowing",
+  seed: number
+): void {
+  const palette =
+    state === "yellowing"
+      ? { fill: 0xc9b65b, fillAlt: 0xd8c86d, wet: 0xa7b66b, border: 0x8a8141, marker: 0xf2d170 }
+      : { fill: 0x76bd66, fillAlt: 0x86ca70, wet: 0x78c9b7, border: 0x4f8d55, marker: 0xf2c35d };
+  g.fillStyle(0x000000, 0.09);
+  g.fillRoundedRect(x + 5, y + 6, width, height, 7);
+  g.fillStyle(palette.fill, 0.92);
+  g.fillRoundedRect(x, y, width, height, 7);
+  g.lineStyle(3, palette.border, 0.75);
+  g.strokeRoundedRect(x + 2, y + 2, width - 4, height - 4, 6);
+  for (let row = 1; row < Math.floor(height / 26); row += 1) {
+    const lineY = y + row * 26 + ((seed + row * 7) % 7);
+    g.lineStyle(2, palette.wet, 0.72);
+    g.lineBetween(x + 10, lineY, x + width - 10, lineY + ((row + seed) % 2 === 0 ? 4 : -3));
+  }
+  for (let column = 0; column < Math.floor(width / 42); column += 1) {
+    const fleckX = x + 18 + column * 42;
+    const fleckY = y + 18 + ((seed + column * 11) % Math.max(20, height - 34));
+    g.fillStyle(column % 2 === 0 ? palette.fillAlt : palette.wet, 0.56);
+    g.fillRoundedRect(fleckX, fleckY, 18, 4, 2);
+  }
+  if (seed % 2 === 0) {
+    drawFarmerHut(g, x + width - 38, y + 30);
+  } else {
+    drawScareFlag(g, x + width - 34, y + height - 42, palette.marker);
+  }
+}
+
+function drawFarmerHut(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
+  g.fillStyle(0x000000, 0.11);
+  g.fillEllipse(x, y + 24, 54, 14, 18);
+  g.fillStyle(0x7b5b3a, 1);
+  g.fillRoundedRect(x - 18, y, 36, 25, 3);
+  g.fillStyle(0xd8a148, 1);
+  g.beginPath();
+  g.moveTo(x - 25, y + 3);
+  g.lineTo(x, y - 20);
+  g.lineTo(x + 25, y + 3);
+  g.closePath();
+  g.fillPath();
+  g.fillStyle(0x2f3329, 0.45);
+  g.fillRect(x - 5, y + 10, 10, 15);
+}
+
+function drawScareFlag(g: Phaser.GameObjects.Graphics, x: number, y: number, color: number): void {
+  g.lineStyle(3, 0x6b4b2d, 0.9);
+  g.lineBetween(x, y + 22, x, y - 20);
+  g.lineBetween(x - 15, y - 5, x + 15, y - 5);
+  g.fillStyle(color, 0.95);
+  g.beginPath();
+  g.moveTo(x + 2, y - 20);
+  g.lineTo(x + 27, y - 13);
+  g.lineTo(x + 2, y - 6);
+  g.closePath();
+  g.fillPath();
+}
+
+function drawVillaDropoffGates(g: Phaser.GameObjects.Graphics, template: StreetTemplate): void {
+  const roadCenterX = roadCenterTile(template) * TILE_SIZE;
+  for (const gate of villaGateDressings) {
+    const side = gate.x < roadCenterX ? -1 : 1;
+    drawVillaGate(g, gate.x + side * 42, gate.y, side);
+  }
+}
+
+function drawVillaGate(g: Phaser.GameObjects.Graphics, x: number, y: number, side: -1 | 1): void {
+  const wallWidth = 128;
+  g.fillStyle(0x000000, 0.12);
+  g.fillEllipse(x, y + 38, wallWidth + 24, 20, 24);
+  g.fillStyle(0xe8d7ae, 1);
+  g.fillRoundedRect(x - wallWidth / 2, y - 18, wallWidth, 34, 4);
+  g.fillStyle(0xb99162, 1);
+  g.fillRoundedRect(x - 22, y - 22, 44, 44, 3);
+  g.fillStyle(0x5b3c2c, 1);
+  g.fillRoundedRect(x - 15, y - 16, 13, 34, 2);
+  g.fillRoundedRect(x + 2, y - 16, 13, 34, 2);
+  g.lineStyle(2, 0x39281d, 0.58);
+  g.lineBetween(x, y - 14, x, y + 17);
+  for (const dx of [-54, 54]) {
+    g.fillStyle(0xc8b38a, 1);
+    g.fillRoundedRect(x + dx - 5, y - 26, 10, 48, 3);
+    g.fillStyle(0xffe7a0, 0.95);
+    g.fillCircle(x + dx, y - 31, 6);
+  }
+  for (const dx of [-70, 70]) {
+    g.fillStyle(0x3f8f5f, 1);
+    g.fillCircle(x + dx, y - 8, 8);
+    g.fillStyle(0xd95b9f, 0.95);
+    g.fillCircle(x + dx - side * 3, y - 14, 4);
+    g.fillCircle(x + dx + side * 4, y - 4, 3);
+  }
+}
+
+function drawStreetTextureProps(g: Phaser.GameObjects.Graphics): void {
+  for (const prop of streetTextureProps) {
+    if (prop.kind === "canang") {
+      drawCanangSari(g, prop.x, prop.y);
+    } else if (prop.kind === "sleeping_dog") {
+      drawSleepingDog(g, prop.x, prop.y, prop.direction ?? 1);
+    } else if (prop.kind === "laundry") {
+      drawLaundryLine(g, prop.x, prop.y, prop.direction ?? 1);
+    } else if (prop.kind === "parked_scooter") {
+      drawParkedScooter(g, prop.x, prop.y, prop.direction ?? 1, prop.color ?? 0x4e9fd6);
+    }
+  }
 }
 
 function drawCorridorAmbientProps(g: Phaser.GameObjects.Graphics, template: StreetTemplate): void {
@@ -714,6 +845,53 @@ function drawBeachAmbientProps(g: Phaser.GameObjects.Graphics, template: StreetT
     drawUmbrella(g, dockCenterX + 252, sandY + 112, AMBIENT_STREET_PALETTE);
     drawSurfboards(g, dockCenterX + 298, waterY - 28, AMBIENT_STREET_PALETTE);
   }
+}
+
+function drawCanangSari(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
+  g.fillStyle(0x000000, 0.1);
+  g.fillEllipse(x, y + 8, 24, 9, 12);
+  g.fillStyle(0xd6b26b, 1);
+  g.fillRoundedRect(x - 9, y - 5, 18, 14, 2);
+  g.fillStyle(0xf8f1cb, 1);
+  g.fillRect(x - 6, y - 2, 5, 5);
+  g.fillStyle(0xffc44f, 1);
+  g.fillRect(x + 1, y - 2, 5, 5);
+  g.fillStyle(0xd95b9f, 1);
+  g.fillCircle(x - 3, y + 6, 3);
+  g.fillStyle(0x62b86f, 1);
+  g.fillCircle(x + 5, y + 5, 3);
+}
+
+function drawSleepingDog(g: Phaser.GameObjects.Graphics, x: number, y: number, direction: number): void {
+  g.fillStyle(0x000000, 0.12);
+  g.fillEllipse(x, y + 13, 50, 13, 20);
+  g.fillStyle(0xb88752, 1);
+  g.fillEllipse(x, y, 38, 18, 20);
+  g.fillCircle(x + direction * 21, y - 3, 9);
+  g.fillStyle(0x7b5b3a, 1);
+  g.fillCircle(x + direction * 24, y - 8, 3);
+  g.fillRoundedRect(x - direction * 18, y + 1, 18, 5, 3);
+  g.lineStyle(2, 0x5b3c2c, 0.7);
+  g.beginPath();
+  g.arc(x - direction * 24, y - 1, 8, Math.PI * 0.1, Math.PI * 0.82);
+  g.strokePath();
+}
+
+function drawLaundryLine(g: Phaser.GameObjects.Graphics, x: number, y: number, direction: number): void {
+  const width = 92;
+  g.lineStyle(3, 0x6b4b2d, 0.9);
+  g.lineBetween(x - width / 2, y - 22, x - width / 2, y + 30);
+  g.lineBetween(x + width / 2, y - 22, x + width / 2, y + 30);
+  g.lineStyle(2, 0xf7eac1, 0.72);
+  g.lineBetween(x - width / 2, y - 18, x + width / 2, y - 12);
+  const colors = [0xf7eac1, 0x40a7b2, 0xd95b43, 0xf2c35d];
+  colors.forEach((color, index) => {
+    const clothX = x - 34 + index * 22;
+    g.fillStyle(color, 0.96);
+    g.fillRoundedRect(clothX, y - 18 + index % 2, 15 + (index % 2) * 4, 24, 2);
+    g.fillStyle(0x5b3c2c, 0.8);
+    g.fillCircle(clothX + 2 * direction, y - 17, 1.7);
+  });
 }
 
 function drawBench(g: Phaser.GameObjects.Graphics, x: number, y: number, direction: number): void {
