@@ -37,6 +37,9 @@ interface PhoneShellOptions {
   getNow: () => number;
   save: () => void;
   toast: (message: string) => void;
+  playUiClick?: () => void;
+  isAudioMuted?: () => boolean;
+  onAudioMutedChange?: (muted: boolean) => void;
   onOpportunityAccept: (opportunityId: string) => void;
   onOpportunityTrack: (opportunityId: string) => void;
   onDeliveryAccept: (deliveryId: string) => void;
@@ -505,11 +508,24 @@ export class PhoneShell {
       `Lifestyle tags: ${profile.lifestyleTags.length ? profile.lifestyleTags.join(", ") : "none"}`,
       `Reputation score: ${reputation.score}`,
       `Visible reputation tags: ${reputation.tags.length ? reputation.tags.join(", ") : "none yet"}`,
+      `Audio: ${this.options.isAudioMuted?.() ? "muted" : "on"}`,
       "Tap tags below to edit local profile tags."
     ]);
 
+    const muted = this.options.isAudioMuted?.() ?? false;
+    this.addButton(
+      container,
+      x,
+      y + 174,
+      116,
+      28,
+      muted ? "Audio Muted" : "Audio On",
+      () => this.options.onAudioMutedChange?.(!muted),
+      muted ? 0x4a3331 : 0x35533f
+    );
+
     let tagX = x;
-    let tagY = y + 174;
+    let tagY = y + 210;
     for (const tag of lifestyleTagSuggestions) {
       const active = profile.lifestyleTags.includes(tag);
       const labelWidth = Math.max(74, Math.min(116, tag.length * 8 + 26));
@@ -778,6 +794,7 @@ export class PhoneShell {
     button.on("pointerdown", (pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event?: Phaser.Types.Input.EventData) => {
       event?.stopPropagation();
       pointer.event?.stopPropagation();
+      this.options.playUiClick?.();
       onClick();
     });
   }

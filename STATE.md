@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-06
+Last updated: 2026-07-10
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -18,7 +18,7 @@ Current durable truth:
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test -- --run` = 176 passing, 0 skipped; `npm run build` passes (verified on `main` post-merge, 2026-07-06).
+- Current verification: `npm test -- --run` = 179 passing, 0 skipped; `npm run build` passes (verified on `feat/rpg-20260706-01-audio-foundation`, 2026-07-10).
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Execution plan from the 2026-07-06 review is now staged as Codex packets:
@@ -37,7 +37,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: execute the packet queue in `docs/prompts/` (RPG-20260706-01 first, or 01/03/05/06 in parallel tabs on separate branches). The human play-feel pass remains outstanding and is now formalized as the Phase 3 gate (`docs/PHASE3_REEVALUATION_GATE.md`): John plays a fresh save for ~60 minutes and writes `PLAYTEST_01.md`, plus 3-5 outsiders on the public URL. That gate blocks all feature work beyond packet 09. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, or Act 3 management sim yet.
+Immediate next move: continue the packet queue in `docs/prompts/` with RPG-20260706-02 after RPG-20260706-01 lands, or run independent packets 03/05/06 on separate branches if needed. The human play-feel pass remains outstanding and is now formalized as the Phase 3 gate (`docs/PHASE3_REEVALUATION_GATE.md`): John plays a fresh save for ~60 minutes and writes `PLAYTEST_01.md`, plus 3-5 outsiders on the public URL. That gate blocks all feature work beyond packet 09. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, or Act 3 management sim yet.
 
 ## Project
 
@@ -53,6 +53,7 @@ Immediate next move: execute the packet queue in `docs/prompts/` (RPG-20260706-0
 
 ## What Was Added Recently
 
+- RPG-20260706-01 is implemented on `feat/rpg-20260706-01-audio-foundation`: the game now has a procedural Web Audio sound layer with pickup, payout, UI click, toast, sleep, and soft ambient-loop cues. Audio unlocks only after user input, the ambient bed starts after that first interaction, and a mute toggle lives in Phone > Profile using `bali-life-rpg.audio-muted` outside the versioned save. No audio files, dependencies, save-schema fields, or gameplay/economy values were added.
 - The No-Questions Package now resolves as a face-to-face Rio relationship choice at the scooter rental instead of a generic phone-ping Accept row. When the live package opportunity is at the rental, the venue menu shows `Face it`; Rio presents the offer through the relationship-choice panel. Taking it accepts the gig and leaves Rio memory/affinity/Relational movement, while the authored Rooted/reputation hit still lands only if the player resolves the run. Pushing it back immediately applies the existing decline reward, removes the live offer under its long cooldown, and records the Rio memory.
 - Act 1 Golden Path Vertical Slice 2 is now underway on `feat/gameplay-stations`: sleeping into an Act 1 morning opens a lightweight `Today's Hand` card surface with 3-5 decisions derived from existing state. The hand can offer available board runs, rent pressure, scooter repair guidance, and the No-Questions Package when it exists. It is presentation/read-model driven, triggered by sleep, and does not add a save-schema field.
 - Repeatable Act 1 board deliveries now have playable RIDE route beats instead of only the Act 0 tutorial delivery doing so. Milk & Madu, Satu-Satu, Nude, Beach Wristband, and FINNS Linen jobs each have at least one checkpoint; the Satu-Satu rain-window condition adds an extra rain-slick beat. Small blue route-beat markers appear on the field before triggering, and performance continues to feed the existing delivery payout/rating seam with fail-forward completion.

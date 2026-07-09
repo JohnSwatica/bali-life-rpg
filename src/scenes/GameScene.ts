@@ -28,6 +28,7 @@ import { LocalNetworkAdapter, type NetworkAdapter } from "../systems/NetworkAdap
 import { clearSave, loadWorldState, saveWorldState } from "../systems/Persistence";
 import { ScriptedDialogueProvider, type DialogueProvider } from "../systems/dialogue/DialogueProvider";
 import { getAmbientNpcLine, getNpcDialogueSurface } from "../systems/dialogue/DialoguePresentation";
+import { SoundManager, type SoundCue } from "../systems/audio/SoundManager";
 import { InteractionController, type InteractionTarget } from "../systems/interaction/InteractionController";
 import { InputController, type GameKeyMap } from "../systems/input/InputController";
 import { IntentDispatcher, type IntentResult } from "../systems/intents/IntentDispatcher";
@@ -534,6 +535,7 @@ export class GameScene extends Phaser.Scene {
   private interactionController!: InteractionController;
   private inputController!: InputController;
   private dialogueProvider: DialogueProvider = new ScriptedDialogueProvider();
+  private soundManager = new SoundManager();
   private hudController!: HudController;
   private phone?: PhoneShell;
   private act0FirstRunGateSessionActive = false;
@@ -609,6 +611,9 @@ export class GameScene extends Phaser.Scene {
       getNow: () => this.getAbsoluteMinute(),
       save: () => saveWorldState(this.world),
       toast: (message) => this.showToast(message),
+      playUiClick: () => this.playUiClick(),
+      isAudioMuted: () => this.soundManager.isMuted,
+      onAudioMutedChange: (muted) => this.setAudioMuted(muted),
       onOpportunityAccept: (opportunityId) => this.acceptPhoneOpportunity(opportunityId),
       onOpportunityTrack: (opportunityId) => this.trackPhoneOpportunity(opportunityId),
       onDeliveryAccept: (deliveryId) => this.acceptPhoneDelivery(deliveryId),
@@ -689,6 +694,7 @@ export class GameScene extends Phaser.Scene {
   destroy(): void {
     this.destroyDialogueOverlay();
     this.destroyCommittedActivityOverlay();
+    this.soundManager.destroy();
     this.unsubscribeNetwork?.();
     this.network.disconnect();
   }
@@ -1540,6 +1546,7 @@ export class GameScene extends Phaser.Scene {
     this.cursors = bindings.cursors;
     this.keys = bindings.keys;
 
+    this.input.keyboard?.on("keydown", () => this.unlockAudio());
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => this.handlePointerDown(pointer));
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => this.handlePointerMove(pointer));
     this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => this.handlePointerUp(pointer));
@@ -1585,12 +1592,30 @@ export class GameScene extends Phaser.Scene {
     this.nightOverlayLayer.add(this.nightOverlay);
     this.lanternGlow = this.add.graphics().setDepth(905);
     this.hudController = new HudController(this, UI_DEPTH, {
-      action: () => this.handleAction(),
-      inventory: () => this.toggleInventory(),
-      community: () => this.toggleCommunityBoard(),
-      bike: () => this.toggleBike(),
-      phone: () => this.togglePhone(),
-      save: () => this.saveGame()
+      action: () => {
+        this.playUiClick();
+        this.handleAction();
+      },
+      inventory: () => {
+        this.playUiClick();
+        this.toggleInventory();
+      },
+      community: () => {
+        this.playUiClick();
+        this.toggleCommunityBoard();
+      },
+      bike: () => {
+        this.playUiClick();
+        this.toggleBike();
+      },
+      phone: () => {
+        this.playUiClick();
+        this.togglePhone();
+      },
+      save: () => {
+        this.playUiClick();
+        this.saveGame();
+      }
     });
     this.hudController.createTouchControls();
     this.layoutForViewport();
@@ -2004,10 +2029,12 @@ export class GameScene extends Phaser.Scene {
       onComplete: () => ghost.destroy()
     });
     this.spawnInteractionFlourish("pickup", sprite.x, sprite.y, label);
+    this.playSound("pickup");
   }
 
   private playDeliveryFlourish(x: number, y: number, payout?: number): void {
     this.spawnInteractionFlourish("delivery", x, y, payout ? `Delivered +Rp ${payout}` : "Delivered");
+    this.playSound("payout");
     if (payout && payout > 0) {
       this.spawnCashBurst(x, y, payout);
     }
@@ -7015,6 +7042,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private sleepToMorning(): void {
+    this.unlockAudio();
+    this.playSound("sleep");
     const { morningPenaltyMessage } = sleepAtHomeUntilMorning(this.world);
     const completedAct0 = completeAct0Step(this.world, "sleep_first_night");
     this.mode = this.activeInteriorId ? "interior" : "world";
@@ -7177,6 +7206,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
+    this.unlockAudio();
     this.hudController.handlePointerDown(pointer, this.mode);
   }
 
@@ -7317,10 +7347,30 @@ export class GameScene extends Phaser.Scene {
       this.toastText.setText(nextToast);
       this.toastTimer = TOAST_DURATION_MS;
       this.toastText.setAlpha(0);
+      this.playSound("toast");
       return;
     }
 
     this.toastText.setAlpha(0);
+  }
+
+  private unlockAudio(): void {
+    this.soundManager.unlock();
+  }
+
+  private playSound(cue: SoundCue): void {
+    this.soundManager.play(cue);
+  }
+
+  private playUiClick(): void {
+    this.unlockAudio();
+    this.playSound("uiClick");
+  }
+
+  private setAudioMuted(muted: boolean): void {
+    this.soundManager.setMuted(muted);
+    this.showToast(muted ? "Audio muted." : "Audio on.");
+    this.phone?.refresh();
   }
 
   private publishDebugSnapshot(target: InteractionTarget | undefined, fieldObjective: FieldObjectiveState): void {
