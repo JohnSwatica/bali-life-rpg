@@ -201,6 +201,10 @@ import {
   type InteractionFlourishKind
 } from "../systems/animation/InteractionFlourishes";
 import {
+  buildPayoutCelebrationSpec,
+  type PayoutCelebrationSpec
+} from "../systems/animation/PayoutCelebration";
+import {
   advanceClock,
   formatClock,
   getLocalPlayer,
@@ -565,6 +569,13 @@ export class GameScene extends Phaser.Scene {
   private toastTimer = 0;
   private toastGapTimer = 0;
   private toastQueue: string[] = [];
+  private payoutCelebration?: {
+    container: Phaser.GameObjects.Container;
+    countText: Phaser.GameObjects.Text;
+    ratingText: Phaser.GameObjects.Text;
+    rentText?: Phaser.GameObjects.Text;
+    spec: PayoutCelebrationSpec;
+  };
   private hudObjectiveTitle = "";
   private hudObjectiveDetailUntil = 0;
   private panel?: Phaser.GameObjects.Container;
@@ -1546,7 +1557,10 @@ export class GameScene extends Phaser.Scene {
     this.cursors = bindings.cursors;
     this.keys = bindings.keys;
 
-    this.input.keyboard?.on("keydown", () => this.unlockAudio());
+    this.input.keyboard?.on("keydown", () => {
+      this.unlockAudio();
+      this.finishPayoutCelebration();
+    });
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => this.handlePointerDown(pointer));
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => this.handlePointerMove(pointer));
     this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => this.handlePointerUp(pointer));
@@ -2032,12 +2046,137 @@ export class GameScene extends Phaser.Scene {
     this.playSound("pickup");
   }
 
-  private playDeliveryFlourish(x: number, y: number, payout?: number): void {
+  private playDeliveryFlourish(x: number, y: number, payout?: number, celebration?: PayoutCelebrationSpec): void {
     this.spawnInteractionFlourish("delivery", x, y, payout ? `Delivered +Rp ${payout}` : "Delivered");
     this.playSound("payout");
+    if (celebration) {
+      this.showPayoutCelebration(celebration);
+    }
     if (payout && payout > 0) {
       this.spawnCashBurst(x, y, payout);
     }
+  }
+
+  private showPayoutCelebration(spec: PayoutCelebrationSpec): void {
+    this.finishPayoutCelebration();
+    const panelWidth = spec.rentMilestone ? 246 : 218;
+    const panelHeight = spec.rentMilestone ? 86 : 66;
+    const x = Phaser.Math.Clamp(this.scale.width - panelWidth - 18, 16, Math.max(16, this.scale.width - panelWidth - 18));
+    const y = 92;
+    const container = this.add.container(x, y).setAlpha(1);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x101820, 0.9);
+    bg.fillRoundedRect(0, 0, panelWidth, panelHeight, 8);
+    bg.lineStyle(spec.rentMilestone ? 2 : 1, spec.rentMilestone ? 0xfff0bd : 0x8ee6ff, spec.rentMilestone ? 0.82 : 0.42);
+    bg.strokeRoundedRect(0, 0, panelWidth, panelHeight, 8);
+    const countText = this.add
+      .text(14, 10, "Rp +0", {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: spec.tier === "great" ? "24px" : "22px",
+        fontStyle: "900",
+        color: spec.tier === "great" ? "#fff0bd" : "#8ee6ff"
+      })
+      .setOrigin(0, 0);
+    const ratingText = this.add
+      .text(16, 40, this.formatPayoutRatingLine(spec), {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: "13px",
+        color: "#fff8df"
+      })
+      .setOrigin(0, 0);
+    const children: Phaser.GameObjects.GameObject[] = [bg, countText, ratingText];
+    let rentText: Phaser.GameObjects.Text | undefined;
+    if (spec.rentMilestone) {
+      rentText = this.add
+        .text(16, 62, "Rent target covered", {
+          fontFamily: "Inter, Arial, sans-serif",
+          fontSize: "12px",
+          fontStyle: "700",
+          color: "#fff0bd"
+        })
+        .setOrigin(0, 0);
+      children.push(rentText);
+    }
+    container.add(children);
+    this.hudLayer.add(container);
+    this.payoutCelebration = { container, countText, ratingText, rentText, spec };
+
+    const counter = { value: 0 };
+    this.tweens.add({
+      targets: counter,
+      value: spec.payout,
+      duration: spec.countUpDurationMs,
+      ease: "Cubic.easeOut",
+      onUpdate: () => countText.setText(`Rp +${Math.round(counter.value)}`),
+      onComplete: () => countText.setText(`Rp +${spec.payout}`)
+    });
+    this.tweens.add({
+      targets: countText,
+      scaleX: spec.scalePunch,
+      scaleY: spec.scalePunch,
+      duration: 140,
+      yoyo: true,
+      ease: "Back.easeOut"
+    });
+    if (spec.ratingMoved) {
+      this.tweens.add({
+        targets: ratingText,
+        scaleX: 1.12,
+        scaleY: 1.12,
+        duration: 150,
+        delay: 260,
+        yoyo: true,
+        ease: "Back.easeOut"
+      });
+    }
+    if (spec.rentMilestone && rentText) {
+      this.tweens.add({
+        targets: rentText,
+        alpha: 0.38,
+        duration: 180,
+        yoyo: true,
+        repeat: 2,
+        ease: "Sine.easeInOut"
+      });
+    }
+    this.tweens.add({
+      targets: container,
+      alpha: 0,
+      duration: 180,
+      delay: Math.max(0, spec.totalDurationMs - 180),
+      onComplete: () => {
+        if (this.payoutCelebration?.container === container) {
+          this.payoutCelebration = undefined;
+        }
+        container.destroy(true);
+      }
+    });
+  }
+
+  private finishPayoutCelebration(): void {
+    if (!this.payoutCelebration) {
+      return;
+    }
+    const { container, countText, ratingText, rentText, spec } = this.payoutCelebration;
+    countText.setText(`Rp +${spec.payout}`);
+    ratingText.setText(this.formatPayoutRatingLine(spec));
+    rentText?.setAlpha(1);
+    this.tweens.killTweensOf([container, countText, ratingText, rentText].filter(Boolean));
+    this.payoutCelebration = undefined;
+    this.tweens.add({
+      targets: container,
+      alpha: 0,
+      duration: 120,
+      onComplete: () => container.destroy(true)
+    });
+  }
+
+  private formatPayoutRatingLine(spec: PayoutCelebrationSpec): string {
+    const run = `Run ${spec.starRating.toFixed(1)}★`;
+    if (!spec.ratingMoved) {
+      return run;
+    }
+    return `${run} · Driver ${spec.previousDriverRating.toFixed(1)}→${spec.nextDriverRating.toFixed(1)}★`;
   }
 
   private playActivityCommitFlourish(x: number, y: number, label: string): void {
@@ -6739,10 +6878,15 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     const wasPickup = active.stage === "accepted";
+    const now = this.getAbsoluteMinute();
+    const performanceScore = wasPickup ? undefined : this.averageRideCheckpointPerformance();
+    const previousMoney = this.playerState.money;
+    const previousDriverRating = this.world.life.hustle.driverRating;
+    const rentAmount = this.world.life.hustle.rentAmount;
     const result =
       wasPickup
-        ? pickupDelivery(this.world, this.getAbsoluteMinute())
-        : completeDelivery(this.world, this.getAbsoluteMinute(), this.averageRideCheckpointPerformance());
+        ? pickupDelivery(this.world, now)
+        : completeDelivery(this.world, now, performanceScore);
     if (result.ok && wasPickup) {
       this.activeDeliveryResolvedCheckpointIds = [];
       this.activeDeliveryPerformanceScores = [];
@@ -6751,7 +6895,17 @@ export class GameScene extends Phaser.Scene {
     } else if (result.ok && !this.world.life.hustle.activeDelivery) {
       completeAct0Step(this.world, "dropoff_first_delivery");
       this.refreshSettlingInGoals(false);
-      this.playDeliveryFlourish(this.player.x, this.player.y, result.payout);
+      const celebration = buildPayoutCelebrationSpec({
+        payout: result.payout ?? 0,
+        starRating: result.starRating ?? this.world.life.hustle.driverRating,
+        previousDriverRating,
+        nextDriverRating: this.world.life.hustle.driverRating,
+        previousMoney,
+        nextMoney: this.playerState.money,
+        rentAmount,
+        performanceScore
+      });
+      this.playDeliveryFlourish(this.player.x, this.player.y, result.payout, celebration);
     }
     saveWorldState(this.world);
     this.showToast(result.message);
@@ -7207,6 +7361,7 @@ export class GameScene extends Phaser.Scene {
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
     this.unlockAudio();
+    this.finishPayoutCelebration();
     this.hudController.handlePointerDown(pointer, this.mode);
   }
 
@@ -7364,6 +7519,7 @@ export class GameScene extends Phaser.Scene {
 
   private playUiClick(): void {
     this.unlockAudio();
+    this.finishPayoutCelebration();
     this.playSound("uiClick");
   }
 

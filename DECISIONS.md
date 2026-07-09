@@ -637,3 +637,9 @@ Claude's full project review (`CLAUDE_PROJECT_REVIEW_2026-07-06.md`) was execute
 RPG-20260706-01 adds audio as runtime synthesis, not bundled files. `SoundManager` uses small Web Audio oscillator cues for pickup, payout, UI click, toast, and sleep, plus a quiet two-oscillator ambient bed after first user input. This keeps the project's original/no-copied-assets rule intact for sound and avoids adding dependencies.
 
 Autoplay policy is handled by design: audio context creation/resume happens only from keyboard, pointer, HUD, phone, or sleep interactions. Calls to `play()` before unlock, while muted, or in a headless/no-audio environment are safe no-ops. Mute state uses the plain localStorage key `bali-life-rpg.audio-muted`, deliberately outside the versioned save schema, so no persistence migration or gameplay state change was needed.
+
+## 2026-07-10 - Payout Juice Is Presentation-Only And Zoom-Safe
+
+RPG-20260706-02 keeps delivery math as the source of truth and moves only presentation. `PayoutCelebration.ts` is a pure spec helper for count-up timing, performance tiering, rating movement, and rent-threshold detection. `GameScene` snapshots money/rating before `completeDelivery()`, runs the existing completion path, then renders the returned payout/rating as a short HUD-layer flourish. No payout, rating, scooter wear, meter, quest, or save behavior changed.
+
+The celebration uses the existing zoom-compensated HUD layer rather than raw `setScrollFactor(0)` objects, because this repo has repeatedly regressed on camera-zoom UI. It is non-blocking and any keyboard, pointer, HUD, or phone click finishes the current celebration immediately. The packet's requested screenshot proof was not captured from this session because the in-app browser target was unavailable; automated verification and the local HTTP check passed.
