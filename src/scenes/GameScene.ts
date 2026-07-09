@@ -29,6 +29,14 @@ import { clearSave, loadWorldState, saveWorldState } from "../systems/Persistenc
 import { ScriptedDialogueProvider, type DialogueProvider } from "../systems/dialogue/DialogueProvider";
 import { getAmbientNpcLine, getNpcDialogueSurface } from "../systems/dialogue/DialoguePresentation";
 import { getPortraitDataUrl, getPortraitDefinition, portraitVariantForTier } from "../systems/dialogue/PortraitArt";
+import { buildAct1IntroCutscene, buildAct2IntroCutscene } from "../systems/cutscene/ActCardScripts";
+import {
+  getCutsceneStepState,
+  skipCutscene,
+  type CutsceneScript,
+  type CutsceneStep,
+  type CutsceneStepState
+} from "../systems/cutscene/CutsceneSequencer";
 import { SoundManager, type SoundCue } from "../systems/audio/SoundManager";
 import { InteractionController, type InteractionTarget } from "../systems/interaction/InteractionController";
 import { InputController, type GameKeyMap } from "../systems/input/InputController";
@@ -244,7 +252,37 @@ import type {
   WorldState
 } from "../types";
 
-type Mode = "world" | "interior" | "dialogue" | "shop" | "inventory" | "activity" | "committedActivity" | "community" | "phone" | "godmode";
+type Mode =
+  | "world"
+  | "interior"
+  | "dialogue"
+  | "shop"
+  | "inventory"
+  | "activity"
+  | "committedActivity"
+  | "community"
+  | "phone"
+  | "godmode"
+  | "cutscene";
+
+interface CutsceneOverlay {
+  container: Phaser.GameObjects.Container;
+  topBar: Phaser.GameObjects.Rectangle;
+  bottomBar: Phaser.GameObjects.Rectangle;
+  dim: Phaser.GameObjects.Rectangle;
+  title: Phaser.GameObjects.Text;
+  subtitle: Phaser.GameObjects.Text;
+}
+
+interface ActiveCutsceneRunner {
+  script: CutsceneScript;
+  elapsedMs: number;
+  priorMode: Mode;
+  overlay: CutsceneOverlay;
+  onComplete?: () => void;
+  activeStepId?: string;
+  playerStart?: { x: number; y: number };
+}
 
 const SHOW_NPC_IDLE_DEBUG_LABELS = shouldShowNpcIdleCueLabel();
 const TOAST_DURATION_MS = 2600;
@@ -584,6 +622,8 @@ export class GameScene extends Phaser.Scene {
   private toastTimer = 0;
   private toastGapTimer = 0;
   private toastQueue: string[] = [];
+  private activeCutscene?: ActiveCutsceneRunner;
+  private cutsceneDeferredSave = false;
   private payoutCelebration?: {
     container: Phaser.GameObjects.Container;
     countText: Phaser.GameObjects.Text;
@@ -639,7 +679,7 @@ export class GameScene extends Phaser.Scene {
       getWorld: () => this.world,
       dispatcher: this.dispatcher,
       getNow: () => this.getAbsoluteMinute(),
-      save: () => saveWorldState(this.world),
+      save: () => this.requestSave(),
       toast: (message) => this.showToast(message),
       playUiClick: () => this.playUiClick(),
       isAudioMuted: () => this.soundManager.isMuted,
@@ -703,8 +743,9 @@ export class GameScene extends Phaser.Scene {
     this.autosaveTimer += delta;
     if (this.autosaveTimer > 15000) {
       this.autosaveTimer = 0;
-      saveWorldState(this.world);
+      this.requestSave();
     }
+    this.updateCutscene(delta);
 
     this.updatePlayer(delta);
     this.updateRideCheckpoints();
@@ -725,6 +766,8 @@ export class GameScene extends Phaser.Scene {
   destroy(): void {
     this.destroyDialogueOverlay();
     this.destroyCommittedActivityOverlay();
+    this.activeCutscene?.overlay.container.destroy(true);
+    this.activeCutscene = undefined;
     this.soundManager.destroy();
     this.unsubscribeNetwork?.();
     this.network.disconnect();
@@ -1539,7 +1582,9 @@ export class GameScene extends Phaser.Scene {
       phone: () => this.togglePhone(),
       godmode: () => this.toggleGodmodePanel(),
       escape: () => {
-        if (this.godmodePanel) {
+        if (this.activeCutscene) {
+          this.skipActiveCutscene();
+        } else if (this.godmodePanel) {
           this.closeGodmodePanel();
         } else if (this.mode === "committedActivity") {
           this.cancelCommittedActivity();
@@ -3037,6 +3082,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleAction(): void {
+    if (this.activeCutscene) {
+      this.skipActiveCutscene();
+      return;
+    }
     if (this.interiorTransitioning) {
       return;
     }
@@ -4497,9 +4546,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private payHomeRent(): void {
+    const previousAct = this.world.life.actProgress.currentAct;
     const result = payHustleRent(this.world, this.getAbsoluteMinute());
     this.showToast(result.message);
     saveWorldState(this.world);
+    if (result.ok && this.maybeStartAct2Cutscene(previousAct, () => this.openHomeActivityMenu())) {
+      return;
+    }
     this.openHomeActivityMenu();
   }
 
@@ -7096,6 +7149,7 @@ export class GameScene extends Phaser.Scene {
     const performanceScore = wasPickup ? undefined : this.averageRideCheckpointPerformance();
     const previousMoney = this.playerState.money;
     const previousDriverRating = this.world.life.hustle.driverRating;
+    const previousAct = this.world.life.actProgress.currentAct;
     const rentAmount = this.world.life.hustle.rentAmount;
     const result =
       wasPickup
@@ -7124,6 +7178,9 @@ export class GameScene extends Phaser.Scene {
     }
     saveWorldState(this.world);
     this.showToast(result.message);
+    if (result.ok && !wasPickup) {
+      this.maybeStartAct2Cutscene(previousAct);
+    }
   }
 
   private showCargoCareDeliveryReaction(deliveryId: string, result: ReturnType<typeof completeDelivery>): void {
@@ -7414,6 +7471,190 @@ export class GameScene extends Phaser.Scene {
     return "";
   }
 
+  private startCutscene(script: CutsceneScript, onComplete?: () => void): void {
+    if (this.activeCutscene) {
+      this.finishCutscene(true);
+    }
+    this.closePanel(false);
+    const priorMode = this.mode === "cutscene" ? (this.activeInteriorId ? "interior" : "world") : this.mode;
+    const overlay = this.createCutsceneOverlay();
+    this.activeCutscene = {
+      script,
+      elapsedMs: 0,
+      priorMode,
+      overlay,
+      onComplete
+    };
+    this.mode = "cutscene";
+    this.player.setVelocity(0, 0);
+    this.playSound("toast");
+    const firstState = getCutsceneStepState(script, 0);
+    if (firstState.step) {
+      this.handleCutsceneStepStart(firstState.step);
+    }
+    this.applyCutsceneVisual(firstState);
+  }
+
+  private updateCutscene(delta: number): void {
+    const active = this.activeCutscene;
+    if (!active) {
+      return;
+    }
+    active.elapsedMs += delta;
+    this.syncZoomCompensatedContainer(active.overlay.container);
+    this.resizeCutsceneOverlay(active.overlay);
+    const state = getCutsceneStepState(active.script, active.elapsedMs);
+    if (state.step?.id !== active.activeStepId) {
+      active.activeStepId = state.step?.id;
+      if (state.step) {
+        this.handleCutsceneStepStart(state.step);
+      }
+    }
+    this.applyCutsceneVisual(state);
+    if (state.step?.kind === "scripted_walk") {
+      this.applyScriptedWalkStep(state.step, state.stepProgress);
+    }
+    if (state.complete) {
+      this.finishCutscene(false);
+    }
+  }
+
+  private skipActiveCutscene(): void {
+    const active = this.activeCutscene;
+    if (!active) {
+      return;
+    }
+    const endState = skipCutscene(active.script);
+    this.applyCutsceneVisual(endState);
+    this.finishCutscene(true);
+  }
+
+  private finishCutscene(_skipped: boolean): void {
+    const active = this.activeCutscene;
+    if (!active) {
+      return;
+    }
+    this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
+    active.overlay.container.destroy(true);
+    const onComplete = active.onComplete;
+    const priorMode = active.priorMode === "cutscene" ? (this.activeInteriorId ? "interior" : "world") : active.priorMode;
+    this.activeCutscene = undefined;
+    this.mode = priorMode;
+    if (this.cutsceneDeferredSave) {
+      this.cutsceneDeferredSave = false;
+      saveWorldState(this.world);
+    }
+    onComplete?.();
+  }
+
+  private createCutsceneOverlay(): CutsceneOverlay {
+    const container = this.createZoomCompensatedContainer(UI_DEPTH + 40);
+    const { width, height } = this.scale;
+    const dim = this.add.rectangle(0, 0, width, height, 0x000000, 0).setOrigin(0, 0);
+    const topBar = this.add.rectangle(0, 0, width, 0, 0x05070a, 1).setOrigin(0, 0);
+    const bottomBar = this.add.rectangle(0, height, width, 0, 0x05070a, 1).setOrigin(0, 1);
+    const title = this.add
+      .text(width / 2, height * 0.42, "", {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: "28px",
+        fontStyle: "900",
+        color: "#fff0bd",
+        align: "center"
+      })
+      .setOrigin(0.5)
+      .setAlpha(0);
+    const subtitle = this.add
+      .text(width / 2, height * 0.5, "", {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: "15px",
+        fontStyle: "700",
+        color: "#fff8df",
+        align: "center",
+        wordWrap: { width: Math.min(560, width - 48) }
+      })
+      .setOrigin(0.5)
+      .setAlpha(0);
+    container.add([dim, topBar, bottomBar, title, subtitle]);
+    return { container, topBar, bottomBar, dim, title, subtitle };
+  }
+
+  private resizeCutsceneOverlay(overlay: CutsceneOverlay): void {
+    const { width, height } = this.scale;
+    overlay.dim.setSize(width, height);
+    overlay.topBar.setSize(width, overlay.topBar.height);
+    overlay.bottomBar.setPosition(0, height).setSize(width, overlay.bottomBar.height);
+    overlay.title.setPosition(width / 2, height * 0.42);
+    overlay.subtitle.setPosition(width / 2, height * 0.5).setWordWrapWidth(Math.min(560, width - 48), true);
+  }
+
+  private handleCutsceneStepStart(step: CutsceneStep): void {
+    const active = this.activeCutscene;
+    if (!active) {
+      return;
+    }
+    if (step.kind === "camera_pan" && step.target && !this.activeInteriorId) {
+      this.cameras.main.stopFollow();
+      this.cameras.main.pan(step.target.x, step.target.y, step.durationMs, "Sine.easeInOut", true);
+    }
+    if (step.kind === "camera_return") {
+      this.cameras.main.pan(this.player.x, this.player.y, step.durationMs, "Sine.easeInOut", true);
+    }
+    if (step.kind === "scripted_walk") {
+      active.playerStart = { x: this.player.x, y: this.player.y };
+    }
+  }
+
+  private applyCutsceneVisual(state: CutsceneStepState): void {
+    const active = this.activeCutscene;
+    if (!active) {
+      return;
+    }
+    const { overlay } = active;
+    const { height } = this.scale;
+    const maxBarHeight = Math.min(98, Math.max(62, height * 0.13));
+    const step = state.step;
+    const barProgress =
+      step?.kind === "letterbox_in"
+        ? state.stepProgress
+        : step?.kind === "letterbox_out"
+          ? 1 - state.stepProgress
+          : state.complete
+            ? 0
+            : 1;
+    const barHeight = maxBarHeight * barProgress;
+    overlay.topBar.setSize(this.scale.width, barHeight);
+    overlay.bottomBar.setPosition(0, height).setSize(this.scale.width, barHeight);
+
+    const cardVisible = step?.kind === "act_card";
+    const cardAlpha = cardVisible ? Math.min(1, Math.min(state.stepProgress / 0.18, (1 - state.stepProgress) / 0.18)) : 0;
+    overlay.dim.setAlpha(cardVisible ? 0.42 * Math.max(0, cardAlpha) : 0);
+    overlay.title.setText(cardVisible ? step.title ?? "" : "").setAlpha(Math.max(0, cardAlpha));
+    overlay.subtitle.setText(cardVisible ? step.subtitle ?? "" : "").setAlpha(Math.max(0, cardAlpha));
+  }
+
+  private applyScriptedWalkStep(step: CutsceneStep, progress: number): void {
+    const waypoints = step.waypoints;
+    if (!waypoints || waypoints.length < 2) {
+      return;
+    }
+    const start = waypoints[0];
+    const end = waypoints[waypoints.length - 1];
+    const x = Phaser.Math.Linear(start.x, end.x, progress);
+    const y = Phaser.Math.Linear(start.y, end.y, progress);
+    this.player.setPosition(x, y);
+    this.player.body?.reset(x, y);
+  }
+
+  private maybeStartAct2Cutscene(previousAct: number, onComplete?: () => void): boolean {
+    if (previousAct >= 2 || this.world.life.actProgress.currentAct < 2) {
+      return false;
+    }
+    const beach = venueMapNodes.find((node) => node.venueId === "berawa_beach");
+    const target = beach ? { x: beach.x, y: beach.y } : { x: this.player.x, y: this.player.y + scaleDistance(420) };
+    this.startCutscene(buildAct2IntroCutscene(target), onComplete);
+    return true;
+  }
+
   private canSleepHere(): boolean {
     if (this.world.life.actProgress.act0Step === "sleep_first_night") {
       return isPlayerAtHomeBase(this.world);
@@ -7441,6 +7682,20 @@ export class GameScene extends Phaser.Scene {
         : `Slept until ${formatClock(this.world)}. Energy restored.${morningPenaltyMessage}`
     );
     this.updateOpportunityFeed(0, true);
+    const openMorningFlow = () => {
+      if (ledgerSummary) {
+        this.openDayLedger(ledgerSummary);
+        return;
+      }
+      this.openMorningHand();
+    };
+    if (completedAct0) {
+      this.startCutscene(
+        buildAct1IntroCutscene(this.world.life.hustle.rentAmount, this.world.life.hustle.rentDueDay),
+        openMorningFlow
+      );
+      return;
+    }
     if (ledgerSummary) {
       this.openDayLedger(ledgerSummary);
       return;
@@ -7535,9 +7790,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private payPhoneRent(): void {
+    const previousAct = this.world.life.actProgress.currentAct;
     const result = payHustleRent(this.world, this.getAbsoluteMinute());
     this.showToast(result.message);
     saveWorldState(this.world);
+    if (result.ok) {
+      this.maybeStartAct2Cutscene(previousAct);
+    }
   }
 
   private repairPhoneScooter(): void {
@@ -7580,8 +7839,20 @@ export class GameScene extends Phaser.Scene {
   }
 
   private saveGame(): void {
+    if (this.requestSave()) {
+      this.showToast("Game saved locally.");
+    } else {
+      this.showToast("Save queued until the scene finishes.");
+    }
+  }
+
+  private requestSave(): boolean {
+    if (this.activeCutscene) {
+      this.cutsceneDeferredSave = true;
+      return false;
+    }
     saveWorldState(this.world);
-    this.showToast("Game saved locally.");
+    return true;
   }
 
   private dispatchIntent(intent: GameIntent): IntentResult {
@@ -7592,6 +7863,10 @@ export class GameScene extends Phaser.Scene {
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
     this.unlockAudio();
     this.finishPayoutCelebration();
+    if (this.activeCutscene) {
+      this.skipActiveCutscene();
+      return;
+    }
     this.hudController.handlePointerDown(pointer, this.mode);
   }
 
@@ -7639,6 +7914,10 @@ export class GameScene extends Phaser.Scene {
     }
     this.syncHudLayerToCamera();
     this.syncZoomCompensatedContainer(this.nightOverlayLayer);
+    if (this.activeCutscene) {
+      this.syncZoomCompensatedContainer(this.activeCutscene.overlay.container);
+      this.resizeCutsceneOverlay(this.activeCutscene.overlay);
+    }
     this.promptText.setPosition(16, height - 44);
     this.toastText.setPosition(width / 2, Math.max(92, height * 0.17));
     this.hudController.layoutTouchControls();
