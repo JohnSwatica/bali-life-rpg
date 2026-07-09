@@ -18,7 +18,7 @@ Current durable truth:
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test -- --run` = 183 passing, 0 skipped; `npm run build` passes (verified on `feat/rpg-20260706-02-payout-juice`, 2026-07-10).
+- Current verification: `npm test -- --run` = 190 passing, 0 skipped; `npm run build` passes (verified on `feat/rpg-20260706-03-riding-feel`, 2026-07-10).
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Execution plan from the 2026-07-06 review is now staged as Codex packets:
@@ -37,7 +37,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: continue the packet queue in `docs/prompts/` with RPG-20260706-03 after RPG-20260706-02 lands, or run independent packets 05/06 on separate branches if needed. The human play-feel pass remains outstanding and is now formalized as the Phase 3 gate (`docs/PHASE3_REEVALUATION_GATE.md`): John plays a fresh save for ~60 minutes and writes `PLAYTEST_01.md`, plus 3-5 outsiders on the public URL. That gate blocks all feature work beyond packet 09. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, or Act 3 management sim yet.
+Immediate next move: continue the packet queue in `docs/prompts/` with RPG-20260706-04 after RPG-20260706-03 lands, or run independent packets 05/06 on separate branches if needed. The human play-feel pass remains outstanding and is now formalized as the Phase 3 gate (`docs/PHASE3_REEVALUATION_GATE.md`): John plays a fresh save for ~60 minutes and writes `PLAYTEST_01.md`, plus 3-5 outsiders on the public URL. That gate blocks all feature work beyond packet 09. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, or Act 3 management sim yet.
 
 ## Project
 
@@ -53,6 +53,7 @@ Immediate next move: continue the packet queue in `docs/prompts/` with RPG-20260
 
 ## What Was Added Recently
 
+- RPG-20260706-03 is implemented on `feat/rpg-20260706-03-riding-feel`: scooter riding now uses a pure `RideModel` for acceleration, coast/brake deceleration, tier/condition top-speed modulation, sharp-turn drift, and a gentle slick flag from existing rain-window delivery conditions. The scene applies the same model to keyboard and touch joystick input, feeds model lean into scooter visuals, adds subtle speed-based camera lookahead, and fires feedback-only near-miss whoosh flourishes/audio when passing close to traffic or pedestrians at speed. Delivery/economy/collision/reputation math is unchanged. Straight-line envelope proof: at a 1600px reference distance, old constant-speed time was ~2899ms and the new borrowed-rattletrap model is 3000ms (`1.035x`, inside the requested ±10%). Automated verification passed and the local dev URL returned HTTP 200; live BAKED -> villa / Ibu Sari -> BAKED manual ride acceptance could not be captured because the in-app browser target was not exposed.
 - RPG-20260706-02 is implemented on `feat/rpg-20260706-02-payout-juice`: delivery completion now layers a short zoom-safe HUD celebration over the existing completion path. It counts `Rp +<payout>` up over 600ms, punches the run/driver rating line when rating moves, scales the flourish subtly for checkpoint performance tiers, and adds a rent-target beat when the payout crosses the rent threshold. `completeDelivery()` payout/rating/economy math is unchanged; the plain toast remains the durable text record. Automated verification passed, and the local dev URL returned HTTP 200. Screenshot proof could not be captured in this session because the in-app browser target was not exposed by the browser connector.
 - RPG-20260706-01 is implemented on `feat/rpg-20260706-01-audio-foundation`: the game now has a procedural Web Audio sound layer with pickup, payout, UI click, toast, sleep, and soft ambient-loop cues. Audio unlocks only after user input, the ambient bed starts after that first interaction, and a mute toggle lives in Phone > Profile using `bali-life-rpg.audio-muted` outside the versioned save. No audio files, dependencies, save-schema fields, or gameplay/economy values were added.
 - The No-Questions Package now resolves as a face-to-face Rio relationship choice at the scooter rental instead of a generic phone-ping Accept row. When the live package opportunity is at the rental, the venue menu shows `Face it`; Rio presents the offer through the relationship-choice panel. Taking it accepts the gig and leaves Rio memory/affinity/Relational movement, while the authored Rooted/reputation hit still lands only if the player resolves the run. Pushing it back immediately applies the existing decline reward, removes the live offer under its long cooldown, and records the Rio memory.

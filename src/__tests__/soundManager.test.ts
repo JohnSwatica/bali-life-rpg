@@ -6,7 +6,7 @@ describe("sound manager", () => {
   installMemoryLocalStorage();
 
   it("exposes the procedural cue keys used by the game", () => {
-    expect(SOUND_CUES).toEqual(["pickup", "payout", "uiClick", "toast", "sleep", "ambientLoop"]);
+    expect(SOUND_CUES).toEqual(["pickup", "payout", "uiClick", "toast", "sleep", "ambientLoop", "nearMiss"]);
   });
 
   it("persists mute state outside the versioned save", () => {

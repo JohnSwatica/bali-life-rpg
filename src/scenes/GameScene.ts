@@ -97,6 +97,12 @@ import {
   type RideCheckpointDefinition
 } from "../systems/ride/DeliveryRideCheckpoints";
 import {
+  createRideModelState,
+  updateRideModel,
+  type RideModelOutput,
+  type RideModelState
+} from "../systems/ride/RideModel";
+import {
   getRelationshipChoiceScene,
   getRelationshipChoiceSceneForNpc,
   type RelationshipChoiceOption,
@@ -391,6 +397,9 @@ const WALK_SPEED = scaleDistance(78);
 const BIKE_SPEED = scaleDistance(345);
 const GROUP_WALK_SPEED = scaleDistance(92);
 const GROUP_BIKE_SPEED = scaleDistance(255);
+const RIDE_NEAR_MISS_RADIUS = scaleDistance(66);
+const RIDE_NEAR_MISS_INNER_RADIUS = scaleDistance(38);
+const RIDE_NEAR_MISS_COOLDOWN_MS = 900;
 const BIKE_RENTAL_ITEM_ID = "scooter_rental";
 const SCOOTER_KEY_ITEM_ID = "scooter_key";
 const REQUIRED_BIKE_HELPERS = 5;
@@ -589,6 +598,10 @@ export class GameScene extends Phaser.Scene {
   private committedMinigameFeedback?: HTMLDivElement;
   private activeDeliveryResolvedCheckpointIds: string[] = [];
   private activeDeliveryPerformanceScores: number[] = [];
+  private rideModelState: RideModelState = createRideModelState();
+  private rideCameraOffsetX = 0;
+  private rideCameraOffsetY = 0;
+  private nearMissFeedbackCooldown = 0;
   private awaitingRelationshipChoice = false;
   private pendingChoiceOpportunityId?: string;
   private nightOverlayLayer!: Phaser.GameObjects.Container;
@@ -680,6 +693,7 @@ export class GameScene extends Phaser.Scene {
     advanceClock(this.world, delta);
     this.discoveryToastCooldown = Math.max(0, this.discoveryToastCooldown - delta);
     this.waterBoundaryToastCooldown = Math.max(0, this.waterBoundaryToastCooldown - delta);
+    this.nearMissFeedbackCooldown = Math.max(0, this.nearMissFeedbackCooldown - delta);
     this.autosaveTimer += delta;
     if (this.autosaveTimer > 15000) {
       this.autosaveTimer = 0;
@@ -1641,18 +1655,48 @@ export class GameScene extends Phaser.Scene {
     }
 
     const movement = this.inputController.getMovementVector(this.mode, this.cursors, this.keys, this.hudController.joystickVector);
+    const hasMovementInput = movement.lengthSq() > 0;
+    const canMove = this.mode === "world" || this.mode === "interior";
+    const isRidingBike = canMove && this.playerState.onBike && !this.playerState.bikeStuck;
 
-    if (movement.lengthSq() > 0) {
+    if (hasMovementInput) {
       this.showMovementTutorialPrompt = false;
+    }
+
+    if (isRidingBike) {
+      if (hasMovementInput) {
+        movement.normalize();
+      }
+      const ride = updateRideModel({
+        inputX: hasMovementInput ? movement.x : 0,
+        inputY: hasMovementInput ? movement.y : 0,
+        deltaMs: delta,
+        state: this.rideModelState,
+        baseMaxSpeed: BIKE_SPEED * this.movementSpeedMultiplier,
+        tier: this.world.life.hustle.scooterTier,
+        bikeCondition: this.playerState.bikeCondition,
+        slick: this.isRideSurfaceSlick()
+      });
+      this.rideModelState = ride;
+      this.player.setVelocity(ride.velocityX, ride.velocityY);
+      if (hasMovementInput || ride.speed > scaleDistance(8)) {
+        this.playerState.direction = this.directionFromVector(new Phaser.Math.Vector2(ride.velocityX, ride.velocityY));
+      }
+      this.updateRideCameraLookahead(ride);
+      this.checkRideNearMiss(ride);
+    } else if (hasMovementInput) {
+      this.rideModelState = createRideModelState();
+      this.updateRideCameraLookahead();
       movement.normalize();
-      const baseSpeed = this.playerState.onBike && !this.playerState.bikeStuck ? BIKE_SPEED : WALK_SPEED;
-      const speed = baseSpeed * this.movementSpeedMultiplier;
+      const speed = WALK_SPEED * this.movementSpeedMultiplier;
       this.player.setVelocity(movement.x * speed, movement.y * speed);
       this.playerState.direction = this.directionFromVector(movement);
     } else {
+      this.rideModelState = createRideModelState();
+      this.updateRideCameraLookahead();
       this.player.setVelocity(0, 0);
     }
-    const walkingOnFoot = movement.lengthSq() > 0 && !this.playerState.onBike;
+    const walkingOnFoot = hasMovementInput && !this.playerState.onBike;
     this.applyCharacterAnimation(this.player, "player", this.playerState.direction, walkingOnFoot, CHARACTER_SPRITE_SCALE);
 
     if (this.activeInteriorId) {
@@ -1695,7 +1739,8 @@ export class GameScene extends Phaser.Scene {
       velocityX: visible ? bodyVelocity?.x ?? 0 : 0,
       velocityY: visible ? bodyVelocity?.y ?? 0 : 0,
       maxSpeed: BIKE_SPEED * this.movementSpeedMultiplier,
-      elapsedMs: this.scooterMotionElapsedMs
+      elapsedMs: this.scooterMotionElapsedMs,
+      leanDegrees: this.playerState.onBike && !this.playerState.bikeStuck ? this.rideModelState.leanDegrees : undefined
     });
     this.playerBike.setVisible(visible);
     this.playerBike.setPosition(this.player.x + visual.offsetX, this.player.y + scaleDistance(10) + visual.offsetY);
@@ -1709,6 +1754,49 @@ export class GameScene extends Phaser.Scene {
       PLAYER_BIKE_SPRITE_SCALE * visual.scaleY
     );
     this.drawPlayerScooterSpeedCue(visible, visual, bodyVelocity?.x ?? 0, bodyVelocity?.y ?? 0);
+  }
+
+  private updateRideCameraLookahead(ride?: RideModelOutput): void {
+    const shouldLead = ride && !this.activeInteriorId && this.playerState.onBike && !this.playerState.bikeStuck && ride.speedRatio > 0.18;
+    const targetX = shouldLead ? -Math.sign(ride.velocityX) * Math.min(scaleDistance(42), Math.abs(ride.velocityX / Math.max(1, ride.maxSpeed)) * scaleDistance(42)) : 0;
+    const targetY = shouldLead ? -Math.sign(ride.velocityY) * Math.min(scaleDistance(34), Math.abs(ride.velocityY / Math.max(1, ride.maxSpeed)) * scaleDistance(34)) : 0;
+    this.rideCameraOffsetX = Phaser.Math.Linear(this.rideCameraOffsetX, targetX, 0.12);
+    this.rideCameraOffsetY = Phaser.Math.Linear(this.rideCameraOffsetY, targetY, 0.12);
+    this.cameras.main.setFollowOffset(this.rideCameraOffsetX, this.rideCameraOffsetY);
+  }
+
+  private checkRideNearMiss(ride: RideModelOutput): void {
+    if (this.activeInteriorId || this.nearMissFeedbackCooldown > 0 || ride.speedRatio < 0.72) {
+      return;
+    }
+    if (this.isNearMissAgainstTraffic() || this.isNearMissAgainstPedestrians()) {
+      this.nearMissFeedbackCooldown = RIDE_NEAR_MISS_COOLDOWN_MS;
+      this.spawnInteractionFlourish("nearMiss", this.player.x, this.player.y, "Whoosh");
+      this.playSound("nearMiss");
+    }
+  }
+
+  private isNearMissAgainstTraffic(): boolean {
+    return this.trafficBikes.some((bike) => this.isNearMissDistance(bike.sprite.x, bike.sprite.y));
+  }
+
+  private isNearMissAgainstPedestrians(): boolean {
+    for (const sprite of this.npcSprites.values()) {
+      if (this.isNearMissDistance(sprite.x, sprite.y)) {
+        return true;
+      }
+    }
+    for (const sprite of this.ambientNpcSprites.values()) {
+      if (this.isNearMissDistance(sprite.x, sprite.y)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private isNearMissDistance(x: number, y: number): boolean {
+    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, x, y);
+    return distance >= RIDE_NEAR_MISS_INNER_RADIUS && distance <= RIDE_NEAR_MISS_RADIUS;
   }
 
   private drawPlayerScooterSpeedCue(visible: boolean, visual: ScooterVisualState, velocityX: number, velocityY: number): void {
@@ -4719,6 +4807,11 @@ export class GameScene extends Phaser.Scene {
     }
     const sum = this.activeDeliveryPerformanceScores.reduce((total, score) => total + score, 0);
     return sum / this.activeDeliveryPerformanceScores.length;
+  }
+
+  private isRideSurfaceSlick(): boolean {
+    const active = this.world.life.hustle.activeDelivery;
+    return Boolean(active?.conditionId?.includes("rain"));
   }
 
   private finishCommittedOpportunity(opportunityId: string, performanceScore?: number): void {

@@ -1,4 +1,4 @@
-export type InteractionFlourishKind = "talk" | "pickup" | "delivery" | "activity";
+export type InteractionFlourishKind = "talk" | "pickup" | "delivery" | "activity" | "nearMiss";
 
 export interface InteractionFlourishSpec {
   kind: InteractionFlourishKind;
@@ -41,6 +41,14 @@ const INTERACTION_FLOURISHES: Record<InteractionFlourishKind, InteractionFlouris
     textColor: "#f4d58d",
     startScale: 0.7,
     endScale: 1.52
+  },
+  nearMiss: {
+    kind: "nearMiss",
+    durationMs: 320,
+    ringColor: 0x8ee6ff,
+    textColor: "#8ee6ff",
+    startScale: 0.48,
+    endScale: 1.1
   }
 };
 

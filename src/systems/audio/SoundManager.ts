@@ -1,6 +1,6 @@
 export const AUDIO_MUTED_STORAGE_KEY = "bali-life-rpg.audio-muted";
 
-export const SOUND_CUES = ["pickup", "payout", "uiClick", "toast", "sleep", "ambientLoop"] as const;
+export const SOUND_CUES = ["pickup", "payout", "uiClick", "toast", "sleep", "ambientLoop", "nearMiss"] as const;
 export type SoundCue = (typeof SOUND_CUES)[number];
 
 type AudioContextConstructor = new () => AudioContext;
@@ -120,6 +120,11 @@ export class SoundManager {
       [392, 329.63, 261.63].forEach((frequency, index) => {
         this.playTone(context, frequency, 0.42, 0.035, "sine", index * 0.08);
       });
+      return;
+    }
+    if (cue === "nearMiss") {
+      this.playTone(context, 880, 0.045, 0.03, "sine");
+      this.playTone(context, 620, 0.07, 0.018, "triangle", 0.03);
     }
   }
 
