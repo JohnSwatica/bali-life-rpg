@@ -367,6 +367,8 @@ interface BaliLifeDebugSnapshot {
   revealAllMap: boolean;
   trafficHitCooldown: number;
   npcRoutines: Record<string, string>;
+  objectiveTargets: { x: number; y: number }[];
+  interiorExit: { x: number; y: number } | null;
   updatedAt: number;
 }
 
@@ -8657,6 +8659,14 @@ export class GameScene extends Phaser.Scene {
       npcRoutines: Object.fromEntries(
         Object.entries(this.world.npcs).map(([id, state]) => [id, state.currentRoutineId])
       ),
+      objectiveTargets: this.getFieldObjectiveTargets(fieldObjective).map((t) => ({
+        x: Math.round(t.x),
+        y: Math.round(t.y)
+      })),
+      interiorExit: (() => {
+        const interior = this.getActiveInterior();
+        return interior ? { x: Math.round(interior.exitMat.x), y: Math.round(interior.exitMat.y) } : null;
+      })(),
       updatedAt: Date.now()
     };
 
