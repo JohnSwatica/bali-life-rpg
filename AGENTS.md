@@ -8,6 +8,7 @@ This file is the first stop for any new AI/Codex tab working on this repo.
 2. Read, in this order:
    - `AGENTS.md`
    - `STATE.md`
+   - `TODO_LIST.md`
    - `DECISIONS.md`
    - `STORY_ARC.md`
    - `STORY_BIBLE.md`
@@ -15,9 +16,9 @@ This file is the first stop for any new AI/Codex tab working on this repo.
    - `ACT3_BUSINESS_DESIGN.md`
    - `docs/ROADMAP.md`
 3. Run `git status --short --branch` and inspect the latest commits before editing.
-4. Treat `STATE.md` as the current handoff truth and `DECISIONS.md` as the decision log.
+4. Treat `STATE.md` as the current handoff truth and `DECISIONS.md` as the decision log. If `TODO_LIST.md` has open entries, surface them before starting new work — don't silently proceed past punted items.
 5. Commit per small slice. After meaningful code changes, run `npm test -- --run` and `npm run build`.
-6. Before stopping, update `STATE.md` and append to `DECISIONS.md` if a product/architecture decision changed.
+6. Before stopping, update `STATE.md` and append to `DECISIONS.md` if a product/architecture decision changed. Remove any `TODO_LIST.md` entry that got resolved this session.
 
 ## Canonical Direction
 

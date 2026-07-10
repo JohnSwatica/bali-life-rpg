@@ -1,12 +1,26 @@
 # Codex Packets — Index and Sequencing
 
 Packets follow the cross-project format in `~/.claude/CLAUDE.md` (BEGIN/END
-markers, `RPG-YYYYMMDD-NN` IDs, PR tags). Each file is copy-paste ready: one
-fenced block, hand the whole thing to Codex.
+markers, `RPG-YYYYMMDD-NN` IDs, PR tags, and — since 2026-07-08 — a
+`REASONING:` level per the global Codex routing rule). Each file is copy-paste
+ready: one fenced block, hand the whole thing to Codex.
 
-These nine packets execute Phases 1–2 of `CLAUDE_PROJECT_REVIEW_2026-07-06.md`.
-After 09 lands, **stop**: `docs/PHASE3_REEVALUATION_GATE.md` governs what happens
-next, and it requires John, not another packet.
+**Status 2026-07-08:** all nine RPG-20260706 packets are DONE (landed on
+`feat/rpg-20260706-09-rio-race`, 218 tests green). The Phase 3 gate was
+CEO-overridden to GATE v2 — see `docs/PHASE3_REEVALUATION_GATE.md` — and the
+active queue is now the RPG-20260708 batch below. After 08-03 lands, only
+polish/tuning/integration/bug-fix packets are authorized until written feedback
+from 3+ real humans exists.
+
+## Active queue — RPG-20260708 (stranger-readiness, run in order)
+
+| ID | Title | Reasoning | Depends on |
+|----|-------|-----------|------------|
+| [RPG-20260708-01](RPG-20260708-01-stranger-ready-build.md) | Title screen, safe reset, feedback mailto, version stamp | medium | — |
+| [RPG-20260708-02](RPG-20260708-02-mobile-playability.md) | Mobile/touch playability pass + link-preview polish | high | 01 soft |
+| [RPG-20260708-03](RPG-20260708-03-coherence-sweep.md) | Seam audit of packets 01-09 + tuning consolidation | high | 01, 02 |
+
+## Done — RPG-20260706 (Phases 1–2 of the project review)
 
 ## Phase 1 — Juice sprint (feel, not features)
 

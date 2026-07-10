@@ -21,12 +21,12 @@ Current durable truth:
 - Current verification: `npm test -- --run` = 218 passing, 0 skipped; `npm run build` passes; local dev URL returned HTTP 200 (verified on `feat/rpg-20260706-09-rio-race`, 2026-07-10).
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
-Execution plan from the 2026-07-06 review is now staged as Codex packets:
+Packet execution status (updated 2026-07-08):
 
-- `docs/prompts/RPG-20260706-01` … `-06` — Phase 1 "juice sprint": procedural audio, payout celebration, riding feel v1, cargo-care soft failure, paddies/villa gates/street texture, portraits (Ibu Sari/Kadek/Rio). See `docs/prompts/README.md` for sequencing and dependencies.
-- `docs/prompts/RPG-20260706-07` … `-09` — Phase 2: L2 presentation kit (letterbox/act cards), early-game meter diet, Rio's street race setpiece (hard-depends on 03 + 07).
-- `docs/PHASE3_REEVALUATION_GATE.md` — after packet 09 lands, **stop building**. The gate requires John: a real 60-min `PLAYTEST_01.md`, 3-5 outside players on the public URL, and answers to the review's three open decisions. Any tab that reaches the gate should say so and stop, not write packet 10.
-- `docs/AI_WALKTHROUGH_NOTES_2026-07-06.md` — Claude's static structural pass (objective findings only). It is explicitly NOT the human playtest and does not satisfy the gate.
+- **All nine RPG-20260706 packets are DONE** — landed as sequential commits on `feat/rpg-20260706-09-rio-race` (218 tests green, build green, verified by Claude). The branch is pushed to origin with a PR open; **`main` and therefore the public URL are 9 packets behind until John merges** — merging publishes the juiced build.
+- **GATE v2 (CEO override, 2026-07-08):** John has no time for the 60-min personal playtest; it and the three review decisions are parked in `TODO_LIST.md`. Outside players become the active feedback path. Until written feedback from 3+ real humans exists, Codex work is limited to polish/tuning/integration/stranger-readiness/bug fixes — NEW systems/acts/districts/minigames/content stay blocked. Full terms in `docs/PHASE3_REEVALUATION_GATE.md`.
+- **Active queue:** `docs/prompts/RPG-20260708-01` (stranger-ready build: title screen, safe reset, feedback mailto, version stamp) → `-02` (mobile/touch playability + link-preview polish) → `-03` (seam audit of packets 01-09 + tuning consolidation). Index in `docs/prompts/README.md`.
+- `docs/AI_WALKTHROUGH_NOTES_2026-07-06.md` — Claude's static structural pass (objective findings only). It is explicitly NOT a human playtest and does not satisfy the gate.
 
 Canonical act order, set in stone for near-term work:
 
@@ -37,7 +37,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: RPG-20260706-09 is the final Phase 2 packet. After it lands, stop feature work and enforce the Phase 3 gate (`docs/PHASE3_REEVALUATION_GATE.md`): John plays a fresh save for ~60 minutes and writes `PLAYTEST_01.md`, plus 3-5 outsiders play the public URL. That gate blocks all feature work beyond packet 09. Do **not** jump to real multiplayer, backend, AI, real commerce, Google data, Act 3 management sim, or packet 10-style work until the gate evidence exists.
+Immediate next move: (1) John merges the open PR for `feat/rpg-20260706-09-rio-race` — this publishes all nine packets to the public URL; (2) run the RPG-20260708 queue in order (01 → 02 → 03); (3) after 02 lands and is merged, John shares the URL with 3-5 people (a ready-to-paste message is in the 2026-07-08 session notes); (4) feedback lands in `PLAYTEST_01.md` and GATE v2 exits. Under GATE v2, do **not** write or build new systems/acts/districts/minigames/content — and never multiplayer, backend, AI, real commerce, Google data, or the Act 3 management sim — until that feedback exists.
 
 ## Project
 
