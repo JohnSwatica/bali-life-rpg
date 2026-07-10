@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
-import { CURRENT_SCHEMA_VERSION, loadWorldState, saveWorldState } from "../systems/Persistence";
+import { CURRENT_SCHEMA_VERSION, hasSavedWorldState, loadWorldState, saveWorldState } from "../systems/Persistence";
 import { createInitialWorldState, LOCAL_PLAYER_ID } from "../systems/WorldState";
 import { installMemoryLocalStorage, writeRawSave } from "./testUtils";
 import type { WorldState } from "../types";
@@ -101,6 +101,14 @@ function expectCommonMigrationFields(world: WorldState): void {
 }
 
 describe("Persistence migration", () => {
+  it("recognizes only a valid local world save for the title screen", () => {
+    expect(hasSavedWorldState()).toBe(false);
+    writeRawSave(baseRawSave());
+    expect(hasSavedWorldState()).toBe(true);
+    localStorage.setItem("bali-life-rpg.berawa-finns.save.v1", "not json");
+    expect(hasSavedWorldState()).toBe(false);
+  });
+
   it("migrates a raw v1 save to v11 without losing legacy state", () => {
     writeRawSave(baseRawSave());
 

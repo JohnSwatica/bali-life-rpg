@@ -52,6 +52,19 @@ export function clearSave(): void {
   localStorage.removeItem(PAUSED_V2_KEY);
 }
 
+export function hasSavedWorldState(): boolean {
+  const { raw } = readRawSave();
+  if (!raw) {
+    return false;
+  }
+  try {
+    const parsed = JSON.parse(raw) as Partial<WorldState>;
+    return parsed.version === 1 && parsed.neighborhoodId === "berawa-finns-club";
+  } catch {
+    return false;
+  }
+}
+
 function readRawSave(): { raw: string | null; key: string } {
   const current = localStorage.getItem(SAVE_KEY);
   if (current) {

@@ -25,7 +25,9 @@ import { getDeliveryCondition, getDeliveryDefinition } from "../data/deliveries"
 import { getStreetVenueFlavor } from "../data/streetVenueFlavors";
 import { addItem, formatInventory, getQuantity, removeItem } from "../systems/Inventory";
 import { LocalNetworkAdapter, type NetworkAdapter } from "../systems/NetworkAdapter";
-import { clearSave, loadWorldState, saveWorldState } from "../systems/Persistence";
+import { clearSave, hasSavedWorldState, loadWorldState, saveWorldState } from "../systems/Persistence";
+import { BUILD_STAMP } from "../systems/build/BuildInfo";
+import { createFeedbackMailto } from "../systems/feedback/SessionSummary";
 import { ScriptedDialogueProvider, type DialogueProvider } from "../systems/dialogue/DialogueProvider";
 import { getAmbientNpcLine, getNpcDialogueSurface } from "../systems/dialogue/DialoguePresentation";
 import { getPortraitDataUrl, getPortraitDefinition, portraitVariantForTier } from "../systems/dialogue/PortraitArt";
@@ -246,6 +248,7 @@ import { isQuestActive, isQuestComplete, startQuest } from "../systems/QuestSyst
 import { resolveNpcQuestInteraction } from "../systems/quests/QuestRegistry";
 import { HudController } from "../ui/hud/HudController";
 import { PhoneShell } from "../ui/phone/PhoneShell";
+import { TitleScreen } from "../ui/title/TitleScreen";
 import { getPhoneCameraScale } from "../ui/phone/PhoneLayout";
 import { getAllVenues, getVenue } from "../systems/venues/VenueRegistry";
 import type {
@@ -279,7 +282,9 @@ type Mode =
   | "community"
   | "phone"
   | "godmode"
-  | "cutscene";
+  | "cutscene"
+  | "title"
+  | "pause";
 
 interface CutsceneOverlay {
   container: Phaser.GameObjects.Container;
@@ -615,6 +620,9 @@ export class GameScene extends Phaser.Scene {
   private soundManager = new SoundManager();
   private hudController!: HudController;
   private phone?: PhoneShell;
+  private titleScreen?: TitleScreen;
+  private sessionStartedAt: number | null = null;
+  private skipTitleScreenForFreshStart = false;
   private act0FirstRunGateSessionActive = false;
   private showMovementTutorialPrompt = false;
   private activeInteriorId: string | null = null;
@@ -695,7 +703,12 @@ export class GameScene extends Phaser.Scene {
     super("GameScene");
   }
 
+  init(data?: { startFresh?: boolean }): void {
+    this.skipTitleScreenForFreshStart = Boolean(data?.startFresh);
+  }
+
   create(): void {
+    const hasSaveAtBoot = !this.skipTitleScreenForFreshStart && hasSavedWorldState();
     this.world = loadWorldState();
     this.playerState = getLocalPlayer(this.world);
     this.phone = new PhoneShell({
@@ -715,6 +728,7 @@ export class GameScene extends Phaser.Scene {
       onRepairScooter: () => this.repairPhoneScooter(),
       onUpgradeScooter: () => this.upgradePhoneScooter(),
       onFeedViewed: () => this.markPhoneFeedRead(),
+      onFeedback: () => this.sendFeedback(),
       onClose: () => {
         if (this.mode === "phone") {
           this.mode = "world";
@@ -755,19 +769,30 @@ export class GameScene extends Phaser.Scene {
     this.unsubscribeNetwork = this.network.subscribeToWorldPatches(() => undefined);
     void this.network.connect(this.world);
 
-    this.showToast("Welcome to Berawa near FINNS. Press E near people, venues, and pickups.");
-    this.openFirstRunHint();
+    if (this.skipTitleScreenForFreshStart) {
+      this.skipTitleScreenForFreshStart = false;
+      this.sessionStartedAt = Date.now();
+      this.showToast("Welcome to Berawa near FINNS. Press E near people, venues, and pickups.");
+      this.openFirstRunHint();
+    } else {
+      this.openTitleScreen(hasSaveAtBoot, "title");
+    }
   }
 
   update(_time: number, delta: number): void {
-    advanceClock(this.world, delta);
+    const menuOpen = this.mode === "title" || this.mode === "pause";
+    if (!menuOpen) {
+      advanceClock(this.world, delta);
+    }
     this.discoveryToastCooldown = Math.max(0, this.discoveryToastCooldown - delta);
     this.waterBoundaryToastCooldown = Math.max(0, this.waterBoundaryToastCooldown - delta);
     this.nearMissFeedbackCooldown = Math.max(0, this.nearMissFeedbackCooldown - delta);
-    this.autosaveTimer += delta;
-    if (this.autosaveTimer > 15000) {
-      this.autosaveTimer = 0;
-      this.requestSave();
+    if (!menuOpen) {
+      this.autosaveTimer += delta;
+      if (this.autosaveTimer > 15000) {
+        this.autosaveTimer = 0;
+        this.requestSave();
+      }
     }
     this.updateCutscene(delta);
 
@@ -1612,6 +1637,10 @@ export class GameScene extends Phaser.Scene {
           this.skipActiveCutscene();
         } else if (this.activeRivalRace) {
           this.finishRivalRace({ conceded: true });
+        } else if (this.mode === "title") {
+          return;
+        } else if (this.mode === "pause") {
+          this.closePauseMenu();
         } else if (this.godmodePanel) {
           this.closeGodmodePanel();
         } else if (this.mode === "committedActivity") {
@@ -1620,26 +1649,21 @@ export class GameScene extends Phaser.Scene {
           return;
         } else if (this.phone?.isOpen) {
           this.phone.close();
+        } else if (this.mode === "world" || this.mode === "interior") {
+          this.openPauseMenu();
         } else {
           this.closePanel();
         }
       },
       save: () => this.saveGame(),
       reset: () => {
-        clearSave();
-        this.world = loadWorldState();
-        this.playerState = getLocalPlayer(this.world);
-        this.activeInteriorId = null;
-        this.interiorReturnPoint = undefined;
-        this.interiorTransitioning = false;
-        this.mode = "world";
-        this.applyWorldCameraBounds();
-        const start = this.clampToPlayableBounds(this.playerState.x, this.playerState.y, scaleDistance(28));
-        this.playerState.x = Math.round(start.x);
-        this.playerState.y = Math.round(start.y);
-        this.player.setPosition(this.playerState.x, this.playerState.y);
-        this.clearGroupLine();
-        this.updatePlayerBikeVisual();
+        const wasOnMenu = Boolean(this.titleScreen);
+        this.resetToFreshWorld();
+        if (wasOnMenu) {
+          this.closePauseMenu();
+          this.sessionStartedAt = Date.now();
+          this.openFirstRunHint();
+        }
         this.showToast("Save cleared. New neighbor day started.");
       }
     });
@@ -1658,6 +1682,70 @@ export class GameScene extends Phaser.Scene {
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => this.handlePointerMove(pointer));
     this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => this.handlePointerUp(pointer));
     this.scale.on("resize", () => this.layoutForViewport());
+  }
+
+  private openTitleScreen(hasSave: boolean, mode: "title" | "pause"): void {
+    if (typeof document === "undefined") {
+      this.mode = this.activeInteriorId ? "interior" : "world";
+      return;
+    }
+    this.titleScreen?.destroy();
+    this.mode = mode;
+    this.hudController.setOverlayOpen(true);
+    this.titleScreen = new TitleScreen({
+      hasSave,
+      buildStamp: BUILD_STAMP,
+      mode,
+      onContinue: () => this.resumeFromMenu(),
+      onNewGame: () => this.startNewGameFromMenu(),
+      onFeedback: () => this.sendFeedback(),
+      onClose: () => this.closePauseMenu()
+    });
+  }
+
+  private openPauseMenu(): void {
+    this.openTitleScreen(hasSavedWorldState(), "pause");
+  }
+
+  private closePauseMenu(): void {
+    this.titleScreen?.destroy();
+    this.titleScreen = undefined;
+    this.hudController.setOverlayOpen(false);
+    this.mode = this.activeInteriorId ? "interior" : "world";
+  }
+
+  private resumeFromMenu(): void {
+    this.closePauseMenu();
+    this.sessionStartedAt ??= Date.now();
+    this.showToast("Welcome to Berawa near FINNS. Press E near people, venues, and pickups.");
+    this.openFirstRunHint();
+  }
+
+  private startNewGameFromMenu(): void {
+    clearSave();
+    this.titleScreen?.destroy();
+    this.titleScreen = undefined;
+    this.hudController.setOverlayOpen(false);
+    this.scene.restart({ startFresh: true });
+  }
+
+  private resetToFreshWorld(): void {
+    clearSave();
+    this.phone?.close();
+    this.closePanel(false);
+    this.world = loadWorldState();
+    this.playerState = getLocalPlayer(this.world);
+    this.activeInteriorId = null;
+    this.interiorReturnPoint = undefined;
+    this.interiorTransitioning = false;
+    this.mode = "world";
+    this.applyWorldCameraBounds();
+    const start = this.clampToPlayableBounds(this.playerState.x, this.playerState.y, scaleDistance(28));
+    this.playerState.x = Math.round(start.x);
+    this.playerState.y = Math.round(start.y);
+    this.player.setPosition(this.playerState.x, this.playerState.y);
+    this.clearGroupLine();
+    this.updatePlayerBikeVisual();
   }
 
   private createHud(): void {
@@ -8177,6 +8265,19 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.showToast("Save queued until the scene finishes.");
     }
+  }
+
+  private sendFeedback(): void {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const objective = formatFieldObjectiveLine(getFieldObjective(this.world));
+    window.location.href = createFeedbackMailto(this.world, {
+      buildStamp: BUILD_STAMP,
+      sessionStartedAt: this.sessionStartedAt,
+      now: Date.now(),
+      lastObjectiveLine: objective
+    });
   }
 
   private requestSave(): boolean {

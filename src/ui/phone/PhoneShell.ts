@@ -48,6 +48,7 @@ interface PhoneShellOptions {
   onRepairScooter: () => void;
   onUpgradeScooter: () => void;
   onFeedViewed: () => void;
+  onFeedback: () => void;
   onClose: () => void;
 }
 
@@ -525,9 +526,10 @@ export class PhoneShell {
       () => this.options.onAudioMutedChange?.(!muted),
       muted ? 0x4a3331 : 0x35533f
     );
+    this.addButton(container, x + 124, y + 174, 132, 28, "Send feedback", () => this.options.onFeedback(), 0x253a35);
 
     let tagX = x;
-    let tagY = y + 210;
+    let tagY = y + 216;
     for (const tag of lifestyleTagSuggestions) {
       const active = profile.lifestyleTags.includes(tag);
       const labelWidth = Math.max(74, Math.min(116, tag.length * 8 + 26));
