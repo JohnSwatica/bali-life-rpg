@@ -3,6 +3,7 @@ import { interiorDefinitions } from "../data/interiors";
 import { createInitialWorldState } from "../systems/WorldState";
 import { acceptDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
 import { calculateInteriorCameraBounds, calculateInteriorCameraZoom } from "../systems/interiors/InteriorCamera";
+import { getFieldObjective } from "../systems/guidance/FieldObjective";
 import { scaleDistance } from "../systems/map/WorldScale";
 import {
   getInteriorByVenueId,
@@ -11,7 +12,9 @@ import {
   getOccupiedInteriorNpcSlots,
   getPrimaryInteriorStationForVenue,
   getScheduledInteriorForNpc,
-  isInteriorPointInsideRoom
+  INTERIOR_NPC_INTERACTION_RADIUS,
+  isInteriorPointInsideRoom,
+  resolveInteriorObjectiveTargets
 } from "../systems/interiors/InteriorState";
 
 function distance(a: { x: number; y: number }, b: { x: number; y: number }): number {
@@ -169,6 +172,44 @@ describe("interior definitions", () => {
       activityVenueId: "baked_berawa"
     });
     expect(getPrimaryInteriorStationForVenue(interiorDefinitions.baked_berawa_interior, "milk_madu_berawa")).toBeUndefined();
+  });
+
+  it("resolves the first Act 0 objective to Ibu Sari's occupied Warung slot", () => {
+    const world = createInitialWorldState();
+    const interior = interiorDefinitions.warung_sari_interior;
+    world.clock.minuteOfDay = 8 * 60;
+
+    const [target] = resolveInteriorObjectiveTargets(world, interior, getFieldObjective(world).targets);
+    const slot = getOccupiedInteriorNpcSlots(world, interior).find((candidate) => candidate.npcId === "ibu_sari");
+
+    expect(slot).toBeDefined();
+    expect(target).toMatchObject({
+      id: "act0_ibu_sari",
+      type: "npc",
+      x: slot!.x,
+      y: slot!.y,
+      radius: INTERIOR_NPC_INTERACTION_RADIUS
+    });
+    expect(distance(target, slot!)).toBeLessThanOrEqual(INTERIOR_NPC_INTERACTION_RADIUS);
+  });
+
+  it("retargets an exterior delivery objective to the current interior exit mat", () => {
+    const world = createInitialWorldState();
+    const interior = interiorDefinitions.warung_sari_interior;
+    world.life.actProgress.act0Step = "pickup_first_delivery";
+
+    const targets = resolveInteriorObjectiveTargets(world, interior, getFieldObjective(world).targets);
+
+    expect(targets).toEqual([
+      {
+        id: `interior_exit:${interior.id}`,
+        label: `Leave ${interior.name}`,
+        x: interior.exitMat.x,
+        y: interior.exitMat.y,
+        radius: interior.exitMat.radius,
+        type: "point"
+      }
+    ]);
   });
 
   it("surfaces active delivery pickups at matching interior stations", () => {

@@ -3,7 +3,11 @@ import { npcDefinitions } from "../../data/npcs";
 import { getDeliveryDefinition } from "../../data/deliveries";
 import { getActiveNpcRoute } from "../npcs/NpcRoutineRoutes";
 import { getVenueActivityContext, type VenueActivityContext } from "../life/ActivityEngine";
+import type { FieldObjectiveTargetRef } from "../guidance/FieldObjective";
+import { scaleDistance } from "../map/WorldScale";
 import type { InteriorDefinition, InteriorNpcSlotDefinition, InteriorStationDefinition, WorldState } from "../../types";
+
+export const INTERIOR_NPC_INTERACTION_RADIUS = scaleDistance(40);
 
 export interface ScheduledInteriorNpcSlot {
   interior: InteriorDefinition;
@@ -13,6 +17,15 @@ export interface ScheduledInteriorNpcSlot {
 export interface InteriorDeliveryPickupTarget {
   deliveryId: string;
   label: string;
+}
+
+export interface ResolvedInteriorObjectiveTarget {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  radius: number;
+  type: FieldObjectiveTargetRef["type"];
 }
 
 export function getInteriorByVenueId(
@@ -70,6 +83,60 @@ export function getPrimaryInteriorStationForVenue(
     return undefined;
   }
   return interior.stations.find((station) => station.activityVenueId === venueId) ?? interior.stations[0];
+}
+
+export function resolveInteriorObjectiveTargets(
+  world: WorldState,
+  interior: InteriorDefinition,
+  targets: FieldObjectiveTargetRef[]
+): ResolvedInteriorObjectiveTarget[] {
+  const roomTargets = targets.flatMap((target): ResolvedInteriorObjectiveTarget[] => {
+    if (target.type === "npc") {
+      const slot = getOccupiedInteriorNpcSlots(world, interior).find((candidate) => candidate.npcId === target.npcId);
+      return slot
+        ? [
+            {
+              id: target.id,
+              label: target.label,
+              x: slot.x,
+              y: slot.y,
+              radius: INTERIOR_NPC_INTERACTION_RADIUS,
+              type: target.type
+            }
+          ]
+        : [];
+    }
+    if (target.type === "venue") {
+      const station = getPrimaryInteriorStationForVenue(interior, target.venueId);
+      return station
+        ? [{ id: target.id, label: target.label, x: station.x, y: station.y, radius: station.radius, type: target.type }]
+        : [];
+    }
+    if (target.type === "home") {
+      const station = getPrimaryInteriorStationForVenue(interior, target.id);
+      return station
+        ? [{ id: target.id, label: target.label, x: station.x, y: station.y, radius: station.radius, type: target.type }]
+        : [];
+    }
+    return isInteriorPointInsideRoom(interior, target)
+      ? [{ id: target.id, label: target.label, x: target.x, y: target.y, radius: target.radius, type: target.type }]
+      : [];
+  });
+
+  if (roomTargets.length > 0 || targets.length === 0) {
+    return roomTargets;
+  }
+
+  return [
+    {
+      id: `interior_exit:${interior.id}`,
+      label: `Leave ${interior.name}`,
+      x: interior.exitMat.x,
+      y: interior.exitMat.y,
+      radius: interior.exitMat.radius,
+      type: "point"
+    }
+  ];
 }
 
 export function getInteriorDeliveryPickupForStation(

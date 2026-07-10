@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-10
+Last updated: 2026-07-11
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -18,7 +18,7 @@ Current durable truth:
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test -- --run` = 234 passing, 0 skipped; `npm run build` passes; the title/pause flow was browser-verified at six standing viewports and the touch layer was browser-audited at `390x844` and `360x800` on `feat/rpg-20260706-09-rio-race`, 2026-07-10. Physical iOS/Android verification remains pending.
+- Current verification: `npm test -- --run` = 236 passing, 0 skipped; `npm run build` passes; RPG-20260708-04's Ibu/exit objective flow was browser-verified on `feat/rpg-20260706-09-rio-race`, 2026-07-11. The earlier title/pause six-viewport and touch audits remain valid; physical iOS/Android verification remains pending.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Packet execution status (updated 2026-07-08):
@@ -28,7 +28,7 @@ Packet execution status (updated 2026-07-08):
 - RPG-20260708-01/02/03 are complete (stranger readiness, mobile touch playability, cross-packet coherence/tuning consolidation). Test suite now 234 green.
 - **Automated playthrough done (2026-07-08, 2nd session):** Claude drove the build headlessly (real WASD/E keypresses via puppeteer-core + system Chrome, reading the debug snapshot; screenshots in `tmp/playtest-2026-07-08/`). Write-up: `docs/AI_PLAYTHROUGH_2026-07-08.md`. Verdict — **0 console errors (nothing crashes), but Act 0 onboarding blocks a new player in the first 90 seconds:** the first objective marker points at the empty Warung counter instead of Ibu Sari (BUG-1), and after the scooter grant you're stranded inside with no exit cue (BUG-2). Ride model / payout juice / meter-diet are present and working. This is NOT a human playtest and does NOT satisfy GATE v2.
 - **Test infra added:** the `__BALI_LIFE_DEBUG__` snapshot in `GameScene.ts` now exposes `objectiveTargets` and `interiorExit` (world coords) so a harness can navigate. Keep these; RPG-20260708-07 promotes the harness into `scripts/`.
-- **Active queue (playthrough bug-fixes):** `docs/prompts/RPG-20260708-04` (fix onboarding blocker — HIGHEST priority) → `-05` (foot-only interiors / scooter mount mechanics) → `-06` (street legibility & layout: declutter, orphan markers, walkable-vs-building, verify paddies, camera, landmark) → `-07` (in-repo smoke-playthrough + ride telemetry, no retuning). All are bug-fix/polish/layout/test-infra on existing systems — GATE v2 compliant. Index + deps in `docs/prompts/README.md`.
+- **Active queue (playthrough bug-fixes):** RPG-20260708-04 is complete. Next: `docs/prompts/RPG-20260708-05` (foot-only interiors / scooter mount mechanics) → `-06` (street legibility & layout: declutter, orphan markers, walkable-vs-building, verify paddies, camera, landmark) → `-07` (in-repo smoke-playthrough + ride telemetry, no retuning). All are bug-fix/polish/layout/test-infra on existing systems — GATE v2 compliant. Index + deps in `docs/prompts/README.md`.
 - `docs/AI_WALKTHROUGH_NOTES_2026-07-06.md` — Claude's earlier STATIC pass; superseded as a playthrough by the 2026-07-08 driven run.
 
 Canonical act order, set in stone for near-term work:
@@ -40,7 +40,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: (1) run the RPG-20260708-04..07 bug-fix queue in order — **04 first, it unblocks the broken tutorial on-ramp everything else depends on**; (2) John merges PR #1 for `feat/rpg-20260706-09-rio-race` (publishes the whole stack to the public URL) — ideally after 04/05 so strangers don't hit the onboarding blocker; (3) John shares the URL with 3-5 people (ready-to-paste message in the 2026-07-08 session notes); (4) real-human feedback lands in `PLAYTEST_01.md` and GATE v2 exits. Under GATE v2, do **not** write or build new systems/acts/districts/minigames/content — and never multiplayer, backend, AI, real commerce, Google data, or the Act 3 management sim — until that feedback exists. Bug-fix/polish/layout/test-infra on existing systems (the 04..07 batch) is allowed.
+Immediate next move: (1) run RPG-20260708-05, then `-06` and `-07`; (2) John merges PR #1 for `feat/rpg-20260706-09-rio-race` (publishes the whole stack to the public URL) — ideally after 05 so strangers get both onboarding repairs; (3) John shares the URL with 3-5 people (ready-to-paste message in the 2026-07-08 session notes); (4) real-human feedback lands in `PLAYTEST_01.md` and GATE v2 exits. Under GATE v2, do **not** write or build new systems/acts/districts/minigames/content — and never multiplayer, backend, AI, real commerce, Google data, or the Act 3 management sim — until that feedback exists. Bug-fix/polish/layout/test-infra on existing systems (the remaining 05..07 batch) is allowed.
 
 ## Project
 
@@ -55,6 +55,8 @@ Immediate next move: (1) run the RPG-20260708-04..07 bug-fix queue in order — 
 - Public URL: `https://johnswatica.github.io/bali-life-rpg/` (GitHub Pages, deploys on push to `main`).
 
 ## What Was Added Recently
+
+- RPG-20260708-04 is complete on `feat/rpg-20260706-09-rio-race`: active objectives now resolve through one interior-aware target pass before rendering or debug exposure. An NPC objective in the current room targets that NPC's occupied slot using the exact room talk radius; an objective with no target in the room targets the exit mat instead. The original Act 0 failure is fixed: the Warung marker reaches Ibu Sari, talking advances and grants the first delivery, then the marker moves to the exit and returns to exterior BAKED. Browser coordinates/screenshots and the marker-follow trace are in `docs/ONBOARDING_RETARGET_PROOF_2026-07-11.md`; the suite increased from 234 to 236 tests.
 
 - RPG-20260708-03 is complete on `feat/rpg-20260706-09-rio-race`: the cross-packet seam audit found and fixed queued toast/audio feedback running under cutscenes, payout and Act 2 chapter-card competition, hidden-meter wording in the Act 1 morning hand, cargo chrome leaking into interiors, delivery acceptance during Rio's race, and persisted race/activity timers advancing behind the title screen. Saved activity restoration now waits for Continue, and F9 clears live runtime presentation state as well as the save.
 - `src/tuning/FeelTuning.ts` is the single edit point for the unchanged audio gains, payout timings, ride curves/camera lead/near-miss limits, cargo damage thresholds, and Rio ghost pacing/rubber-band caps. The suite increased from 225 to 234 tests. Full seam verdicts and bundle evidence are in `docs/COHERENCE_SWEEP_2026-07-10.md`.

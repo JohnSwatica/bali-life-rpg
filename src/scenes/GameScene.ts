@@ -78,9 +78,10 @@ import {
   getInteriorByVenueId,
   getInteriorDeliveryPickupForStation,
   getOccupiedInteriorNpcSlots,
-  getPrimaryInteriorStationForVenue,
   getScheduledInteriorForNpc,
-  isInteriorPointInsideRoom
+  INTERIOR_NPC_INTERACTION_RADIUS,
+  isInteriorPointInsideRoom,
+  resolveInteriorObjectiveTargets
 } from "../systems/interiors/InteriorState";
 import { calculateInteriorCameraBounds, calculateInteriorCameraZoom } from "../systems/interiors/InteriorCamera";
 import {
@@ -7612,7 +7613,7 @@ export class GameScene extends Phaser.Scene {
         continue;
       }
       const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, slot.x, slot.y);
-      if (distance <= scaleDistance(40)) {
+      if (distance <= INTERIOR_NPC_INTERACTION_RADIUS) {
         candidates.push({
           type: "npc",
           id: slot.npcId,
@@ -7903,6 +7904,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private getFieldObjectiveTargets(objective = getFieldObjective(this.world)): FieldObjectiveTarget[] {
+    const activeInterior = this.getActiveInterior();
+    if (activeInterior) {
+      return resolveInteriorObjectiveTargets(this.world, activeInterior, objective.targets);
+    }
     return objective.targets
       .map((target) => this.resolveFieldObjectiveTarget(target))
       .filter((target): target is FieldObjectiveTarget => Boolean(target));
@@ -7934,18 +7939,6 @@ export class GameScene extends Phaser.Scene {
       return { id: target.id, label: target.label, x, y, radius: scaleDistance(92), type: target.type };
     }
     if (target.type === "venue") {
-      const activeInterior = this.getActiveInterior();
-      const activeInteriorStation = activeInterior ? getPrimaryInteriorStationForVenue(activeInterior, target.venueId) : undefined;
-      if (activeInteriorStation) {
-        return {
-          id: target.id,
-          label: target.label,
-          x: activeInteriorStation.x,
-          y: activeInteriorStation.y,
-          radius: activeInteriorStation.radius,
-          type: target.type
-        };
-      }
       const node = venueMapNodes.find((candidate) => candidate.venueId === target.venueId);
       if (!node) {
         return null;
