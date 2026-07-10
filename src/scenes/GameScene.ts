@@ -1681,7 +1681,11 @@ export class GameScene extends Phaser.Scene {
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => this.handlePointerDown(pointer));
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => this.handlePointerMove(pointer));
     this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => this.handlePointerUp(pointer));
-    this.scale.on("resize", () => this.layoutForViewport());
+    this.input.on("gameout", () => this.hudController.cancelTouchInput());
+    this.scale.on("resize", () => {
+      this.hudController.cancelTouchInput();
+      this.layoutForViewport();
+    });
   }
 
   private openTitleScreen(hasSave: boolean, mode: "title" | "pause"): void {
@@ -1791,6 +1795,10 @@ export class GameScene extends Phaser.Scene {
     this.hudController = new HudController(this, UI_DEPTH, {
       action: () => {
         this.playUiClick();
+        if (this.activeRivalRace && this.hudController.isTouchInputActive) {
+          this.finishRivalRace({ conceded: true });
+          return;
+        }
         this.handleAction();
       },
       inventory: () => {
@@ -3040,6 +3048,7 @@ export class GameScene extends Phaser.Scene {
 
   private updateHud(delta: number): void {
     this.syncHudLayerToCamera();
+    this.hudController.syncTouchControlsToCamera();
     const unreadCount = getUnreadOpportunityMessageCount(this.world.opportunities);
     const wantedLevel = getWantedLevel(this.world.reputation);
     const bounty = getBounty(this.world.reputation);
@@ -3095,9 +3104,12 @@ export class GameScene extends Phaser.Scene {
     const homeSleepReady = this.isAct0HomeSleepReady();
     const target = this.mode === "world" ? this.getNearestInteraction() : undefined;
     const interiorTarget = this.mode === "interior" ? this.getNearestInteriorInteraction() : undefined;
+    this.hudController.setActionButtonMode(this.activeRivalRace ? "concede" : "action");
     if (this.activeRivalRace) {
       const next = this.activeRivalRace.config.route[this.activeRivalRace.checkpointIndex];
-      this.promptText.setText(`Race Rio: ${next ? `hit ${next.label}` : "finish the lap"}. ESC concedes.`);
+      this.promptText.setText(
+        `Race Rio: ${next ? `hit ${next.label}` : "finish the lap"}. ${this.getRaceConcedeHint()}`
+      );
     } else if (this.mode === "world" && this.playerState.bikeStuck) {
       this.promptText.setText(`E / ACT: ask ${REQUIRED_BIKE_HELPERS} helpers to drag the bike out`);
     } else if (this.mode === "world" && isAct0FirstRunGateActive(this.world, this.act0FirstRunGateSessionActive)) {
@@ -3119,7 +3131,11 @@ export class GameScene extends Phaser.Scene {
     } else if (this.mode === "phone") {
       this.promptText.setText("ESC closes the phone.");
     } else if (this.mode === "committedActivity") {
-      this.promptText.setText("Activity in progress. ESC cancels early.");
+      this.promptText.setText(
+        this.hudController.isTouchInputActive
+          ? "Activity in progress. Use the on-screen controls."
+          : "Activity in progress. ESC cancels early."
+      );
     } else {
       this.promptText.setText("ESC closes the current panel.");
     }
@@ -3576,7 +3592,7 @@ export class GameScene extends Phaser.Scene {
 
     const hint = document.createElement("div");
     hint.className = "bali-life-dialogue-hint";
-    hint.textContent = "E / ESC";
+    hint.textContent = this.hudController.isTouchInputActive ? "Tap Continue" : "E / ESC";
 
     const content = document.createElement("div");
     content.className = "bali-life-dialogue-content";
@@ -3590,7 +3606,25 @@ export class GameScene extends Phaser.Scene {
     copy.append(titleEl, bodyEl);
     content.appendChild(copy);
 
-    overlay.append(content, hint);
+    overlay.appendChild(content);
+    if (this.hudController.isTouchInputActive) {
+      const footer = document.createElement("div");
+      footer.className = "bali-life-dialogue-footer";
+      const continueButton = document.createElement("button");
+      continueButton.type = "button";
+      continueButton.className = "bali-life-dialogue-continue";
+      continueButton.textContent = "Continue";
+      continueButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.playUiClick();
+        this.handleAction();
+      });
+      footer.append(hint, continueButton);
+      overlay.appendChild(footer);
+    } else {
+      overlay.appendChild(hint);
+    }
     document.body.appendChild(overlay);
     this.dialogueOverlay = overlay;
   }
@@ -4806,7 +4840,7 @@ export class GameScene extends Phaser.Scene {
           kind: "act_card",
           durationMs: 620,
           title: "2",
-          subtitle: "Hit the route markers. ESC concedes."
+          subtitle: `Hit the route markers. ${this.getRaceConcedeHint()}`
         },
         {
           id: "one",
@@ -4850,7 +4884,7 @@ export class GameScene extends Phaser.Scene {
       realDurationMs: RIO_RACE.maxRaceMs,
       startedAt: this.getAbsoluteMinute()
     };
-    this.showToast("Race started. Hit the route markers. ESC concedes.");
+    this.showToast(`Race started. Hit the route markers. ${this.getRaceConcedeHint()}`);
   }
 
   private updateRivalRace(delta: number): void {
@@ -5087,7 +5121,10 @@ export class GameScene extends Phaser.Scene {
     this.createCommittedActivityOverlay(this.committedActivity);
     this.playActivityCommitFlourish(this.player.x, this.player.y, option.activity.label);
     saveWorldState(this.world);
-    this.showToast(`${option.activity.label} started. ESC cancels early.`);
+    const activityHint = this.hudController.isTouchInputActive
+      ? "Use the on-screen controls."
+      : "ESC cancels early.";
+    this.showToast(`${option.activity.label} started. ${activityHint}`);
   }
 
   private startCommittedOpportunity(opportunityId: string, venueId: string): void {
@@ -5149,7 +5186,10 @@ export class GameScene extends Phaser.Scene {
     this.createCommittedActivityOverlay(this.committedActivity);
     this.playActivityCommitFlourish(this.player.x, this.player.y, template.title);
     saveWorldState(this.world);
-    this.showToast(`${template.title} started. ESC cancels early.`);
+    const activityHint = this.hudController.isTouchInputActive
+      ? "Use the on-screen controls."
+      : "ESC cancels early.";
+    this.showToast(`${template.title} started. ${activityHint}`);
   }
 
   private placePlayerAtCommittedVenue(node: VenueMapNode | undefined): void {
@@ -5372,7 +5412,11 @@ export class GameScene extends Phaser.Scene {
     this.rivalRaceGhost?.destroy();
     this.rivalRaceGhost = this.add.sprite(ghostPosition.x, ghostPosition.y, "npc-rio").setDepth(ghostPosition.y + 2);
     this.setSpriteFacing(this.rivalRaceGhost, false, CHARACTER_SPRITE_SCALE);
-    this.showToast("Race resumed. Hit the next marker. ESC concedes.");
+    this.showToast(`Race resumed. Hit the next marker. ${this.getRaceConcedeHint()}`);
+  }
+
+  private getRaceConcedeHint(): string {
+    return this.hudController.isTouchInputActive ? "QUIT concedes." : "ESC concedes.";
   }
 
   private updateCommittedMinigame(delta: number): void {
@@ -8353,7 +8397,10 @@ export class GameScene extends Phaser.Scene {
       this.resizeCutsceneOverlay(this.activeCutscene.overlay);
     }
     this.promptText.setPosition(16, height - 44);
-    this.toastText.setPosition(width / 2, Math.max(92, height * 0.17));
+    this.toastText
+      .setPosition(width / 2, Math.max(92, height * 0.17))
+      .setFontSize(width < 420 ? 14 : 16)
+      .setWordWrapWidth(Math.max(220, Math.min(520, width - 48)), true);
     this.hudController.layoutTouchControls();
     this.redrawHudChrome();
   }

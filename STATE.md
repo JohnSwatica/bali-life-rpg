@@ -18,14 +18,14 @@ Current durable truth:
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test -- --run` = 223 passing, 0 skipped; `npm run build` passes; the title/pause flow was browser-verified at six viewports (1280x800, 1440x900, 1728x1117, 2560x1440, 1024x768, 390x844) on `feat/rpg-20260706-09-rio-race`, 2026-07-10.
+- Current verification: `npm test -- --run` = 225 passing, 0 skipped; `npm run build` passes; the title/pause flow was browser-verified at six standing viewports and the touch layer was browser-audited at `390x844` and `360x800` on `feat/rpg-20260706-09-rio-race`, 2026-07-10. Physical iOS/Android verification remains pending.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Packet execution status (updated 2026-07-08):
 
 - **All nine RPG-20260706 packets are DONE** — landed as sequential commits on `feat/rpg-20260706-09-rio-race` (218 tests green, build green, verified by Claude). The branch is pushed to origin with a PR open; **`main` and therefore the public URL are 9 packets behind until John merges** — merging publishes the juiced build.
 - **GATE v2 (CEO override, 2026-07-08):** John has no time for the 60-min personal playtest; it and the three review decisions are parked in `TODO_LIST.md`. Outside players become the active feedback path. Until written feedback from 3+ real humans exists, Codex work is limited to polish/tuning/integration/stranger-readiness/bug fixes — NEW systems/acts/districts/minigames/content stay blocked. Full terms in `docs/PHASE3_REEVALUATION_GATE.md`.
-- **Active queue:** RPG-20260708-01 is complete (stranger-ready build: title screen, safe reset, feedback mailto, version stamp). Next is `docs/prompts/RPG-20260708-02` (mobile/touch playability + link-preview polish), then `-03` (seam audit of packets 01-09 + tuning consolidation). Index in `docs/prompts/README.md`.
+- **Active queue:** RPG-20260708-01 and RPG-20260708-02 are complete (stranger-ready title/reset/feedback, then mobile touch playability + link-preview polish). Next is `docs/prompts/RPG-20260708-03` (seam audit of packets 01-09 + tuning consolidation). Index in `docs/prompts/README.md`.
 - `docs/AI_WALKTHROUGH_NOTES_2026-07-06.md` — Claude's static structural pass (objective findings only). It is explicitly NOT a human playtest and does not satisfy the gate.
 
 Canonical act order, set in stone for near-term work:
@@ -52,6 +52,10 @@ Immediate next move: (1) John merges the open PR for `feat/rpg-20260706-09-rio-r
 - Public URL: `https://johnswatica.github.io/bali-life-rpg/` (GitHub Pages, deploys on push to `main`).
 
 ## What Was Added Recently
+
+- RPG-20260708-02 is complete on `feat/rpg-20260706-09-rio-race`: touch controls now use the same inverse-camera-scale pattern as other zoom-safe UI, resync to the main camera, work in interiors as well as the street, and cancel cleanly across overlays, resize, and pointer game-out. Normal dialogue has a touch-only Continue button; committed-activity instructions point to on-screen controls; and the Rio race converts ACT to an accessible QUIT/concede action on touch while leaving desktop keyboard behavior unchanged.
+- Mobile layout hardening adds dynamic viewport and safe-area handling, 44px touch targets, portrait-bounded dialogue/activity surfaces, and responsive toast wrapping. At `360x800`, all six touch buttons measured in bounds with 10px right/bottom clearance; the title card measured `[18,202.41,342,597.59]`. At `390x844`, the title remained `[18,234.55,372,609.44]` and all six controls were in bounds. Browser pointer testing covered the fresh title/cold open, exterior and interior movement, Ibu Sari dialogue, BAKED pickup, ride checkpoint, villa drop-off, payout, and the Milk & Madu activity flow. The long replay's emulated clock accelerated, so sleep/Act 1 transition remains composite-tested rather than claimed as physical-device proof. Full findings and evidence paths are in `docs/MOBILE_PASS_2026-07-08.md`; real-device iOS/Android verification is pending.
+- WhatsApp/link-preview presentation now includes a proper title and description, theme color, static Open Graph metadata, an original procedural favicon, and a committed 1200x630 game-street screenshot. No PWA, service worker, telemetry, native wrapper, schema, or gameplay/economy change was added.
 
 - RPG-20260708-01 is complete on `feat/rpg-20260706-09-rio-race`: every boot now opens a bounds-safe DOM title screen with the game name, an `EARLY TEST BUILD` label, a Vite-injected `short-hash · YYYY-MM-DD` build stamp, `Continue` only when a valid local save exists, `New Game`, and `Send feedback`. Continuing is one click; starting over from an existing save requires an explicit `Start fresh` confirmation, while an empty local slot starts immediately. `New Game` restarts the scene after clearing only the existing local save, so no previous NPC/runtime scene state survives into a fresh run; F9 remains the existing dev reset path.
 - ESC in world/interior mode now opens a small pause surface with `Resume` and a deliberately secondary `Reset save`, which routes through the same local-save confirmation state as title-screen New Game. No save-schema or gameplay-loop data changed.
