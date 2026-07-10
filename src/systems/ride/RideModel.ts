@@ -1,4 +1,5 @@
 import type { HustleState } from "../../types";
+import { RIDE_FEEL_TUNING } from "../../tuning/FeelTuning";
 
 export type RideScooterTier = HustleState["scooterTier"];
 
@@ -25,11 +26,6 @@ export interface RideModelOutput extends RideModelState {
   maxSpeed: number;
   speedRatio: number;
 }
-
-const ACCELERATION_SECONDS = 0.62;
-const COAST_TO_STOP_SECONDS = 0.48;
-const BASE_TOP_SPEED_COMPENSATION = 1.08;
-const LOW_SPEED_DRIFT_CUTOFF = 0.22;
 
 export function createRideModelState(): RideModelState {
   return {
@@ -58,16 +54,21 @@ export function updateRideModel(input: RideModelInput): RideModelOutput {
     const desiredDirectionY = desiredY / maxSpeed;
     const turnDot = clamp(currentDirectionX * desiredDirectionX + currentDirectionY * desiredDirectionY, -1, 1);
     const speedRatio = clamp(speed / Math.max(1, maxSpeed), 0, 1);
-    const turnSharpness = speedRatio > LOW_SPEED_DRIFT_CUTOFF ? clamp((1 - turnDot) / 2, 0, 1) : 0;
+    const turnSharpness = speedRatio > RIDE_FEEL_TUNING.lowSpeedDriftCutoff ? clamp((1 - turnDot) / 2, 0, 1) : 0;
     const grip = getRideGrip(input.tier, input.bikeCondition, Boolean(input.slick));
-    drift = clamp(turnSharpness * speedRatio * (input.slick ? 1.25 : 1), 0, 1);
-    const steeringLoss = 1 - drift * (input.slick ? 0.48 : 0.32);
-    const maxChange = (maxSpeed / ACCELERATION_SECONDS) * dt * grip * steeringLoss;
+    drift = clamp(turnSharpness * speedRatio * (input.slick ? RIDE_FEEL_TUNING.slickDriftMultiplier : 1), 0, 1);
+    const steeringLoss =
+      1 - drift * (input.slick ? RIDE_FEEL_TUNING.slickSteeringLoss : RIDE_FEEL_TUNING.drySteeringLoss);
+    const maxChange = (maxSpeed / RIDE_FEEL_TUNING.accelerationSeconds) * dt * grip * steeringLoss;
     const changed = moveVectorToward({ x: velocityX, y: velocityY }, { x: desiredX, y: desiredY }, maxChange);
     velocityX = changed.x;
     velocityY = changed.y;
   } else {
-    const next = moveVectorToward({ x: velocityX, y: velocityY }, { x: 0, y: 0 }, (maxSpeed / COAST_TO_STOP_SECONDS) * dt);
+    const next = moveVectorToward(
+      { x: velocityX, y: velocityY },
+      { x: 0, y: 0 },
+      (maxSpeed / RIDE_FEEL_TUNING.coastToStopSeconds) * dt
+    );
     velocityX = next.x;
     velocityY = next.y;
   }
@@ -76,10 +77,21 @@ export function updateRideModel(input: RideModelInput): RideModelOutput {
   velocityX = capped.x;
   velocityY = capped.y;
   const nextSpeed = Math.hypot(velocityX, velocityY);
-  const speedRatio = clamp(nextSpeed / Math.max(1, maxSpeed), 0, 1.1);
-  const leanFromVelocity = clamp((velocityX / Math.max(1, maxSpeed)) * 8.5, -8.5, 8.5);
-  const leanFromDrift = drift * Math.sign(velocityX || input.inputX || 1) * (input.slick ? 4.2 : 2.6);
-  const leanDegrees = clamp(leanFromVelocity + leanFromDrift, -12, 12);
+  const speedRatio = clamp(nextSpeed / Math.max(1, maxSpeed), 0, RIDE_FEEL_TUNING.maximumSpeedRatio);
+  const leanFromVelocity = clamp(
+    (velocityX / Math.max(1, maxSpeed)) * RIDE_FEEL_TUNING.velocityLeanDegrees,
+    -RIDE_FEEL_TUNING.velocityLeanDegrees,
+    RIDE_FEEL_TUNING.velocityLeanDegrees
+  );
+  const leanFromDrift =
+    drift *
+    Math.sign(velocityX || input.inputX || 1) *
+    (input.slick ? RIDE_FEEL_TUNING.slickDriftLeanDegrees : RIDE_FEEL_TUNING.dryDriftLeanDegrees);
+  const leanDegrees = clamp(
+    leanFromVelocity + leanFromDrift,
+    -RIDE_FEEL_TUNING.maxLeanDegrees,
+    RIDE_FEEL_TUNING.maxLeanDegrees
+  );
 
   return {
     velocityX,
@@ -93,16 +105,43 @@ export function updateRideModel(input: RideModelInput): RideModelOutput {
 }
 
 export function getRideMaxSpeed(baseMaxSpeed: number, tier: RideScooterTier, bikeCondition: number): number {
-  const tierModifier = tier === "proper_bike" ? 1.18 : tier === "daily_rental" ? 1.12 : BASE_TOP_SPEED_COMPENSATION;
-  const conditionPenalty = clamp((70 - bikeCondition) / 70, 0, 1) * (tier === "borrowed_rattletrap" ? 0.09 : 0.05);
+  const tierModifier =
+    tier === "proper_bike"
+      ? RIDE_FEEL_TUNING.properBikeTopSpeedModifier
+      : tier === "daily_rental"
+        ? RIDE_FEEL_TUNING.rentalTopSpeedModifier
+        : RIDE_FEEL_TUNING.borrowedTopSpeedModifier;
+  const conditionPenalty =
+    clamp(
+      (RIDE_FEEL_TUNING.topSpeedConditionThreshold - bikeCondition) / RIDE_FEEL_TUNING.topSpeedConditionThreshold,
+      0,
+      1
+    ) *
+    (tier === "borrowed_rattletrap"
+      ? RIDE_FEEL_TUNING.borrowedLowConditionSpeedPenalty
+      : RIDE_FEEL_TUNING.upgradedLowConditionSpeedPenalty);
   return Math.max(1, baseMaxSpeed * tierModifier * (1 - conditionPenalty));
 }
 
 export function getRideGrip(tier: RideScooterTier, bikeCondition: number, slick: boolean): number {
-  const tierGrip = tier === "proper_bike" ? 1.06 : tier === "daily_rental" ? 1 : 0.93;
-  const conditionGripPenalty = clamp((55 - bikeCondition) / 55, 0, 1) * 0.16;
-  const slickPenalty = slick ? 0.2 : 0;
-  return clamp(tierGrip - conditionGripPenalty - slickPenalty, 0.62, 1.08);
+  const tierGrip =
+    tier === "proper_bike"
+      ? RIDE_FEEL_TUNING.properBikeGrip
+      : tier === "daily_rental"
+        ? RIDE_FEEL_TUNING.rentalGrip
+        : RIDE_FEEL_TUNING.borrowedGrip;
+  const conditionGripPenalty =
+    clamp(
+      (RIDE_FEEL_TUNING.gripConditionThreshold - bikeCondition) / RIDE_FEEL_TUNING.gripConditionThreshold,
+      0,
+      1
+    ) * RIDE_FEEL_TUNING.conditionGripPenalty;
+  const slickPenalty = slick ? RIDE_FEEL_TUNING.slickGripPenalty : 0;
+  return clamp(
+    tierGrip - conditionGripPenalty - slickPenalty,
+    RIDE_FEEL_TUNING.minimumGrip,
+    RIDE_FEEL_TUNING.maximumGrip
+  );
 }
 
 export function estimateStraightRideTimeMs(distance: number, baseMaxSpeed: number, tier: RideScooterTier, bikeCondition: number): number {

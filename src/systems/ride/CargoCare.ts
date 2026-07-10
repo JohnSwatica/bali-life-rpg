@@ -1,5 +1,6 @@
 import type { ActiveDeliveryState, ActProgressState } from "../../types";
 import type { DeliveryCondition, DeliveryDefinition } from "../../data/deliveries";
+import { CARGO_FEEL_TUNING } from "../../tuning/FeelTuning";
 
 export type CargoDamageReason = "traffic_hit" | "hard_collision";
 
@@ -20,10 +21,6 @@ export interface CargoDamageResult {
   amount: number;
 }
 
-const FULL_BONUS_INTEGRITY = 70;
-const TRAFFIC_HIT_DAMAGE = 18;
-const HARD_COLLISION_DAMAGE = 24;
-
 export function isCargoCareEligible(
   currentAct: ActProgressState["currentAct"],
   delivery: DeliveryDefinition,
@@ -38,7 +35,8 @@ export function getCargoIntegrity(activeDelivery: ActiveDeliveryState | null | u
 
 export function applyCargoDamage(integrity: number, reason: CargoDamageReason): CargoDamageResult {
   const before = clamp(Math.round(integrity), 0, 100);
-  const amount = reason === "traffic_hit" ? TRAFFIC_HIT_DAMAGE : HARD_COLLISION_DAMAGE;
+  const amount =
+    reason === "traffic_hit" ? CARGO_FEEL_TUNING.trafficHitDamage : CARGO_FEEL_TUNING.hardCollisionDamage;
   const after = clamp(before - amount, 0, 100);
   return {
     damaged: after < before,
@@ -50,10 +48,18 @@ export function applyCargoDamage(integrity: number, reason: CargoDamageReason): 
 
 export function getCargoBonusMultiplier(integrity: number): number {
   const safeIntegrity = clamp(integrity, 0, 100);
-  if (safeIntegrity >= FULL_BONUS_INTEGRITY) {
+  if (safeIntegrity >= CARGO_FEEL_TUNING.fullBonusIntegrity) {
     return 1;
   }
-  return safeIntegrity / FULL_BONUS_INTEGRITY;
+  return safeIntegrity / CARGO_FEEL_TUNING.fullBonusIntegrity;
+}
+
+export function shouldShowCargoCareChip(
+  integrity: number | null,
+  surface: "world" | "interior" | "overlay",
+  rivalRaceActive: boolean
+): boolean {
+  return integrity != null && surface === "world" && !rivalRaceActive;
 }
 
 export function calculateCargoCareAdjustment(

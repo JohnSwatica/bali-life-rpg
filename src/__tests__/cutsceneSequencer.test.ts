@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { buildAct1IntroCutscene, buildAct2IntroCutscene } from "../systems/cutscene/ActCardScripts";
-import { getCutsceneDuration, getCutsceneStepState, skipCutscene, type CutsceneScript } from "../systems/cutscene/CutsceneSequencer";
+import {
+  getCutsceneDuration,
+  getCutsceneStepState,
+  shouldPauseQueuedFeedback,
+  skipCutscene,
+  type CutsceneScript
+} from "../systems/cutscene/CutsceneSequencer";
 
 function sampleScript(): CutsceneScript {
   return {
@@ -33,6 +39,11 @@ describe("cutscene sequencer", () => {
       step: null,
       stepIndex: script.steps.length
     });
+  });
+
+  it("holds queued toast feedback until the letterbox sequence is over", () => {
+    expect(shouldPauseQueuedFeedback(true)).toBe(true);
+    expect(shouldPauseQueuedFeedback(false)).toBe(false);
   });
 
   it("hard-times out even if authored duration is longer", () => {

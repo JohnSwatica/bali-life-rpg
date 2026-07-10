@@ -62,6 +62,9 @@ export function acceptDelivery(world: WorldState, deliveryId: string, now: numbe
   if (world.life.hustle.activeDelivery) {
     return { ok: false, message: "Finish your current delivery first." };
   }
+  if (world.activeActivity?.source === "rivalRace") {
+    return { ok: false, message: "Finish Rio's race before taking a delivery." };
+  }
   if (definition.boardAvailable) {
     const eligibility = evaluateDeliveryOffer(world, definition);
     if (!eligibility.available) {
@@ -215,6 +218,9 @@ function evaluateDeliveryOffer(world: WorldState, delivery: DeliveryDefinition):
   const player = world.players[world.localPlayerId];
   if (world.life.hustle.activeDelivery) {
     return { delivery, available: false, reason: "Finish your active delivery first." };
+  }
+  if (world.activeActivity?.source === "rivalRace") {
+    return { delivery, available: false, reason: "Finish Rio's race before taking a delivery." };
   }
   if (!world.life.actProgress.firstDayComplete) {
     return { delivery, available: false, reason: "Finish Ibu Sari's first-day run first." };

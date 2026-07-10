@@ -8,6 +8,9 @@ import {
 } from "../systems/ride/DeliveryRideCheckpoints";
 import { acceptDelivery, completeDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
 import { createInitialWorldState } from "../systems/WorldState";
+import { getRideMaxSpeed } from "../systems/ride/RideModel";
+import { scaleDistance } from "../systems/map/WorldScale";
+import { RIDE_FEEL_TUNING } from "../tuning/FeelTuning";
 
 describe("DeliveryRideCheckpoints", () => {
   it("returns exactly two checkpoints for the Act 0 tutorial delivery", () => {
@@ -60,6 +63,28 @@ describe("DeliveryRideCheckpoints", () => {
     expect(pickOutcomeToast(checkpoint, 0.95)).toBe(checkpoint.outcomeToasts.high);
     expect(pickOutcomeToast(checkpoint, 0.6)).toBe(checkpoint.outcomeToasts.mid);
     expect(pickOutcomeToast(checkpoint, 0.1)).toBe(checkpoint.outcomeToasts.low);
+  });
+
+  it("keeps checkpoint trigger zones wider than two low-frame-rate ride steps", () => {
+    const maximumBorrowedSpeed = getRideMaxSpeed(
+      scaleDistance(RIDE_FEEL_TUNING.baseBikeSpeed),
+      "borrowed_rattletrap",
+      100
+    );
+    const twoFramesAt30Fps = maximumBorrowedSpeed * (2 / 30);
+
+    for (const deliveryId of [
+      "first_baked_villa_delivery",
+      "milk_madu_brunch_bag",
+      "satu_satu_invoice_pouch",
+      "nude_cold_bag_run",
+      "beach_wristband_pouch",
+      "finns_linen_bundle"
+    ]) {
+      for (const checkpoint of getRideCheckpointsForDelivery(deliveryId, "rain_window")) {
+        expect(scaleDistance(checkpoint.radius)).toBeGreaterThan(twoFramesAt30Fps);
+      }
+    }
   });
 
   it("keeps the tutorial delivery fail-forward at every ride performance score", () => {

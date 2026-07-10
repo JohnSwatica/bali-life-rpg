@@ -2,6 +2,7 @@ import { venueMapNodes } from "../../data/authoredStreetLayout";
 import { adjustReputationAxis } from "../reputation/ReputationState";
 import { recordRelationshipMemory } from "../relationships/RelationshipMemory";
 import type { WorldState } from "../../types";
+import { RACE_FEEL_TUNING } from "../../tuning/FeelTuning";
 
 export type RivalRaceResult = "win" | "loss";
 
@@ -67,12 +68,12 @@ export const RIO_RACE: RivalRaceConfig = {
   venueId: "bali_family_rental_scooter",
   stake: 25,
   winPayout: 70,
-  checkpointRadius: 120,
-  ghostTargetMs: 42000,
-  ghostMaxStepPerSecond: 0.044,
-  ghostLeadCap: 0.22,
-  ghostTrailCap: 0.18,
-  maxRaceMs: 70000,
+  checkpointRadius: RACE_FEEL_TUNING.checkpointRadius,
+  ghostTargetMs: RACE_FEEL_TUNING.ghostTargetMs,
+  ghostMaxStepPerSecond: RACE_FEEL_TUNING.ghostMaxStepPerSecond,
+  ghostLeadCap: RACE_FEEL_TUNING.ghostLeadCap,
+  ghostTrailCap: RACE_FEEL_TUNING.ghostTrailCap,
+  maxRaceMs: RACE_FEEL_TUNING.maxRaceMs,
   route: routeVenueIds.map((venueId, index) => {
     const node = venueMapNodes.find((candidate) => candidate.venueId === venueId);
     return {

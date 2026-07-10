@@ -34,6 +34,7 @@ import { getPortraitDataUrl, getPortraitDefinition, portraitVariantForTier } fro
 import { buildAct1IntroCutscene, buildAct2IntroCutscene } from "../systems/cutscene/ActCardScripts";
 import {
   getCutsceneStepState,
+  shouldPauseQueuedFeedback,
   skipCutscene,
   type CutsceneScript,
   type CutsceneStep,
@@ -120,7 +121,7 @@ import {
   type RideModelOutput,
   type RideModelState
 } from "../systems/ride/RideModel";
-import { applyCargoDamage, isCargoCareEligible } from "../systems/ride/CargoCare";
+import { applyCargoDamage, isCargoCareEligible, shouldShowCargoCareChip } from "../systems/ride/CargoCare";
 import {
   advanceRivalRaceGhost,
   applyRivalRaceOutcome,
@@ -236,8 +237,10 @@ import {
 } from "../systems/animation/InteractionFlourishes";
 import {
   buildPayoutCelebrationSpec,
+  getChapterCutsceneDelayMs,
   type PayoutCelebrationSpec
 } from "../systems/animation/PayoutCelebration";
+import { CARGO_FEEL_TUNING, PAYOUT_FEEL_TUNING, RIDE_FEEL_TUNING } from "../tuning/FeelTuning";
 import {
   advanceClock,
   formatClock,
@@ -249,6 +252,7 @@ import { resolveNpcQuestInteraction } from "../systems/quests/QuestRegistry";
 import { HudController } from "../ui/hud/HudController";
 import { PhoneShell } from "../ui/phone/PhoneShell";
 import { TitleScreen } from "../ui/title/TitleScreen";
+import { shouldAdvanceGameplayBehindMenu } from "../ui/title/TitleMenuState";
 import { getPhoneCameraScale } from "../ui/phone/PhoneLayout";
 import { getAllVenues, getVenue } from "../systems/venues/VenueRegistry";
 import type {
@@ -463,12 +467,12 @@ interface MinimapLayout {
 }
 
 const WALK_SPEED = scaleDistance(78);
-const BIKE_SPEED = scaleDistance(345);
+const BIKE_SPEED = scaleDistance(RIDE_FEEL_TUNING.baseBikeSpeed);
 const GROUP_WALK_SPEED = scaleDistance(92);
 const GROUP_BIKE_SPEED = scaleDistance(255);
-const RIDE_NEAR_MISS_RADIUS = scaleDistance(66);
-const RIDE_NEAR_MISS_INNER_RADIUS = scaleDistance(38);
-const RIDE_NEAR_MISS_COOLDOWN_MS = 900;
+const RIDE_NEAR_MISS_RADIUS = scaleDistance(RIDE_FEEL_TUNING.nearMissRadius);
+const RIDE_NEAR_MISS_INNER_RADIUS = scaleDistance(RIDE_FEEL_TUNING.nearMissInnerRadius);
+const RIDE_NEAR_MISS_COOLDOWN_MS = RIDE_FEEL_TUNING.nearMissCooldownMs;
 const BIKE_RENTAL_ITEM_ID = "scooter_rental";
 const SCOOTER_KEY_ITEM_ID = "scooter_key";
 const REQUIRED_BIKE_HELPERS = 5;
@@ -480,8 +484,8 @@ const REPEAT_FLAG_BOUNTY = 35;
 const TRAFFIC_HIT_COOLDOWN_MS = 2200;
 const TRAFFIC_HIT_MONEY_LOSS = 10;
 const TRAFFIC_KNOCKBACK_DISTANCE = scaleDistance(76);
-const CARGO_HARD_COLLISION_COOLDOWN_MS = 1200;
-const CARGO_HARD_COLLISION_SPEED = scaleDistance(280);
+const CARGO_HARD_COLLISION_COOLDOWN_MS = CARGO_FEEL_TUNING.hardCollisionCooldownMs;
+const CARGO_HARD_COLLISION_SPEED = scaleDistance(CARGO_FEEL_TUNING.hardCollisionSpeed);
 const WATER_BOUNDARY_TOAST_COOLDOWN_MS = 1800;
 const VENUE_LABEL_NEAR_RADIUS = scaleDistance(210);
 const NPC_PROXIMITY_REACTION_RADIUS = scaleDistance(112);
@@ -653,6 +657,7 @@ export class GameScene extends Phaser.Scene {
   private toastQueue: string[] = [];
   private activeCutscene?: ActiveCutsceneRunner;
   private cutsceneDeferredSave = false;
+  private pendingAct2CutscenePreviousAct?: number;
   private payoutCelebration?: {
     container: Phaser.GameObjects.Container;
     countText: Phaser.GameObjects.Text;
@@ -754,7 +759,6 @@ export class GameScene extends Phaser.Scene {
     this.createInput();
     this.createHud();
     this.updateMapDiscovery(true);
-    this.resumeCommittedActivityIfNeeded();
     this.updateOpportunityFeed(0, true);
 
     this.cameras.main.setBounds(
@@ -780,7 +784,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    const menuOpen = this.mode === "title" || this.mode === "pause";
+    const menuOpen = !shouldAdvanceGameplayBehindMenu(this.mode);
     if (!menuOpen) {
       advanceClock(this.world, delta);
     }
@@ -797,8 +801,10 @@ export class GameScene extends Phaser.Scene {
     this.updateCutscene(delta);
 
     this.updatePlayer(delta);
-    this.updateRivalRace(delta);
-    this.updateRideCheckpoints();
+    if (!menuOpen) {
+      this.updateRivalRace(delta);
+      this.updateRideCheckpoints();
+    }
     this.updateMapDiscovery();
     this.updateTraffic(delta);
     this.updateWantedOffenders(delta);
@@ -807,7 +813,9 @@ export class GameScene extends Phaser.Scene {
     this.updateAmbientNpcs(delta);
     this.updatePickups();
     this.updateOpportunityFeed(delta);
-    this.updateCommittedActivity(delta);
+    if (!menuOpen) {
+      this.updateCommittedActivity(delta);
+    }
     this.updateHud(delta);
     this.updateLighting();
     this.updateDynamicObjectCulling();
@@ -1720,6 +1728,12 @@ export class GameScene extends Phaser.Scene {
 
   private resumeFromMenu(): void {
     this.closePauseMenu();
+    this.resumeCommittedActivityIfNeeded();
+    if (this.pendingAct2CutscenePreviousAct != null) {
+      const previousAct = this.pendingAct2CutscenePreviousAct;
+      this.pendingAct2CutscenePreviousAct = undefined;
+      this.maybeStartAct2Cutscene(previousAct);
+    }
     this.sessionStartedAt ??= Date.now();
     this.showToast("Welcome to Berawa near FINNS. Press E near people, venues, and pickups.");
     this.openFirstRunHint();
@@ -1737,6 +1751,19 @@ export class GameScene extends Phaser.Scene {
     clearSave();
     this.phone?.close();
     this.closePanel(false);
+    this.activeCutscene?.overlay.container.destroy(true);
+    this.activeCutscene = undefined;
+    this.cutsceneDeferredSave = false;
+    this.pendingAct2CutscenePreviousAct = undefined;
+    this.committedActivity = undefined;
+    this.destroyCommittedActivityOverlay();
+    this.activeRivalRace = undefined;
+    this.rivalRaceGhost?.destroy();
+    this.rivalRaceGhost = undefined;
+    this.rivalRaceMarkerLayer?.clear();
+    this.finishPayoutCelebration();
+    this.activeDeliveryResolvedCheckpointIds = [];
+    this.activeDeliveryPerformanceScores = [];
     this.world = loadWorldState();
     this.playerState = getLocalPlayer(this.world);
     this.activeInteriorId = null;
@@ -1857,7 +1884,7 @@ export class GameScene extends Phaser.Scene {
       });
       this.rideModelState = ride;
       this.player.setVelocity(ride.velocityX, ride.velocityY);
-      if (hasMovementInput || ride.speed > scaleDistance(8)) {
+      if (hasMovementInput || ride.speed > scaleDistance(RIDE_FEEL_TUNING.minimumAnimatedRideSpeed)) {
         this.playerState.direction = this.directionFromVector(new Phaser.Math.Vector2(ride.velocityX, ride.velocityY));
       }
       this.updateRideCameraLookahead(ride);
@@ -1935,16 +1962,45 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateRideCameraLookahead(ride?: RideModelOutput): void {
-    const shouldLead = ride && !this.activeInteriorId && this.playerState.onBike && !this.playerState.bikeStuck && ride.speedRatio > 0.18;
-    const targetX = shouldLead ? -Math.sign(ride.velocityX) * Math.min(scaleDistance(42), Math.abs(ride.velocityX / Math.max(1, ride.maxSpeed)) * scaleDistance(42)) : 0;
-    const targetY = shouldLead ? -Math.sign(ride.velocityY) * Math.min(scaleDistance(34), Math.abs(ride.velocityY / Math.max(1, ride.maxSpeed)) * scaleDistance(34)) : 0;
-    this.rideCameraOffsetX = Phaser.Math.Linear(this.rideCameraOffsetX, targetX, 0.12);
-    this.rideCameraOffsetY = Phaser.Math.Linear(this.rideCameraOffsetY, targetY, 0.12);
+    const shouldLead =
+      ride &&
+      !this.activeInteriorId &&
+      this.playerState.onBike &&
+      !this.playerState.bikeStuck &&
+      ride.speedRatio > RIDE_FEEL_TUNING.cameraLeadMinimumSpeedRatio;
+    const targetX = shouldLead
+      ? -Math.sign(ride.velocityX) *
+        Math.min(
+          scaleDistance(RIDE_FEEL_TUNING.cameraLeadMaxX),
+          Math.abs(ride.velocityX / Math.max(1, ride.maxSpeed)) * scaleDistance(RIDE_FEEL_TUNING.cameraLeadMaxX)
+        )
+      : 0;
+    const targetY = shouldLead
+      ? -Math.sign(ride.velocityY) *
+        Math.min(
+          scaleDistance(RIDE_FEEL_TUNING.cameraLeadMaxY),
+          Math.abs(ride.velocityY / Math.max(1, ride.maxSpeed)) * scaleDistance(RIDE_FEEL_TUNING.cameraLeadMaxY)
+        )
+      : 0;
+    this.rideCameraOffsetX = Phaser.Math.Linear(
+      this.rideCameraOffsetX,
+      targetX,
+      RIDE_FEEL_TUNING.cameraLeadLerp
+    );
+    this.rideCameraOffsetY = Phaser.Math.Linear(
+      this.rideCameraOffsetY,
+      targetY,
+      RIDE_FEEL_TUNING.cameraLeadLerp
+    );
     this.cameras.main.setFollowOffset(this.rideCameraOffsetX, this.rideCameraOffsetY);
   }
 
   private checkRideNearMiss(ride: RideModelOutput): void {
-    if (this.activeInteriorId || this.nearMissFeedbackCooldown > 0 || ride.speedRatio < 0.72) {
+    if (
+      this.activeInteriorId ||
+      this.nearMissFeedbackCooldown > 0 ||
+      ride.speedRatio < RIDE_FEEL_TUNING.nearMissMinimumSpeedRatio
+    ) {
       return;
     }
     if (this.isNearMissAgainstTraffic() || this.isNearMissAgainstPedestrians()) {
@@ -2404,7 +2460,7 @@ export class GameScene extends Phaser.Scene {
       targets: countText,
       scaleX: spec.scalePunch,
       scaleY: spec.scalePunch,
-      duration: 140,
+      duration: PAYOUT_FEEL_TUNING.amountPunchDurationMs,
       yoyo: true,
       ease: "Back.easeOut"
     });
@@ -2413,8 +2469,8 @@ export class GameScene extends Phaser.Scene {
         targets: ratingText,
         scaleX: 1.12,
         scaleY: 1.12,
-        duration: 150,
-        delay: 260,
+        duration: PAYOUT_FEEL_TUNING.ratingPunchDurationMs,
+        delay: PAYOUT_FEEL_TUNING.ratingPunchDelayMs,
         yoyo: true,
         ease: "Back.easeOut"
       });
@@ -2423,17 +2479,17 @@ export class GameScene extends Phaser.Scene {
       this.tweens.add({
         targets: rentText,
         alpha: 0.38,
-        duration: 180,
+        duration: PAYOUT_FEEL_TUNING.rentPulseDurationMs,
         yoyo: true,
-        repeat: 2,
+        repeat: PAYOUT_FEEL_TUNING.rentPulseRepeatCount,
         ease: "Sine.easeInOut"
       });
     }
     this.tweens.add({
       targets: container,
       alpha: 0,
-      duration: 180,
-      delay: Math.max(0, spec.totalDurationMs - 180),
+      duration: PAYOUT_FEEL_TUNING.fadeOutDurationMs,
+      delay: Math.max(0, spec.totalDurationMs - PAYOUT_FEEL_TUNING.fadeOutDurationMs),
       onComplete: () => {
         if (this.payoutCelebration?.container === container) {
           this.payoutCelebration = undefined;
@@ -2456,7 +2512,7 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({
       targets: container,
       alpha: 0,
-      duration: 120,
+      duration: PAYOUT_FEEL_TUNING.dismissFadeDurationMs,
       onComplete: () => container.destroy(true)
     });
   }
@@ -3090,7 +3146,8 @@ export class GameScene extends Phaser.Scene {
       this.bikeChipText.setText("").setVisible(false);
     }
     const cargoIntegrity = this.getActiveCargoIntegrity();
-    if (cargoIntegrity != null) {
+    const cargoSurface = this.mode === "world" ? "world" : this.mode === "interior" ? "interior" : "overlay";
+    if (cargoIntegrity != null && shouldShowCargoCareChip(cargoIntegrity, cargoSurface, Boolean(this.activeRivalRace))) {
       const color = cargoIntegrity >= 70 ? "#62c48f" : cargoIntegrity >= 35 ? "#f4b860" : "#ff8f80";
       this.cargoChipText
         .setText(`Cargo ${cargoIntegrity}%`)
@@ -7616,6 +7673,7 @@ export class GameScene extends Phaser.Scene {
     const previousDriverRating = this.world.life.hustle.driverRating;
     const previousAct = this.world.life.actProgress.currentAct;
     const rentAmount = this.world.life.hustle.rentAmount;
+    let chapterCutsceneDelayMs = 0;
     const result =
       wasPickup
         ? pickupDelivery(this.world, now)
@@ -7638,13 +7696,28 @@ export class GameScene extends Phaser.Scene {
         rentAmount,
         performanceScore
       });
+      chapterCutsceneDelayMs = getChapterCutsceneDelayMs(
+        previousAct,
+        this.world.life.actProgress.currentAct,
+        celebration.totalDurationMs
+      );
       this.playDeliveryFlourish(this.player.x, this.player.y, result.payout, celebration);
       this.showCargoCareDeliveryReaction(active.deliveryId, result);
     }
     saveWorldState(this.world);
     this.showToast(result.message);
     if (result.ok && !wasPickup) {
-      this.maybeStartAct2Cutscene(previousAct);
+      if (chapterCutsceneDelayMs > 0) {
+        this.time.delayedCall(chapterCutsceneDelayMs, () => {
+          if (!shouldAdvanceGameplayBehindMenu(this.mode)) {
+            this.pendingAct2CutscenePreviousAct = previousAct;
+            return;
+          }
+          this.maybeStartAct2Cutscene(previousAct);
+        });
+      } else {
+        this.maybeStartAct2Cutscene(previousAct);
+      }
     }
   }
 
@@ -8469,6 +8542,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateToastVisual(delta: number): void {
+    if (shouldPauseQueuedFeedback(Boolean(this.activeCutscene))) {
+      this.toastText.setAlpha(0);
+      return;
+    }
     if (this.toastTimer > 0) {
       this.toastTimer = Math.max(0, this.toastTimer - delta);
       const elapsed = TOAST_DURATION_MS - this.toastTimer;

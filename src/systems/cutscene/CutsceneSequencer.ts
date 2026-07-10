@@ -43,6 +43,10 @@ export function getCutsceneDuration(script: CutsceneScript): number {
   return script.steps.reduce((total, step) => total + Math.max(0, step.durationMs), 0);
 }
 
+export function shouldPauseQueuedFeedback(cutsceneActive: boolean): boolean {
+  return cutsceneActive;
+}
+
 export function getCutsceneStepState(script: CutsceneScript, elapsedMs: number): CutsceneStepState {
   const duration = getCutsceneDuration(script);
   const clampedElapsed = Math.max(0, elapsedMs);

@@ -13,6 +13,7 @@ import {
   RIO_RACE_WON_FLAG
 } from "../systems/ride/RivalRace";
 import { createInitialWorldState } from "../systems/WorldState";
+import { acceptDelivery, getDeliveryOfferAvailability } from "../systems/hustle/DeliverySystem";
 
 function makeEligibleWorld() {
   const world = createInitialWorldState();
@@ -44,6 +45,38 @@ describe("Rio rival race", () => {
 
     eligible.collectedPickups[RIO_RACE_COMPLETED_FLAG] = 123;
     expect(getRioRaceEligibility(eligible)).toMatchObject({ eligible: false });
+  });
+
+  it("keeps race and delivery work mutually exclusive in both directions", () => {
+    const deliveryFirst = makeEligibleWorld();
+    deliveryFirst.life.hustle.activeDelivery = {
+      deliveryId: "milk_madu_brunch_bag",
+      stage: "accepted",
+      acceptedAt: 8 * 60,
+      dueAt: 9 * 60
+    };
+    expect(getRioRaceEligibility(deliveryFirst)).toMatchObject({
+      eligible: false,
+      reason: "Finish the active delivery before racing Rio."
+    });
+
+    const raceFirst = makeEligibleWorld();
+    raceFirst.activeActivity = {
+      source: "rivalRace",
+      raceId: RIO_RACE.id,
+      venueId: RIO_RACE.venueId,
+      venueName: "Bali Family Rental Scooter",
+      label: RIO_RACE.title,
+      durationMin: 0,
+      elapsedMs: 5000,
+      realDurationMs: RIO_RACE.maxRaceMs,
+      startedAt: 8 * 60
+    };
+    expect(getDeliveryOfferAvailability(raceFirst).every((offer) => !offer.available)).toBe(true);
+    expect(acceptDelivery(raceFirst, "milk_madu_brunch_bag", 8 * 60)).toEqual({
+      ok: false,
+      message: "Finish Rio's race before taking a delivery."
+    });
   });
 
   it("keeps Rio's challenge as a manual scene, not an automatic quest turn-in", () => {

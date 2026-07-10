@@ -6,6 +6,7 @@ import {
 } from "./DeliverySystem";
 import { getRentPressureState, getScooterRepairStatus } from "./HustleEconomy";
 import { getOpportunityTemplate } from "../opportunities/OpportunityEngine";
+import { areAdvancedMetersVisible } from "../guidance/MeterVisibility";
 import type { WorldState } from "../../types";
 
 export type MorningHandCardAction = "accept_delivery" | "pay_rent" | "track_opportunity" | "close";
@@ -26,6 +27,12 @@ export interface MorningHandCard {
 
 const MIN_MORNING_HAND_CARDS = 3;
 const MAX_MORNING_HAND_CARDS = 5;
+
+export function getMorningRecoveryBody(world: WorldState): string {
+  return areAdvancedMetersVisible(world)
+    ? "If your meters are shaky, use a warung or cafe station before stacking delivery work."
+    : "If your Energy is shaky, use a warung or cafe station before stacking delivery work.";
+}
 
 export function shouldShowMorningHand(world: WorldState): boolean {
   return (
@@ -132,7 +139,7 @@ export function getMorningHandCards(world: WorldState, now: number): MorningHand
       id: "recovery:warung",
       kind: "recovery",
       title: "Eat before another run",
-      body: "If your meters are shaky, use a warung or cafe station before stacking delivery work.",
+      body: getMorningRecoveryBody(world),
       actionLabel: "Start Day",
       action: "close",
       venueId: "canggu_station",

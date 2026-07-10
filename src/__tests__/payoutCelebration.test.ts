@@ -3,6 +3,7 @@ import {
   buildPayoutCelebrationSpec,
   buildPayoutCountUpSteps,
   didCrossRentThreshold,
+  getChapterCutsceneDelayMs,
   getPayoutCelebrationTier
 } from "../systems/animation/PayoutCelebration";
 
@@ -30,6 +31,12 @@ describe("payout celebration spec", () => {
     expect(didCrossRentThreshold(450, 520, 450)).toBe(false);
     expect(didCrossRentThreshold(100, 440, 450)).toBe(false);
     expect(didCrossRentThreshold(0, 10, 0)).toBe(false);
+  });
+
+  it("lets the payout finish before the Act 2 chapter card begins", () => {
+    expect(getChapterCutsceneDelayMs(1, 2, 1180)).toBe(1180);
+    expect(getChapterCutsceneDelayMs(1, 1, 1180)).toBe(0);
+    expect(getChapterCutsceneDelayMs(2, 2, 1180)).toBe(0);
   });
 
   it("summarizes payout, rating motion, tier, and rent milestone", () => {

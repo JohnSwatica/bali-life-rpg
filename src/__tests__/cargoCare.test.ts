@@ -4,7 +4,8 @@ import {
   applyCargoDamage,
   calculateCargoCareAdjustment,
   getCargoBonusMultiplier,
-  isCargoCareEligible
+  isCargoCareEligible,
+  shouldShowCargoCareChip
 } from "../systems/ride/CargoCare";
 
 describe("cargo care", () => {
@@ -64,5 +65,13 @@ describe("cargo care", () => {
     expect(isCargoCareEligible(1, tutorial!, condition)).toBe(false);
     expect(isCargoCareEligible(1, conditioned!, undefined)).toBe(false);
     expect(isCargoCareEligible(1, conditioned!, condition)).toBe(true);
+  });
+
+  it("shows cargo condition only on the delivery ride surface", () => {
+    expect(shouldShowCargoCareChip(82, "world", false)).toBe(true);
+    expect(shouldShowCargoCareChip(82, "interior", false)).toBe(false);
+    expect(shouldShowCargoCareChip(82, "overlay", false)).toBe(false);
+    expect(shouldShowCargoCareChip(82, "world", true)).toBe(false);
+    expect(shouldShowCargoCareChip(null, "world", false)).toBe(false);
   });
 });

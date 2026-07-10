@@ -1,3 +1,5 @@
+import { PAYOUT_FEEL_TUNING } from "../../tuning/FeelTuning";
+
 export type PayoutCelebrationTier = "standard" | "clean" | "great";
 
 export interface PayoutCountUpStep {
@@ -43,7 +45,11 @@ export function getPayoutCelebrationTier(performanceScore: number | undefined): 
   return "standard";
 }
 
-export function buildPayoutCountUpSteps(payout: number, durationMs = 600, stepCount = 8): PayoutCountUpStep[] {
+export function buildPayoutCountUpSteps(
+  payout: number,
+  durationMs: number = PAYOUT_FEEL_TUNING.countUpDurationMs,
+  stepCount: number = PAYOUT_FEEL_TUNING.countUpStepCount
+): PayoutCountUpStep[] {
   const safePayout = Math.max(0, Math.round(payout));
   const safeSteps = Math.max(1, Math.round(stepCount));
   return Array.from({ length: safeSteps + 1 }, (_unused, index) => {
@@ -60,9 +66,22 @@ export function didCrossRentThreshold(previousMoney: number, nextMoney: number, 
   return rentAmount > 0 && previousMoney < rentAmount && nextMoney >= rentAmount;
 }
 
+export function getChapterCutsceneDelayMs(
+  previousAct: number,
+  currentAct: number,
+  celebrationDurationMs: number
+): number {
+  return previousAct < 2 && currentAct >= 2 ? Math.max(0, celebrationDurationMs) : 0;
+}
+
 export function buildPayoutCelebrationSpec(input: PayoutCelebrationInput): PayoutCelebrationSpec {
   const tier = getPayoutCelebrationTier(input.performanceScore);
-  const scalePunch = tier === "great" ? 1.24 : tier === "clean" ? 1.16 : 1.1;
+  const scalePunch =
+    tier === "great"
+      ? PAYOUT_FEEL_TUNING.greatScalePunch
+      : tier === "clean"
+        ? PAYOUT_FEEL_TUNING.cleanScalePunch
+        : PAYOUT_FEEL_TUNING.standardScalePunch;
   return {
     payout: Math.max(0, Math.round(input.payout)),
     starRating: input.starRating,
@@ -71,8 +90,8 @@ export function buildPayoutCelebrationSpec(input: PayoutCelebrationInput): Payou
     ratingMoved: Math.abs(input.nextDriverRating - input.previousDriverRating) >= 0.05,
     rentMilestone: didCrossRentThreshold(input.previousMoney, input.nextMoney, input.rentAmount),
     tier,
-    countUpDurationMs: 600,
-    totalDurationMs: 1180,
+    countUpDurationMs: PAYOUT_FEEL_TUNING.countUpDurationMs,
+    totalDurationMs: PAYOUT_FEEL_TUNING.totalDurationMs,
     scalePunch,
     countUpSteps: buildPayoutCountUpSteps(input.payout)
   };

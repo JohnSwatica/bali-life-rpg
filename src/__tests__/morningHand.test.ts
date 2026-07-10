@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getMorningHandCards, shouldShowMorningHand } from "../systems/hustle/MorningHand";
+import { getMorningHandCards, getMorningRecoveryBody, shouldShowMorningHand } from "../systems/hustle/MorningHand";
 import { createInitialWorldState } from "../systems/WorldState";
 
 function prepareAct1Morning() {
@@ -80,5 +80,16 @@ describe("Act 1 morning hand", () => {
         opportunityId: "no_questions_package:test"
       })
     );
+  });
+
+  it("does not name hidden meters in the Act 1 recovery card", () => {
+    const world = prepareAct1Morning();
+
+    expect(getMorningRecoveryBody(world)).toBe(
+      "If your Energy is shaky, use a warung or cafe station before stacking delivery work."
+    );
+
+    world.life.actProgress.currentAct = 2;
+    expect(getMorningRecoveryBody(world)).toContain("meters");
   });
 });

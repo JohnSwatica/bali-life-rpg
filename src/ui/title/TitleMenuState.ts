@@ -11,6 +11,10 @@ export function createTitleMenuState(hasSave: boolean): TitleMenuState {
   return { hasSave, step: "menu" };
 }
 
+export function shouldAdvanceGameplayBehindMenu(mode: string): boolean {
+  return mode !== "title" && mode !== "pause";
+}
+
 export function transitionTitleMenu(state: TitleMenuState, action: TitleMenuAction): { state: TitleMenuState; effect: TitleMenuEffect } {
   if (action === "continue" && state.hasSave && state.step === "menu") {
     return { state, effect: "continue" };

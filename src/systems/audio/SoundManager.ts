@@ -1,3 +1,5 @@
+import { AUDIO_FEEL_TUNING } from "../../tuning/FeelTuning";
+
 export const AUDIO_MUTED_STORAGE_KEY = "bali-life-rpg.audio-muted";
 
 export const SOUND_CUES = ["pickup", "payout", "uiClick", "toast", "sleep", "ambientLoop", "nearMiss"] as const;
@@ -97,34 +99,34 @@ export class SoundManager {
     }
 
     if (cue === "pickup") {
-      this.playTone(context, 660, 0.08, 0.05, "triangle");
-      this.playTone(context, 990, 0.12, 0.04, "sine", 0.045);
+      this.playTone(context, 660, 0.08, AUDIO_FEEL_TUNING.pickupPrimaryGain, "triangle");
+      this.playTone(context, 990, 0.12, AUDIO_FEEL_TUNING.pickupAccentGain, "sine", 0.045);
       return;
     }
     if (cue === "payout") {
       [523.25, 659.25, 783.99].forEach((frequency, index) => {
-        this.playTone(context, frequency, 0.13, 0.055, "triangle", index * 0.075);
+        this.playTone(context, frequency, 0.13, AUDIO_FEEL_TUNING.payoutGain, "triangle", index * 0.075);
       });
       return;
     }
     if (cue === "uiClick") {
-      this.playTone(context, 420, 0.035, 0.025, "square");
+      this.playTone(context, 420, 0.035, AUDIO_FEEL_TUNING.uiClickGain, "square");
       return;
     }
     if (cue === "toast") {
-      this.playTone(context, 740, 0.065, 0.027, "sine");
-      this.playTone(context, 555, 0.09, 0.018, "sine", 0.035);
+      this.playTone(context, 740, 0.065, AUDIO_FEEL_TUNING.toastPrimaryGain, "sine");
+      this.playTone(context, 555, 0.09, AUDIO_FEEL_TUNING.toastSecondaryGain, "sine", 0.035);
       return;
     }
     if (cue === "sleep") {
       [392, 329.63, 261.63].forEach((frequency, index) => {
-        this.playTone(context, frequency, 0.42, 0.035, "sine", index * 0.08);
+        this.playTone(context, frequency, 0.42, AUDIO_FEEL_TUNING.sleepGain, "sine", index * 0.08);
       });
       return;
     }
     if (cue === "nearMiss") {
-      this.playTone(context, 880, 0.045, 0.03, "sine");
-      this.playTone(context, 620, 0.07, 0.018, "triangle", 0.03);
+      this.playTone(context, 880, 0.045, AUDIO_FEEL_TUNING.nearMissPrimaryGain, "sine");
+      this.playTone(context, 620, 0.07, AUDIO_FEEL_TUNING.nearMissSecondaryGain, "triangle", 0.03);
     }
   }
 
@@ -170,7 +172,7 @@ export class SoundManager {
     }
 
     const master = context.createGain();
-    master.gain.setValueAtTime(0.018, context.currentTime);
+    master.gain.setValueAtTime(AUDIO_FEEL_TUNING.ambientMasterGain, context.currentTime);
     master.connect(context.destination);
 
     const low = context.createOscillator();
@@ -183,7 +185,7 @@ export class SoundManager {
     shimmer.type = "triangle";
     shimmer.frequency.setValueAtTime(392, context.currentTime);
     const shimmerGain = context.createGain();
-    shimmerGain.gain.setValueAtTime(0.006, context.currentTime);
+    shimmerGain.gain.setValueAtTime(AUDIO_FEEL_TUNING.ambientShimmerGain, context.currentTime);
     shimmer.connect(shimmerGain);
     shimmerGain.connect(master);
     shimmer.start();
