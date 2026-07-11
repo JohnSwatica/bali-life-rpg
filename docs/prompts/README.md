@@ -64,6 +64,12 @@ desired (disjoint files, separate branches).
 
 - One branch + one PR per packet, PR tagged `[<PACKET ID>]`.
 - `npm test -- --run` and `npm run build` green before the PR.
+- **`MAP DELTA:` header line is mandatory (CEO directive 2026-07-11)** — one
+  sentence naming the small, contiguous map increment this packet adds, or
+  `none — <reason>`. Increments follow the Map Growth Rule in `AGENTS.md`
+  (≤ one small parcel, wired into bounds/collision/minimap/tests, before/after
+  screenshots, one line appended to `docs/MAP_CHANGELOG.md`). Big one-off map
+  dumps are banned; the world grows by drip so John can track and critique it.
 - STATE.md bullet always; DECISIONS.md entry when a product/architecture call
   was made. AGENTS.md hard boundaries apply unchanged (no backend, no AI calls,
   no real commerce, no Act 3 sim, no copied assets).

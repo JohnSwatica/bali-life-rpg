@@ -65,10 +65,18 @@ actually reach it.
 
 ## What stays frozen until the gate opens
 
-Unchanged from the review's freeze list: the six-district map, minigames beyond
-ride/repair/one social, any sixth guidance surface, crafting, the OSM pipeline,
-Act 3 business sim (still CEO-locked per `AGENTS.md`), Act 4/5 content, and any
-further design-doc scope expansion.
+Unchanged from the review's freeze list: the six-district map **as a one-shot
+build**, minigames beyond ride/repair/one social, any sixth guidance surface,
+crafting, the OSM pipeline, Act 3 business sim (still CEO-locked per
+`AGENTS.md`), Act 4/5 content, and any further design-doc scope expansion.
+
+> **CEO amendment, 2026-07-11 — incremental map growth is authorized.** Per
+> the Map Growth Rule in `AGENTS.md`, packets now grow the map in small,
+> contiguous, reviewable increments (one parcel per packet, logged in
+> `docs/MAP_CHANGELOG.md`). This replaces the blanket map freeze: what remains
+> banned is the big-bang expansion — multi-district dumps, detached areas, or
+> any single packet exceeding the small-parcel bound. Rationale: John can
+> track and critique growth per-increment; he cannot review a 2-3x map dump.
 
 ## After the gate
 

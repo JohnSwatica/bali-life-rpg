@@ -4,6 +4,7 @@ PROJECT:   Bali Life RPG
 TARGET:    Codex
 REASONING: high — spatial/read-model + render layout affecting how the whole world parses; camera, label culling, marker validity, and terrain legibility interact and can regress navigation
 TITLE:     Street legibility & layout pass — declutter labels, kill orphan markers, distinguish walkable vs. building, verify paddies, tighten camera
+MAP DELTA: a small walkable paddy-edge path west of the strip near The Corner (first increment under the 2026-07-11 Map Growth Rule; see item 7)
 PR TAG: [RPG-20260708-06]
 
 ===== BEGIN PACKET RPG-20260708-06 =====
@@ -58,16 +59,27 @@ WORK ITEMS (each is a distinct, verifiable fix)
    viewport bounds set. This is a tuning nudge to the existing camera
    constants, not a new camera system; state the before/after zoom values.
 
-6. LANDMARK LLEGIBILITY (aesthetic, light). Give the player one persistent
+6. LANDMARK LEGIBILITY (aesthetic, light). Give the player one persistent
    navigational landmark visible above the rooftops from most of the strip
    (the GDD names the banyan / a temple gate / the FINNS tower). One authored
    tall prop is enough for this packet — enough that the player can orient by
    world, not only by arrow.
 
+7. MAP INCREMENT (per the Map Growth Rule in AGENTS.md, CEO directive
+   2026-07-11). Open ONE small walkable parcel: a paddy-edge path west of the
+   strip near The Corner/Canggu Station end — a narrow dirt strip along the
+   paddies (roughly a few tiles wide, well under 10% of current playable
+   area), contiguous with the existing sidewalk, dead-ending at the yellowing
+   paddy patch so the player can walk up to the game's first seeded mystery
+   and LOOK at it. Wire it into `playableBounds`, collision, and the minimap;
+   extend the layout-invariant tests to cover it; append one line to
+   `docs/MAP_CHANGELOG.md` with a proof screenshot path. No venue, NPC,
+   quest, or economy content on it yet — it is a place, not a system.
+
 HARD CONSTRAINTS
-- No venue coordinates, collision rects, playable bounds, economy, quests, or
-  save schema change. Items 1/3/4/5/6 are presentation; item 2 is
-  marker-validity logic only.
+- Outside item 7's declared parcel: no venue coordinates, collision rects,
+  playable bounds, economy, quests, or save schema change. Items 1/3/4/5/6
+  are presentation; item 2 is marker-validity logic only.
 - All art remains original procedural generation in code (no imported
   assets). Screenshots for every visual item under
   tmp/street-legibility-2026-07-08/.
@@ -76,16 +88,18 @@ HARD CONSTRAINTS
 
 DEFINITION OF DONE
 - `npm test -- --run` + `npm run build` pass; new tests for item 2 (and item 4
-  if testable) included.
-- Before/after screenshots for items 1, 3, 4, 5, 6 at 1280x800 in the PR.
+  if testable) included, plus bounds/invariant coverage for item 7's parcel.
+- Before/after screenshots for items 1, 3, 4, 5, 6 at 1280x800 in the PR, and
+  a walk-onto-the-parcel screenshot for item 7; `docs/MAP_CHANGELOG.md` gains
+  its first increment line.
 - A one-paragraph self-assessment in the PR rating the street against GTA:CW
   pillar 2 (dense, legible, landmark-navigable) after the pass.
 - STATE.md bullet; DECISIONS.md entry for the camera-zoom change (a feel
   decision) and the walkable/building treatment.
 
 DO NOT
-- Do not add new venues, districts, or map area — this is legibility on the
-  existing street only (six-district map stays frozen).
+- Do not add new venues or districts, and no map area beyond item 7's single
+  declared parcel — one increment per packet, per the Map Growth Rule.
 - Do not retune anything outside camera zoom and label/marker/terrain
   presentation.
 - Do not remove the arrow/objective guidance; landmarks supplement it.

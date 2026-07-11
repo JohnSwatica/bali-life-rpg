@@ -4,6 +4,7 @@ PROJECT:   Bali Life RPG
 TARGET:    Codex
 REASONING: high — test infrastructure that drives real input through the whole core loop and touches the debug-snapshot surface; must be robust across interiors/mode-switches or it gives false confidence
 TITLE:     Automated smoke-playthrough harness in-repo + make the ride leg observable (no retuning)
+MAP DELTA: none — pure test infrastructure; no world geometry touched (ledger unaffected)
 PR TAG: [RPG-20260708-07]
 
 ===== BEGIN PACKET RPG-20260708-07 =====

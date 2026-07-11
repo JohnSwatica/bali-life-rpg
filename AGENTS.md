@@ -56,6 +56,17 @@ Near-term priority is **Act 0 / Act 1 playability and tuning**, then making exis
 - OSM data is retained for coordinates/sequencing/reference only. Do not make runtime map network calls.
 - Active work queue: `docs/prompts/` packets RPG-20260706-01…09 (see `docs/prompts/README.md`), then STOP at `docs/PHASE3_REEVALUATION_GATE.md` — the gate needs John, not more packets.
 
+## Map Growth Rule (CEO directive, 2026-07-11)
+
+The map grows a little with (almost) every packet, and never in big dumps. John tracks progress and spots problems per-increment; a 2-3x one-off map expansion is impossible to review and is banned.
+
+- Every packet header carries a `MAP DELTA:` line — either one sentence naming the small increment it adds, or `none — <reason>` for pure bug-fix/infra packets. The line is mandatory either way, so the ledger has no silent gaps.
+- An increment is SMALL and CONTIGUOUS: one parcel per packet (a side alley, one venue's yard, a lane stub, a paddy-edge path, one beach pocket) — roughly ≤10% of current playable area, always attached to existing geometry, never a detached island.
+- An increment is REAL, not decorative: wired into `playableBounds`, collision, minimap, and layout-invariant tests, with a before/after screenshot pair in the PR.
+- An increment SERVES something already in the game or the Story Bible (a delivery route, an NPC routine, a story seed like the yellowing paddy) — growth never outpaces content.
+- Every increment appends one line to `docs/MAP_CHANGELOG.md` (date, packet ID, what grew, proof screenshot path). That file is the CEO's tracking ledger; keep it current.
+- Still banned: multi-district one-shot builds, detached areas, and any single packet growing the map beyond the small-parcel bound. The GDD's six-district vision is reached by drip, not by dump.
+
 ## Hard Boundaries
 
 Do not add these unless the user explicitly starts that phase:
