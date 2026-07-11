@@ -3,17 +3,18 @@ import { activeStreetTemplate, curatedVenueNodes, venueMapNodes } from "../data/
 import { deliveryDefinitions } from "../data/deliveries";
 import { interiorDefinitions } from "../data/interiors";
 import { authoredPlayableBounds, authoredPlayablePoints } from "../data/playableBounds";
-import { paddyFieldPatches, villaGateDressings } from "../data/worldDressing";
+import { collisionRects, WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
+import { paddyFieldPatches, streetLandmarks, villaGateDressings, walkableStreetParcels } from "../data/worldDressing";
 import { stationVisualDefinitions } from "../data/stationVisuals";
 import { getVenuePoint } from "../data/layoutLookup";
-import { WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
 import { paddyFieldState } from "../systems/map/PaddyFields";
 import { clampPointToPlayableBounds, isPointInsidePlayableBounds } from "../systems/map/PlayableBounds";
 import {
   buildStreetTileData,
   getEnterableStreetVenueIds,
   getPermanentlySignedVenueIds,
-  getStreetSignPrimaryText
+  getStreetSignPrimaryText,
+  selectVisibleStreetSignIds
 } from "../systems/map/StreetRenderer";
 import {
   createStreetSlots,
@@ -125,6 +126,23 @@ describe("authored street layout invariants", () => {
     expect(getPermanentlySignedVenueIds(activeStreetTemplate).has("canggu_station")).toBe(true);
   });
 
+  it("caps permanent signboards to the three nearest venues inside the legibility radius", () => {
+    const visible = selectVisibleStreetSignIds(
+      [
+        { venueId: "nearest", x: 10, y: 0 },
+        { venueId: "second", x: 20, y: 0 },
+        { venueId: "third", x: 30, y: 0 },
+        { venueId: "fourth", x: 40, y: 0 },
+        { venueId: "outside", x: 500, y: 0 }
+      ],
+      { x: 0, y: 0 },
+      3,
+      100
+    );
+
+    expect(visible).toEqual(["nearest", "second", "third"]);
+  });
+
   it("marks street venues with interiors as enterable doors", () => {
     const enterableStreetVenueIds = getEnterableStreetVenueIds(activeStreetTemplate);
     const interiorVenueIds = new Set(Object.values(interiorDefinitions).map((interior) => interior.venueId));
@@ -184,6 +202,54 @@ describe("authored street layout invariants", () => {
 
     expect(states.filter(([, state]) => state === "yellowing").map(([id]) => id)).toEqual(["corner_yellowing_paddy"]);
     expect(states.filter(([, state]) => state === "green").length).toBe(paddyFieldPatches.length - 1);
+  });
+
+  it("keeps every paddy patch and the persistent landmark inside playable world bounds", () => {
+    for (const patch of paddyFieldPatches) {
+      const right = (patch.tileX + patch.widthTiles) * TILE_SIZE;
+      const bottom = (patch.tileY + patch.heightTiles) * TILE_SIZE;
+      expect(right).toBeGreaterThan(authoredPlayableBounds.minX);
+      expect(patch.tileX * TILE_SIZE).toBeLessThan(authoredPlayableBounds.maxX);
+      expect(bottom).toBeGreaterThan(authoredPlayableBounds.minY);
+      expect(patch.tileY * TILE_SIZE).toBeLessThan(authoredPlayableBounds.maxY);
+    }
+
+    expect(streetLandmarks).toContainEqual(
+      expect.objectContaining({ id: "finns_recreation_tower", templateId: activeStreetTemplate.id })
+    );
+    for (const landmark of streetLandmarks) {
+      expect(isPointInsidePlayableBounds(authoredPlayableBounds, landmark)).toBe(true);
+    }
+  });
+
+  it("connects the Corner sidewalk to the yellowing paddy with one unobstructed walkable parcel", () => {
+    const path = walkableStreetParcels.find((parcel) => parcel.id === "corner_paddy_edge_path");
+    const paddy = paddyFieldPatches.find((patch) => patch.id === "corner_yellowing_paddy");
+
+    expect(path).toBeDefined();
+    expect(paddy).toBeDefined();
+    if (!path || !paddy) return;
+
+    const pathRect: Rect = {
+      id: path.id,
+      x: path.tileX * TILE_SIZE,
+      y: path.tileY * TILE_SIZE,
+      width: path.widthTiles * TILE_SIZE,
+      height: path.heightTiles * TILE_SIZE
+    };
+    expect(pathRect.x).toBe((paddy.tileX + paddy.widthTiles) * TILE_SIZE);
+    expect(path.tileX + path.widthTiles - 1).toBe(
+      activeStreetTemplate.roadLeftTile - activeStreetTemplate.sidewalkTiles
+    );
+    expect(isPointInsidePlayableBounds(authoredPlayableBounds, { x: pathRect.x, y: pathRect.y })).toBe(true);
+    expect(
+      isPointInsidePlayableBounds(authoredPlayableBounds, {
+        x: pathRect.x + pathRect.width,
+        y: pathRect.y + pathRect.height
+      })
+    ).toBe(true);
+    expect(collisionRects.some((collision) => overlaps(pathRect, collision))).toBe(false);
+    expect(activeStreetTemplate.slots.some((slot) => overlaps(pathRect, slotRect(slot)))).toBe(false);
   });
 
   it("keeps villa gate dressing aligned to existing villa delivery dropoff points", () => {

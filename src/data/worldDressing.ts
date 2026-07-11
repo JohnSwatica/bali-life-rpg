@@ -28,6 +28,24 @@ export interface VillaGateDressing {
   y: number;
 }
 
+export interface StreetLandmarkDefinition {
+  id: string;
+  templateId: string;
+  kind: "finns_tower";
+  x: number;
+  y: number;
+}
+
+export interface WalkableStreetParcel {
+  id: string;
+  templateId: string;
+  kind: "dirt_path";
+  tileX: number;
+  tileY: number;
+  widthTiles: number;
+  heightTiles: number;
+}
+
 export const paddyFieldPatches: PaddyFieldPatch[] = [
   {
     id: "corner_yellowing_paddy",
@@ -89,4 +107,26 @@ export const streetTextureProps: StreetTextureProp[] = [
 export const villaGateDressings: VillaGateDressing[] = [
   { deliveryId: "first_baked_villa_delivery", dropoffId: "intro_villa_lane", x: 1488, y: 144 },
   { deliveryId: "milk_madu_brunch_bag", dropoffId: "upper_lane_villa", x: 2014, y: 604 }
+];
+
+export const streetLandmarks: StreetLandmarkDefinition[] = [
+  {
+    id: "finns_recreation_tower",
+    templateId: "jl_pantai_berawa",
+    kind: "finns_tower",
+    x: 2304,
+    y: 608
+  }
+];
+
+export const walkableStreetParcels: WalkableStreetParcel[] = [
+  {
+    id: "corner_paddy_edge_path",
+    templateId: "jl_pantai_berawa",
+    kind: "dirt_path",
+    tileX: 46,
+    tileY: 5,
+    widthTiles: 10,
+    heightTiles: 1
+  }
 ];

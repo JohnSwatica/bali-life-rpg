@@ -24,4 +24,4 @@ walkable) pending RPG-20260708-06 verification.
 
 ## Increments
 
-- (none yet — first entry lands with RPG-20260708-06)
+- 2026-07-11 · RPG-20260708-06 · Added the 10x1-tile Corner paddy-edge dirt path between the existing sidewalk and yellowing field. · proof: `tmp/street-legibility-2026-07-11/04-after-paddy-path-desktop.png`

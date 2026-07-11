@@ -1,25 +1,42 @@
 import { describe, expect, it } from "vitest";
+import { opportunityTemplates } from "../data/opportunities";
+import { getOpportunityTemplate } from "../systems/opportunities/OpportunityEngine";
 import {
   getEventWorldScenes,
   getFieldFirstDiscoveryAudit,
   getOpportunityWorldScenes,
-  getVisibleWorldScenes
+  getVisibleWorldScenes,
+  resolveWorldSceneVenueAnchor
 } from "../systems/world/WorldScenes";
 import { createInitialWorldState } from "../systems/WorldState";
 import type { LiveOpportunity, WorldState } from "../types";
 
 function addLiveOpportunity(world: WorldState, templateId: string, status: LiveOpportunity["status"] = "live"): void {
+  const template = getOpportunityTemplate(templateId);
   world.opportunities.live.push({
     id: `${templateId}:test`,
     templateId,
     status,
     spawnedAt: 1,
     expiresAt: 120,
-    locationVenueId: "test_venue"
+    locationVenueId: template?.locationVenueId ?? "missing_venue"
   });
 }
 
 describe("world-surfaced opportunity scenes", () => {
+  it("suppresses markers whose venue does not resolve to an authored building", () => {
+    const world = createInitialWorldState();
+    addLiveOpportunity(world, "milk_madu_lunch_rush_shift");
+    world.opportunities.live[0].locationVenueId = "missing_grass_marker";
+
+    expect(resolveWorldSceneVenueAnchor("missing_grass_marker")).toBeUndefined();
+    expect(getOpportunityWorldScenes(world)).toEqual([]);
+  });
+
+  it("keeps every authored opportunity anchored to a real street building", () => {
+    expect(opportunityTemplates.every((template) => Boolean(resolveWorldSceneVenueAnchor(template.locationVenueId)))).toBe(true);
+  });
+
   it("renders gigs as help-wanted scenes with a waving actor", () => {
     const world = createInitialWorldState();
     addLiveOpportunity(world, "milk_madu_lunch_rush_shift");

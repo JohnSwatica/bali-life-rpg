@@ -18,7 +18,7 @@ Current durable truth:
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test -- --run` = 239 passing, 0 skipped; `npm run build` passes; RPG-20260708-04/05's Ibu, interior exit, foot-only scooter, BAKED pickup, remount, and villa handoff flow was browser-verified on `feat/rpg-20260706-09-rio-race`, 2026-07-11. The earlier title/pause six-viewport and touch audits remain valid; physical iOS/Android verification remains pending.
+- Current verification: `npm test -- --run` = 245 passing, 0 skipped; `npm run build` passes; RPG-20260708-04/05's Ibu, interior exit, foot-only scooter, BAKED pickup, remount, and villa handoff flow and RPG-20260708-06's street legibility/map increment were browser-verified on `feat/rpg-20260706-09-rio-race`, 2026-07-11. The earlier title/pause six-viewport and touch audits remain valid; physical iOS/Android verification remains pending.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Packet execution status (updated 2026-07-08):
@@ -28,7 +28,7 @@ Packet execution status (updated 2026-07-08):
 - RPG-20260708-01/02/03 are complete (stranger readiness, mobile touch playability, cross-packet coherence/tuning consolidation). Test suite now 234 green.
 - **Automated playthrough done (2026-07-08, 2nd session):** Claude drove the build headlessly (real WASD/E keypresses via puppeteer-core + system Chrome, reading the debug snapshot; screenshots in `tmp/playtest-2026-07-08/`). Write-up: `docs/AI_PLAYTHROUGH_2026-07-08.md`. Verdict — **0 console errors (nothing crashes), but Act 0 onboarding blocks a new player in the first 90 seconds:** the first objective marker points at the empty Warung counter instead of Ibu Sari (BUG-1), and after the scooter grant you're stranded inside with no exit cue (BUG-2). Ride model / payout juice / meter-diet are present and working. This is NOT a human playtest and does NOT satisfy GATE v2.
 - **Test infra added:** the `__BALI_LIFE_DEBUG__` snapshot in `GameScene.ts` now exposes `objectiveTargets` and `interiorExit` (world coords) so a harness can navigate. Keep these; RPG-20260708-07 promotes the harness into `scripts/`.
-- **Active queue (playthrough bug-fixes):** RPG-20260708-04/05 are complete. Next: `docs/prompts/RPG-20260708-06` (street legibility & layout: declutter, orphan markers, walkable-vs-building, verify paddies, camera, landmark) → `-07` (in-repo smoke-playthrough + ride telemetry, no retuning). Both are bug-fix/polish/layout/test-infra on existing systems — GATE v2 compliant. Index + deps in `docs/prompts/README.md`.
+- **Active queue (playthrough bug-fixes):** RPG-20260708-04/05/06 are complete. Next: `docs/prompts/RPG-20260708-07` (in-repo smoke-playthrough + ride telemetry, no retuning). This is test infrastructure over existing systems and remains GATE v2 compliant. Index + deps in `docs/prompts/README.md`.
 - `docs/AI_WALKTHROUGH_NOTES_2026-07-06.md` — Claude's earlier STATIC pass; superseded as a playthrough by the 2026-07-08 driven run.
 
 Canonical act order, set in stone for near-term work:
@@ -40,7 +40,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: (1) run RPG-20260708-06, then `-07`; (2) John merges PR #1 for `feat/rpg-20260706-09-rio-race` (publishes the whole stack to the public URL); (3) John shares the URL with 3-5 people (ready-to-paste message in the 2026-07-08 session notes); (4) real-human feedback lands in `PLAYTEST_01.md` and GATE v2 exits. Under GATE v2, do **not** write or build new systems/acts/districts/minigames/content — and never multiplayer, backend, AI, real commerce, Google data, or the Act 3 management sim — until that feedback exists. Bug-fix/polish/layout/test-infra on existing systems (the remaining 06/07 batch) is allowed.
+Immediate next move: (1) run RPG-20260708-07; (2) John merges PR #1 for `feat/rpg-20260706-09-rio-race` (publishes the whole stack to the public URL); (3) John shares the URL with 3-5 people (ready-to-paste message in the 2026-07-08 session notes); (4) real-human feedback lands in `PLAYTEST_01.md` and GATE v2 exits. Under GATE v2, do **not** write or build new systems/acts/districts/minigames/content — and never multiplayer, backend, AI, real commerce, Google data, or the Act 3 management sim — until that feedback exists. Bug-fix/polish/layout/test-infra on existing systems (the remaining 07 packet) is allowed.
 
 ## Project
 
@@ -55,6 +55,8 @@ Immediate next move: (1) run RPG-20260708-06, then `-07`; (2) John merges PR #1 
 - Public URL: `https://johnswatica.github.io/bali-life-rpg/` (GitHub Pages, deploys on push to `main`).
 
 ## What Was Added Recently
+
+- RPG-20260708-06 is complete on `feat/rpg-20260706-09-rio-race`: street labels now cull to the nearest three; field/world markers require a real authored venue slot and map node; building foundations read distinctly from walkable ground; street zoom tightened from desktop/mobile `1.60/1.28` to `1.76/1.38`; and one procedural FINNS tower supplies a tall landmark. The paddy audit corrected the earlier diagnosis: the fields already rendered, but the old harness never framed them. The first Map Growth Rule increment adds a tested 10x1-tile dirt path from the sidewalk to the yellowing Corner paddy, including minimap and playable-bounds wiring. Proof and assessment: `docs/STREET_LEGIBILITY_2026-07-11.md`; suite increased from 239 to 245 tests.
 
 - RPG-20260708-05 is complete on `feat/rpg-20260706-09-rio-race`: `RideMode.ts` now separates scooter ownership from mount eligibility. Interiors force and render foot mode; scooter grants/rentals/upgrades no longer force mounting; world-mode BIKE remains the explicit remount action after leaving. The same guard protects movement speed, sprite visibility, race/group/dev force-mount paths, and the debug snapshot exposes `interiorTransitioning` for reliable fade-aware automation. The live Act 0 run covered Ibu grant → outdoor remount → BAKED auto-dismount and pickup → outdoor remount → villa completion. Proof is in `docs/RIDE_MODE_PROOF_2026-07-11.md`; the suite increased from 236 to 239 tests.
 

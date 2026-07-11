@@ -21,6 +21,7 @@ import { collisionRects, pickupDefinitions, WORLD_HEIGHT, WORLD_WIDTH } from "..
 import { npcDefinitions } from "../data/npcs";
 import { questDefinitions } from "../data/quests";
 import { shopDefinitions } from "../data/shops";
+import { walkableStreetParcels } from "../data/worldDressing";
 import { getDeliveryCondition, getDeliveryDefinition } from "../data/deliveries";
 import { getStreetVenueFlavor } from "../data/streetVenueFlavors";
 import { addItem, formatInventory, getQuantity, removeItem } from "../systems/Inventory";
@@ -62,6 +63,7 @@ import {
   getFieldFirstDiscoveryAudit,
   getOpportunityWorldScenes,
   getRivalRaceWorldScenes,
+  resolveWorldSceneVenueAnchor,
   type EventWorldScene,
   type FieldFirstDiscoveryAudit,
   type OpportunityWorldScene,
@@ -70,7 +72,12 @@ import {
 import { getMembershipDebugState, getSocialGroupsForVenue, isSocialGroupJoined } from "../systems/groups/GroupRegistry";
 import { PLAYER_UNIT, POKEMON_SCALE } from "../systems/map/PlayerUnitScale";
 import { getPresentedRoads, getVenueSnapRoads } from "../systems/map/RoadPresentation";
-import { getPermanentlySignedVenueIds, renderStreetTemplate } from "../systems/map/StreetRenderer";
+import {
+  getPermanentlySignedVenueIds,
+  renderStreetTemplate,
+  selectVisibleStreetSignIds,
+  type StreetSignHandle
+} from "../systems/map/StreetRenderer";
 import { STREET_CAMERA, TILE_SIZE } from "../systems/map/TileStreetScale";
 import { clampPointToPlayableBounds } from "../systems/map/PlayableBounds";
 import { scaleDistance, scalePoint } from "../systems/map/WorldScale";
@@ -642,6 +649,7 @@ export class GameScene extends Phaser.Scene {
   private godmodePanel?: Phaser.GameObjects.Container;
   private movementSpeedMultiplier = 1;
   private discoveryLabels: Array<{ subjectType: "area" | "venue"; id: string; label: Phaser.GameObjects.Text }> = [];
+  private streetSigns: StreetSignHandle[] = [];
   private unsubscribeNetwork?: () => void;
   private networkPushTimer = 0;
   private autosaveTimer = 0;
@@ -811,6 +819,7 @@ export class GameScene extends Phaser.Scene {
       this.updateRideCheckpoints();
     }
     this.updateMapDiscovery();
+    this.updateStreetSignVisibility();
     this.updateTraffic(delta);
     this.updateWantedOffenders(delta);
     this.updateGroupLine(delta);
@@ -837,7 +846,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawNeighborhood(): void {
-    renderStreetTemplate(this, activeStreetTemplate);
+    this.streetSigns = renderStreetTemplate(this, activeStreetTemplate).signs;
     this.opportunityMarkerLayer = this.add.graphics().setDepth(210);
     this.deliveryMarkerLayer = this.add.graphics().setDepth(211);
     this.rivalRaceMarkerLayer = this.add.graphics().setDepth(211.5);
@@ -6536,6 +6545,24 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private updateStreetSignVisibility(): void {
+    const maxDistance = scaleDistance(250);
+    const visibleIds = new Set(
+      selectVisibleStreetSignIds(
+        this.streetSigns.map(({ venueId, label }) => ({ venueId, x: label.x, y: label.y })),
+        this.player,
+        3,
+        maxDistance
+      )
+    );
+    for (const { venueId, label } of this.streetSigns) {
+      const visible = visibleIds.has(venueId) && !this.activeInteriorId;
+      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, label.x, label.y);
+      label.setVisible(visible);
+      label.setAlpha(visible ? Phaser.Math.Clamp(1 - distance / maxDistance, 0.48, 1) : 0);
+    }
+  }
+
   private getOpportunityTemplateSafe(templateId: string) {
     return getOpportunityTemplate(templateId);
   }
@@ -6593,7 +6620,7 @@ export class GameScene extends Phaser.Scene {
     this.opportunityMarkerZones = [];
 
     for (const opportunity of this.world.opportunities.live) {
-      const node = venueMapNodes.find((candidate) => candidate.venueId === opportunity.locationVenueId);
+      const node = resolveWorldSceneVenueAnchor(opportunity.locationVenueId);
       const template = opportunity.templateId ? this.getOpportunityTemplateSafe(opportunity.templateId) : undefined;
       if (!node || !template) {
         continue;
@@ -6680,7 +6707,7 @@ export class GameScene extends Phaser.Scene {
     const phase = Date.now() / 1000;
 
     for (const scene of getOpportunityWorldScenes(this.world)) {
-      const node = venueMapNodes.find((candidate) => candidate.venueId === scene.venueId);
+      const node = resolveWorldSceneVenueAnchor(scene.venueId);
       if (!node) {
         continue;
       }
@@ -6691,7 +6718,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     for (const scene of getRivalRaceWorldScenes(this.world)) {
-      const node = venueMapNodes.find((candidate) => candidate.venueId === scene.venueId);
+      const node = resolveWorldSceneVenueAnchor(scene.venueId);
       if (!node) {
         continue;
       }
@@ -6700,7 +6727,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     for (const scene of getEventWorldScenes(this.world)) {
-      const node = venueMapNodes.find((candidate) => candidate.venueId === scene.venueId);
+      const node = resolveWorldSceneVenueAnchor(scene.venueId);
       if (!node) {
         continue;
       }
@@ -7004,6 +7031,19 @@ export class GameScene extends Phaser.Scene {
       const width = entry.visualClass === "main" ? 2.3 : entry.visualClass === "secondary" ? 1.5 : 0.9;
       const color = entry.visualClass === "main" ? 0xe5d08f : entry.visualClass === "secondary" ? 0xb9b49d : 0x7c897b;
       this.strokeMinimapPath(ctx, entry.road.points, layout, width, color, entry.visualClass === "lane" ? 0.58 : 0.86);
+    }
+
+    for (const parcel of walkableStreetParcels) {
+      this.fillRoundedRect(
+        ctx,
+        layout.offsetX + parcel.tileX * TILE_SIZE * layout.scale,
+        layout.offsetY + parcel.tileY * TILE_SIZE * layout.scale,
+        parcel.widthTiles * TILE_SIZE * layout.scale,
+        Math.max(1.5, parcel.heightTiles * TILE_SIZE * layout.scale),
+        1,
+        0xd1a968,
+        0.9
+      );
     }
 
     this.drawMinimapDiscoveredVenues(ctx, layout);
@@ -7844,7 +7884,7 @@ export class GameScene extends Phaser.Scene {
 
     const venueOffsets = new Map<string, number>();
     for (const indicator of indicators.venues) {
-      const node = venueMapNodes.find((candidate) => candidate.venueId === indicator.venueId);
+      const node = resolveWorldSceneVenueAnchor(indicator.venueId);
       if (!node) {
         continue;
       }

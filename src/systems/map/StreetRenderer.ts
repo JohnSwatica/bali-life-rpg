@@ -2,7 +2,13 @@ import Phaser from "phaser";
 import type { CuratedCategory } from "../../data/curatedVenues";
 import { interiorDefinitions } from "../../data/interiors";
 import { getStationVisualForVenue, type StationVisualDefinition } from "../../data/stationVisuals";
-import { paddyFieldPatches, streetTextureProps, villaGateDressings } from "../../data/worldDressing";
+import {
+  paddyFieldPatches,
+  streetLandmarks,
+  streetTextureProps,
+  villaGateDressings,
+  walkableStreetParcels
+} from "../../data/worldDressing";
 import type { MapFeatureDefinition, RoadPathDefinition } from "../../data/berawaLayout";
 import {
   TILESET_KEY,
@@ -27,7 +33,19 @@ export interface StreetRenderHandle {
   layer: Phaser.Tilemaps.TilemapLayer;
   buildings: Phaser.GameObjects.Graphics;
   props: Phaser.GameObjects.Graphics;
-  signs: Phaser.GameObjects.Text[];
+  landmarks: Phaser.GameObjects.Graphics;
+  signs: StreetSignHandle[];
+}
+
+export interface StreetSignHandle {
+  venueId: string;
+  label: Phaser.GameObjects.Text;
+}
+
+export interface StreetSignCandidate {
+  venueId: string;
+  x: number;
+  y: number;
 }
 
 export interface StreetBuildingRect {
@@ -80,9 +98,12 @@ export function renderStreetTemplate(scene: Phaser.Scene, template: StreetTempla
   const buildings = scene.add.graphics().setDepth(-90);
   drawStreetBuildings(buildings, template);
 
+  const landmarks = scene.add.graphics().setDepth(-78);
+  drawStreetLandmarks(landmarks, template);
+
   const signs = createStreetSigns(scene, template);
 
-  return { map, layer, buildings, props, signs };
+  return { map, layer, buildings, props, landmarks, signs };
 }
 
 export function buildStreetTileData(template: StreetTemplate): number[][] {
@@ -278,30 +299,33 @@ function drawStreetBuildings(g: Phaser.GameObjects.Graphics, template: StreetTem
     const stationVisual = getStationVisualForVenue(rect.slot.venueId, rect.slot.category);
     const palette = stationVisual?.palette ?? buildingPalette(rect.slot.category, rect.slot.isLandmark, hashString(rect.slot.venueId));
     const isEnterable = isStreetBuildingEnterable(rect.slot);
-    const shadowOffset = 4;
+    const shadowOffset = 7;
     drawEntranceMat(g, rect, palette, isEnterable);
-    g.fillStyle(0x24312a, 0.22);
-    g.fillRoundedRect(rect.x + shadowOffset, rect.y + shadowOffset, rect.width, rect.height, 3);
+    g.fillStyle(0x101820, 0.34);
+    g.fillRoundedRect(rect.x + shadowOffset, rect.y + shadowOffset, rect.width, rect.height, 5);
+    g.fillStyle(0x253a35, 0.5);
+    g.fillRoundedRect(rect.x - 2, rect.y - 2, rect.width + 4, rect.height + 4, 5);
     g.fillStyle(palette.wall, 1);
-    g.fillRoundedRect(rect.x, rect.y + rect.height * 0.32, rect.width, rect.height * 0.68, 3);
+    g.fillRoundedRect(rect.x + 2, rect.y + rect.height * 0.32, rect.width - 4, rect.height * 0.66, 3);
     g.fillStyle(palette.roof, 1);
-    g.fillRoundedRect(rect.x - 3, rect.y, rect.width + 6, rect.height * 0.48, 4);
+    g.fillRoundedRect(rect.x - 4, rect.y - 3, rect.width + 8, rect.height * 0.5, 5);
     g.fillStyle(palette.roofLight, 0.72);
     g.fillRect(rect.x + 6, rect.y + 7, Math.max(8, rect.width - 12), 5);
+    g.lineStyle(2, 0x101820, 0.28);
+    g.strokeRoundedRect(rect.x - 3, rect.y - 2, rect.width + 6, rect.height + 3, 5);
     drawRoadFacingFacade(g, rect, palette, isEnterable);
     drawCategoryDetails(g, rect, palette, stationVisual);
   }
 }
 
-function createStreetSigns(scene: Phaser.Scene, template: StreetTemplate): Phaser.GameObjects.Text[] {
+function createStreetSigns(scene: Phaser.Scene, template: StreetTemplate): StreetSignHandle[] {
   return getStreetBuildingRects(template)
     .filter((rect) => rect.slot.venueId && rect.slot.label)
     .map((rect) => {
       const stationVisual = getStationVisualForVenue(rect.slot.venueId, rect.slot.category);
       const palette = stationVisual?.palette ?? buildingPalette(rect.slot.category, rect.slot.isLandmark, hashString(rect.slot.venueId ?? rect.slot.id));
       const sign = signPosition(rect);
-      return scene.add
-        .text(sign.x, sign.y, getStreetSignPrimaryText(rect.slot), {
+      const label = scene.add.text(sign.x, sign.y, getStreetSignPrimaryText(rect.slot), {
           fontFamily: "Inter, Arial, sans-serif",
           fontSize: rect.slot.isLandmark ? "10px" : "9px",
           fontStyle: "800",
@@ -314,7 +338,22 @@ function createStreetSigns(scene: Phaser.Scene, template: StreetTemplate): Phase
         .setOrigin(0.5)
         .setDepth(-82)
         .setResolution(2);
+      return { venueId: rect.slot.venueId!, label };
     });
+}
+
+export function selectVisibleStreetSignIds(
+  signs: StreetSignCandidate[],
+  player: { x: number; y: number },
+  maxCount = 3,
+  maxDistance = 380
+): string[] {
+  return signs
+    .map((sign) => ({ sign, distance: Math.hypot(sign.x - player.x, sign.y - player.y) }))
+    .filter(({ distance }) => distance <= maxDistance)
+    .sort((a, b) => a.distance - b.distance || a.sign.venueId.localeCompare(b.sign.venueId))
+    .slice(0, Math.max(0, maxCount))
+    .map(({ sign }) => sign.venueId);
 }
 
 export function getStreetSignPrimaryText(slot: Pick<StreetBuildingSlot, "label" | "venueId">): string {
@@ -656,10 +695,65 @@ function drawStreetProps(g: Phaser.GameObjects.Graphics, template: StreetTemplat
   }
 
   drawPaddyFields(g, template);
+  drawWalkableParcels(g, template);
   drawVillaDropoffGates(g, template);
   drawCorridorAmbientProps(g, template);
   drawStreetTextureProps(g);
   drawBeachAmbientProps(g, template);
+}
+
+function drawWalkableParcels(g: Phaser.GameObjects.Graphics, template: StreetTemplate): void {
+  for (const parcel of walkableStreetParcels.filter((candidate) => candidate.templateId === template.id)) {
+    const x = parcel.tileX * TILE_SIZE;
+    const y = parcel.tileY * TILE_SIZE;
+    const width = parcel.widthTiles * TILE_SIZE;
+    const height = parcel.heightTiles * TILE_SIZE;
+    g.fillStyle(0x4d3825, 0.18);
+    g.fillRoundedRect(x + 3, y + 5, width, height, 8);
+    g.fillStyle(0xb88b55, 1);
+    g.fillRoundedRect(x, y, width, height, 8);
+    g.lineStyle(2, 0xe0bb78, 0.55);
+    g.strokeRoundedRect(x + 2, y + 2, width - 4, height - 4, 7);
+    for (let offset = 18; offset < width - 10; offset += 38) {
+      g.fillStyle(offset % 76 === 18 ? 0x8f6841 : 0xd1a968, 0.58);
+      g.fillEllipse(x + offset, y + height / 2 + (offset % 3) - 1, 12, 4);
+    }
+  }
+}
+
+function drawStreetLandmarks(g: Phaser.GameObjects.Graphics, template: StreetTemplate): void {
+  for (const landmark of streetLandmarks.filter((candidate) => candidate.templateId === template.id)) {
+    if (landmark.kind === "finns_tower") {
+      drawFinnsTower(g, landmark.x, landmark.y);
+    }
+  }
+}
+
+function drawFinnsTower(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
+  g.fillStyle(0x101820, 0.2);
+  g.fillEllipse(x + 8, y + 5, 84, 24, 24);
+  g.fillStyle(0x253a47, 1);
+  g.fillRoundedRect(x - 24, y - 168, 48, 170, 7);
+  g.fillStyle(0x4f8f66, 1);
+  g.fillRoundedRect(x - 31, y - 112, 62, 27, 4);
+  g.fillStyle(0xfff0bd, 0.92);
+  g.fillRect(x - 17, y - 151, 34, 7);
+  g.fillRect(x - 19, y - 74, 38, 5);
+  g.fillStyle(0x6ab7ff, 0.72);
+  for (let floor = 0; floor < 4; floor += 1) {
+    g.fillRoundedRect(x - 13, y - 132 + floor * 24, 26, 11, 2);
+  }
+  g.fillStyle(0x253a35, 1);
+  g.beginPath();
+  g.moveTo(x - 34, y - 168);
+  g.lineTo(x, y - 207);
+  g.lineTo(x + 34, y - 168);
+  g.closePath();
+  g.fillPath();
+  g.lineStyle(4, 0xf4d58d, 0.88);
+  g.lineBetween(x, y - 207, x, y - 228);
+  g.fillStyle(0xf4d58d, 0.96);
+  g.fillCircle(x, y - 233, 7);
 }
 
 function drawPaddyFields(g: Phaser.GameObjects.Graphics, template: StreetTemplate): void {

@@ -1,3 +1,4 @@
+import { activeStreetTemplate, venueMapNodes } from "../../data/authoredStreetLayout";
 import { npcDefinitions } from "../../data/npcs";
 import { socialGroupDefinitions } from "../../data/groups";
 import { getActiveEvents } from "../events/EventScheduler";
@@ -57,6 +58,16 @@ export interface EventWorldScene {
 export type WorldScene = OpportunityWorldScene | EventWorldScene;
 
 const FALLBACK_NPCS = ["ari", "made", "kadek", "ibu_sari"];
+const AUTHORED_WORLD_SCENE_VENUE_IDS = new Set(
+  activeStreetTemplate.slots.map((slot) => slot.venueId).filter((venueId): venueId is string => Boolean(venueId))
+);
+
+export function resolveWorldSceneVenueAnchor(venueId: string) {
+  if (!AUTHORED_WORLD_SCENE_VENUE_IDS.has(venueId)) {
+    return undefined;
+  }
+  return venueMapNodes.find((node) => node.venueId === venueId);
+}
 
 export function getOpportunityWorldScenes(world: WorldState): OpportunityWorldScene[] {
   return world.opportunities.live
@@ -71,7 +82,7 @@ export function getOpportunityWorldScenes(world: WorldState): OpportunityWorldSc
         id: `opportunity:${live.id}`,
         opportunityId: live.id,
         templateId: template.id,
-        venueId: template.locationVenueId,
+        venueId: live.locationVenueId,
         title: template.title,
         opportunityType: template.type,
         sceneKind: opportunitySceneKind(template),
@@ -80,30 +91,32 @@ export function getOpportunityWorldScenes(world: WorldState): OpportunityWorldSc
         actors: opportunitySceneActors(template, template.reward.affinityBumps?.map((bump) => bump.npcId) ?? [])
       };
     })
-    .filter((scene): scene is OpportunityWorldScene => Boolean(scene));
+    .filter((scene): scene is OpportunityWorldScene => Boolean(scene && resolveWorldSceneVenueAnchor(scene.venueId)));
 }
 
 export function getEventWorldScenes(world: WorldState): EventWorldScene[] {
-  return getActiveEvents(world.clock, world).map((event) => {
-    const clubId = event.host.type === "group" ? event.host.id : undefined;
-    const group = clubId ? socialGroupDefinitions.find((candidate) => candidate.id === clubId) : undefined;
-    const npcIds = uniqueNpcIds([...(event.participation.meetNpcs ?? []), ...(group?.memberIds ?? [])]);
-    return {
-      source: "event" as const,
-      id: `event:${event.id}`,
-      eventId: event.id,
-      venueId: event.locationVenueId,
-      title: event.title,
-      sceneKind: eventSceneKind(event),
-      cue: eventSceneCue(event, Boolean(group)),
-      clubId,
-      actors: buildActors(npcIds.length ? npcIds : fallbackNpcIds(), group ? "social" : eventActorRole(event), 3)
-    };
-  });
+  return getActiveEvents(world.clock, world)
+    .map((event) => {
+      const clubId = event.host.type === "group" ? event.host.id : undefined;
+      const group = clubId ? socialGroupDefinitions.find((candidate) => candidate.id === clubId) : undefined;
+      const npcIds = uniqueNpcIds([...(event.participation.meetNpcs ?? []), ...(group?.memberIds ?? [])]);
+      return {
+        source: "event" as const,
+        id: `event:${event.id}`,
+        eventId: event.id,
+        venueId: event.locationVenueId,
+        title: event.title,
+        sceneKind: eventSceneKind(event),
+        cue: eventSceneCue(event, Boolean(group)),
+        clubId,
+        actors: buildActors(npcIds.length ? npcIds : fallbackNpcIds(), group ? "social" : eventActorRole(event), 3)
+      };
+    })
+    .filter((scene) => Boolean(resolveWorldSceneVenueAnchor(scene.venueId)));
 }
 
 export function getRivalRaceWorldScenes(world: WorldState): OpportunityWorldScene[] {
-  if (!getRioRaceEligibility(world).eligible) {
+  if (!getRioRaceEligibility(world).eligible || !resolveWorldSceneVenueAnchor(RIO_RACE.venueId)) {
     return [];
   }
   return [
