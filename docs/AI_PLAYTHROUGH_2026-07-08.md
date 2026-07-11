@@ -147,6 +147,6 @@ coords of the current objective) and `interiorExit` (active interior's exit
 mat). These are cheap, always-on, and turn the game into something an
 automated harness can navigate — **this project should keep and lean on them**;
 repeatable automated smoke-playthroughs are exactly what a solo founder with
-no time to play needs. The harness itself lives in the session scratchpad; if
-it's worth keeping, it should be moved into the repo under `scripts/` in a
-follow-up.
+no time to play needs. RPG-20260708-07 has since promoted the focused Act 0
+runner into `scripts/smokePlaythrough.mjs`; `npm run smoke` is now the standing
+opt-in browser regression command.

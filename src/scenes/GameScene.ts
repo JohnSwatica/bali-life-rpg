@@ -130,6 +130,7 @@ import {
   type RideModelState
 } from "../systems/ride/RideModel";
 import { canPlayerBeOnBike, resolveRequestedBikeState } from "../systems/ride/RideMode";
+import { getRideTelemetry, type RideTelemetry } from "../systems/ride/RideTelemetry";
 import { applyCargoDamage, isCargoCareEligible, shouldShowCargoCareChip } from "../systems/ride/CargoCare";
 import {
   advanceRivalRaceGhost,
@@ -379,6 +380,7 @@ interface BaliLifeDebugSnapshot {
   objectiveTargets: { x: number; y: number }[];
   interiorExit: { x: number; y: number } | null;
   interiorTransitioning: boolean;
+  ride: RideTelemetry | null;
   updatedAt: number;
 }
 
@@ -676,6 +678,7 @@ export class GameScene extends Phaser.Scene {
     countText: Phaser.GameObjects.Text;
     ratingText: Phaser.GameObjects.Text;
     rentText?: Phaser.GameObjects.Text;
+    countTween: Phaser.Tweens.Tween;
     spec: PayoutCelebrationSpec;
   };
   private hudObjectiveTitle = "";
@@ -695,6 +698,7 @@ export class GameScene extends Phaser.Scene {
   private rivalRaceGhost?: Phaser.GameObjects.Sprite;
   private rivalRaceMarkerLayer!: Phaser.GameObjects.Graphics;
   private rideModelState: RideModelState = createRideModelState();
+  private rideModelOutput: RideModelOutput | null = null;
   private rideCameraOffsetX = 0;
   private rideCameraOffsetY = 0;
   private nearMissFeedbackCooldown = 0;
@@ -1901,6 +1905,7 @@ export class GameScene extends Phaser.Scene {
         slick: this.isRideSurfaceSlick()
       });
       this.rideModelState = ride;
+      this.rideModelOutput = ride;
       this.player.setVelocity(ride.velocityX, ride.velocityY);
       if (hasMovementInput || ride.speed > scaleDistance(RIDE_FEEL_TUNING.minimumAnimatedRideSpeed)) {
         this.playerState.direction = this.directionFromVector(new Phaser.Math.Vector2(ride.velocityX, ride.velocityY));
@@ -1909,6 +1914,7 @@ export class GameScene extends Phaser.Scene {
       this.checkRideNearMiss(ride);
     } else if (hasMovementInput) {
       this.rideModelState = createRideModelState();
+      this.rideModelOutput = null;
       this.updateRideCameraLookahead();
       movement.normalize();
       const speed = WALK_SPEED * this.movementSpeedMultiplier;
@@ -1916,6 +1922,7 @@ export class GameScene extends Phaser.Scene {
       this.playerState.direction = this.directionFromVector(movement);
     } else {
       this.rideModelState = createRideModelState();
+      this.rideModelOutput = null;
       this.updateRideCameraLookahead();
       this.player.setVelocity(0, 0);
     }
@@ -2465,10 +2472,8 @@ export class GameScene extends Phaser.Scene {
     }
     container.add(children);
     this.hudLayer.add(container);
-    this.payoutCelebration = { container, countText, ratingText, rentText, spec };
-
     const counter = { value: 0 };
-    this.tweens.add({
+    const countTween = this.tweens.add({
       targets: counter,
       value: spec.payout,
       duration: spec.countUpDurationMs,
@@ -2476,6 +2481,7 @@ export class GameScene extends Phaser.Scene {
       onUpdate: () => countText.setText(`Rp +${Math.round(counter.value)}`),
       onComplete: () => countText.setText(`Rp +${spec.payout}`)
     });
+    this.payoutCelebration = { container, countText, ratingText, rentText, countTween, spec };
     this.tweens.add({
       targets: countText,
       scaleX: spec.scalePunch,
@@ -2523,7 +2529,8 @@ export class GameScene extends Phaser.Scene {
     if (!this.payoutCelebration) {
       return;
     }
-    const { container, countText, ratingText, rentText, spec } = this.payoutCelebration;
+    const { container, countText, ratingText, rentText, countTween, spec } = this.payoutCelebration;
+    countTween.stop();
     countText.setText(`Rp +${spec.payout}`);
     ratingText.setText(this.formatPayoutRatingLine(spec));
     rentText?.setAlpha(1);
@@ -8738,6 +8745,7 @@ export class GameScene extends Phaser.Scene {
         return interior ? { x: Math.round(interior.exitMat.x), y: Math.round(interior.exitMat.y) } : null;
       })(),
       interiorTransitioning: this.interiorTransitioning,
+      ride: getRideTelemetry(this.rideModelOutput, this.playerState.onBike),
       updatedAt: Date.now()
     };
 
