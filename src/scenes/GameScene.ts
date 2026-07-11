@@ -122,6 +122,7 @@ import {
   type RideModelOutput,
   type RideModelState
 } from "../systems/ride/RideModel";
+import { canPlayerBeOnBike, resolveRequestedBikeState } from "../systems/ride/RideMode";
 import { applyCargoDamage, isCargoCareEligible, shouldShowCargoCareChip } from "../systems/ride/CargoCare";
 import {
   advanceRivalRaceGhost,
@@ -370,6 +371,7 @@ interface BaliLifeDebugSnapshot {
   npcRoutines: Record<string, string>;
   objectiveTargets: { x: number; y: number }[];
   interiorExit: { x: number; y: number } | null;
+  interiorTransitioning: boolean;
   updatedAt: number;
 }
 
@@ -1865,7 +1867,11 @@ export class GameScene extends Phaser.Scene {
     const movement = this.inputController.getMovementVector(this.mode, this.cursors, this.keys, this.hudController.joystickVector);
     const hasMovementInput = movement.lengthSq() > 0;
     const canMove = this.mode === "world" || this.mode === "interior";
-    const isRidingBike = canMove && this.playerState.onBike && !this.playerState.bikeStuck;
+    const isRidingBike =
+      canMove &&
+      canPlayerBeOnBike(this.mode, this.playerState.hasBike, this.activeInteriorId) &&
+      this.playerState.onBike &&
+      !this.playerState.bikeStuck;
 
     if (hasMovementInput) {
       this.showMovementTutorialPrompt = false;
@@ -1904,7 +1910,7 @@ export class GameScene extends Phaser.Scene {
       this.updateRideCameraLookahead();
       this.player.setVelocity(0, 0);
     }
-    const walkingOnFoot = hasMovementInput && !this.playerState.onBike;
+    const walkingOnFoot = hasMovementInput && !isRidingBike;
     this.applyCharacterAnimation(this.player, "player", this.playerState.direction, walkingOnFoot, CHARACTER_SPRITE_SCALE);
 
     if (this.activeInteriorId) {
@@ -1939,7 +1945,9 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.scooterMotionElapsedMs = (this.scooterMotionElapsedMs + delta) % 120000;
-    const visible = this.playerState.onBike || this.playerState.bikeStuck;
+    const visible =
+      canPlayerBeOnBike(this.mode, this.playerState.hasBike, this.activeInteriorId) &&
+      (this.playerState.onBike || this.playerState.bikeStuck);
     const bodyVelocity = this.player.body?.velocity;
     const visual = getScooterVisualState({
       tier: this.world.life.hustle.scooterTier,
@@ -3399,13 +3407,26 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    this.playerState.onBike = !this.playerState.onBike;
+    this.setPlayerBikeMode(!this.playerState.onBike);
     if (this.playerState.onBike && this.playerState.tutorialStep === "rent_bike") {
       this.playerState.tutorialStep = "join_group";
     }
     saveWorldState(this.world);
-    this.updatePlayerBikeVisual();
     this.showToast(this.playerState.onBike ? "Bike mode on. Roads are fast; beach rides stay smooth." : "Bike parked. You are back on foot.");
+  }
+
+  private setPlayerBikeMode(requestedOnBike: boolean): boolean {
+    this.playerState.onBike = resolveRequestedBikeState(
+      requestedOnBike,
+      this.mode,
+      this.playerState.hasBike,
+      this.activeInteriorId
+    );
+    if (!this.playerState.onBike) {
+      this.rideModelState = createRideModelState();
+    }
+    this.updatePlayerBikeVisual();
+    return this.playerState.onBike;
   }
 
   private interactWithNpc(npcId: string): void {
@@ -3763,8 +3784,8 @@ export class GameScene extends Phaser.Scene {
 
   private startAct0WithIbuSari(): void {
     this.playerState.hasBike = true;
-    this.playerState.onBike = true;
     this.playerState.bikeStuck = false;
+    this.setPlayerBikeMode(false);
     this.playerState.bikeCondition = Math.min(this.playerState.bikeCondition, 48);
     this.playerState.tutorialStep = "free_roam";
     this.world.life.hustle.scooterTier = "borrowed_rattletrap";
@@ -3774,7 +3795,6 @@ export class GameScene extends Phaser.Scene {
     const accepted = acceptDelivery(this.world, "first_baked_villa_delivery", this.getAbsoluteMinute());
     completeAct0Step(this.world, "meet_ibu_sari");
     saveWorldState(this.world);
-    this.updatePlayerBikeVisual();
     this.openDialogue(
       "Ibu Sari",
       [
@@ -3847,8 +3867,7 @@ export class GameScene extends Phaser.Scene {
     this.phone?.close();
     this.interiorTransitioning = true;
     this.interiorReturnPoint = { x: this.player.x, y: this.player.y };
-    this.playerState.onBike = false;
-    this.updatePlayerBikeVisual();
+    this.setPlayerBikeMode(false);
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.time.delayedCall(400, () => {
       this.activeInteriorId = interior.id;
@@ -3881,7 +3900,11 @@ export class GameScene extends Phaser.Scene {
       this.interiorReturnPoint = undefined;
       this.interiorTransitioning = false;
       this.cameras.main.fadeIn(400, 0, 0, 0);
-      this.showToast(`Left ${interior.name}.`);
+      this.showToast(
+        this.playerState.hasBike
+          ? `Left ${interior.name}. Your scooter is outside; press B / BIKE to ride.`
+          : `Left ${interior.name}.`
+      );
     });
   }
 
@@ -4875,9 +4898,8 @@ export class GameScene extends Phaser.Scene {
     this.resetNpcSpritesToRoutineState();
     const start = RIO_RACE.route[0];
     this.playerState.hasBike = true;
-    this.playerState.onBike = true;
     this.playerState.bikeStuck = false;
-    this.updatePlayerBikeVisual();
+    this.setPlayerBikeMode(true);
     this.placePlayerSprite(start, true);
   }
 
@@ -5811,8 +5833,8 @@ export class GameScene extends Phaser.Scene {
 
     this.playerState.money -= rental.buyPrice;
     this.playerState.hasBike = true;
-    this.playerState.onBike = true;
     this.playerState.bikeStuck = false;
+    this.setPlayerBikeMode(false);
     this.playerState.bikeCondition = 100;
     this.playerState.tutorialStep = "join_group";
     if (getQuantity(this.playerState, SCOOTER_KEY_ITEM_ID) === 0) {
@@ -5826,7 +5848,6 @@ export class GameScene extends Phaser.Scene {
       detail: rental.name
     });
     saveWorldState(this.world);
-    this.updatePlayerBikeVisual();
     this.showToast("Scooter rented. Berawa suddenly feels connected. Press B to park or ride.");
     this.renderShopPanel(shop);
   }
@@ -6022,7 +6043,12 @@ export class GameScene extends Phaser.Scene {
         this.showToast("Bike lines are blocked because someone in the party does not have a bike.");
         return;
       }
-      this.playerState.onBike = true;
+      if (!this.setPlayerBikeMode(true)) {
+        this.showToast("Step back outside before mounting for a bike line.");
+        return;
+      }
+    } else {
+      this.setPlayerBikeMode(false);
     }
 
     this.clearGroupLine();
@@ -6186,12 +6212,11 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.playerState.bikeStuck = false;
-    this.playerState.onBike = true;
+    this.setPlayerBikeMode(true);
     this.playerState.bikeCondition = Phaser.Math.Clamp(this.playerState.bikeCondition + 8, 1, 100);
     this.playerState.tutorialStep = "free_roam";
     this.syncGroupWorldState("traveling");
     saveWorldState(this.world);
-    this.updatePlayerBikeVisual();
     this.showToast("The group hauled the bike out. Mud lesson learned.");
   }
 
@@ -6304,6 +6329,7 @@ export class GameScene extends Phaser.Scene {
         36,
         "Walk Line",
         () => {
+          this.closePanel();
           this.startGroupTravel(activeGroupId, "walk");
           this.openCommunityBoard();
         },
@@ -6317,6 +6343,7 @@ export class GameScene extends Phaser.Scene {
         36,
         "Bike Line",
         () => {
+          this.closePanel();
           this.startGroupTravel(activeGroupId, "bike");
           this.openCommunityBoard();
         },
@@ -7289,7 +7316,12 @@ export class GameScene extends Phaser.Scene {
     });
     addGodButton("Toggle Bike", () => {
       this.playerState.hasBike = true;
-      this.playerState.onBike = !this.playerState.onBike;
+      this.playerState.onBike = resolveRequestedBikeState(
+        !this.playerState.onBike,
+        this.activeInteriorId ? "interior" : "world",
+        this.playerState.hasBike,
+        this.activeInteriorId
+      );
       if (getQuantity(this.playerState, SCOOTER_KEY_ITEM_ID) === 0) {
         addItem(this.playerState, SCOOTER_KEY_ITEM_ID, 1);
       }
@@ -7318,7 +7350,12 @@ export class GameScene extends Phaser.Scene {
       this.world.life.hustle.deliveryEarnings = Math.max(this.world.life.hustle.deliveryEarnings, 160);
       this.world.life.hustle.driverRating = Math.max(this.world.life.hustle.driverRating, 3.6);
       this.playerState.hasBike = true;
-      this.playerState.onBike = true;
+      this.playerState.onBike = resolveRequestedBikeState(
+        true,
+        this.activeInteriorId ? "interior" : "world",
+        this.playerState.hasBike,
+        this.activeInteriorId
+      );
       this.playerState.bikeStuck = false;
       this.playerState.bikeCondition = Math.max(this.playerState.bikeCondition, 48);
       if (getQuantity(this.playerState, SCOOTER_KEY_ITEM_ID) === 0) {
@@ -8660,6 +8697,7 @@ export class GameScene extends Phaser.Scene {
         const interior = this.getActiveInterior();
         return interior ? { x: Math.round(interior.exitMat.x), y: Math.round(interior.exitMat.y) } : null;
       })(),
+      interiorTransitioning: this.interiorTransitioning,
       updatedAt: Date.now()
     };
 

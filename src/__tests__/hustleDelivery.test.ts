@@ -350,7 +350,7 @@ describe("Act 0 hustle and deliveries", () => {
     expect(upgradeToDailyScooter(world, 140)).toMatchObject({ ok: true });
     expect(player.money).toBe(40);
     expect(player.hasBike).toBe(true);
-    expect(player.onBike).toBe(true);
+    expect(player.onBike).toBe(false);
     expect(player.bikeCondition).toBe(100);
     expect(world.life.hustle.scooterTier).toBe("daily_rental");
     expect(getQuantity(player, "scooter_key")).toBe(1);
