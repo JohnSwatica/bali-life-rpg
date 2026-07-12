@@ -8,6 +8,7 @@ import type {
 } from "./berawaLayout";
 import { getStreetBuildingRects, getStreetMapFeatures, getStreetRoadPaths } from "../systems/map/StreetRenderer";
 import { TILE_SIZE, tileToWorld } from "../systems/map/TileStreetScale";
+import { capVenueInteractionFootprints } from "../systems/map/VenueInteractionFootprints";
 
 export type {
   CuratedVenueMapNode,
@@ -66,7 +67,7 @@ export const berawaAreas: MapAreaDefinition[] = [
   }
 ];
 
-export const curatedVenueNodes: CuratedVenueMapNode[] = getStreetBuildingRects(activeStreetTemplate)
+const uncappedCuratedVenueNodes: CuratedVenueMapNode[] = getStreetBuildingRects(activeStreetTemplate)
   .filter((rect) => rect.slot.venueId && rect.slot.curatedVenueId)
   .map((rect) => ({
     venueId: rect.slot.venueId!,
@@ -86,6 +87,8 @@ export const curatedVenueNodes: CuratedVenueMapNode[] = getStreetBuildingRects(a
     radius: Math.max(TILE_SIZE * 2.2, Math.max(rect.width, rect.height) * 0.72),
     areaId: rect.slot.venueId === "berawa_beach" ? "berawa_beach" : "pantai_berawa"
   }));
+
+export const curatedVenueNodes: CuratedVenueMapNode[] = capVenueInteractionFootprints(uncappedCuratedVenueNodes);
 
 export const venueMapNodes: VenueMapNode[] = curatedVenueNodes.map((node) => ({
   venueId: node.venueId,

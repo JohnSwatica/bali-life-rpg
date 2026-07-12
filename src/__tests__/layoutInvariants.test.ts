@@ -24,6 +24,7 @@ import {
   type StreetTemplate
 } from "../systems/map/StreetTemplate";
 import { TILE_IDS, TILE_SIZE } from "../systems/map/TileStreetScale";
+import { findOverlappingVenueInteractionFootprints } from "../systems/map/VenueInteractionFootprints";
 
 interface Rect {
   id: string;
@@ -65,6 +66,10 @@ describe("authored street layout invariants", () => {
       }
     }
     expect(collisions).toEqual([]);
+  });
+
+  it("has no overlapping authored venue interaction footprints", () => {
+    expect(findOverlappingVenueInteractionFootprints(venueMapNodes)).toEqual([]);
   });
 
   it("resolves quest-critical and mobility venues to finite in-bounds authored positions", () => {
