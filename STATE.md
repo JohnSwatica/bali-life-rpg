@@ -47,7 +47,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: the full RPG-20260712 queue (01/02/03/04) is DONE on `feat/rpg-20260706-09-rio-race` (258 tests green, pushed to origin). Next: John merges PR #1 (publishes everything to the public URL) and shares it with 3-5 people (message in the 2026-07-08 session notes). Hard boundaries unchanged: no multiplayer, backend, AI calls, real commerce, Google data, or the Act 3 management sim. New content beyond the playtest-driven queue needs its own justification per GATE v3.
+Immediate next move: **RPG-20260713-01 first** — a live-repro'd hard blocker soft-locks Act 0's final step for every new player (Milk & Madu / Milu by Nook venue collision; see DECISIONS.md 2026-07-13). Do not share the build with outside players until this lands. Then RPG-20260713-02 (Act 1's first real story beat — the NusaDrop rate cut + Leo's mocking encounter, translating STORY_BIBLE v4's actual content, not just names). After both: John merges PR #1 and shares with 3-5 people. Hard boundaries unchanged: no multiplayer, backend, AI calls, real commerce, Google data, or the Act 3 management sim.
 
 ## Project
 

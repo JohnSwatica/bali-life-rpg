@@ -7,16 +7,29 @@ the deprecated `REASONING:` form), and a `MAP DELTA:` line per the Map Growth
 Rule in `AGENTS.md`. Each file is copy-paste ready: one fenced block, hand
 the whole thing to Codex.
 
-**Status 2026-07-12 (updated):** ALL sixteen RPG-20260706/08 packets are DONE.
-The first founder playtest happened (`PLAYTEST_01.md`): bored at minute 5,
-four named problems, and a CEO narrative pivot to `STORY_BIBLE.md` v4 (the
-NusaDrop storyline). GATE v3 authorizes feature work targeted at those
-findings. **RPG-20260712-01, -02, and -04 are DONE** (259 tests green,
-committed on `feat/rpg-20260706-09-rio-race`; 02+04 landed as one combined
-commit since their diffs shared modified files — see that commit message for
-the full breakdown and 04's known proof gap). **RPG-20260712-03 is DONE**
-on `feat/rpg-20260712-03-steering-delivery`, branched from this branch's
-`1bc9a8d` HEAD as directed (NOT from `main`).
+**Status 2026-07-13 (updated):** RPG-20260712-01..04 all DONE (258 tests
+green, on `feat/rpg-20260706-09-rio-race`). John then live-tested the merged
+build and hit a hard blocker: Act 0's final step ("Get onto NusaDrop") is
+soft-locked for every new player by a venue-position collision (Milk & Madu
+vs. a distinct curated venue "Milu by Nook" occupying the same interaction
+spot — full repro in RPG-20260713-01). John also correctly called out that
+RPG-20260712-01 only reskinned NAMES from STORY_BIBLE v4 — it never
+implemented v4's actual STORY BEATS, which is why post-intro Act 1 still
+feels like generic walk/press-E. **Active queue below fixes the blocker
+first, then ships the first real story content.**
+
+## Active queue — RPG-20260713 (blocker fix + first real story content)
+
+| ID | Title | Codex routing | Depends on |
+|----|-------|---------------|------------|
+| [RPG-20260713-01](RPG-20260713-01-milk-madu-venue-collision.md) | Fix Milk & Madu / Milu by Nook collision — Act 0 fully blocked otherwise | Sol · High | — (run first, blocks everything) |
+| [RPG-20260713-02](RPG-20260713-02-act1-inciting-hook.md) | Act 1 inciting hook: NusaDrop rate cut + Leo's first real encounter | Sol · High | 01 (Act 0 must be completable to reach Act 1) |
+
+RPG-20260713-02 is scoped to ONE felt beat (v4's exact Act 1 inciting hook),
+not the whole Act 1 backbone — Made's room offer, Kadek's priority-driver
+moment, the midpoint scooter breakdown, and the closing milestone are
+explicit follow-ups, listed in that packet's own DoD. This is deliberate:
+one verified story beat beats five half-built ones.
 
 ## Active queue — RPG-20260712 (playtest response)
 
