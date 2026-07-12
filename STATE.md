@@ -25,8 +25,8 @@ Packet execution status (updated 2026-07-12):
 
 - **FIRST FOUNDER PLAYTEST HAPPENED (2026-07-12)** — John played ~5 minutes and was bored by minute 5. Verbatim feedback + four named problems in `PLAYTEST_01.md`. This is human feedback #1 and it redirected the roadmap.
 - **NARRATIVE PIVOT (CEO):** `STORY_BIBLE.md` is now **v4 — "The Algorithm vs. The Street"** (single NusaDrop storyline: Leo the rival, Julian Vance/Enclave Berawa the antagonist, the hidden Trust-vs-Efficiency metric). The v3 Elena/Rumah/Pak Bagus/subak bible is retired (git history). Read v4's **code reconciliation map** before touching narrative content — internal ids stay, display surfaces change, economy numbers do NOT rescale. Supersession banners added to GAME_DESIGN.md, STORY_ARC.md, ACT3_BUSINESS_DESIGN.md.
-- **GATE v3:** founder feedback authorizes feature work targeted at the four playtest findings. Active queue `docs/prompts/RPG-20260712-01..04`: (01) v4 canon swap/reskin → (02) cinematic cold-open + 3-minute hook + first choice (Sol · High) → (03) continuous obstacle-avoidance steering delivery mode replacing checkpoint taps (Sol · High) → (04) Warung Rush Diner-Dash-style service minigame. Packets now carry `CODEX:` routing lines (GPT-5.6 era) and `MAP DELTA:` lines.
-- Outside players still wanted (3-5 strangers once the 20260712 queue lands and PR #1 merges); three CEO decisions still open in `TODO_LIST.md`.
+- **GATE v3:** founder feedback authorizes feature work targeted at the four playtest findings. Queue `docs/prompts/RPG-20260712-01..04`: **01, 02, 04 are DONE** (committed on `feat/rpg-20260706-09-rio-race`, 259 tests green; 02+04 landed as one combined commit `f84bfda` since their diffs shared modified files — see that commit message for the full split, including 04's known gap: logic tested, in-scene screenshot/self-assessment proof not yet produced). **03 (steering delivery mode) is next**, unblocked as of `790905e` — branch from this branch's current HEAD, not `main` (see the corrected sequencing note in `docs/prompts/README.md`; a prior version of that note wrongly said to wait for a `main` merge and stalled Codex).
+- Outside players still wanted (3-5 strangers once 03 lands and PR #1 merges); three CEO decisions still open in `TODO_LIST.md`.
 
 Prior status (2026-07-08):
 
@@ -47,7 +47,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: run the RPG-20260712 queue in order (01 canon swap → 02 cinematic cold-open → 03 steering delivery mode → 04 Warung Rush). After the queue lands: John merges PR #1 (publishes everything to the public URL) and shares it with 3-5 people (message in the 2026-07-08 session notes). Hard boundaries unchanged: no multiplayer, backend, AI calls, real commerce, Google data, or the Act 3 management sim. New content beyond the playtest-driven queue needs its own justification per GATE v3.
+Immediate next move: run RPG-20260712-03 (steering delivery mode) from the current branch HEAD — 01/02/04 are done. After 03 lands: John merges PR #1 (publishes everything to the public URL) and shares it with 3-5 people (message in the 2026-07-08 session notes). Hard boundaries unchanged: no multiplayer, backend, AI calls, real commerce, Google data, or the Act 3 management sim. New content beyond the playtest-driven queue needs its own justification per GATE v3.
 
 ## Project
 
