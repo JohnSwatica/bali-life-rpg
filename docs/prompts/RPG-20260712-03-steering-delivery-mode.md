@@ -3,6 +3,7 @@ PACKET ID: RPG-20260712-03
 PROJECT:   Bali Life RPG
 TARGET:    Codex
 CODEX:     Sol · High — a new core gameplay mode replacing checkpoint taps across the delivery loop; cross-system (ride model, traffic, cargo, delivery math) and pure product-behavior risk
+CODEX-PREREQ: HARD — must branch from main AFTER RPG-20260712-02 is merged, not run in parallel with it. Reason: this packet's DoD requires grepping the whole codebase for old checkpoint-tap beats and deleting them. If branched before 02 merges, 02's brand-new hook-mission delivery does not exist yet in this branch and will NOT be caught by that sweep — it will silently ship still running the old timing-tap minigame, which is the exact regression this packet exists to prevent. Both packets also edit `scripts/smokePlaythrough.mjs`, guaranteeing a literal merge conflict if run concurrently.
 TITLE:     Steering delivery mode v1 — continuous obstacle-avoidance riding replaces timing-tap checkpoints
 MAP DELTA: BAKED back-alley shortcut parcel, built but visibly gated (locked fence + "someone could open this" cue) — geometry now, Kadek-tier unlock later; MAP_CHANGELOG entry
 PR TAG: [RPG-20260712-03]
@@ -51,7 +52,10 @@ DEFINITION OF DONE
   knob, and "base payout never reduced."
 - A 30-second desktop capture (or dense screenshot sequence) of one full
   delivery ridden as live play, in the PR.
-- Old checkpoint tap-beats confirmed gone from the riding flow (grep + test).
+- Old checkpoint tap-beats confirmed gone from the riding flow (grep + test) —
+  explicitly INCLUDING the new Act 0 hook-mission delivery introduced by
+  RPG-20260712-02 (the Ibu Sari catering run). Verify that delivery by name;
+  do not assume the generic sweep already covers it.
 - MAP_CHANGELOG line + screenshots for the gated alley parcel.
 - STATE.md bullet; DECISIONS.md entry (core-verb change).
 

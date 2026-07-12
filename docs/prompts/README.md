@@ -19,8 +19,18 @@ feature work targeted at those findings — the RPG-20260712 queue below.
 |----|-------|---------------|------------|
 | [RPG-20260712-01](RPG-20260712-01-nusadrop-canon-swap.md) | v4 canon swap: NusaDrop, Leo, Vance; retire Elena thread | Terra · Medium | — |
 | [RPG-20260712-02](RPG-20260712-02-cinematic-cold-open.md) | Cinematic cold-open + 3-minute hook + first choice | Sol · High | 01 |
-| [RPG-20260712-03](RPG-20260712-03-steering-delivery-mode.md) | Steering delivery mode v1 (continuous obstacle-avoidance) | Sol · High | 01; ideally after 02 |
-| [RPG-20260712-04](RPG-20260712-04-warung-rush.md) | Warung Rush v1 (Diner-Dash-style service) | Terra · Medium | 01 (independent of 02/03) |
+| [RPG-20260712-03](RPG-20260712-03-steering-delivery-mode.md) | Steering delivery mode v1 (continuous obstacle-avoidance) | Sol · High | 01 + **02 (HARD, sequential — do not run concurrently with 02)** |
+| [RPG-20260712-04](RPG-20260712-04-warung-rush.md) | Warung Rush v1 (Diner-Dash-style service) | Terra · Medium | 01 only — safe to run in parallel with 02 and/or 03 |
+
+**Do not run 02 and 03 at the same time.** 03's job is to grep the whole
+codebase for old checkpoint-tap riding beats and delete/convert them — if 03
+branches before 02 merges, 02's brand-new hook-mission delivery doesn't exist
+yet in that branch and won't be caught, so it would silently ship still
+running the old timing-tap minigame (exactly the regression 03 exists to
+prevent). Both packets also edit `scripts/smokePlaythrough.mjs`, which is a
+guaranteed merge conflict on top of that. Run 01 → 02 → 03 in sequence
+(branch 03 from `main` only after 02 is merged); 04 can run anytime after 01,
+in parallel with either.
 
 ## Done — RPG-20260708-04..07 (playthrough bug-fixes)
 
