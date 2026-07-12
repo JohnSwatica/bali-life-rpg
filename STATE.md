@@ -47,7 +47,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: run RPG-20260712-03 (steering delivery mode) from the current branch HEAD — 01/02/04 are done. After 03 lands: John merges PR #1 (publishes everything to the public URL) and shares it with 3-5 people (message in the 2026-07-08 session notes). Hard boundaries unchanged: no multiplayer, backend, AI calls, real commerce, Google data, or the Act 3 management sim. New content beyond the playtest-driven queue needs its own justification per GATE v3.
+Immediate next move: the full RPG-20260712 queue (01/02/03/04) is DONE on `feat/rpg-20260706-09-rio-race` (258 tests green, pushed to origin). Next: John merges PR #1 (publishes everything to the public URL) and shares it with 3-5 people (message in the 2026-07-08 session notes). Hard boundaries unchanged: no multiplayer, backend, AI calls, real commerce, Google data, or the Act 3 management sim. New content beyond the playtest-driven queue needs its own justification per GATE v3.
 
 ## Project
 
