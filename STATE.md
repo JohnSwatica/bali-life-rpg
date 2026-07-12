@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-11
+Last updated: 2026-07-12
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -21,7 +21,14 @@ Current durable truth:
 - Current verification: `npm test -- --run` = 247 passing, 0 skipped; `npm run build` passes; `npm run smoke` drives a clean save through all of Act 0 and into the Act 1 card with real keyboard input. RPG-20260708-04/05's Ibu/interior/scooter fixes and RPG-20260708-06's street legibility/map increment were browser-verified on `feat/rpg-20260706-09-rio-race`, 2026-07-11. The earlier title/pause six-viewport and touch audits remain valid; physical iOS/Android verification remains pending.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
-Packet execution status (updated 2026-07-08):
+Packet execution status (updated 2026-07-12):
+
+- **FIRST FOUNDER PLAYTEST HAPPENED (2026-07-12)** — John played ~5 minutes and was bored by minute 5. Verbatim feedback + four named problems in `PLAYTEST_01.md`. This is human feedback #1 and it redirected the roadmap.
+- **NARRATIVE PIVOT (CEO):** `STORY_BIBLE.md` is now **v4 — "The Algorithm vs. The Street"** (single NusaDrop storyline: Leo the rival, Julian Vance/Enclave Berawa the antagonist, the hidden Trust-vs-Efficiency metric). The v3 Elena/Rumah/Pak Bagus/subak bible is retired (git history). Read v4's **code reconciliation map** before touching narrative content — internal ids stay, display surfaces change, economy numbers do NOT rescale. Supersession banners added to GAME_DESIGN.md, STORY_ARC.md, ACT3_BUSINESS_DESIGN.md.
+- **GATE v3:** founder feedback authorizes feature work targeted at the four playtest findings. Active queue `docs/prompts/RPG-20260712-01..04`: (01) v4 canon swap/reskin → (02) cinematic cold-open + 3-minute hook + first choice (Sol · High) → (03) continuous obstacle-avoidance steering delivery mode replacing checkpoint taps (Sol · High) → (04) Warung Rush Diner-Dash-style service minigame. Packets now carry `CODEX:` routing lines (GPT-5.6 era) and `MAP DELTA:` lines.
+- Outside players still wanted (3-5 strangers once the 20260712 queue lands and PR #1 merges); three CEO decisions still open in `TODO_LIST.md`.
+
+Prior status (2026-07-08):
 
 - **All nine RPG-20260706 packets are DONE** — landed as sequential commits on `feat/rpg-20260706-09-rio-race` (218 tests green, build green, verified by Claude). The branch is pushed to origin with a PR open; **`main` and therefore the public URL are 9 packets behind until John merges** — merging publishes the juiced build.
 - **GATE v2 (CEO override, 2026-07-08):** John has no time for the 60-min personal playtest; it and the three review decisions are parked in `TODO_LIST.md`. Outside players become the active feedback path. Until written feedback from 3+ real humans exists, Codex work is limited to polish/tuning/integration/stranger-readiness/bug fixes — NEW systems/acts/districts/minigames/content stay blocked. Full terms in `docs/PHASE3_REEVALUATION_GATE.md`.
@@ -40,7 +47,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: (1) John merges PR #1 for `feat/rpg-20260706-09-rio-race` (publishes the whole stack to the public URL); (2) John shares the URL with 3-5 people (ready-to-paste message in the 2026-07-08 session notes); (3) real-human feedback lands in `PLAYTEST_01.md` and GATE v2 exits. Under GATE v2, do **not** write or build new systems/acts/districts/minigames/content — and never multiplayer, backend, AI, real commerce, Google data, or the Act 3 management sim — until that feedback exists. Continue only feedback-enabling polish, integration, and bug fixes meanwhile.
+Immediate next move: run the RPG-20260712 queue in order (01 canon swap → 02 cinematic cold-open → 03 steering delivery mode → 04 Warung Rush). After the queue lands: John merges PR #1 (publishes everything to the public URL) and shares it with 3-5 people (message in the 2026-07-08 session notes). Hard boundaries unchanged: no multiplayer, backend, AI calls, real commerce, Google data, or the Act 3 management sim. New content beyond the playtest-driven queue needs its own justification per GATE v3.
 
 ## Project
 

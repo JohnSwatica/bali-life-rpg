@@ -1,5 +1,17 @@
 # BALI LIFE RPG — GAME DESIGN DOCUMENT
-**"Rumah" · v1 · canonical, read alongside STORY_BIBLE.md**
+**v1 · canonical for GAME systems, read alongside STORY_BIBLE.md**
+
+> **Narrative supersession (2026-07-12):** STORY_BIBLE.md is now v4 ("The
+> Algorithm vs. The Street" / NusaDrop). All narrative names in this GDD
+> (Elena, Rumah, Pak Bagus, Rio, Berawa 2.0, Jalan, subak/banjar beats)
+> resolve through the reconciliation map at the top of STORY_BIBLE.md —
+> e.g. Rio→Leo, Pak Bagus→Julian Vance, Elena/Rumah thread→the NusaDrop
+> hidden-metric investigation. The GAME layer of this doc (five verbs, map
+> rules, presentation grammar, mini-game tiers, build order) remains
+> canonical, with one CEO amendment from PLAYTEST_01: Tier-1 minigames must
+> be mechanically DISTINCT play patterns, not timing-tap variants — Delivery
+> Riding is a continuous obstacle-avoidance steering mode, Café/Warung
+> service is a Diner-Dash-style flow game.
 
 > STORY_BIBLE.md owns the narrative (spine, cast, world-systems, hooks).
 > This document owns the GAME: the verbs, the map, what every interactable

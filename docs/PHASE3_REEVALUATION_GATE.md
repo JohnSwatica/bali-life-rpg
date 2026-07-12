@@ -3,6 +3,31 @@
 Created 2026-07-06 as part of executing `CLAUDE_PROJECT_REVIEW_2026-07-06.md` §5.
 This document is deliberately **not** a packet. Phase 3 is a stop-and-look, not a build.
 
+> ## GATE v3 — founder playtest received, 2026-07-12
+>
+> **The stop-and-look happened.** John played ~5 minutes and delivered the
+> exact evidence this gate existed to produce: bored by minute 5, four named
+> problems (no cinematic opening/agency, no hook in 3 minutes, minigame
+> monotony, fetch-quest plot), logged verbatim in `PLAYTEST_01.md`, plus a
+> CEO narrative pivot (`STORY_BIBLE.md` v4, NusaDrop storyline).
+>
+> **What this authorizes:** feature/content work targeted at the four
+> playtest findings — the RPG-20260712 queue (canon reskin, cinematic
+> cold-open + 3-minute hook, obstacle-avoidance steering delivery mode,
+> Diner-Dash-style service minigame). These are new-system builds, and that
+> is now legitimate: they are driven by real human play feedback, which was
+> always this gate's exit test. The epistemics changed, not just the orders.
+>
+> **What still stands:** (1) outside players remain wanted — founder feedback
+> is 1 human of the 3+ target, and the fixed build should still go to 3-5
+> strangers (share message in the 2026-07-08 session notes); (2) the three
+> open CEO decisions (project identity, stakes ceiling, weekly time budget)
+> remain parked in `TODO_LIST.md`; (3) speculative content NOT traceable to
+> playtest findings or the v4 bible still needs its own justification —
+> "feedback-driven" is the new bar, not "anything goes"; (4) hard boundaries
+> (no backend/multiplayer/AI/commerce, Act 3 sim CEO-locked) are untouched;
+> (5) the Map Growth Rule applies to every packet.
+
 > ## GATE v2 — CEO override, 2026-07-08
 >
 > All nine RPG-20260706 packets landed (218 tests green, verified). Codex

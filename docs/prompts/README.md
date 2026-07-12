@@ -1,31 +1,35 @@
 # Codex Packets — Index and Sequencing
 
-Packets follow the cross-project format in `~/.claude/CLAUDE.md` (BEGIN/END
-markers, `RPG-YYYYMMDD-NN` IDs, PR tags, and — since 2026-07-08 — a
-`REASONING:` level per the global Codex routing rule). Each file is copy-paste
-ready: one fenced block, hand the whole thing to Codex.
+Packets follow the cross-project format in `~/.claude/CLAUDE.md`: BEGIN/END
+markers, `RPG-YYYYMMDD-NN` IDs, PR tags, a `CODEX:` model·effort routing line
+(Luna/Terra/Sol · Default/Medium/High — current standard; older packets carry
+the deprecated `REASONING:` form), and a `MAP DELTA:` line per the Map Growth
+Rule in `AGENTS.md`. Each file is copy-paste ready: one fenced block, hand
+the whole thing to Codex.
 
-**Status 2026-07-08:** all nine RPG-20260706 packets AND the RPG-20260708-01..03
-stranger-readiness batch are DONE (landed on `feat/rpg-20260706-09-rio-race`,
-234 tests green). An automated headless playthrough was then run
-(`docs/AI_PLAYTHROUGH_2026-07-08.md`) — it found the game does not crash (0
-console errors) but the Act 0 onboarding is broken enough to block a new
-player in the first 90 seconds. That produced the RPG-20260708-04..07 bug-fix
-batch below. GATE v2 (`docs/PHASE3_REEVALUATION_GATE.md`) still holds: this is
-all bug-fix/polish/layout/test-infra on existing systems (allowed); no new
-systems/acts/content until written feedback from 3+ real humans exists.
+**Status 2026-07-12:** ALL sixteen prior packets are DONE (247 tests green).
+The first founder playtest happened (`PLAYTEST_01.md`): bored at minute 5,
+four named problems, and a CEO narrative pivot to `STORY_BIBLE.md` v4 (the
+NusaDrop storyline). GATE v3 (`docs/PHASE3_REEVALUATION_GATE.md`) authorizes
+feature work targeted at those findings — the RPG-20260712 queue below.
 
-## Active queue — RPG-20260708-04..07 (playthrough bug-fixes, run in order)
+## Active queue — RPG-20260712 (playtest response, run in order)
 
-Derived from real defects in `docs/AI_PLAYTHROUGH_2026-07-08.md`. Ordered so
-the on-ramp is unblocked before anything downstream.
+| ID | Title | Codex routing | Depends on |
+|----|-------|---------------|------------|
+| [RPG-20260712-01](RPG-20260712-01-nusadrop-canon-swap.md) | v4 canon swap: NusaDrop, Leo, Vance; retire Elena thread | Terra · Medium | — |
+| [RPG-20260712-02](RPG-20260712-02-cinematic-cold-open.md) | Cinematic cold-open + 3-minute hook + first choice | Sol · High | 01 |
+| [RPG-20260712-03](RPG-20260712-03-steering-delivery-mode.md) | Steering delivery mode v1 (continuous obstacle-avoidance) | Sol · High | 01; ideally after 02 |
+| [RPG-20260712-04](RPG-20260712-04-warung-rush.md) | Warung Rush v1 (Diner-Dash-style service) | Terra · Medium | 01 (independent of 02/03) |
 
-| ID | Title | Reasoning | Depends on |
-|----|-------|-----------|------------|
-| [RPG-20260708-04](RPG-20260708-04-onboarding-blocker.md) | Fix broken first objective (Ibu marker + interior exit cue) | high | — |
-| [RPG-20260708-05](RPG-20260708-05-scooter-and-interior-mechanics.md) | Foot-only interiors, staged mount/dismount, pickup seam | high | 04 soft |
-| [RPG-20260708-06](RPG-20260708-06-street-legibility-and-layout.md) | Declutter labels, kill orphan markers, walkable/building legibility, paddies, camera, landmark | high | — |
-| [RPG-20260708-07](RPG-20260708-07-ride-observability-and-smoke-harness.md) | In-repo smoke-playthrough + ride telemetry (no retuning) | high | 04, 05 |
+## Done — RPG-20260708-04..07 (playthrough bug-fixes)
+
+| ID | Title | Reasoning | 
+|----|-------|-----------|
+| [RPG-20260708-04](RPG-20260708-04-onboarding-blocker.md) | Fix broken first objective (Ibu marker + interior exit cue) | high |
+| [RPG-20260708-05](RPG-20260708-05-scooter-and-interior-mechanics.md) | Foot-only interiors, staged mount/dismount, pickup seam | high |
+| [RPG-20260708-06](RPG-20260708-06-street-legibility-and-layout.md) | Street legibility & layout + first map increment (paddy path) | high |
+| [RPG-20260708-07](RPG-20260708-07-ride-observability-and-smoke-harness.md) | In-repo smoke-playthrough + ride telemetry | high |
 
 ## Done — RPG-20260708-01..03 (stranger-readiness)
 

@@ -1,5 +1,7 @@
 # STORY_ARC.md — Bali Life RPG (Draft v1)
 
+> **SUPERSEDED (2026-07-12):** historical draft only. The canonical narrative is `STORY_BIBLE.md` v4 (NusaDrop storyline). The act skeleton here survives; every name/beat conflict resolves to the bible.
+
 > The progression spine: from arriving broke (新手村) to owning your villa, business, and bike — then the
 > gates open to a shared multiplayer world where community becomes everything. This is the "drive" the game
 > has been missing: a concrete dream to chase. Draft — see "Your calls" at the end.

@@ -12,14 +12,9 @@ Format for new entries:
 <verbatim copy of the full triggering prompt/request/feedback — not a summary>
 ```
 
-## Phase 3 personal playtest — punted by CEO (added 2026-07-08)
+## Three open CEO decisions from the 2026-07-06 review (added 2026-07-08; playtest half resolved 2026-07-12)
 
-John, on being told RPG-20260706-09 completed and the Phase 3 human-playtest gate was reached:
+The personal-playtest half of this entry is RESOLVED — John played on 2026-07-12 and the feedback is logged in `PLAYTEST_01.md` (bored at minute 5; four problems; narrative pivot to STORY_BIBLE v4). Still outstanding:
 
-> Thing is I don't have time to play so keep improving/developing the game, give me prompts for codex for this
-
-What remains outstanding from the original gate (`docs/PHASE3_REEVALUATION_GATE.md`):
-- John plays a fresh save ~60 minutes on a real device and writes `PLAYTEST_01.md` (raw reactions: bored/confused/felt-something moments).
-- John answers the three decisions from `CLAUDE_PROJECT_REVIEW_2026-07-06.md` §6: project identity (hobby vs. audience asset), stakes ceiling, weekly time budget.
-
-The outside-players half of the gate (3-5 strangers on the public URL) is being pursued without John via the RPG-20260708 packet batch (stranger-ready build + mobile pass) — but his personal playtest and the three decisions cannot be delegated and stay parked here until done.
+- John answers the three decisions from `CLAUDE_PROJECT_REVIEW_2026-07-06.md` §6: project identity (hobby vs. audience asset), stakes ceiling, weekly time budget vs. NomadNest/match.co.
+- 3-5 outside players on the public URL once the RPG-20260712 fixes land (share message drafted in the 2026-07-08 session notes; the URL only updates when PR #1 merges).
