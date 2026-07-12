@@ -111,7 +111,7 @@ export class HudController {
   }
 
   handlePointerDown(pointer: Phaser.Input.Pointer, mode: string): void {
-    if (!this.touchInputActive || this.overlayOpen || (mode !== "world" && mode !== "interior")) {
+    if (!this.touchInputActive || this.overlayOpen || (mode !== "world" && mode !== "interior" && mode !== "warungRush")) {
       return;
     }
 

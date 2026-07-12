@@ -252,6 +252,23 @@ describe("authored street layout invariants", () => {
     expect(activeStreetTemplate.slots.some((slot) => overlaps(pathRect, slotRect(slot)))).toBe(false);
   });
 
+  it("adds one reachable Canggu Station bus drop-off pocket to bounds, collision, and minimap data", () => {
+    const pocket = walkableStreetParcels.find((parcel) => parcel.id === "canggu_station_bus_dropoff");
+    expect(pocket).toMatchObject({ kind: "bus_dropoff", widthTiles: 6, heightTiles: 3 });
+    if (!pocket) return;
+    const rect: Rect = {
+      id: pocket.id,
+      x: pocket.tileX * TILE_SIZE,
+      y: pocket.tileY * TILE_SIZE,
+      width: pocket.widthTiles * TILE_SIZE,
+      height: pocket.heightTiles * TILE_SIZE
+    };
+    expect(isPointInsidePlayableBounds(authoredPlayableBounds, { x: rect.x, y: rect.y })).toBe(true);
+    expect(isPointInsidePlayableBounds(authoredPlayableBounds, { x: rect.x + rect.width, y: rect.y + rect.height })).toBe(true);
+    expect(collisionRects.some((collision) => overlaps(rect, collision))).toBe(false);
+    expect(activeStreetTemplate.slots.some((slot) => overlaps(rect, slotRect(slot)))).toBe(false);
+  });
+
   it("keeps villa gate dressing aligned to existing villa delivery dropoff points", () => {
     const villaDeliveries = deliveryDefinitions.filter(
       (delivery) => delivery.dropoffId.toLowerCase().includes("villa") || delivery.dropoffName.toLowerCase().includes("villa")

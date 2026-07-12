@@ -480,4 +480,18 @@ describe("Persistence migration", () => {
 
     expect(loaded.activeActivity).toEqual(world.activeActivity);
   });
+
+  it("round-trips an interrupted Warung Rush without a schema bump", () => {
+    const world = createInitialWorldState();
+    world.activeActivity = {
+      source: "warungRush", activityId: "warung_lunch_rush", venueId: "canggu_station", venueName: "Warung Sari",
+      label: "Ibu needs a hand — lunch rush", durationMin: 70, elapsedMs: 12000, realDurationMs: 75000, startedAt: 12 * 60,
+      rush: { elapsedMs: 12000, nextOrderAtMs: 12400, maxSimultaneousOrders: 2, servedCount: 1, expiredCount: 0, heldDishId: "mie_goreng", orders: [
+        { id: "order-1", tableId: "left", dishId: "nasi_campur", patienceMs: 4000, maxPatienceMs: 18000, status: "served" },
+        { id: "order-2", tableId: "right", dishId: "mie_goreng", patienceMs: 9000, maxPatienceMs: 18000, status: "waiting" }
+      ] }
+    };
+    saveWorldState(world);
+    expect(loadWorldState().activeActivity).toEqual(world.activeActivity);
+  });
 });

@@ -27,6 +27,8 @@ export interface DeliveryResult {
   starRating?: number;
   payout?: number;
   cargoCare?: CargoCareAdjustment;
+  onTime?: boolean;
+  onTimeBonus?: number;
 }
 
 export interface DeliveryOfferAvailability {
@@ -131,13 +133,18 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
   const condition = getDeliveryCondition(definition, active.conditionId);
   const terms = getEffectiveDeliveryTerms(definition, condition);
   const starRating = calculateDeliveryStarRating(active, now, performanceScore, condition);
+  const onTime = now <= active.dueAt;
+  const cargoEligible =
+    isCargoCareEligible(world.life.actProgress.currentAct, definition, condition) &&
+    (definition.onTimeBonus == null || onTime);
   const cargoCare = calculateCargoCareAdjustment(
     definition,
     condition,
     active.cargoIntegrity ?? 100,
-    isCargoCareEligible(world.life.actProgress.currentAct, definition, condition)
+    cargoEligible
   );
-  const payoutBase = cargoCare.eligible ? cargoCare.adjustedPayoutBase : terms.payout;
+  const onTimeBonus = onTime ? definition.onTimeBonus ?? 0 : 0;
+  const payoutBase = cargoCare.eligible ? cargoCare.adjustedPayoutBase : terms.payout + onTimeBonus;
   const payout = calculateDeliveryPayout(payoutBase, starRating);
   player.money += payout;
   adjustPlayerMeters(world, terms.meterDeltas);
@@ -185,10 +192,14 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
   const cargoCopy = describeCargoCareLoss(cargoCare);
   return {
     ok: true,
-    message: `Delivered ${definition.title}${condition ? ` (${condition.label})` : ""}. Rp +${payout}. Driver rating ${starRating.toFixed(1)}★.${cargoCopy}${wearCopy}${moveOutCopy}`,
+    message: `Delivered ${definition.title}${condition ? ` (${condition.label})` : ""}. Rp +${payout}. Driver rating ${starRating.toFixed(1)}★.${
+      definition.onTimeBonus ? (onTime ? ` On-time bonus included.` : ` Window missed — no Rp ${definition.onTimeBonus} bonus.`) : ""
+    }${cargoCopy}${wearCopy}${moveOutCopy}`,
     starRating,
     payout,
-    cargoCare: cargoCare.eligible ? cargoCare : undefined
+    cargoCare: cargoCare.eligible ? cargoCare : undefined,
+    onTime,
+    onTimeBonus
   };
 }
 

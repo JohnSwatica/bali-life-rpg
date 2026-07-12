@@ -127,7 +127,8 @@ function migrateActiveActivityState(raw: unknown): ActiveActivityState | null {
       value.source !== "opportunity" &&
       value.source !== "rideCheckpoint" &&
       value.source !== "scooterRepair" &&
-      value.source !== "rivalRace") ||
+      value.source !== "rivalRace" &&
+      value.source !== "warungRush") ||
     typeof value.venueId !== "string" ||
     typeof value.venueName !== "string" ||
     typeof value.label !== "string" ||
@@ -164,6 +165,28 @@ function migrateActiveActivityState(raw: unknown): ActiveActivityState | null {
   if (value.source === "rivalRace" && typeof value.raceId === "string") {
     return { ...base, source: "rivalRace", raceId: value.raceId };
   }
+  if (value.source === "warungRush" && value.activityId === "warung_lunch_rush" && value.rush && typeof value.rush === "object") {
+    const rush = value.rush as Partial<Extract<ActiveActivityState, { source: "warungRush" }>["rush"]>;
+    if (Array.isArray(rush.orders) && typeof rush.elapsedMs === "number" && typeof rush.nextOrderAtMs === "number" && typeof rush.maxSimultaneousOrders === "number") {
+      return {
+        ...base,
+        source: "warungRush",
+        activityId: "warung_lunch_rush",
+        rush: {
+          elapsedMs: Math.max(0, rush.elapsedMs), nextOrderAtMs: Math.max(0, rush.nextOrderAtMs),
+          maxSimultaneousOrders: Math.max(2, Math.min(4, rush.maxSimultaneousOrders)),
+          servedCount: readFiniteNumber(rush.servedCount, 0), expiredCount: readFiniteNumber(rush.expiredCount, 0),
+          heldDishId: rush.heldDishId === "nasi_campur" || rush.heldDishId === "mie_goreng" || rush.heldDishId === "es_teh" ? rush.heldDishId : undefined,
+          orders: rush.orders.filter((order): order is NonNullable<typeof rush.orders>[number] => Boolean(order)).filter((order) =>
+            typeof order.id === "string" && typeof order.tableId === "string" &&
+            (order.dishId === "nasi_campur" || order.dishId === "mie_goreng" || order.dishId === "es_teh") &&
+            typeof order.patienceMs === "number" && typeof order.maxPatienceMs === "number" &&
+            (order.status === "waiting" || order.status === "served" || order.status === "expired")
+          )
+        }
+      };
+    }
+  }
   return null;
 }
 
@@ -173,7 +196,7 @@ function migrateActiveMinigameState(raw: unknown): ActiveMinigameState | undefin
   }
   const value = raw as Partial<ActiveMinigameState>;
   if (
-    (value.kind !== "timing" && value.kind !== "balance" && value.kind !== "choice") ||
+    (value.kind !== "timing" && value.kind !== "balance" && value.kind !== "choice" && value.kind !== "service") ||
     typeof value.title !== "string" ||
     typeof value.prompt !== "string" ||
     typeof value.actionLabel !== "string"

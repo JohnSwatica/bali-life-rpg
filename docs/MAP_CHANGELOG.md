@@ -25,3 +25,4 @@ walkable) pending RPG-20260708-06 verification.
 ## Increments
 
 - 2026-07-11 · RPG-20260708-06 · Added the 10x1-tile Corner paddy-edge dirt path between the existing sidewalk and yellowing field. · proof: `tmp/street-legibility-2026-07-11/04-after-paddy-path-desktop.png`
+- 2026-07-12 · RPG-20260712-02 · Added a contiguous 6x3-tile bus drop-off bay at the Canggu Station street edge for the v4 cold-open arrival. · proof: before `tmp/act0-v4-proof/00-before-bus-pocket.png`, after `tmp/smoke/04-first-choice-t+049.9s.png`

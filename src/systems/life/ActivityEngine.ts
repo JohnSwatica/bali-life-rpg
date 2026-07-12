@@ -157,6 +157,9 @@ function evaluateActivity(world: WorldState, context: VenueActivityContext, acti
   if (activity.requires?.minEnergy && world.meters.energy < activity.requires.minEnergy) {
     return { activity, available: false, reason: `Need Energy ${activity.requires.minEnergy}.`, timeModifier: getActiveActivityTimeModifier(world, activity) };
   }
+  if (activity.requires?.minAct && world.life.actProgress.currentAct < activity.requires.minAct) {
+    return { activity, available: false, reason: "Available after your first day.", timeModifier: getActiveActivityTimeModifier(world, activity) };
+  }
   if (activity.requires?.openHoursOnly && !isOpenAt(context.openHours, world.clock)) {
     return { activity, available: false, reason: "Venue is closed.", timeModifier: getActiveActivityTimeModifier(world, activity) };
   }
@@ -167,6 +170,12 @@ function evaluateActivity(world: WorldState, context: VenueActivityContext, acti
     const existing = world.life.activityHistory[activityRecordKey(context.venueId, activity.id)];
     if (existing?.lastDay === world.clock.day && existing.count > 0) {
       return { activity, available: false, reason: "Already done today.", timeModifier: getActiveActivityTimeModifier(world, activity) };
+    }
+  }
+  if (activity.requires?.maxDailyUses) {
+    const existing = world.life.activityHistory[activityRecordKey(context.venueId, activity.id)];
+    if (existing?.lastDay === world.clock.day && existing.count >= activity.requires.maxDailyUses) {
+      return { activity, available: false, reason: "Lunch rush is done for today.", timeModifier: getActiveActivityTimeModifier(world, activity) };
     }
   }
   return { activity, available: true, reason: null, timeModifier: getActiveActivityTimeModifier(world, activity) };

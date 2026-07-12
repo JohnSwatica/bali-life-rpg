@@ -22,6 +22,7 @@ import {
 import { getHustleGoalStates, getHustleNextStep } from "../systems/hustle/HustleGoals";
 import { shouldOpenIbuHustleBoard } from "../systems/hustle/IbuHustleBoard";
 import {
+  applyAct0NegotiatedCompletionFee,
   completeAct0Step,
   getAct0ColdOpenCopy,
   getAct0MealProgressKindForActivity,
@@ -34,8 +35,107 @@ import { getRelationship } from "../systems/relationships/RelationshipMemory";
 import { createInitialWorldState } from "../systems/WorldState";
 import { getDeliveryDefinition } from "../data/deliveries";
 import { playerHomeBase } from "../data/homeBase";
+import { getRelationshipChoiceScene } from "../systems/relationships/RelationshipChoiceScenes";
+import { ACT0_OPENING_DURATION_MS, buildAct0OpeningCutscene } from "../systems/cutscene/Act0OpeningScript";
+import { migrateLifeLoopState } from "../systems/life/LifeLoopState";
 
 describe("Act 0 hustle and deliveries", () => {
+  it("stages the v4 cold-open inside the 45-60 second unskipped budget", () => {
+    const script = buildAct0OpeningCutscene({
+      player: { x: 10, y: 10 },
+      busStart: { x: 20, y: 10 },
+      busExit: { x: -200, y: 10 },
+      ibuStart: { x: 60, y: 60 },
+      ibuEnd: { x: 14, y: 12 },
+      station: { x: 60, y: 60 }
+    });
+    const duration = script.steps.reduce((total, step) => total + step.durationMs, 0);
+
+    expect(duration).toBe(ACT0_OPENING_DURATION_MS);
+    expect(duration).toBeGreaterThanOrEqual(45_000);
+    expect(duration).toBeLessThanOrEqual(60_000);
+    expect(script.steps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "bus_pulls_away", kind: "scripted_walk", actorId: "arrival_bus" }),
+        expect.objectContaining({ id: "kos_scam_message", kind: "act_card" }),
+        expect.objectContaining({ id: "ibu_crosses_street", kind: "scripted_walk", actorId: "ibu_sari_cutscene" })
+      ])
+    );
+  });
+
+  it("offers two character choices with affinity, memory, and axis residue but no decline", () => {
+    const scene = getRelationshipChoiceScene("ibu_sari_act0_scooter_deal");
+
+    expect(scene?.npcId).toBe("ibu_sari");
+    expect(scene?.options.map((option) => option.actionId)).toEqual(["accept_act0_humbly", "negotiate_act0_fee"]);
+    expect(scene?.options[0]).toMatchObject({ affinityBonus: 3, axis: { kind: "relational", delta: 3 } });
+    expect(scene?.options[1]).toMatchObject({ affinityBonus: -1, axis: { kind: "relational", delta: -2 } });
+    expect(scene?.options.every((option) => Boolean(option.memory))).toBe(true);
+  });
+
+  it("pays the negotiated Act 0 fee exactly once on completion", () => {
+    const world = createInitialWorldState();
+    const moneyBefore = world.players[world.localPlayerId].money;
+    world.questFlags.act0_negotiated_fee = true;
+
+    expect(applyAct0NegotiatedCompletionFee(world, "act0_ibu_milk_madu_catering")).toBe(25);
+    expect(world.players[world.localPlayerId].money).toBe(moneyBefore + 25);
+    expect(world.life.hustle.deliveryEarnings).toBe(25);
+    expect(applyAct0NegotiatedCompletionFee(world, "act0_ibu_milk_madu_catering")).toBe(0);
+    expect(world.players[world.localPlayerId].money).toBe(moneyBefore + 25);
+  });
+
+  it("runs Ibu's catering hook for 15 minutes and fails forward without the on-time bonus", () => {
+    const onTimeWorld = createInitialWorldState();
+    expect(acceptDelivery(onTimeWorld, "act0_ibu_milk_madu_catering", 480)).toMatchObject({ ok: true });
+    expect(pickupDelivery(onTimeWorld, 480)).toMatchObject({ ok: true });
+    onTimeWorld.life.hustle.activeDelivery!.dueAt = 503;
+    const onTime = completeDelivery(onTimeWorld, 502, 1);
+    expect(onTime).toMatchObject({ ok: true, onTime: true, onTimeBonus: 40 });
+    expect(onTime.cargoCare).toMatchObject({ eligible: true, originalBonus: 40, retainedBonus: 40 });
+
+    const lateWorld = createInitialWorldState();
+    expect(acceptDelivery(lateWorld, "act0_ibu_milk_madu_catering", 480)).toMatchObject({ ok: true });
+    expect(pickupDelivery(lateWorld, 480)).toMatchObject({ ok: true });
+    lateWorld.life.hustle.activeDelivery!.dueAt = 503;
+    const late = completeDelivery(lateWorld, 504, 1);
+    expect(late).toMatchObject({ ok: true, onTime: false, onTimeBonus: 0 });
+    expect(late.message).toContain("Window missed");
+    expect(lateWorld.life.hustle.completedDeliveryIds).toContain("act0_ibu_milk_madu_catering");
+    expect((onTime.payout ?? 0) - (late.payout ?? 0)).toBeGreaterThanOrEqual(40);
+  });
+
+  it("preserves an old save already midway through Act 0 instead of replaying the new opening", () => {
+    const migrated = migrateLifeLoopState({
+      actProgress: {
+        currentAct: 0,
+        act0Step: "dropoff_first_delivery",
+        completedAct0StepIds: ["meet_ibu_sari", "pickup_first_delivery"],
+        firstDayComplete: false
+      },
+      hustle: {
+        activeDelivery: {
+          deliveryId: "first_baked_villa_delivery",
+          stage: "picked_up",
+          acceptedAt: 480,
+          dueAt: 570,
+          pickedUpAt: 492
+        }
+      }
+    });
+
+    expect(migrated.actProgress).toMatchObject({
+      currentAct: 0,
+      act0Step: "dropoff_first_delivery",
+      completedAct0StepIds: ["meet_ibu_sari", "pickup_first_delivery"],
+      firstDayComplete: false
+    });
+    expect(migrated.hustle.activeDelivery).toMatchObject({
+      deliveryId: "first_baked_villa_delivery",
+      stage: "picked_up",
+      dueAt: 570
+    });
+  });
   it("leads the first-run panel with arrival story before control reminders", () => {
     const copy = getAct0ColdOpenCopy();
 

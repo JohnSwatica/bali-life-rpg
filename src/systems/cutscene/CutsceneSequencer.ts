@@ -20,6 +20,7 @@ export interface CutsceneStep {
   subtitle?: string;
   target?: CutscenePoint;
   waypoints?: CutscenePoint[];
+  actorId?: string;
 }
 
 export interface CutsceneScript {

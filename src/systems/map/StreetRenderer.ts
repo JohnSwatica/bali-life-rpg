@@ -708,6 +708,18 @@ function drawWalkableParcels(g: Phaser.GameObjects.Graphics, template: StreetTem
     const y = parcel.tileY * TILE_SIZE;
     const width = parcel.widthTiles * TILE_SIZE;
     const height = parcel.heightTiles * TILE_SIZE;
+    if (parcel.kind === "bus_dropoff") {
+      g.fillStyle(0x101820, 0.22);
+      g.fillRoundedRect(x + 3, y + 4, width, height, 5);
+      g.fillStyle(0x77746d, 1);
+      g.fillRoundedRect(x, y, width, height, 5);
+      g.lineStyle(2, 0xf2c35d, 0.92);
+      g.lineBetween(x + 10, y + height - 7, x + width - 10, y + height - 7);
+      for (let offset = 18; offset < width - 12; offset += 34) {
+        g.lineBetween(x + offset, y + 6, x + offset + 14, y + 6);
+      }
+      continue;
+    }
     g.fillStyle(0x4d3825, 0.18);
     g.fillRoundedRect(x + 3, y + 5, width, height, 8);
     g.fillStyle(0xb88b55, 1);

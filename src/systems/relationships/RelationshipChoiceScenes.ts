@@ -1,6 +1,12 @@
 import type { MemoryType } from "../../types";
 
-export type RelationshipChoiceActionId = "accept_no_questions" | "decline_no_questions" | "start_rio_race" | "decline_rio_race";
+export type RelationshipChoiceActionId =
+  | "accept_act0_humbly"
+  | "negotiate_act0_fee"
+  | "accept_no_questions"
+  | "decline_no_questions"
+  | "start_rio_race"
+  | "decline_rio_race";
 
 export interface RelationshipChoiceOption {
   id: string;
@@ -24,6 +30,36 @@ export interface RelationshipChoiceScene {
 }
 
 export const RELATIONSHIP_CHOICE_SCENES: Record<string, RelationshipChoiceScene> = {
+  ibu_sari_act0_scooter_deal: {
+    id: "ibu_sari_act0_scooter_deal",
+    npcId: "ibu_sari",
+    trigger: "manual",
+    npcOpeningLine:
+      'Ibu Sari rests one hand on the catering box. Behind her, the old scooter coughs smoke into the blue dawn. "Fifteen minutes. Milk & Madu. Then we talk about what you owe me."',
+    prompt: "The road, the room, and the clock all start here. How do you take the deal?",
+    options: [
+      {
+        id: "accept_humbly",
+        label: "Take the keys. ‘I won’t forget this.’",
+        resultLine:
+          'Her shoulders loosen. "Good. Gratitude remembers the road home. Now go — the box does not care about speeches."',
+        actionId: "accept_act0_humbly",
+        affinityBonus: 3,
+        axis: { kind: "relational", delta: 3 },
+        memory: { type: "helped", detail: "Accepted Ibu Sari’s scooter deal with gratitude" }
+      },
+      {
+        id: "negotiate_fee",
+        label: "Ask for a delivery fee too.",
+        resultLine:
+          'One eyebrow rises. "Stranded five minutes and already negotiating." She names a small fee. "Fine. Earn it — and do not make me regret the keys."',
+        actionId: "negotiate_act0_fee",
+        affinityBonus: -1,
+        axis: { kind: "relational", delta: -2 },
+        memory: { type: "visited", detail: "Negotiated a fee before accepting Ibu Sari’s scooter deal" }
+      }
+    ]
+  },
   kadek_bakery_turnin: {
     id: "kadek_bakery_turnin",
     npcId: "kadek",

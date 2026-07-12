@@ -8,7 +8,7 @@ const ROOT = process.cwd();
 const OUTPUT_DIR = path.join(ROOT, "tmp", "smoke");
 const PORT = Number(process.env.SMOKE_PORT ?? 4176);
 const BASE_URL = process.env.SMOKE_BASE_URL ?? `http://127.0.0.1:${PORT}/?debug=1`;
-const STEP_TIMEOUT_MS = 45_000;
+const STEP_TIMEOUT_MS = 55_000;
 const MOVE_TICK_MS = 72;
 const CHROME_CANDIDATES = [
   process.env.CHROME_PATH,
@@ -25,6 +25,7 @@ let activeBeat = "boot";
 let browserError;
 const rideSamples = [];
 let rideStartedAt = 0;
+let openingStartedAt = 0;
 
 async function main() {
   await rm(OUTPUT_DIR, { recursive: true, force: true });
@@ -55,40 +56,52 @@ async function main() {
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForSelector('[data-ui-surface="title-screen"]', { timeout: 10_000 });
+  openingStartedAt = Date.now();
   await clickButton("New Game");
-  await waitForSelector(".bali-life-dialogue");
-  await capture("00-cold-open");
-  await press("e");
-  await waitForDebug((state) => state.mode === "world" && state.act0Step === "meet_ibu_sari", "cold open closed");
-
-  await runBeat("01-meet-ibu-sari", "pickup_first_delivery", async () => {
-    await followObjectiveIntoInterior();
-    await moveToObjective();
-    await press("e");
-    await closeDialogueIfPresent();
-  });
-
-  await leaveInteriorByObjective();
-  await ensureMounted();
-
-  await runBeat("02-baked-pickup", "dropoff_first_delivery", async () => {
-    await followObjectiveIntoInterior();
-    await moveToObjective();
-    await press("e");
-  });
-
-  await leaveInteriorByObjective();
+  await captureOpeningStep("00-bus-departure", "bus_pulls_away");
+  await captureOpeningStep("01-kos-scam-message", "kos_scam_message");
+  await captureOpeningStep("02-ibu-crosses-street", "ibu_crosses_street");
+  await captureOpeningStep("03-scooter-offer", "ibu_offer_line");
+  await waitForSelector(".bali-life-dialogue", 20_000);
+  await capture("04-first-choice");
+  const saveKeysBeforeChoice = await page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith("bali-life-rpg.")));
+  if (saveKeysBeforeChoice.length > 0) {
+    throw new Error(`Opening wrote a save before choice resolution: ${saveKeysBeforeChoice.join(", ")}`);
+  }
+  console.log(`[SAVE ${new Date().toISOString()}] no durable save before first-choice resolution`);
+  await clickButton("Take the keys. ‘I won’t forget this.’");
+  const hookLive = await waitForDebug(
+    (state) => state.act0Step === "dropoff_first_delivery" && state.activeDelivery === "act0_ibu_milk_madu_catering",
+    "timed catering hook live",
+    8_000
+  );
+  const hookElapsedMs = Date.now() - openingStartedAt;
+  if (hookElapsedMs >= 180_000) {
+    throw new Error(`New Game -> live delivery took ${(hookElapsedMs / 1_000).toFixed(2)}s (budget <180s)`);
+  }
+  console.log(
+    `[HOOK ${new Date().toISOString()}] New Game -> live countdown ${(hookElapsedMs / 1_000).toFixed(2)}s; ` +
+      `delivery=${hookLive.activeDelivery} dueAt=${hookLive.activeDeliveryDueAt}`
+  );
+  const saveKeysAfterChoice = await page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith("bali-life-rpg.")));
+  if (saveKeysAfterChoice.length === 0) {
+    throw new Error("Choice resolved and delivery went live without a durable save");
+  }
+  await capture("05-timed-delivery-live");
+  await closeDialogueIfPresent();
   await ensureMounted();
   rideStartedAt = Date.now();
 
-  await runBeat("03-villa-dropoff", "buy_meal_and_coffee", async () => {
+  await runBeat("06-milk-madu-catering-dropoff", "buy_meal_and_coffee", async () => {
     await moveToObjective({ collectRide: true });
     await press("e");
   }, STEP_TIMEOUT_MS, 1_500);
   printRideSummary();
   await ensureOnFoot();
 
-  await runBeat("04-cafe-coffee-and-meal", "sleep_first_night", async () => {
+  await runBeat("07-nusadrop-signup-meal", "sleep_first_night", async () => {
+    // The Milk & Madu and Milu storefront radii touch; bias north to the authored Milk & Madu door.
+    await holdKeys(["w"], 150);
     await followObjectiveIntoInterior();
     await moveToObjective();
     await press("e");
@@ -100,7 +113,7 @@ async function main() {
   });
 
   await leaveInteriorByObjective();
-  await runBeat("05-sleep-first-night", "complete", async () => {
+  await runBeat("08-sleep-first-night", "complete", async () => {
     await followObjectiveIntoInterior();
     await moveToObjective();
     await press("e");
@@ -109,7 +122,21 @@ async function main() {
 
   const finalState = await getDebug();
   console.log(`[PASS] Act 0 complete at ${finalState.time}; ${finalState.fieldObjectiveLine}`);
-  await capture("06-act0-complete");
+  await capture("09-act0-complete");
+}
+
+async function captureOpeningStep(name, stepId) {
+  activeBeat = name;
+  const state = await waitForDebug(
+    (next) => next.cutscene?.id === "act0_v4_bus_arrival" && next.cutscene.stepId === stepId,
+    `opening step ${stepId}`,
+    60_000
+  );
+  console.log(
+    `[OPEN ${new Date().toISOString()}] ${stepId} at ${((Date.now() - openingStartedAt) / 1_000).toFixed(2)}s ` +
+      `script=${(state.cutscene.elapsedMs / 1_000).toFixed(2)}s`
+  );
+  await capture(name);
 }
 
 async function runBeat(name, expectedStep, action, timeoutMs = STEP_TIMEOUT_MS, settleBeforeCaptureMs = 0) {
@@ -128,6 +155,11 @@ async function followObjectiveIntoInterior() {
   if (before.mode === "interior") return;
   await moveToObjective();
   for (let attempt = 0; attempt < 3; attempt += 1) {
+    const beforeAction = await getDebug();
+    console.log(
+      `[DOOR] attempt=${attempt + 1} mode=${beforeAction.mode} nearest=${beforeAction.nearestInteraction ?? "none"} ` +
+        `player=${beforeAction.player.x},${beforeAction.player.y}`
+    );
     await press("e");
     try {
       await waitForDebug(
@@ -137,6 +169,12 @@ async function followObjectiveIntoInterior() {
       );
       return;
     } catch {
+      const afterAction = await getDebug();
+      if (afterAction.mode === "activity" || afterAction.mode === "dialogue") {
+        await press("Escape");
+        await waitForDebug((state) => state.mode === "world", "wrong doorway panel closed", 1_200);
+        await holdKeys([attempt % 2 === 0 ? "w" : "s"], 90);
+      }
       await delay(120);
     }
   }
@@ -334,7 +372,8 @@ async function waitForSelectorGone(selector, timeout = 8_000) {
 }
 
 async function capture(name) {
-  await page.screenshot({ path: path.join(OUTPUT_DIR, `${name}.png`) });
+  const elapsed = openingStartedAt ? ((Date.now() - openingStartedAt) / 1_000).toFixed(1).padStart(5, "0") : "boot";
+  await page.screenshot({ path: path.join(OUTPUT_DIR, `${name}-t+${elapsed}s.png`) });
 }
 
 function printRideSummary() {
@@ -346,7 +385,7 @@ function printRideSummary() {
   }
   const average = speeds.reduce((sum, speed) => sum + speed, 0) / speeds.length;
   if (Math.max(...speeds) <= 0) {
-    throw new Error("Ride telemetry never reported movement during the BAKED-to-villa leg");
+    throw new Error("Ride telemetry never reported movement during the Canggu-Station-to-Milk-&-Madu leg");
   }
   const maxDrift = Math.max(...rideSamples.map((sample) => sample.drift));
   console.log(
@@ -363,7 +402,8 @@ function startServer() {
   const npm = process.platform === "win32" ? "npm.cmd" : "npm";
   const child = spawn(npm, ["run", "dev", "--", "--port", String(PORT), "--strictPort"], {
     cwd: ROOT,
-    stdio: ["ignore", "pipe", "pipe"]
+    stdio: ["ignore", "pipe", "pipe"],
+    detached: process.platform !== "win32"
   });
   child.stdout.on("data", (chunk) => process.stdout.write(`[vite] ${chunk}`));
   child.stderr.on("data", (chunk) => process.stderr.write(`[vite] ${chunk}`));
@@ -404,7 +444,15 @@ function delay(ms) {
 async function cleanup() {
   await browser?.close().catch(() => undefined);
   if (server && server.exitCode == null) {
-    server.kill("SIGTERM");
+    if (process.platform !== "win32" && server.pid) {
+      try {
+        process.kill(-server.pid, "SIGTERM");
+      } catch {
+        server.kill("SIGTERM");
+      }
+    } else {
+      server.kill("SIGTERM");
+    }
   }
 }
 

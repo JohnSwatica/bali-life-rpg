@@ -12,6 +12,7 @@ import {
 } from "../data/authoredStreetLayout";
 import { ambientNpcDefinitions, type AmbientNpcDefinition } from "../data/ambientNpcs";
 import { activityDefinitions, interestGroupDefinitions } from "../data/community";
+import type { Activity } from "../data/activities";
 import { itemDefinitions } from "../data/items";
 import { authoredPlayableBounds } from "../data/playableBounds";
 import { playerHomeBase } from "../data/homeBase";
@@ -33,6 +34,7 @@ import { ScriptedDialogueProvider, type DialogueProvider } from "../systems/dial
 import { getAmbientNpcLine, getNpcDialogueSurface } from "../systems/dialogue/DialoguePresentation";
 import { getPortraitDataUrl, getPortraitDefinition, portraitVariantForTier } from "../systems/dialogue/PortraitArt";
 import { buildAct1IntroCutscene, buildAct2IntroCutscene } from "../systems/cutscene/ActCardScripts";
+import { buildAct0OpeningCutscene } from "../systems/cutscene/Act0OpeningScript";
 import {
   getCutsceneStepState,
   shouldPauseQueuedFeedback,
@@ -117,6 +119,7 @@ import {
   scoreChoice,
   scoreTimingAttempt
 } from "../systems/minigames/ActivityMinigames";
+import { calculateWarungRushPerformance, createWarungRushState, pickUpWarungDish, serveWarungOrder, updateWarungRush, WARUNG_DISH_LABELS } from "../systems/minigames/WarungRush";
 import {
   getRideCheckpointsForDelivery,
   pickOutcomeToast,
@@ -163,6 +166,7 @@ import { getSettlingInGoalTitle, updateSettlingInGoals } from "../systems/life/S
 import { getStationSocialBridgeOptions } from "../systems/life/StationSocialBridge";
 import { sleepAtHomeUntilMorning } from "../systems/life/SleepCycle";
 import {
+  applyAct0NegotiatedCompletionFee,
   completeAct0Step,
   getAct0ColdOpenCopy,
   getAct0MealProgressKindForActivity,
@@ -250,7 +254,7 @@ import {
   getChapterCutsceneDelayMs,
   type PayoutCelebrationSpec
 } from "../systems/animation/PayoutCelebration";
-import { CARGO_FEEL_TUNING, PAYOUT_FEEL_TUNING, RIDE_FEEL_TUNING } from "../tuning/FeelTuning";
+import { CARGO_FEEL_TUNING, PAYOUT_FEEL_TUNING, RIDE_FEEL_TUNING, WARUNG_RUSH_FEEL_TUNING } from "../tuning/FeelTuning";
 import {
   advanceClock,
   formatClock,
@@ -293,6 +297,7 @@ type Mode =
   | "inventory"
   | "activity"
   | "committedActivity"
+  | "warungRush"
   | "community"
   | "phone"
   | "godmode"
@@ -317,6 +322,7 @@ interface ActiveCutsceneRunner {
   onComplete?: () => void;
   activeStepId?: string;
   playerStart?: { x: number; y: number };
+  actors?: Map<string, Phaser.GameObjects.Container>;
 }
 
 const SHOW_NPC_IDLE_DEBUG_LABELS = shouldShowNpcIdleCueLabel();
@@ -353,6 +359,8 @@ interface BaliLifeDebugSnapshot {
   act0Step: string;
   driverRating: number;
   activeDelivery: string | null;
+  activeDeliveryDueAt: number | null;
+  cutscene: { id: string; stepId: string | null; elapsedMs: number } | null;
   fieldObjective: FieldObjectiveState;
   fieldObjectiveLine: string;
   worldSceneAudit: FieldFirstDiscoveryAudit;
@@ -692,6 +700,8 @@ export class GameScene extends Phaser.Scene {
   private committedActivityStatus?: HTMLDivElement;
   private committedMinigameMarker?: HTMLDivElement;
   private committedMinigameFeedback?: HTMLDivElement;
+  private warungRushVisuals?: Phaser.GameObjects.Graphics;
+  private warungRushCustomers: Phaser.GameObjects.Sprite[] = [];
   private activeDeliveryResolvedCheckpointIds: string[] = [];
   private activeDeliveryPerformanceScores: number[] = [];
   private activeRivalRace?: RivalRaceRuntime;
@@ -775,7 +785,7 @@ export class GameScene extends Phaser.Scene {
     this.createInteractionController();
     this.createInput();
     this.createHud();
-    this.updateMapDiscovery(true);
+    this.updateMapDiscovery(true, !this.skipTitleScreenForFreshStart);
     this.updateOpportunityFeed(0, true);
 
     this.cameras.main.setBounds(
@@ -793,15 +803,14 @@ export class GameScene extends Phaser.Scene {
     if (this.skipTitleScreenForFreshStart) {
       this.skipTitleScreenForFreshStart = false;
       this.sessionStartedAt = Date.now();
-      this.showToast("Welcome to Berawa near FINNS. Press E near people, venues, and pickups.");
-      this.openFirstRunHint();
+      this.startAct0Opening();
     } else {
       this.openTitleScreen(hasSaveAtBoot, "title");
     }
   }
 
   update(_time: number, delta: number): void {
-    const menuOpen = !shouldAdvanceGameplayBehindMenu(this.mode);
+    const menuOpen = !shouldAdvanceGameplayBehindMenu(this.mode) || Boolean(this.activeCutscene);
     if (!menuOpen) {
       advanceClock(this.world, delta);
     }
@@ -822,7 +831,9 @@ export class GameScene extends Phaser.Scene {
       this.updateRivalRace(delta);
       this.updateRideCheckpoints();
     }
-    this.updateMapDiscovery();
+    if (!this.activeCutscene) {
+      this.updateMapDiscovery();
+    }
     this.updateStreetSignVisibility();
     this.updateTraffic(delta);
     this.updateWantedOffenders(delta);
@@ -833,6 +844,7 @@ export class GameScene extends Phaser.Scene {
     this.updateOpportunityFeed(delta);
     if (!menuOpen) {
       this.updateCommittedActivity(delta);
+      this.updateWarungRush(delta);
     }
     this.updateHud(delta);
     this.updateLighting();
@@ -843,6 +855,9 @@ export class GameScene extends Phaser.Scene {
     this.destroyDialogueOverlay();
     this.destroyCommittedActivityOverlay();
     this.activeCutscene?.overlay.container.destroy(true);
+    for (const actor of this.activeCutscene?.actors?.values() ?? []) {
+      actor.destroy(true);
+    }
     this.activeCutscene = undefined;
     this.soundManager.destroy();
     this.unsubscribeNetwork?.();
@@ -1669,9 +1684,13 @@ export class GameScene extends Phaser.Scene {
           this.closePauseMenu();
         } else if (this.godmodePanel) {
           this.closeGodmodePanel();
-        } else if (this.mode === "committedActivity") {
+        } else if (this.mode === "committedActivity" || this.mode === "warungRush") {
           this.cancelCommittedActivity();
         } else if (this.awaitingRelationshipChoice) {
+          const scene = getRelationshipChoiceScene("ibu_sari_act0_scooter_deal");
+          if (scene && this.world.life.actProgress.act0Step === "meet_ibu_sari" && !this.world.questFlags.act0_v4_opening_complete) {
+            this.resolveRelationshipChoice(scene, scene.options[0]);
+          }
           return;
         } else if (this.phone?.isOpen) {
           this.phone.close();
@@ -1879,7 +1898,7 @@ export class GameScene extends Phaser.Scene {
 
     const movement = this.inputController.getMovementVector(this.mode, this.cursors, this.keys, this.hudController.joystickVector);
     const hasMovementInput = movement.lengthSq() > 0;
-    const canMove = this.mode === "world" || this.mode === "interior";
+    const canMove = this.mode === "world" || this.mode === "interior" || this.mode === "warungRush";
     const isRidingBike =
       canMove &&
       canPlayerBeOnBike(this.mode, this.playerState.hasBike, this.activeInteriorId) &&
@@ -1931,7 +1950,7 @@ export class GameScene extends Phaser.Scene {
 
     if (this.activeInteriorId) {
       this.enforceInteriorBounds();
-      this.tryAutoExitInterior();
+      if (this.mode !== "warungRush") this.tryAutoExitInterior();
     } else {
       this.enforceWaterBoundary();
       this.enforcePlayableBounds();
@@ -3220,6 +3239,8 @@ export class GameScene extends Phaser.Scene {
           ? "Activity in progress. Use the on-screen controls."
           : "Activity in progress. ESC cancels early."
       );
+    } else if (this.mode === "warungRush") {
+      this.promptText.setText("Lunch rush — E / ACT at Ibu's counter to pick up, then at the matching table to serve.");
     } else {
       this.promptText.setText("ESC closes the current panel.");
     }
@@ -3316,6 +3337,11 @@ export class GameScene extends Phaser.Scene {
         return;
       }
       this.closePanel();
+      return;
+    }
+
+    if (this.mode === "warungRush") {
+      this.handleWarungRushAction();
       return;
     }
 
@@ -3506,6 +3532,16 @@ export class GameScene extends Phaser.Scene {
   }
 
   private getNpcDialogueLine(npcId: string): string {
+    if (npcId === "ibu_sari" && this.world.life.hustle.completedDeliveryIds.includes("act0_ibu_milk_madu_catering")) {
+      if (!this.world.questFlags.act0_catering_on_time) {
+        return this.world.questFlags.act0_negotiated_fee
+          ? '"You bargained, then missed the window," Ibu Sari says. "Still — you finished. I remember both."'
+          : '"The window went, but you did not abandon the box," Ibu Sari says. "I remember that."';
+      }
+      return this.world.questFlags.act0_negotiated_fee
+        ? '"You bargained before you had a bed," Ibu Sari says. "But you delivered what you promised. I remember both."'
+        : '"You said you would not forget," Ibu Sari says. "You made the window. I remember that too."';
+    }
     const line = this.dialogueProvider.getLine(npcId, { memory: getRelationship(this.world, "npc", npcId) });
     if (typeof line === "string") {
       return line;
@@ -3623,6 +3659,10 @@ export class GameScene extends Phaser.Scene {
         memory: option.memory.type,
         detail: option.memory.detail
       });
+    }
+    if (option.actionId === "accept_act0_humbly" || option.actionId === "negotiate_act0_fee") {
+      this.resolveAct0OpeningChoice(option);
+      return;
     }
     if (option.actionId === "start_rio_race") {
       this.pendingChoiceOpportunityId = undefined;
@@ -3823,6 +3863,86 @@ export class GameScene extends Phaser.Scene {
       "ibu_sari"
     );
     this.showToast("Borrowed scooter unlocked. First delivery accepted.");
+  }
+
+  private startAct0Opening(): void {
+    if (this.world.life.actProgress.act0Step !== "meet_ibu_sari" || this.world.questFlags.act0_v4_opening_complete) {
+      this.openFirstRunHint();
+      return;
+    }
+    this.act0FirstRunGateSessionActive = true;
+    this.showMovementTutorialPrompt = false;
+    this.world.clock.minuteOfDay = 6 * 60 + 50;
+    this.player.setPosition(2352, 96);
+    this.player.body?.reset(2352, 96);
+
+    const bus = this.add.container(2420, 96).setDepth(220);
+    bus.add([
+      this.add.rectangle(0, 0, 132, 48, 0x315b78).setStrokeStyle(3, 0xfff0bd, 0.8),
+      this.add.rectangle(-24, -7, 22, 14, 0x9ee6df, 0.9),
+      this.add.rectangle(8, -7, 22, 14, 0x9ee6df, 0.9),
+      this.add.circle(-42, 23, 10, 0x101820),
+      this.add.circle(42, 23, 10, 0x101820)
+    ]);
+    const ibu = this.add.container(2192, 96).setDepth(221);
+    ibu.add(this.add.sprite(0, 0, "npc-sari").setScale(CHARACTER_SPRITE_SCALE));
+    const backpack = this.add.container(2352, 110).setDepth(2351);
+    backpack.add([
+      this.add.ellipse(0, 4, 36, 20, 0x5f4635).setStrokeStyle(2, 0xd1a968, 0.8),
+      this.add.rectangle(0, -7, 22, 18, 0x7a5940).setStrokeStyle(2, 0x3d2c23, 0.7)
+    ]);
+    const actors = new Map<string, Phaser.GameObjects.Container>([
+      ["arrival_bus", bus],
+      ["ibu_sari_cutscene", ibu],
+      ["arrival_backpack", backpack]
+    ]);
+    const script = buildAct0OpeningCutscene({
+      player: { x: 2352, y: 96 },
+      busStart: { x: 2420, y: 96 },
+      busExit: { x: 2820, y: 96 },
+      ibuStart: { x: 2192, y: 96 },
+      ibuEnd: { x: 2304, y: 96 },
+      station: { x: 2192, y: 96 }
+    });
+    this.startCutscene(script, () => {
+      const choice = getRelationshipChoiceScene("ibu_sari_act0_scooter_deal");
+      if (choice) {
+        this.openRelationshipChoiceScene(choice);
+      }
+    }, actors);
+  }
+
+  private resolveAct0OpeningChoice(option: RelationshipChoiceOption): void {
+    this.world.questFlags.firstRunHintSeen = true;
+    this.world.questFlags.act0_v4_opening_complete = true;
+    this.world.questFlags.act0_negotiated_fee = option.actionId === "negotiate_act0_fee";
+    this.playerState.hasBike = true;
+    this.playerState.bikeStuck = false;
+    this.playerState.bikeCondition = Math.min(this.playerState.bikeCondition, 48);
+    this.playerState.tutorialStep = "free_roam";
+    this.world.life.hustle.scooterTier = "borrowed_rattletrap";
+    if (getQuantity(this.playerState, SCOOTER_KEY_ITEM_ID) === 0) {
+      addItem(this.playerState, SCOOTER_KEY_ITEM_ID, 1);
+    }
+    const accepted = acceptDelivery(this.world, "act0_ibu_milk_madu_catering", this.getAbsoluteMinute());
+    if (accepted.ok) {
+      pickupDelivery(this.world, this.getAbsoluteMinute());
+      if (this.world.life.hustle.activeDelivery) {
+        this.world.life.hustle.activeDelivery.dueAt = this.getAbsoluteMinute() + 15;
+      }
+      completeAct0Step(this.world, "meet_ibu_sari");
+      completeAct0Step(this.world, "pickup_first_delivery");
+      this.setPlayerBikeMode(true);
+    }
+    this.pendingChoiceOpportunityId = undefined;
+    saveWorldState(this.world);
+    this.destroyDialogueOverlay();
+    this.openDialogue(
+      "Ibu Sari",
+      `${option.resultLine}\n\n${accepted.ok ? "Catering box loaded. The 15:00 countdown is live — ride to Milk & Madu now." : accepted.message}`,
+      "ibu_sari"
+    );
+    this.showToast("TIMED DELIVERY LIVE — Milk & Madu · 15 min");
   }
 
   private openExteriorVenueInteraction(venueId: string): void {
@@ -5196,6 +5316,11 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    if (activityId === "warung_lunch_rush" && this.activeInteriorId === "warung_sari_interior") {
+      this.startWarungRush(context, option.activity);
+      return;
+    }
+
     if (!this.activeInteriorId) {
       const node = venueMapNodes.find((candidate) => candidate.venueId === context.venueId);
       this.placePlayerAtCommittedVenue(node);
@@ -5223,6 +5348,97 @@ export class GameScene extends Phaser.Scene {
       ? "Use the on-screen controls."
       : "ESC cancels early.";
     this.showToast(`${option.activity.label} started. ${activityHint}`);
+  }
+
+  private startWarungRush(context: VenueActivityContext, activity: Activity): void {
+    const plays = this.world.life.activityHistory[`${context.venueId}:${activity.id}`]?.totalCount ?? 0;
+    this.closePanel(false);
+    const rush = createWarungRushState(plays);
+    this.committedActivity = {
+      source: "warungRush", activityId: "warung_lunch_rush", rush,
+      venueId: context.venueId, venueName: context.name, label: activity.label,
+      durationMin: activity.timeCost, elapsedMs: 0, realDurationMs: WARUNG_RUSH_FEEL_TUNING.roundDurationMs,
+      startedAt: this.getAbsoluteMinute()
+    };
+    this.mode = "warungRush";
+    this.world.activeActivity = { ...this.committedActivity };
+    this.createWarungRushVisuals();
+    this.createCommittedActivityOverlay(this.committedActivity);
+    saveWorldState(this.world);
+    this.showToast(`Lunch rush! Walk to Ibu's counter, then E / ACT at the matching table.`);
+  }
+
+  private handleWarungRushAction(): void {
+    const active = this.committedActivity;
+    if (!active || active.source !== "warungRush") return;
+    const interior = this.getActiveInterior();
+    if (!interior) return;
+    const counter = interior.stations.find((station) => station.id === "meal_counter");
+    if (counter && Phaser.Math.Distance.Between(this.player.x, this.player.y, counter.x, counter.y) <= counter.radius) {
+      const before = active.rush.heldDishId;
+      active.rush = pickUpWarungDish(active.rush);
+      this.showToast(active.rush.heldDishId && !before ? `Picked up ${WARUNG_DISH_LABELS[active.rush.heldDishId]}.` : "Hands full — deliver that dish first.");
+      return;
+    }
+    const tableId = this.getWarungRushTableId();
+    if (!tableId) {
+      this.showToast("Move to Ibu's counter or a customer table.");
+      return;
+    }
+    const result = serveWarungOrder(active.rush, tableId);
+    active.rush = result.state;
+    this.showToast(result.message);
+  }
+
+  private getWarungRushTableId(): string | undefined {
+    const interior = this.getActiveInterior();
+    if (!interior) return undefined;
+    const { x, y } = interior.origin;
+    const tables = [
+      { id: "left", x: x + TILE_SIZE * 2.35, y: y + TILE_SIZE * 4.55 },
+      { id: "right", x: x + TILE_SIZE * 8.75, y: y + TILE_SIZE * 4.8 },
+      { id: "counter", x: x + TILE_SIZE * 6.9, y: y + TILE_SIZE * 4.95 }
+    ];
+    return tables.find((table) => Phaser.Math.Distance.Between(this.player.x, this.player.y, table.x, table.y) <= TILE_SIZE * 0.95)?.id;
+  }
+
+  private createWarungRushVisuals(): void {
+    this.destroyWarungRushVisuals();
+    const interior = this.getActiveInterior();
+    if (!interior) return;
+    const { x, y } = interior.origin;
+    this.warungRushVisuals = this.add.graphics().setDepth(80);
+    const tables = [
+      { x: x + TILE_SIZE * 2.35, y: y + TILE_SIZE * 4.15 }, { x: x + TILE_SIZE * 8.75, y: y + TILE_SIZE * 4.4 }, { x: x + TILE_SIZE * 6.9, y: y + TILE_SIZE * 4.55 }
+    ];
+    this.warungRushCustomers = tables.map((table, index) => this.add.sprite(table.x, table.y, index % 2 ? "npc-kadek" : "npc-ibu_sari").setDepth(table.y + 3).setTint(index % 2 ? 0xffc4a2 : 0xaedbff).setScale(CHARACTER_SPRITE_SCALE * 0.82));
+    this.updateWarungRushVisuals();
+  }
+
+  private updateWarungRushVisuals(): void {
+    const active = this.committedActivity;
+    if (!active || active.source !== "warungRush" || !this.warungRushVisuals) return;
+    const interior = this.getActiveInterior();
+    if (!interior) return;
+    const { x, y } = interior.origin;
+    const tablePositions: Record<string, { x: number; y: number }> = {
+      left: { x: x + TILE_SIZE * 2.35, y: y + TILE_SIZE * 3.55 }, right: { x: x + TILE_SIZE * 8.75, y: y + TILE_SIZE * 3.8 }, counter: { x: x + TILE_SIZE * 6.9, y: y + TILE_SIZE * 3.95 }
+    };
+    this.warungRushVisuals.clear();
+    for (const order of active.rush.orders.filter((order) => order.status === "waiting")) {
+      const point = tablePositions[order.tableId]; if (!point) continue;
+      const ratio = order.patienceMs / order.maxPatienceMs;
+      this.warungRushVisuals.lineStyle(4, ratio > .5 ? 0x62c48f : ratio > .25 ? 0xf4b860 : 0xff7d70, .95);
+      this.warungRushVisuals.beginPath(); this.warungRushVisuals.arc(point.x, point.y, TILE_SIZE * .48, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ratio); this.warungRushVisuals.strokePath();
+      this.warungRushVisuals.fillStyle(0x101820, .9); this.warungRushVisuals.fillRoundedRect(point.x - 34, point.y - 25, 68, 15, 4);
+      // A small dish-color pip keeps the order readable at normal and touch zoom.
+      this.warungRushVisuals.fillStyle(order.dishId === "nasi_campur" ? 0xf4d58d : order.dishId === "mie_goreng" ? 0xe38b52 : 0x6ab7ff, 1); this.warungRushVisuals.fillCircle(point.x, point.y - 17, 5);
+    }
+  }
+
+  private destroyWarungRushVisuals(): void {
+    this.warungRushVisuals?.destroy(); this.warungRushVisuals = undefined;
+    this.warungRushCustomers.forEach((sprite) => sprite.destroy()); this.warungRushCustomers = [];
   }
 
   private startCommittedOpportunity(opportunityId: string, venueId: string): void {
@@ -5324,6 +5540,22 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private updateWarungRush(delta: number): void {
+    const active = this.committedActivity;
+    if (!active || active.source !== "warungRush" || this.mode !== "warungRush") return;
+    active.elapsedMs = Math.min(active.realDurationMs, active.elapsedMs + delta);
+    active.rush = updateWarungRush(active.rush, delta);
+    this.world.activeActivity = { ...active };
+    this.updateWarungRushVisuals();
+    const progress = active.elapsedMs / active.realDurationMs;
+    if (this.committedActivityProgress) this.committedActivityProgress.style.width = `${Math.round(progress * 100)}%`;
+    if (this.committedActivityStatus) {
+      const held = active.rush.heldDishId ? `Holding ${WARUNG_DISH_LABELS[active.rush.heldDishId]}` : "Hands empty — counter is ready";
+      this.committedActivityStatus.textContent = `${held} · Served ${active.rush.servedCount} · Left ${Math.ceil((active.realDurationMs - active.elapsedMs) / 1000)}s`;
+    }
+    if (progress >= 1) this.completeCommittedActivity();
+  }
+
   private completeCommittedActivity(): void {
     const active = this.committedActivity;
     if (!active) {
@@ -5343,6 +5575,12 @@ export class GameScene extends Phaser.Scene {
       this.finishScooterRepair(performanceScore);
       return;
     }
+    if (active.source === "warungRush") {
+      this.destroyWarungRushVisuals();
+      const context = getVenueActivityContext(active.venueId);
+      if (context) this.resolveVenueActivity(context, active.activityId, calculateWarungRushPerformance(active.rush));
+      return;
+    }
     if (active.source === "activity") {
       const context = getVenueActivityContext(active.venueId);
       if (!context) {
@@ -5353,6 +5591,10 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     if (active.source === "rivalRace") {
+      return;
+    }
+    if (!active.opportunityId) {
+      this.showToast("Activity finished, but the opportunity was missing.");
       return;
     }
     this.finishCommittedOpportunity(active.opportunityId, performanceScore);
@@ -5474,9 +5716,11 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     const label = this.committedActivity.label;
+    const wasWarungRush = this.committedActivity.source === "warungRush";
     this.committedActivity = undefined;
     this.world.activeActivity = null;
     this.destroyCommittedActivityOverlay();
+    if (wasWarungRush) this.destroyWarungRushVisuals();
     this.mode = this.activeInteriorId ? "interior" : "world";
     saveWorldState(this.world);
     this.showToast(`${label} cancelled. No reward earned.`);
@@ -5488,6 +5732,17 @@ export class GameScene extends Phaser.Scene {
     }
     if (this.world.activeActivity.source === "rivalRace") {
       this.resumeRivalRace(this.world.activeActivity);
+      return;
+    }
+    if (this.world.activeActivity.source === "warungRush") {
+      const interior = interiorDefinitions.warung_sari_interior;
+      this.activeInteriorId = interior.id;
+      this.applyInteriorCameraBounds(interior);
+      this.placePlayerSprite(interior.entrance, false);
+      this.committedActivity = { ...this.world.activeActivity };
+      this.mode = "warungRush";
+      this.createWarungRushVisuals();
+      this.createCommittedActivityOverlay(this.committedActivity);
       return;
     }
     this.committedActivity = { ...this.world.activeActivity };
@@ -6452,7 +6707,7 @@ export class GameScene extends Phaser.Scene {
     this.openDialogue(copy.title, copy.body);
   }
 
-  private updateMapDiscovery(initial = false): void {
+  private updateMapDiscovery(initial = false, persist = true): void {
     const discovery = this.world.mapDiscovery;
     let changed = false;
     const newVenueNames: string[] = [];
@@ -6481,7 +6736,9 @@ export class GameScene extends Phaser.Scene {
       this.updateDiscoveryLabelVisibility();
     }
     if (changed) {
-      saveWorldState(this.world);
+      if (persist) {
+        saveWorldState(this.world);
+      }
       if (!initial && newVenueNames.length > 0 && this.discoveryToastCooldown <= 0) {
         this.discoveryToastCooldown = 2600;
         this.showToast(`Map updated: ${newVenueNames[0]} discovered.`);
@@ -7767,6 +8024,11 @@ export class GameScene extends Phaser.Scene {
       completeAct0Step(this.world, "pickup_first_delivery");
       this.spawnInteractionFlourish("pickup", this.player.x, this.player.y, "Picked up");
     } else if (result.ok && !this.world.life.hustle.activeDelivery) {
+      const negotiatedFee = applyAct0NegotiatedCompletionFee(this.world, active.deliveryId);
+      if (negotiatedFee > 0) {
+        result.payout = (result.payout ?? 0) + negotiatedFee;
+        result.message += ` Negotiated fee +Rp ${negotiatedFee}.`;
+      }
       completeAct0Step(this.world, "dropoff_first_delivery");
       this.refreshSettlingInGoals(false);
       const celebration = buildPayoutCelebrationSpec({
@@ -7786,6 +8048,15 @@ export class GameScene extends Phaser.Scene {
       );
       this.playDeliveryFlourish(this.player.x, this.player.y, result.payout, celebration);
       this.showCargoCareDeliveryReaction(active.deliveryId, result);
+      if (active.deliveryId === "act0_ibu_milk_madu_catering") {
+        this.world.questFlags.act0_catering_on_time = Boolean(result.onTime);
+        const line = result.onTime
+          ? this.world.questFlags.act0_negotiated_fee
+            ? "Ibu Sari texts: ‘Fee earned. And yes, I remember that you asked.’"
+            : "Ibu Sari texts: ‘On time. Keep the keys — and keep your word.’"
+          : "Ibu Sari texts: ‘Late. No bonus. But you finished — bring the scooter back in one piece.’";
+        this.time.delayedCall(900, () => this.showToast(line));
+      }
     }
     saveWorldState(this.world);
     this.showToast(result.message);
@@ -8084,7 +8355,11 @@ export class GameScene extends Phaser.Scene {
     return "";
   }
 
-  private startCutscene(script: CutsceneScript, onComplete?: () => void): void {
+  private startCutscene(
+    script: CutsceneScript,
+    onComplete?: () => void,
+    actors?: Map<string, Phaser.GameObjects.Container>
+  ): void {
     if (this.activeCutscene) {
       this.finishCutscene(true);
     }
@@ -8096,7 +8371,8 @@ export class GameScene extends Phaser.Scene {
       elapsedMs: 0,
       priorMode,
       overlay,
-      onComplete
+      onComplete,
+      actors
     };
     this.mode = "cutscene";
     this.player.setVelocity(0, 0);
@@ -8149,6 +8425,9 @@ export class GameScene extends Phaser.Scene {
     }
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     active.overlay.container.destroy(true);
+    for (const actor of active.actors?.values() ?? []) {
+      actor.destroy(true);
+    }
     const onComplete = active.onComplete;
     const priorMode = active.priorMode === "cutscene" ? (this.activeInteriorId ? "interior" : "world") : active.priorMode;
     this.activeCutscene = undefined;
@@ -8254,6 +8533,10 @@ export class GameScene extends Phaser.Scene {
     const end = waypoints[waypoints.length - 1];
     const x = Phaser.Math.Linear(start.x, end.x, progress);
     const y = Phaser.Math.Linear(start.y, end.y, progress);
+    if (step.actorId) {
+      this.activeCutscene?.actors?.get(step.actorId)?.setPosition(x, y);
+      return;
+    }
     this.player.setPosition(x, y);
     this.player.body?.reset(x, y);
   }
@@ -8363,7 +8646,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private isOverlayOpen(): boolean {
-    return this.mode !== "world" && this.mode !== "interior";
+    return this.mode !== "world" && this.mode !== "interior" && this.mode !== "warungRush";
   }
 
   private updateOverlayChrome(): void {
@@ -8706,6 +8989,14 @@ export class GameScene extends Phaser.Scene {
       act0Step: this.world.life.actProgress.act0Step,
       driverRating: this.world.life.hustle.driverRating,
       activeDelivery: this.world.life.hustle.activeDelivery?.deliveryId ?? null,
+      activeDeliveryDueAt: this.world.life.hustle.activeDelivery?.dueAt ?? null,
+      cutscene: this.activeCutscene
+        ? {
+            id: this.activeCutscene.script.id,
+            stepId: this.activeCutscene.activeStepId ?? null,
+            elapsedMs: Math.round(this.activeCutscene.elapsedMs)
+          }
+        : null,
       fieldObjective,
       fieldObjectiveLine: formatFieldObjectiveLine(fieldObjective),
       worldSceneAudit: getFieldFirstDiscoveryAudit(this.world),

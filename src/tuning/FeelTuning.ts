@@ -125,6 +125,15 @@ export const RIDE_FEEL_TUNING = {
   nearMissMinimumSpeedRatio: 0.72
 } as const;
 
+/** Central tuning for the movement-based Warung Rush service round. */
+export const WARUNG_RUSH_FEEL_TUNING = {
+  roundDurationMs: 75000,
+  patienceMs: 18000,
+  orderIntervalMs: 6200,
+  maxSimultaneousOrders: 4,
+  playsPerDifficultyStep: 2
+} as const;
+
 export const CARGO_FEEL_TUNING = {
   /** Keeps the full condition bonus at or above this cargo integrity. */
   fullBonusIntegrity: 70,

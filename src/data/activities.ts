@@ -7,6 +7,8 @@ export interface ActivityRequirement {
   openHoursOnly?: boolean;
   startsAt?: number;
   endsAt?: number;
+  minAct?: number;
+  maxDailyUses?: number;
 }
 
 export interface Activity {
@@ -38,6 +40,24 @@ export interface Activity {
 }
 
 export const activityDefinitions: Activity[] = [
+  {
+    id: "warung_lunch_rush",
+    label: "Ibu needs a hand — lunch rush",
+    description: "Run plates from Ibu's counter to the right tables before patience runs out.",
+    categories: ["restaurant"],
+    venueIds: ["canggu_station"],
+    stationId: "warung",
+    actionLabel: "Serve",
+    outcomePreview: "A 60–90 second service rush: tips, Ibu affinity, and Social scale with clean deliveries.",
+    stationReward: "A distinct movement-and-juggling challenge, not a timing bar.",
+    stationRisk: "Customers who wait too long leave, but the round carries on.",
+    timeCost: 70,
+    cost: -80,
+    meterDeltas: { energy: -8, social: 8, wellbeing: 2 },
+    affinityBump: 4,
+    repeatable: true,
+    requires: { minEnergy: 12, minAct: 1, startsAt: 11 * 60, endsAt: 15 * 60, maxDailyUses: 2 }
+  },
   {
     id: "remote_work_session",
     label: "Work session",

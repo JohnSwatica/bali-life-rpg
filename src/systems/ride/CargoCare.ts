@@ -26,7 +26,9 @@ export function isCargoCareEligible(
   delivery: DeliveryDefinition,
   condition?: DeliveryCondition
 ): boolean {
-  return currentAct >= 1 && !delivery.tutorialDelivery && (condition?.payoutBonus ?? 0) > 0;
+  const act0CateringHook =
+    currentAct === 0 && delivery.id === "act0_ibu_milk_madu_catering" && (delivery.onTimeBonus ?? 0) > 0;
+  return act0CateringHook || (currentAct >= 1 && !delivery.tutorialDelivery && (condition?.payoutBonus ?? 0) > 0);
 }
 
 export function getCargoIntegrity(activeDelivery: ActiveDeliveryState | null | undefined): number {
@@ -68,7 +70,7 @@ export function calculateCargoCareAdjustment(
   integrity: number,
   eligible: boolean
 ): CargoCareAdjustment {
-  const originalBonus = Math.max(0, Math.round(condition?.payoutBonus ?? 0));
+  const originalBonus = Math.max(0, Math.round(condition?.payoutBonus ?? delivery.onTimeBonus ?? 0));
   if (!eligible || originalBonus <= 0) {
     return {
       eligible: false,

@@ -24,6 +24,7 @@ export interface DeliveryDefinition {
   itemId: string;
   timeLimitMin: number;
   payout: number;
+  onTimeBonus?: number;
   meterDeltas: Partial<Record<Meter, number>>;
   affinityBumps?: { npcId: string; amount: number }[];
   reputation?: { delta?: number; tag?: ReputationTag; reason: string };
@@ -37,6 +38,31 @@ export interface DeliveryDefinition {
 }
 
 export const deliveryDefinitions: DeliveryDefinition[] = [
+  {
+    id: "act0_ibu_milk_madu_catering",
+    title: "Ibu Sari’s dawn catering run",
+    description: "The scooter is on credit. The catering box has fifteen minutes to reach Milk & Madu.",
+    pickupVenueId: "canggu_station",
+    pickupLabel: "Take Ibu Sari’s catering box.",
+    dropoffId: "act0_milk_madu_door",
+    dropoffName: "Milk & Madu",
+    dropoffLabel: "Deliver the catering box to Milk & Madu.",
+    dropoffPoint: {
+      ...offsetVenuePoint("milk_madu_berawa", { x: 1380, y: 500 }, -92, 70),
+      radius: 78
+    },
+    itemId: "pantry_bag",
+    timeLimitMin: 15,
+    payout: 105,
+    onTimeBonus: 40,
+    meterDeltas: { energy: -8, wellbeing: 4, focus: 5, social: 3 },
+    affinityBumps: [{ npcId: "ibu_sari", amount: 2 }],
+    reputation: { delta: 2, tag: "reliable", reason: "Completed Ibu Sari’s first catering run" },
+    ratingWeight: 1,
+    tutorialDelivery: true,
+    boardAvailable: false,
+    repeatable: false
+  },
   {
     id: "first_baked_villa_delivery",
     title: "First BAKED villa drop",

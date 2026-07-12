@@ -68,7 +68,7 @@ export type EventType =
 export type GroupPurpose = "social" | "run" | "coworking" | "surf" | "food" | "housing";
 export type OpportunityType = "gig" | "social" | "help_out" | "flash_deal" | "rumor" | "trade";
 export type OpportunityStatus = "live" | "accepted" | "completed" | "missed";
-export type ActivityMinigameKind = "timing" | "balance" | "choice";
+export type ActivityMinigameKind = "timing" | "balance" | "choice" | "service";
 export type ReputationTag =
   | "helpful"
   | "reliable"
@@ -282,6 +282,27 @@ export interface ActiveMinigameState {
   choices?: ActiveMinigameChoice[];
 }
 
+export type WarungDishId = "nasi_campur" | "mie_goreng" | "es_teh";
+
+export interface WarungRushOrder {
+  id: string;
+  tableId: string;
+  dishId: WarungDishId;
+  patienceMs: number;
+  maxPatienceMs: number;
+  status: "waiting" | "served" | "expired";
+}
+
+export interface WarungRushState {
+  elapsedMs: number;
+  nextOrderAtMs: number;
+  maxSimultaneousOrders: number;
+  servedCount: number;
+  expiredCount: number;
+  heldDishId?: WarungDishId;
+  orders: WarungRushOrder[];
+}
+
 interface ActiveActivityBaseState {
   venueId: string;
   venueName: string;
@@ -323,6 +344,13 @@ export type ActiveActivityState =
       source: "rivalRace";
       raceId: string;
       activityId?: never;
+      opportunityId?: never;
+      checkpointId?: never;
+    })
+  | (ActiveActivityBaseState & {
+      source: "warungRush";
+      activityId: "warung_lunch_rush";
+      rush: WarungRushState;
       opportunityId?: never;
       checkpointId?: never;
     });

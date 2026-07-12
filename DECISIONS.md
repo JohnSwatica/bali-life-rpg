@@ -8,6 +8,14 @@ Elena/Rumah content is retired rather than translated: its two map pickups, item
 
 The reconciliation grep intentionally retains only internal IDs/keys (`rio`, `pak_bagus`, race constants, texture keys, memory/save keys), real Indonesian `Jalan` road references and `Awas, jalan rusak`, plus normal non-canon words such as "priority"/"serious" that happen to match broad search terms. No player-facing Elena, Rumah, Rio, Pak Bagus, Berawa 2.0, or Jalan-app copy remains.
 
+## 2026-07-12 - Act 0 v4 Is A Fresh-Session Staging Transaction Over Existing Systems
+
+RPG-20260712-02 does not add a cinematic engine, choice engine, or delivery mode. New Game stages the bus, backpack, Ibu walk, camera, letterbox, and message cards through the existing cutscene sequencer; its scripted-walk step now accepts an optional temporary actor. The first durable transition is the existing `RelationshipChoiceScene`: resolving either authored branch grants the borrowed scooter, loads the catering box through `DeliverySystem`, advances the two obsolete travel/pickup steps, and writes once with the 15-minute delivery live. Cutscenes pause world simulation and defer save requests; ESC/tap skips the cutscene, and ESC on the mandatory choice selects the humble branch so there is no refusal or soft-lock.
+
+The old `Act0Step` union and schema v11 stay intact. Fresh sessions alone call the new opening; existing saves resume their persisted mid-Act-0 step and old tutorial delivery without replaying or partially entering the new transaction. Choice residue uses existing generic quest flags plus relationship memory/affinity/axis state. The negotiated `Rp 25` fee is applied only on successful completion, while an authored `Rp 40` on-time bonus is omitted on late completion; both routes still use the existing payout celebration and both late/on-time outcomes complete. This preserves fail-forward and avoids a schema migration.
+
+The map delta is one `6x3`-tile `bus_dropoff` parcel directly beside Canggu Station. It enters the same walkable-parcel path used for playable-bounds derivation, renderer/minimap drawing, and layout collision invariants; it is staging geometry, not a detached district expansion.
+
 ## 2026-06-20 - Shared Identity Bridge
 
 `PlayerProfile.lifestyleTags` is the local cross-app identity bridge. The field is intentionally open-ended and local in this step, with `remoteAccountId: null` reserved for a later shared account that can also back a companion co-living social app.
@@ -531,6 +539,10 @@ Prompts are contextual rather than instructional wallpaper. In world mode, the b
 Message presentation is less abrasive. Toasts now pass through a small deduped queue with fade-in/fade-out and a gap, so back-to-back events stop overwriting the current line. Minor NPC touches use dark in-world speech bubbles with a tail and no routine/debug parenthetical; relationship beats, quest-critical dialogue, and Act 0 critical dialogue still keep full panels.
 
 The designer acceptance pass ran in-browser at `1280x800` on an isolated local test URL. Quiet roaming showed only the status chip, objective chip, top-right minimap, and meter micro-bars; standing near an NPC produced exactly one contextual prompt; Ari's minor line rendered as a dark bubble without routine text; and contextual warning chips appeared only after an actual wanted/scooter state. The long-running test save made one paired-toast screenshot inconclusive because live relationship/panel state intervened, but the queue implementation was reviewed against the state-machine spec and individual toast fade behavior was captured.
+
+## 2026-07-12 - Warung Rush Is A Reusable Movement-Service Mode
+
+Warung Rush is implemented as a new `warungRush` source inside the existing committed-activity contract, not a scene or a parallel activity system. It deliberately permits the same foot movement and `E`/touch ACT interaction used by the interior while the round timer runs. A small persistable order state owns assignment, dish matching, patience decay, failure-forward departures, reward performance, and the 2-to-4 repeat-play ramp; activity completion still flows through `ActivityEngine`, so money, Ibu affinity, Social, history, and interruption behavior remain shared. This is the foundation for the eventual Act 3 café service beat, without introducing cooking, stock, menus, or business management.
 
 ## 2026-07-02 - L1 Step 1 Proves Interiors In The Existing GameScene
 

@@ -56,12 +56,15 @@ describe("cargo care", () => {
 
   it("excludes Act 0 tutorial deliveries and no-bonus deliveries from cargo care", () => {
     const tutorial = getDeliveryDefinition("first_baked_villa_delivery");
+    const cateringHook = getDeliveryDefinition("act0_ibu_milk_madu_catering");
     const conditioned = getDeliveryDefinition("milk_madu_brunch_bag");
     expect(tutorial).toBeDefined();
+    expect(cateringHook).toBeDefined();
     expect(conditioned).toBeDefined();
     const condition = getDeliveryCondition(conditioned!, "villa_tip");
 
     expect(isCargoCareEligible(0, tutorial!, undefined)).toBe(false);
+    expect(isCargoCareEligible(0, cateringHook!, undefined)).toBe(true);
     expect(isCargoCareEligible(1, tutorial!, condition)).toBe(false);
     expect(isCargoCareEligible(1, conditioned!, undefined)).toBe(false);
     expect(isCargoCareEligible(1, conditioned!, condition)).toBe(true);

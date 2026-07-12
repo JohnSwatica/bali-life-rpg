@@ -16,4 +16,4 @@ export const pickupDefinitions: PickupDefinition[] = [
   { id: "flower-berawa", itemId: "frangipani", ...offsetVenuePoint("milk_madu_berawa", { x: 1380, y: 500 }, 64, -74), respawnMinutes: 240, label: "Frangipani blossom" }
 ];
 
-export const playerSpawn = offsetVenuePoint("canggu_station", { x: 610, y: 742 }, -170, -120);
+export const playerSpawn = { x: 2352, y: 96 };
