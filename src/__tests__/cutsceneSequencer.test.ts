@@ -68,6 +68,21 @@ describe("cutscene sequencer", () => {
     });
   });
 
+  it("puts the one-time NusaDrop rate cut directly after the Act 1 card", () => {
+    const script = buildAct1IntroCutscene(450, 4, true);
+
+    expect(script.steps.map((step) => step.id)).toEqual([
+      "letterbox_in",
+      "act1_card",
+      "nusadrop_rate_cut",
+      "letterbox_out"
+    ]);
+    expect(script.steps.find((step) => step.id === "nusadrop_rate_cut")).toMatchObject({
+      title: "NUSADROP UPDATE",
+      subtitle: "Base delivery pay -15%\nSurge Zones introduced"
+    });
+  });
+
   it("authors the Act 2 card with a camera pan and return", () => {
     const script = buildAct2IntroCutscene({ x: 1808, y: 2200 });
 

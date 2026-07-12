@@ -106,6 +106,12 @@ async function main() {
     await followObjectiveIntoInterior();
     await moveToObjective();
     await press("e");
+    await waitForSelector("#bali-life-activity-menu");
+    const milkMaduTitle = await page.$eval(".bali-life-activity-menu-title", (element) => element.textContent?.trim());
+    if (milkMaduTitle !== "Milk & Madu Berawa") {
+      throw new Error(`Act 0 cafe panel resolved to '${milkMaduTitle}' instead of Milk & Madu Berawa`);
+    }
+    await capture("07a-milk-madu-activity-panel");
     await clickActivity("Quick caffeine reset");
     await waitForDebug((state) => state.mode === "interior", "quick caffeine complete", 12_000);
     await press("e");
@@ -123,10 +129,57 @@ async function main() {
 
   const finalState = await getDebug();
   console.log(`[PASS] Act 0 complete at ${finalState.time}; ${finalState.fieldObjectiveLine}`);
-  await capture("09-act0-complete");
+  const rateCutState = await waitForDebug(
+    (state) => state.cutscene?.id === "act1_intro_card" && state.cutscene.stepId === "nusadrop_rate_cut",
+    "NusaDrop rate-cut card",
+    8_000
+  );
+  console.log(`[STORY] ${rateCutState.cutscene.stepId} visible before the morning hand`);
+  await capture("09-nusadrop-rate-cut");
   await ensureWorldForProof();
+  await moveToPoint({ x: 1696, y: 368 });
+  const leoApproach = await getDebug();
+  if (!leoApproach.nearestInteraction?.includes("Bali Family Rental Scooter")) {
+    throw new Error(`Leo pickup hub was not interactable: ${leoApproach.nearestInteraction ?? "none"}`);
+  }
+  await press("e");
+  await waitForDebug((state) => state.mode === "interior" && !state.interiorTransitioning, "scooter rental interior", 4_000);
+  await moveToInteriorPoint({ x: 20152, y: 2475 });
+  await press("e");
+  await clickActivity("Leo is waiting by the NusaDrop pickup rail");
+  await waitForSelector(".bali-life-dialogue");
+  await capture("10-leo-rate-cut-encounter");
+  await clickButton("‘They cut your pay too.’");
+  await waitForSelector(".bali-life-dialogue");
+  await capture("11-leo-rate-cut-hook");
+  await closeDialogueIfPresent();
+  await ensureWorldForProof();
+  await followObjectiveIntoInterior();
+  await moveToObjective();
+  await press("e");
+  await waitForSelector("#bali-life-activity-menu");
+  const act1MoneyBefore = (await getDebug()).money;
+  await clickActivity("Brunch bag to the upper lane");
+  await press("Escape");
+  await leaveInteriorByObjective();
+  await followObjectiveIntoInterior();
+  await moveToObjective();
+  await press("e");
+  await waitForDebug((state) => state.activeDeliveryStage === "picked_up", "first Act 1 pickup", 8_000);
+  await leaveInteriorByObjective();
+  await ensureMounted();
+  await moveToObjective();
+  await press("e");
+  const firstAct1Complete = await waitForDebug((state) => state.activeDelivery === null, "first Act 1 payout", 8_000);
+  const firstAct1Payout = firstAct1Complete.money - act1MoneyBefore;
+  if (!Number.isFinite(firstAct1Payout) || firstAct1Payout <= 0 || firstAct1Payout >= 160) {
+    throw new Error(`First Act 1 payout Rp ${firstAct1Payout} did not visibly undercut Act 0's Rp 160 payout`);
+  }
+  console.log(`[PAYOUT] Act 0 Rp 160 -> first Act 1 Rp ${firstAct1Payout} after the 15% base-pay cut`);
+  await capture("12-first-act1-lower-payout");
+  await ensureOnFoot();
   await moveToPoint({ x: 1708, y: 92 });
-  await capture("10-baked-locked-alley");
+  await capture("13-baked-locked-alley");
   await page.evaluate(() => {
     const button = [...document.querySelectorAll("button")].find((candidate) => candidate.textContent?.trim() === "SAVE");
     if (!(button instanceof HTMLButtonElement)) throw new Error("SAVE button missing from HUD");
@@ -276,6 +329,21 @@ async function moveToPoint(target) {
   throw new Error(`Timed out moving to map-proof point ${JSON.stringify(target)}`);
 }
 
+async function moveToInteriorPoint(target) {
+  const deadline = Date.now() + STEP_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const state = await getDebug();
+    if (state.mode !== "interior" || state.interiorTransitioning) {
+      await delay(90);
+      continue;
+    }
+    const distance = pointDistance(state.player, target);
+    if (distance < 18) return;
+    await moveToward(state.player, target, distance);
+  }
+  throw new Error(`Timed out moving to interior proof point ${JSON.stringify(target)}`);
+}
+
 async function ensureWorldForProof() {
   const deadline = Date.now() + 25_000;
   while (Date.now() < deadline) {
@@ -310,7 +378,7 @@ async function verifyMobileTouchSurface() {
   const outOfBounds = bounds.filter((rect) => rect.left < 0 || rect.top < 0 || rect.right > 390 || rect.bottom > 844);
   if (outOfBounds.length > 0) throw new Error(`390x844 controls out of bounds: ${JSON.stringify(outOfBounds)}`);
   console.log(`[TOUCH] 390x844 joystickVisible=${state.touchControlsVisible} buttons=${bounds.length} allInBounds=true`);
-  await capture("11-touch-390x844");
+  await capture("14-touch-390x844");
 }
 
 async function moveToward(player, target, distance, sampleWhileMoving) {

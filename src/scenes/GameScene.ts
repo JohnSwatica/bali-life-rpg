@@ -62,6 +62,7 @@ import {
 import { getFieldIndicators, type VenueFieldIndicator } from "../systems/guidance/FieldIndicators";
 import {
   getEventWorldScenes,
+  getAct1IncitingHookWorldScenes,
   getFieldFirstDiscoveryAudit,
   getOpportunityWorldScenes,
   getRivalRaceWorldScenes,
@@ -199,6 +200,11 @@ import {
 } from "../systems/hustle/HustleEconomy";
 import { shouldOpenIbuHustleBoard as canOpenIbuHustleBoard } from "../systems/hustle/IbuHustleBoard";
 import { isAct1MoveOutReady } from "../systems/hustle/HustleMilestones";
+import {
+  getAct1LeoEncounterHookLine,
+  isAct1LeoEncounterPending,
+  triggerAct1RateCut
+} from "../systems/story/Act1IncitingHook";
 import { getMorningHandCards, shouldShowMorningHand, type MorningHandCard } from "../systems/hustle/MorningHand";
 import {
   buildDayLedgerSummary,
@@ -367,6 +373,7 @@ interface BaliLifeDebugSnapshot {
   act0Step: string;
   driverRating: number;
   activeDelivery: string | null;
+  activeDeliveryStage: "accepted" | "picked_up" | null;
   activeDeliveryDueAt: number | null;
   deliveryRideRun: { elapsedMs: number; hazardsSpawned: number; hazardsAvoided: number; nearMisses: number; contacts: number } | null;
   cutscene: { id: string; stepId: string | null; elapsedMs: number } | null;
@@ -3725,6 +3732,15 @@ export class GameScene extends Phaser.Scene {
       this.openDialogue(npcDefinitions[scene.npcId]?.name ?? scene.npcId, option.resultLine, scene.npcId);
       return;
     }
+    if (option.actionId === "complete_act1_leo_encounter") {
+      saveWorldState(this.world);
+      this.openDialogue(
+        npcDefinitions[scene.npcId]?.name ?? scene.npcId,
+        `${option.resultLine}\n\n${getAct1LeoEncounterHookLine(this.world)}`,
+        scene.npcId
+      );
+      return;
+    }
     let followUpLine = "";
     if (option.actionId === "accept_no_questions" && this.pendingChoiceOpportunityId) {
       const result = acceptOpportunity(
@@ -4735,8 +4751,20 @@ export class GameScene extends Phaser.Scene {
 
     if (context.venueId === "bali_family_rental_scooter") {
       this.appendScooterCounterActions(content);
+      if (isAct1LeoEncounterPending(this.world)) {
+        this.appendActivityMenuSection(content, "Pickup rail");
+        this.appendActivityMenuRow(content, {
+          title: "Leo is waiting by the NusaDrop pickup rail",
+          body: "He saw the rate-cut notice too. He is looking at your scooter like it submitted an application.",
+          actionLabel: "Face Leo",
+          onAction: () => {
+            const scene = getRelationshipChoiceScene("rio_act1_rate_cut_encounter");
+            if (scene) this.openRelationshipChoiceScene(scene);
+          }
+        });
+      }
       const raceEligibility = getRioRaceEligibility(this.world);
-      if (raceEligibility.eligible) {
+      if (!isAct1LeoEncounterPending(this.world) && raceEligibility.eligible) {
         this.appendActivityMenuSection(content, "Leo's streak");
         this.appendActivityMenuRow(content, {
           title: RIO_RACE.title,
@@ -4984,7 +5012,7 @@ export class GameScene extends Phaser.Scene {
     for (const offer of offers.slice(0, 5)) {
       const delivery = offer.delivery;
       const condition = offer.available ? previewDeliveryCondition(this.world, delivery, this.getAbsoluteMinute()) : undefined;
-      const terms = getEffectiveDeliveryTerms(delivery, condition);
+      const terms = getEffectiveDeliveryTerms(delivery, condition, this.world);
       const status = offer.available
         ? `Rp ${terms.payout} | ${terms.timeLimitMin} min${condition ? ` | ${condition.label}` : ""}`
         : offer.reason ?? "Locked";
@@ -7087,6 +7115,11 @@ export class GameScene extends Phaser.Scene {
       const yOffset = Math.min(node.radius + scaleDistance(24), scaleDistance(92));
       this.drawOpportunityWorldScene(scene, node.x, node.y - yOffset, phase, activeLabelIds);
     }
+    for (const scene of getAct1IncitingHookWorldScenes(this.world)) {
+      const node = resolveWorldSceneVenueAnchor(scene.venueId);
+      if (!node) continue;
+      this.drawOpportunityWorldScene(scene, node.x, node.y - scaleDistance(58), phase, activeLabelIds);
+    }
 
     for (const scene of getEventWorldScenes(this.world)) {
       const node = resolveWorldSceneVenueAnchor(scene.venueId);
@@ -8633,6 +8666,10 @@ export class GameScene extends Phaser.Scene {
     this.playSound("sleep");
     const { morningPenaltyMessage } = sleepAtHomeUntilMorning(this.world);
     const completedAct0 = completeAct0Step(this.world, "sleep_first_night");
+    const rateCut = completedAct0 ? triggerAct1RateCut(this.world, this.getAbsoluteMinute()) : { fired: false };
+    if (rateCut.message) {
+      appendOpportunityMessage(this.world.opportunities, rateCut.message);
+    }
     this.mode = this.activeInteriorId ? "interior" : "world";
     this.updateLighting();
     const ledgerSummary = buildDayLedgerSummary(this.world);
@@ -8653,7 +8690,7 @@ export class GameScene extends Phaser.Scene {
     };
     if (completedAct0) {
       this.startCutscene(
-        buildAct1IntroCutscene(this.world.life.hustle.rentAmount, this.world.life.hustle.rentDueDay),
+        buildAct1IntroCutscene(this.world.life.hustle.rentAmount, this.world.life.hustle.rentDueDay, rateCut.fired),
         openMorningFlow
       );
       return;
@@ -9055,6 +9092,7 @@ export class GameScene extends Phaser.Scene {
       act0Step: this.world.life.actProgress.act0Step,
       driverRating: this.world.life.hustle.driverRating,
       activeDelivery: this.world.life.hustle.activeDelivery?.deliveryId ?? null,
+      activeDeliveryStage: this.world.life.hustle.activeDelivery?.stage ?? null,
       activeDeliveryDueAt: this.world.life.hustle.activeDelivery?.dueAt ?? null,
       deliveryRideRun: this.world.life.hustle.activeDelivery?.rideRun
         ? { ...this.world.life.hustle.activeDelivery.rideRun }

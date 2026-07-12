@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-12 (RPG-20260712-03)
+Last updated: 2026-07-13 (RPG-20260713-01/02)
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -11,6 +11,8 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 `CLAUDE_PROJECT_REVIEW_2026-07-06.md` is Claude's full project review (bottlenecks, gap analysis, sequencing recommendation). It is a supervisory assessment, not a canonical design source — `GAME_DESIGN.md`/`STORY_BIBLE.md` still win on narrative/systems conflicts — but its top recommendation (no recorded human playtest yet; a `PLAYTEST_01.md` should exist before more systems work) should be treated as live until the user says otherwise.
 
 Current durable truth:
+
+- **RPG-20260713-01/02 complete:** authored venue interaction footprints are collision-safe, so Act 0's Milk & Madu objective can no longer resolve to adjacent Milu by Nook. Fresh Act 1 entry now visibly and persistently cuts NusaDrop board base pay 15%, then stages Leo's one-time pickup-rail encounter before his existing race. Fresh smoke proof covers the correct Milk & Madu panel, Act 0 completion, the rate-cut card, Leo's dialogue, and a lower first Act 1 payout. Proof: `docs/RPG-20260713-01_VENUE_COLLISION_PROOF.md` and `docs/RPG-20260713-02_ACT1_INCITING_HOOK_PROOF.md`.
 
 - Branch: `main` — `feat/gameplay-stations` was fast-forward merged into `main` on 2026-07-06; `main` is now the working truth again.
 - Remote: `https://github.com/JohnSwatica/bali-life-rpg` (created 2026-07-06). All branches pushed. New work should branch from `main` and open PRs; John remains sole merge authority.
@@ -47,7 +49,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: **RPG-20260713-01 first** — a live-repro'd hard blocker soft-locks Act 0's final step for every new player (Milk & Madu / Milu by Nook venue collision; see DECISIONS.md 2026-07-13). Do not share the build with outside players until this lands. Then RPG-20260713-02 (Act 1's first real story beat — the NusaDrop rate cut + Leo's mocking encounter, translating STORY_BIBLE v4's actual content, not just names). After both: John merges PR #1 and shares with 3-5 people. Hard boundaries unchanged: no multiplayer, backend, AI calls, real commerce, Google data, or the Act 3 management sim.
+Immediate next move: RPG-20260713-01 and RPG-20260713-02 are complete. John can now merge the queued work and share the updated build with 3-5 outside players. Capture their written feedback before broadening Act 1 beyond the explicitly listed follow-ups. Hard boundaries unchanged: no multiplayer, backend, AI calls, real commerce, Google data, or the Act 3 management sim.
 
 ## Project
 

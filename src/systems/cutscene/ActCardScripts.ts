@@ -1,10 +1,21 @@
 import type { CutsceneScript } from "./CutsceneSequencer";
 
-export function buildAct1IntroCutscene(rentAmount: number, rentDueDay: number): CutsceneScript {
+export function buildAct1IntroCutscene(rentAmount: number, rentDueDay: number, showRateCut = false): CutsceneScript {
+  const rateCutSteps = showRateCut
+    ? [
+        {
+          id: "nusadrop_rate_cut",
+          kind: "act_card" as const,
+          durationMs: 2600,
+          title: "NUSADROP UPDATE",
+          subtitle: "Base delivery pay -15%\nSurge Zones introduced"
+        }
+      ]
+    : [];
   return {
     id: "act1_intro_card",
     after: "morning_hand",
-    timeoutMs: 4200,
+    timeoutMs: showRateCut ? 7000 : 4200,
     steps: [
       { id: "letterbox_in", kind: "letterbox_in", durationMs: 420 },
       {
@@ -14,6 +25,7 @@ export function buildAct1IntroCutscene(rentAmount: number, rentDueDay: number): 
         title: "ACT 1 -- THE HUSTLE",
         subtitle: `Rent: Rp ${rentAmount} by Day ${rentDueDay}`
       },
+      ...rateCutSteps,
       { id: "letterbox_out", kind: "letterbox_out", durationMs: 420 }
     ]
   };

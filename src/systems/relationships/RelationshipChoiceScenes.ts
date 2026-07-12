@@ -5,6 +5,7 @@ export type RelationshipChoiceActionId =
   | "negotiate_act0_fee"
   | "accept_no_questions"
   | "decline_no_questions"
+  | "complete_act1_leo_encounter"
   | "start_rio_race"
   | "decline_rio_race";
 
@@ -116,6 +117,28 @@ export const RELATIONSHIP_CHOICE_SCENES: Record<string, RelationshipChoiceScene>
         affinityBonus: 1,
         axis: { kind: "relational", delta: 1 },
         memory: { type: "visited", detail: "Turned down the no-questions package to Leo's face" }
+      }
+    ]
+  },
+  rio_act1_rate_cut_encounter: {
+    id: "rio_act1_rate_cut_encounter",
+    npcId: "rio",
+    trigger: "manual",
+    npcOpeningLine:
+      'Leo glances from the NusaDrop update to your borrowed scooter. "Fifteen percent off every base fare. Efficient, if you own the platform." He taps your scratched side panel. "Less efficient if this is your business plan."',
+    prompt: 'His grin is sharp, but he shifts his own scooter so you have room at the pickup rail. "Still taking the next run?"',
+    options: [
+      {
+        id: "take_the_run",
+        label: "Take the run. ‘You watching?’",
+        resultLine: '"I watch the leaderboard. Try appearing on it first."',
+        actionId: "complete_act1_leo_encounter"
+      },
+      {
+        id: "call_out_the_cut",
+        label: "‘They cut your pay too.’",
+        resultLine: 'His smile thins. "Correct. I simply intend to be faster than the cut."',
+        actionId: "complete_act1_leo_encounter"
       }
     ]
   },

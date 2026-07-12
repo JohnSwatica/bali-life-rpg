@@ -1,5 +1,15 @@
 # Decisions
 
+## 2026-07-13 - Authored Venue Interaction Footprints Must Not Overlap
+
+Milk & Madu and Milu by Nook are separate OSM-resolved venues, not duplicate or estimated catalog entries. Their bug was caused by compressing distinct storefronts to adjacent 128px authored slots while retaining larger OSM-era interaction radii. Every authored venue footprint is now capped to half its nearest-neighbour distance with an 8px gap, and shop interactions consume that same radius. A pairwise invariant protects the entire current street; the sibling audit reports zero remaining overlaps. Geometry, venue identities, and the dedicated catering dropoff remain unchanged.
+
+## 2026-07-13 - Act 1 Opens With A Persistent 15% NusaDrop Base-Pay Cut And One-Time Leo Scene
+
+The first transition into Act 1 writes a generic one-time flag (no schema bump), adds a persistent NusaDrop feed message, and inserts an explicit update card before the morning hand. The real `0.85` multiplier applies only to board-delivery base payouts after that flag; Act 0/tutorial pay and authored condition bonuses stay intact. Because the five unique board bases fall from Rp 716 to Rp 609, the move-out earnings threshold moves from Rp 700 to Rp 600 to preserve the existing five-run/one-hour pacing contract.
+
+Leo is visibly staged at the existing scooter-rental pickup rail until a one-time portrait choice scene resolves. Both responses are non-punitive and hook the existing race or acknowledge its result. Surge Zones remain name-only. Made's room offer, Kadek's priority-driver moment, the midpoint breakdown, and the closing milestone remain explicit future packets.
+
 ## 2026-07-12 - Delivery Riding Is Continuous World Play, Not A Committed Activity
 
 RPG-20260712-03 removes the delivery-only checkpoint definitions, timing/balance minigames, modal trigger zones, markers, persistence variant, and tests. A picked-up delivery now owns a small persisted `rideRun` record (elapsed time, hazards spawned/avoided, near-misses, contacts). `GameScene` keeps normal steering, touch joystick input, slick grip, ambient traffic, and Leo's separate ghost-race route active while procedural potholes, puddles, crossing pedestrians, and oncoming traffic are live in the world. Leo's race uses the same hazard field without changing its checkpoint/ghost rules.

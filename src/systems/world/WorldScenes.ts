@@ -4,6 +4,7 @@ import { socialGroupDefinitions } from "../../data/groups";
 import { getActiveEvents } from "../events/EventScheduler";
 import { getOpportunityTemplate } from "../opportunities/OpportunityEngine";
 import { getRioRaceEligibility, RIO_RACE } from "../ride/RivalRace";
+import { isAct1LeoEncounterPending } from "../story/Act1IncitingHook";
 import type { GameEvent, OpportunityType, WorldState } from "../../types";
 
 export type OpportunityWorldSceneKind =
@@ -116,7 +117,7 @@ export function getEventWorldScenes(world: WorldState): EventWorldScene[] {
 }
 
 export function getRivalRaceWorldScenes(world: WorldState): OpportunityWorldScene[] {
-  if (!getRioRaceEligibility(world).eligible || !resolveWorldSceneVenueAnchor(RIO_RACE.venueId)) {
+  if (isAct1LeoEncounterPending(world) || !getRioRaceEligibility(world).eligible || !resolveWorldSceneVenueAnchor(RIO_RACE.venueId)) {
     return [];
   }
   return [
@@ -134,6 +135,38 @@ export function getRivalRaceWorldScenes(world: WorldState): OpportunityWorldScen
       actors: [
         {
           id: "rio-race-challenge",
+          npcId: "rio",
+          spriteKey: npcDefinitions.rio?.spriteKey ?? "npc-rio",
+          role: "waving",
+          offsetX: -18,
+          offsetY: 0,
+          approachOffsetX: -54,
+          approachOffsetY: -68
+        }
+      ]
+    }
+  ];
+}
+
+export function getAct1IncitingHookWorldScenes(world: WorldState): OpportunityWorldScene[] {
+  if (!isAct1LeoEncounterPending(world) || !resolveWorldSceneVenueAnchor(RIO_RACE.venueId)) {
+    return [];
+  }
+  return [
+    {
+      source: "opportunity",
+      id: "story:act1:leo-rate-cut",
+      opportunityId: "rio_act1_rate_cut_encounter",
+      templateId: "rio_act1_rate_cut_encounter",
+      venueId: RIO_RACE.venueId,
+      title: "Leo at the pickup rail",
+      opportunityType: "gig",
+      sceneKind: "race_challenge",
+      cue: "LEO",
+      accepted: false,
+      actors: [
+        {
+          id: "rio-act1-rate-cut",
           npcId: "rio",
           spriteKey: npcDefinitions.rio?.spriteKey ?? "npc-rio",
           role: "waving",

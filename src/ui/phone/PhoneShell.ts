@@ -367,7 +367,7 @@ export class PhoneShell {
     for (const offer of offers.slice(0, 5)) {
       const delivery = offer.delivery;
       const condition = offer.available ? previewDeliveryCondition(world, delivery, this.options.getNow()) : undefined;
-      const terms = getEffectiveDeliveryTerms(delivery, condition);
+      const terms = getEffectiveDeliveryTerms(delivery, condition, world);
       const gate = offer.available
         ? `Rp ${terms.payout} | ${terms.timeLimitMin} min${condition ? ` | ${condition.label}` : ""}`
         : offer.reason ?? "Locked";

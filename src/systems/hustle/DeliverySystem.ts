@@ -20,6 +20,7 @@ import { applyDeliveryScooterWear, MIN_DELIVERY_BIKE_CONDITION } from "./HustleE
 import { getAct1MoveOutReadiness } from "./HustleMilestones";
 import type { ActiveDeliveryState, WorldState } from "../../types";
 import { createDeliveryRideRun } from "../ride/DeliveryRideMode";
+import { getDeliveryBasePayoutAfterAct1Cut } from "../story/Act1IncitingHook";
 
 export interface DeliveryResult {
   ok: boolean;
@@ -75,7 +76,7 @@ export function acceptDelivery(world: WorldState, deliveryId: string, now: numbe
     }
   }
   const condition = selectDeliveryCondition(world, definition, now);
-  const terms = getEffectiveDeliveryTerms(definition, condition);
+  const terms = getEffectiveDeliveryTerms(definition, condition, world);
   const activeDelivery: ActiveDeliveryState = {
     deliveryId,
     stage: "accepted",
@@ -131,18 +132,23 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
   }
 
   const condition = getDeliveryCondition(definition, active.conditionId);
-  const terms = getEffectiveDeliveryTerms(definition, condition);
+  const terms = getEffectiveDeliveryTerms(definition, condition, world);
   const starRating = calculateDeliveryStarRating(active, now, performanceScore, condition);
   const onTime = now <= active.dueAt;
   const cargoEligible =
     isCargoCareEligible(world.life.actProgress.currentAct, definition, condition) &&
     (definition.onTimeBonus == null || onTime);
-  const cargoCare = calculateCargoCareAdjustment(
+  const originalCargoCare = calculateCargoCareAdjustment(
     definition,
     condition,
     active.cargoIntegrity ?? 100,
     cargoEligible
   );
+  const cutBasePayout = getDeliveryBasePayoutAfterAct1Cut(world, definition);
+  const cargoCare = {
+    ...originalCargoCare,
+    adjustedPayoutBase: cutBasePayout + originalCargoCare.retainedBonus
+  };
   const onTimeBonus = onTime ? definition.onTimeBonus ?? 0 : 0;
   const payoutBase = cargoCare.eligible ? cargoCare.adjustedPayoutBase : terms.payout + onTimeBonus;
   const payout = calculateDeliveryPayout(payoutBase, starRating);
@@ -269,10 +275,12 @@ export function previewDeliveryCondition(world: WorldState, delivery: DeliveryDe
 
 export function getEffectiveDeliveryTerms(
   delivery: DeliveryDefinition,
-  condition?: DeliveryCondition
+  condition?: DeliveryCondition,
+  world?: WorldState
 ): EffectiveDeliveryTerms {
+  const basePayout = world ? getDeliveryBasePayoutAfterAct1Cut(world, delivery) : delivery.payout;
   return {
-    payout: Math.max(0, delivery.payout + (condition?.payoutBonus ?? 0)),
+    payout: Math.max(0, basePayout + (condition?.payoutBonus ?? 0)),
     timeLimitMin: Math.max(25, delivery.timeLimitMin + (condition?.timeLimitDeltaMin ?? 0)),
     meterDeltas: mergeMeterDeltas(delivery.meterDeltas, condition?.meterDeltas),
     scooterWear: getConditionScooterWear(condition)

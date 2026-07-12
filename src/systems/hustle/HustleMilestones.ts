@@ -2,7 +2,7 @@ import type { WorldState } from "../../types";
 
 export const ACT1_STEADY_RUNNER_DELIVERIES = 3;
 export const ACT1_MOVE_OUT_DELIVERIES = 5;
-export const ACT1_MOVE_OUT_DELIVERY_EARNINGS = 700;
+export const ACT1_MOVE_OUT_DELIVERY_EARNINGS = 600;
 export const ACT1_MOVE_OUT_DRIVER_RATING = 4.2;
 export const ACT1_INITIAL_RENT_DUE_DAY = 4;
 

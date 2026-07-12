@@ -51,7 +51,7 @@ export function getMorningHandCards(world: WorldState, now: number): MorningHand
 
   for (const offer of availableOffers.slice(0, 3)) {
     const condition = previewDeliveryCondition(world, offer.delivery, now);
-    const terms = getEffectiveDeliveryTerms(offer.delivery, condition);
+    const terms = getEffectiveDeliveryTerms(offer.delivery, condition, world);
     cards.push({
       id: `delivery:${offer.delivery.id}`,
       kind: "delivery",
