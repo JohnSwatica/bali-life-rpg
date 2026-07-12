@@ -7,30 +7,35 @@ the deprecated `REASONING:` form), and a `MAP DELTA:` line per the Map Growth
 Rule in `AGENTS.md`. Each file is copy-paste ready: one fenced block, hand
 the whole thing to Codex.
 
-**Status 2026-07-12:** ALL sixteen prior packets are DONE (247 tests green).
+**Status 2026-07-12 (updated):** ALL sixteen RPG-20260706/08 packets are DONE.
 The first founder playtest happened (`PLAYTEST_01.md`): bored at minute 5,
 four named problems, and a CEO narrative pivot to `STORY_BIBLE.md` v4 (the
-NusaDrop storyline). GATE v3 (`docs/PHASE3_REEVALUATION_GATE.md`) authorizes
-feature work targeted at those findings — the RPG-20260712 queue below.
+NusaDrop storyline). GATE v3 authorizes feature work targeted at those
+findings. **RPG-20260712-01, -02, and -04 are DONE** (259 tests green,
+committed on `feat/rpg-20260706-09-rio-race`; 02+04 landed as one combined
+commit since their diffs shared modified files — see that commit message for
+the full breakdown and 04's known proof gap). **RPG-20260712-03 is next and
+is now unblocked** — branch from this branch's current HEAD (NOT from
+`main`; see the corrected note below and the standing rule above).
 
-## Active queue — RPG-20260712 (playtest response, run in order)
+## Active queue — RPG-20260712 (playtest response)
 
-| ID | Title | Codex routing | Depends on |
-|----|-------|---------------|------------|
-| [RPG-20260712-01](RPG-20260712-01-nusadrop-canon-swap.md) | v4 canon swap: NusaDrop, Leo, Vance; retire Elena thread | Terra · Medium | — |
-| [RPG-20260712-02](RPG-20260712-02-cinematic-cold-open.md) | Cinematic cold-open + 3-minute hook + first choice | Sol · High | 01 |
-| [RPG-20260712-03](RPG-20260712-03-steering-delivery-mode.md) | Steering delivery mode v1 (continuous obstacle-avoidance) | Sol · High | 01 + **02 (HARD, sequential — do not run concurrently with 02)** |
-| [RPG-20260712-04](RPG-20260712-04-warung-rush.md) | Warung Rush v1 (Diner-Dash-style service) | Terra · Medium | 01 only — safe to run in parallel with 02 and/or 03 |
+| ID | Title | Codex routing | Status |
+|----|-------|---------------|--------|
+| [RPG-20260712-01](RPG-20260712-01-nusadrop-canon-swap.md) | v4 canon swap: NusaDrop, Leo, Vance; retire Elena thread | Terra · Medium | DONE |
+| [RPG-20260712-02](RPG-20260712-02-cinematic-cold-open.md) | Cinematic cold-open + 3-minute hook + first choice | Sol · High | DONE (50.97s, see proof doc) |
+| [RPG-20260712-03](RPG-20260712-03-steering-delivery-mode.md) | Steering delivery mode v1 (continuous obstacle-avoidance) | Sol · High | **NEXT — branch from this branch's current HEAD** |
+| [RPG-20260712-04](RPG-20260712-04-warung-rush.md) | Warung Rush v1 (Diner-Dash-style service) | Terra · Medium | DONE (logic proven; scene-feel proof still owed) |
 
-**Do not run 02 and 03 at the same time.** 03's job is to grep the whole
-codebase for old checkpoint-tap riding beats and delete/convert them — if 03
-branches before 02 merges, 02's brand-new hook-mission delivery doesn't exist
-yet in that branch and won't be caught, so it would silently ship still
-running the old timing-tap minigame (exactly the regression 03 exists to
-prevent). Both packets also edit `scripts/smokePlaythrough.mjs`, which is a
-guaranteed merge conflict on top of that. Run 01 → 02 → 03 in sequence
-(branch 03 from `main` only after 02 is merged); 04 can run anytime after 01,
-in parallel with either.
+**On 02→03 sequencing (corrected 2026-07-12):** the original note here said
+"branch 03 from `main` only after 02 is merged" — that instruction was wrong
+and caused Codex to block waiting for a `main` merge that was never coming
+(this project has never merged individual packets to `main` mid-stream; see
+the standing rule above). The actual requirement was narrower: 03 must not
+branch until 02's changes are COMMITTED on the shared branch, so its
+checkpoint-tap-beat sweep can see the new hook-mission delivery. That
+condition is now satisfied — 02 (and 04) are committed at `f84bfda` on
+`feat/rpg-20260706-09-rio-race`. Proceed with 03 from there.
 
 ## Done — RPG-20260708-04..07 (playthrough bug-fixes)
 
@@ -76,8 +81,26 @@ desired (disjoint files, separate branches).
 
 ## Standing rules for every packet
 
-- One branch + one PR per packet, PR tagged `[<PACKET ID>]`.
-- `npm test -- --run` and `npm run build` green before the PR.
+- **Actual practice (corrected 2026-07-12 — read this before assuming "one PR
+  per packet"):** every packet since RPG-20260706-01 has landed as ONE COMMIT
+  on the shared branch `feat/rpg-20260706-09-rio-race`, tagged `[<PACKET ID>]`
+  in the commit message. There is ONE open PR (#1) for the whole stack; John
+  merges it as a unit. **Do not wait for a packet's own PR/merge before
+  starting the next one** — continue from this branch's current HEAD.
+  `PR TAG:` in each packet file still matters (grep-ability, changelog), it
+  just resolves to a commit message tag in practice, not a real separate PR.
+- **COMMIT BEFORE STARTING THE NEXT PACKET — do not let uncommitted work from
+  one packet sit while starting another**, even a packet marked "safe to run
+  in parallel." (2026-07-12 incident: RPG-20260712-02 and -04 were both
+  authorized to run concurrently, both finished, but neither was committed
+  before the other started — they piled up as one mixed uncommitted diff
+  across 30 files, including files both packets touched. It worked out this
+  time because nothing conflicted, but a hard dependency check
+  (RPG-20260712-03's prereq) correctly refused to proceed against that dirty
+  state. "Parallel-safe" describes two packets' LOGIC not colliding — it does
+  not mean skip committing. If two packets are run back-to-back, commit the
+  first one's result before starting the second.)
+- `npm test -- --run` and `npm run build` green before every commit.
 - **`MAP DELTA:` header line is mandatory (CEO directive 2026-07-11)** — one
   sentence naming the small, contiguous map increment this packet adds, or
   `none — <reason>`. Increments follow the Map Growth Rule in `AGENTS.md`
