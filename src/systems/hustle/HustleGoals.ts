@@ -159,7 +159,7 @@ export function getHustleNextStep(world: WorldState): HustleNextStepState {
   if (hustle.completedDeliveryCount < ACT1_STEADY_RUNNER_DELIVERIES) {
     return {
       title: "Build delivery rhythm",
-      detail: `Take ${ACT1_STEADY_RUNNER_DELIVERIES - hustle.completedDeliveryCount} more Hustle Board run${ACT1_STEADY_RUNNER_DELIVERIES - hustle.completedDeliveryCount === 1 ? "" : "s"} to become a steady runner.`,
+      detail: `Take ${ACT1_STEADY_RUNNER_DELIVERIES - hustle.completedDeliveryCount} more NusaDrop run${ACT1_STEADY_RUNNER_DELIVERIES - hustle.completedDeliveryCount === 1 ? "" : "s"} to become a steady runner.`,
       urgency: "normal"
     };
   }

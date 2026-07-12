@@ -26,7 +26,7 @@ function makeEligibleWorld() {
   return world;
 }
 
-describe("Rio rival race", () => {
+describe("Leo rival race", () => {
   it("gates the one-time race on Act 1 delivery credibility", () => {
     const world = createInitialWorldState();
 
@@ -57,7 +57,7 @@ describe("Rio rival race", () => {
     };
     expect(getRioRaceEligibility(deliveryFirst)).toMatchObject({
       eligible: false,
-      reason: "Finish the active delivery before racing Rio."
+      reason: "Finish the active delivery before racing Leo."
     });
 
     const raceFirst = makeEligibleWorld();
@@ -75,11 +75,11 @@ describe("Rio rival race", () => {
     expect(getDeliveryOfferAvailability(raceFirst).every((offer) => !offer.available)).toBe(true);
     expect(acceptDelivery(raceFirst, "milk_madu_brunch_bag", 8 * 60)).toEqual({
       ok: false,
-      message: "Finish Rio's race before taking a delivery."
+      message: "Finish Leo's race before taking a delivery."
     });
   });
 
-  it("keeps Rio's challenge as a manual scene, not an automatic quest turn-in", () => {
+  it("keeps Leo's challenge as a manual scene, not an automatic quest turn-in", () => {
     const scene = getRelationshipChoiceScene("rio_streak_duel_challenge");
 
     expect(scene).toBeDefined();
@@ -129,12 +129,12 @@ describe("Rio rival race", () => {
     );
   });
 
-  it("gives Rio a later ambient follow-up line based on the race result", () => {
+  it("gives Leo a later ambient follow-up line based on the race result", () => {
     const world = makeEligibleWorld();
     applyRivalRaceOutcome(world, { result: "win", reason: "player_beat_ghost" }, 8 * 60);
     world.clock.day = 2;
     world.clock.minuteOfDay = 9 * 60;
 
-    expect(getAmbientNpcLine(world, "rio", "Rated 4.9.")).toContain("that lap");
+    expect(getAmbientNpcLine(world, "rio", "Rated 4.9.")).toContain("leaderboard");
   });
 });

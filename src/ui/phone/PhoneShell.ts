@@ -278,7 +278,7 @@ export class PhoneShell {
     const rentPressure = getRentPressureState(world);
     const player = world.players[world.localPlayerId];
     this.renderTextList(container, x, y, width, [
-      `Hustle Board: ${world.life.hustle.completedDeliveryCount} runs | Rp ${world.life.hustle.deliveryEarnings} earned | ${world.life.hustle.driverRating.toFixed(1)}★`,
+      `NusaDrop Board: ${world.life.hustle.completedDeliveryCount} runs | Rp ${world.life.hustle.deliveryEarnings} earned | ${world.life.hustle.driverRating.toFixed(1)}★`,
       `Rent target: Rp ${world.life.hustle.rentAmount} by Day ${world.life.hustle.rentDueDay} (${rentPressure.shortLabel}) | Scooter: ${world.life.hustle.scooterTier.replace(/_/g, " ")} ${player.bikeCondition}%`
     ]);
     let rowY = y + 50;
@@ -431,7 +431,7 @@ export class PhoneShell {
     }
     return [
       ...unlocked.flatMap((entry) => [
-        `${entry.kind === "elena_fragment" ? "Fragment" : "Codex"}: ${entry.title}`,
+        `${entry.kind === "investigation" ? "Investigation" : "Codex"}: ${entry.title}`,
         entry.body,
         ""
       ]),
@@ -450,7 +450,7 @@ export class PhoneShell {
     const goals = getSettlingInGoalStates(world).map((goal) => `${goal.complete ? "Done" : "Goal"}: ${goal.title} - ${goal.description}`);
     const hustleGoals = getHustleGoalStates(world).map((goal) => {
       const progress = goal.complete ? goal.progress : `${goal.description} (${goal.progress})`;
-      return `${goal.complete ? "Done" : "Hustle"}: ${goal.title} - ${progress}`;
+      return `${goal.complete ? "Done" : "NusaDrop"}: ${goal.title} - ${progress}`;
     });
     const hustleNext = getHustleNextStep(world);
     const act2Next = getAct2NextStep(world);
@@ -470,7 +470,7 @@ export class PhoneShell {
         ? ["", "Act 0 First Day", `Current: ${act0Step.title} - ${act0Step.objective}`]
         : []),
       "",
-      "Act 1 Hustle",
+      "Act 1 NusaDrop",
       `Next: ${hustleNext.title} - ${hustleNext.detail}`,
       ...hustleGoals,
       ...(act2Goals.length

@@ -61,7 +61,7 @@ export function getRentPressureState(world: WorldState): RentPressureState {
       status: "due_soon",
       daysRemaining,
       shortLabel: "Rent due tomorrow",
-      message: "Rent is due tomorrow. Hustle now, sleep easier later."
+      message: "Rent is due tomorrow. Run NusaDrop now, sleep easier later."
     };
   }
   return {

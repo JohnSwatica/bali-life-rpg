@@ -181,7 +181,7 @@ describe("Act 0 hustle and deliveries", () => {
     expect(getDeliveryOfferAvailability(world).every((offer) => !offer.available)).toBe(true);
   });
 
-  it("keeps Ibu Sari's Act 1 Hustle Board reachable when her starter quest is still unresolved", () => {
+  it("keeps Ibu Sari's Act 1 NusaDrop Board reachable when her starter quest is still unresolved", () => {
     const world = createInitialWorldState();
     const player = world.players[world.localPlayerId];
     player.hasBike = true;

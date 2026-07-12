@@ -141,13 +141,13 @@ export const CARGO_FEEL_TUNING = {
 export const RACE_FEEL_TUNING = {
   /** Controls how close the player must pass to claim a race checkpoint. */
   checkpointRadius: 120,
-  /** Sets Rio's nominal lap-completion time. */
+  /** Sets Leo's nominal lap-completion time. */
   ghostTargetMs: 42000,
-  /** Caps Rio's progress gain per second so catch-up never teleports. */
+  /** Caps Leo's progress gain per second so catch-up never teleports. */
   ghostMaxStepPerSecond: 0.044,
-  /** Caps how far Rio may run ahead of the player's checkpoint progress. */
+  /** Caps how far Leo may run ahead of the player's checkpoint progress. */
   ghostLeadCap: 0.22,
-  /** Caps how far Rio may fall behind the player's checkpoint progress. */
+  /** Caps how far Leo may fall behind the player's checkpoint progress. */
   ghostTrailCap: 0.18,
   /** Ends the setpiece as a loss after this much elapsed race time. */
   maxRaceMs: 70000

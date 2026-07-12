@@ -3192,7 +3192,7 @@ export class GameScene extends Phaser.Scene {
     if (this.activeRivalRace) {
       const next = this.activeRivalRace.config.route[this.activeRivalRace.checkpointIndex];
       this.promptText.setText(
-        `Race Rio: ${next ? `hit ${next.label}` : "finish the lap"}. ${this.getRaceConcedeHint()}`
+        `Race Leo: ${next ? `hit ${next.label}` : "finish the lap"}. ${this.getRaceConcedeHint()}`
       );
     } else if (this.mode === "world" && this.playerState.bikeStuck) {
       this.promptText.setText(`E / ACT: ask ${REQUIRED_BIKE_HELPERS} helpers to drag the bike out`);
@@ -3529,7 +3529,7 @@ export class GameScene extends Phaser.Scene {
   private openRioRaceChallenge(): void {
     const scene = getRelationshipChoiceScene("rio_streak_duel_challenge");
     if (!scene) {
-      this.showToast("Rio's race scene is missing.");
+      this.showToast("Leo's race scene is missing.");
       return;
     }
     this.openRelationshipChoiceScene(scene);
@@ -4304,7 +4304,7 @@ export class GameScene extends Phaser.Scene {
     overlay.dataset.activityPanel = "true";
     overlay.dataset.uiSurface = "activity-panel";
     overlay.setAttribute("role", "dialog");
-    overlay.setAttribute("aria-label", "Ibu Sari hustle board");
+    overlay.setAttribute("aria-label", "Ibu Sari NusaDrop board");
     overlay.addEventListener("pointerdown", (event) => event.stopPropagation());
     overlay.addEventListener("click", (event) => event.stopPropagation());
 
@@ -4312,7 +4312,7 @@ export class GameScene extends Phaser.Scene {
     header.className = "bali-life-activity-menu-header";
     const title = document.createElement("h2");
     title.className = "bali-life-activity-menu-title";
-    title.textContent = "Ibu Sari's Hustle Board";
+    title.textContent = "Ibu Sari's NusaDrop Board";
     const meta = document.createElement("div");
     meta.className = "bali-life-activity-menu-meta";
     meta.textContent =
@@ -4568,10 +4568,10 @@ export class GameScene extends Phaser.Scene {
       this.appendScooterCounterActions(content);
       const raceEligibility = getRioRaceEligibility(this.world);
       if (raceEligibility.eligible) {
-        this.appendActivityMenuSection(content, "Rio's streak");
+        this.appendActivityMenuSection(content, "Leo's streak");
         this.appendActivityMenuRow(content, {
           title: RIO_RACE.title,
-          body: "Rio is posted by the timing board with his helmet already on. Bail = he wins. He'll mention it.",
+          body: "Leo is posted by the timing board with his helmet already on. Bail = he wins. He will mention it.",
           actionLabel: "Hear him out",
           onAction: () => this.openRioRaceChallenge()
         });
@@ -4887,11 +4887,11 @@ export class GameScene extends Phaser.Scene {
   private startRioRace(): void {
     const eligibility = getRioRaceEligibility(this.world);
     if (!eligibility.eligible) {
-      this.openDialogue("Rio", eligibility.reason ?? "Rio is not ready to race right now.", "rio");
+      this.openDialogue("Leo", eligibility.reason ?? "Leo is not ready to race right now.", "rio");
       return;
     }
     if (this.playerState.money < RIO_RACE.stake) {
-      this.openDialogue("Rio", `"Bring Rp ${RIO_RACE.stake} if you want to put your mouth on the road."`, "rio");
+      this.openDialogue("Leo", `"Bring Rp ${RIO_RACE.stake} if you want to put your mouth on the road."`, "rio");
       return;
     }
 
@@ -4931,7 +4931,7 @@ export class GameScene extends Phaser.Scene {
           kind: "act_card",
           durationMs: 620,
           title: "3",
-          subtitle: "Rio revs beside you."
+          subtitle: "Leo revs beside you."
         },
         {
           id: "two",
@@ -4952,7 +4952,7 @@ export class GameScene extends Phaser.Scene {
           kind: "act_card",
           durationMs: 520,
           title: "GO",
-          subtitle: "Beat Rio clean."
+          subtitle: "Beat Leo clean."
         },
         { id: "letterbox_out", kind: "letterbox_out", durationMs: 260 }
       ]
@@ -5038,17 +5038,17 @@ export class GameScene extends Phaser.Scene {
 
     if (outcome.result === "win") {
       this.openDialogue(
-        "Rio",
-        'Rio pulls in half a breath after you, smile gone sharp instead of gone. "Clean line. Annoying." He tosses the side-bet cash at you. "Do not make a speech. I still have the better rating."',
+        "Leo",
+        'Leo pulls in half a breath after you, smile gone sharp instead of gone. "Clean line. Annoying." He tosses the side-bet cash at you. "Do not make a speech. I still have the better rating."',
         "rio"
       );
       return;
     }
     const line =
       outcome.reason === "conceded"
-        ? 'Rio circles back before you can park. "Bailed? Good strategy if the goal was me winning." He taps your mirror. "Rematch stays open. Try courage next time."'
-        : 'Rio is waiting at the rental, one foot on the curb. "See? Streaks are not luck." He grins, too pleased. "Rematch stays open, new guy."';
-    this.openDialogue("Rio", line, "rio");
+        ? 'Leo circles back before you can park. "Bailed? Good strategy if the goal was me winning." He taps your mirror. "Rematch stays open. Try courage next time."'
+        : 'Leo is waiting at the rental, one foot on the curb. "See? Streaks are not luck." He grins, too pleased. "Rematch stays open."';
+    this.openDialogue("Leo", line, "rio");
   }
 
   private appendActivityOptionRow(parent: HTMLElement, context: VenueActivityContext, option: ActivityAvailability): void {
@@ -7582,10 +7582,6 @@ export class GameScene extends Phaser.Scene {
     addItem(this.playerState, pickup.itemId, 1);
     this.world.collectedPickups[pickup.id] = this.getAbsoluteMinute();
     saveWorldState(this.world);
-    if (pickup.itemId === "elena_notebook" || pickup.itemId === "elena_sim") {
-      this.showToast(`Collected ${itemDefinitions[pickup.itemId].name}. You ask Ibu Sari whose it was. She just says: "Besok ya."`);
-      return;
-    }
     this.showToast(`Collected ${itemDefinitions[pickup.itemId].name}.`);
   }
 

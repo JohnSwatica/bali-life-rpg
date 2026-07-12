@@ -58,28 +58,28 @@ export const RELATIONSHIP_CHOICE_SCENES: Record<string, RelationshipChoiceScene>
     npcId: "rio",
     trigger: "manual",
     npcOpeningLine:
-      'Rio leans on the counter next to the package like it\'s nothing. "No name, no manifest, Rp 180 cash at the door. I ran three of those my first month." He spins his keys once and catches them. "Leaderboard doesn\'t ask where the points come from."',
-    prompt: "The package sits between you. Rio is watching you, not it. Do you --",
+      'Leo leans on the counter next to the package like it\'s nothing. "No name, no manifest, Rp 180 cash at the door. I ran three of those when NusaDrop stopped surfacing decent work." He spins his keys once and catches them. "The leaderboard only cares that you arrived."',
+    prompt: "The package sits between you. Leo is watching you, not it. Do you --",
     options: [
       {
         id: "take_package",
         label: "Take it. Money is money.",
         resultLine:
-          'Rio grins and slides it across without touching the tape. "Fast learner. Address is on the side. Don\'t open it, don\'t stop, don\'t wave at anybody." He\'s already back on his phone. "Clock\'s running, new guy."',
+          'Leo grins and slides it across without touching the tape. "Fast learner. Address is on the side. Don\'t open it, don\'t stop, don\'t wave at anybody." He is already back on his phone. "Clock\'s running."',
         actionId: "accept_no_questions",
         affinityBonus: 2,
         axis: { kind: "relational", delta: 2 },
-        memory: { type: "visited", detail: "Took the no-questions package while Rio watched" }
+        memory: { type: "visited", detail: "Took the no-questions package while Leo watched" }
       },
       {
         id: "push_it_back",
         label: "Push it back across the counter.",
         resultLine:
-          'Rio shrugs and pockets his keys. "Slow lane\'s that way." But he holds the door open for you on the way out, which he has never done for anyone.',
+          'Leo shrugs and pockets his keys. "The slow lane is that way." But he holds the door open for you on the way out, which he has never done for anyone.',
         actionId: "decline_no_questions",
         affinityBonus: 1,
         axis: { kind: "relational", delta: 1 },
-        memory: { type: "visited", detail: "Turned down the no-questions package to Rio's face" }
+        memory: { type: "visited", detail: "Turned down the no-questions package to Leo's face" }
       }
     ]
   },
@@ -88,19 +88,19 @@ export const RELATIONSHIP_CHOICE_SCENES: Record<string, RelationshipChoiceScene>
     npcId: "rio",
     trigger: "manual",
     npcOpeningLine:
-      'Rio is already sitting on his scooter, helmet strap loose, grin worse. "Three runs, rating above gutter level. Fine. One lap: rental, station, Bungalow, club gate, beach, back here."',
-    prompt: '"Bail and I win. Finish behind me and I still win. Beat me clean and I shut up for, I don\'t know, ten minutes."',
+      'Leo is already sitting on his scooter, helmet strap loose, grin worse. "Three runs, rating above baseline. Fine. One lap: rental, station, Bungalow, club gate, beach, back here. NusaDrop leaderboard settles it."',
+    prompt: '"Bail and I take the leaderboard. Finish behind me and I still win. Beat me clean and I shut up for, I do not know, ten minutes."',
     options: [
       {
         id: "race_him",
         label: "Race him. Rp 25 on the line.",
-        resultLine: "Rio kicks his stand up. \"Try not to make this embarrassing for both of us.\"",
+        resultLine: "Leo kicks his stand up. \"Try not to make this embarrassing for both of us.\"",
         actionId: "start_rio_race"
       },
       {
         id: "not_today",
         label: "Not today.",
-        resultLine: "Rio laughs through his nose. \"Good. I was worried you were about to become interesting.\"",
+        resultLine: "Leo laughs through his nose. \"Good. I was worried you were about to become interesting.\"",
         actionId: "decline_rio_race"
       }
     ]

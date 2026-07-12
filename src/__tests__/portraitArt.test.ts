@@ -5,7 +5,7 @@ describe("dialogue portrait art", () => {
   it("registers the first three authored NPC portrait busts and falls back for unknown NPCs", () => {
     expect(getPortraitDefinition("ibu_sari")).toMatchObject({ alt: "Ibu Sari portrait" });
     expect(getPortraitDefinition("kadek")).toMatchObject({ alt: "Kadek portrait" });
-    expect(getPortraitDefinition("rio")).toMatchObject({ alt: "Rio portrait" });
+    expect(getPortraitDefinition("rio")).toMatchObject({ alt: "Leo portrait" });
     expect(getPortraitDefinition("ari")).toBeNull();
     expect(getPortraitDefinition("made")).toBeNull();
     expect(getPortraitDefinition("unknown")).toBeNull();

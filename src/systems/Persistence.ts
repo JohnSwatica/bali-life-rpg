@@ -20,6 +20,7 @@ import type {
 export const CURRENT_SCHEMA_VERSION = 11;
 const SAVE_KEY = "bali-life-rpg.berawa-finns.save.v1";
 const PAUSED_V2_KEY = "bali-life-rpg.berawa-finns.save.v2";
+const RETIRED_INVENTORY_ITEM_IDS = new Set(["elena_notebook", "elena_sim"]);
 
 export function saveWorldState(world: WorldState): void {
   world.schemaVersion = CURRENT_SCHEMA_VERSION;
@@ -276,7 +277,7 @@ function hydratePlayerState(player: Partial<PlayerEntityState>): PlayerEntitySta
     bikeCondition: runtimePlayer.bikeCondition ?? 100,
     safety: runtimePlayer.safety ?? 100,
     tutorialStep: runtimePlayer.tutorialStep ?? "earn_bike_money",
-    inventory: runtimePlayer.inventory ?? fresh.inventory,
+    inventory: (runtimePlayer.inventory ?? fresh.inventory).filter((entry) => !RETIRED_INVENTORY_ITEM_IDS.has(entry.itemId)),
     activeQuestIds: runtimePlayer.activeQuestIds ?? [],
     completedQuestIds: runtimePlayer.completedQuestIds ?? [],
     joinedGroupIds: runtimePlayer.joinedGroupIds ?? []

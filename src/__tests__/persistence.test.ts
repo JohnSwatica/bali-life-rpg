@@ -101,6 +101,18 @@ function expectCommonMigrationFields(world: WorldState): void {
 }
 
 describe("Persistence migration", () => {
+  it("drops retired v3 mystery items while preserving the rest of an existing inventory", () => {
+    const raw = baseRawSave();
+    const player = raw.players as Record<string, { inventory: Array<{ itemId: string; quantity: number }> }>;
+    player[LOCAL_PLAYER_ID].inventory.push({ itemId: "elena_notebook", quantity: 1 }, { itemId: "elena_sim", quantity: 1 });
+    writeRawSave(raw);
+
+    expect(loadWorldState().players[LOCAL_PLAYER_ID].inventory).toEqual([
+      { itemId: "coconut", quantity: 3 },
+      { itemId: "kopi_bali", quantity: 1 }
+    ]);
+  });
+
   it("recognizes only a valid local world save for the title screen", () => {
     expect(hasSavedWorldState()).toBe(false);
     writeRawSave(baseRawSave());
@@ -456,7 +468,7 @@ describe("Persistence migration", () => {
       raceId: "rio_streak_duel",
       venueId: "bali_family_rental_scooter",
       venueName: "Bali Family Rental Scooter",
-      label: "Rio's Streak Duel",
+      label: "Leo's NusaDrop Streak Duel",
       durationMin: 0,
       elapsedMs: 12000,
       realDurationMs: 70000,

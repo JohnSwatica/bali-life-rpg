@@ -25,7 +25,7 @@ describe("consolidated feel tuning", () => {
     });
   });
 
-  it("preserves the shipped ride, cargo, and Rio race values", () => {
+  it("preserves the shipped ride, cargo, and Leo race values", () => {
     expect(RIDE_FEEL_TUNING).toMatchObject({
       accelerationSeconds: 0.62,
       coastToStopSeconds: 0.48,

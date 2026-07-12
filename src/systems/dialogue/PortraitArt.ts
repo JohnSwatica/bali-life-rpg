@@ -36,7 +36,7 @@ const PORTRAITS: Record<string, PortraitDefinition> = {
   },
   rio: {
     npcId: "rio",
-    alt: "Rio portrait",
+    alt: "Leo portrait",
     skin: "#a76548",
     hair: "#20232a",
     shirt: "#ff8f6b",

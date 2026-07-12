@@ -64,7 +64,7 @@ const routeVenueIds = [
 
 export const RIO_RACE: RivalRaceConfig = {
   id: "rio_streak_duel",
-  title: "Rio's Streak Duel",
+  title: "Leo's NusaDrop Streak Duel",
   venueId: "bali_family_rental_scooter",
   stake: 25,
   winPayout: 70,
@@ -87,22 +87,22 @@ export const RIO_RACE: RivalRaceConfig = {
 
 export function getRioRaceEligibility(world: WorldState): RivalRaceEligibility {
   if (world.collectedPickups[RIO_RACE_COMPLETED_FLAG]) {
-    return { eligible: false, reason: "Rio already has a result to talk about." };
+    return { eligible: false, reason: "Leo already has a result to talk about." };
   }
   if (world.life.actProgress.currentAct !== 1) {
-    return { eligible: false, reason: "Rio saves the streak duel for the Act 1 hustle." };
+    return { eligible: false, reason: "Leo saves the streak duel for the Act 1 NusaDrop run." };
   }
   if (world.life.hustle.activeDelivery) {
-    return { eligible: false, reason: "Finish the active delivery before racing Rio." };
+    return { eligible: false, reason: "Finish the active delivery before racing Leo." };
   }
   if (world.life.hustle.completedDeliveryCount < 3) {
-    return { eligible: false, reason: "Rio does not notice you until you have three completed runs." };
+    return { eligible: false, reason: "Leo does not notice you until you have three completed runs." };
   }
   if (world.life.hustle.driverRating < 3.5) {
-    return { eligible: false, reason: "Rio wants at least a 3.5 driver rating before he risks his streak." };
+    return { eligible: false, reason: "Leo wants at least a 3.5 driver rating before he risks his streak." };
   }
   if (!world.players[world.localPlayerId].hasBike) {
-    return { eligible: false, reason: "You need scooter access before racing Rio." };
+    return { eligible: false, reason: "You need scooter access before racing Leo." };
   }
   return { eligible: true, reason: null };
 }
@@ -162,12 +162,12 @@ export function applyRivalRaceOutcome(world: WorldState, outcome: RivalRaceOutco
   if (outcome.result === "win") {
     player.money += RIO_RACE.winPayout;
     world.collectedPickups[RIO_RACE_WON_FLAG] = now;
-    adjustReputationAxis(world.reputation, "relational", 4, "Beat Rio clean in the streak duel", now);
-    recordRelationshipMemory(world, "npc", "rio", "lost_to_you_clean", "Rio lost to you clean in the Act 1 streak duel", now);
+    adjustReputationAxis(world.reputation, "relational", 4, "Beat Leo clean in the streak duel", now);
+    recordRelationshipMemory(world, "npc", "rio", "lost_to_you_clean", "Leo lost to you clean in the Act 1 NusaDrop streak duel", now);
     return;
   }
   world.collectedPickups[RIO_RACE_LOST_FLAG] = now;
-  recordRelationshipMemory(world, "npc", "rio", "beat_you", "Rio beat you in the Act 1 streak duel", now);
+  recordRelationshipMemory(world, "npc", "rio", "beat_you", "Leo beat you in the Act 1 NusaDrop streak duel", now);
 }
 
 function clamp(value: number, min: number, max: number): number {

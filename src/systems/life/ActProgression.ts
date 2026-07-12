@@ -95,7 +95,7 @@ export function getAct0HudLines(world: WorldState): string[] {
   }
   if (world.life.actProgress.firstDayComplete) {
     lines.push(
-      `Hustle: ${world.life.hustle.completedDeliveryCount} deliveries, Rp ${world.life.hustle.deliveryEarnings}, ${world.life.hustle.driverRating.toFixed(1)}★`
+      `NusaDrop: ${world.life.hustle.completedDeliveryCount} deliveries, Rp ${world.life.hustle.deliveryEarnings}, ${world.life.hustle.driverRating.toFixed(1)}★`
     );
   }
   return lines;

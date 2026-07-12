@@ -1,5 +1,13 @@
 # Decisions
 
+## 2026-07-12 - STORY_BIBLE v4 Canon Reconciliation Uses Stable IDs And Derived Investigation Unlocks
+
+RPG-20260712-01 changes presentation/data only: `rio` and `pak_bagus` remain stable internal/save identifiers, but display as Leo and Julian Vance. The delivery app is NusaDrop, and Julian's development language is Vanguard Co-Living / Enclave Berawa. This avoids a save-schema migration while allowing every visible surface to adopt STORY_BIBLE v4 naturally.
+
+Elena/Rumah content is retired rather than translated: its two map pickups, item definitions, ledger entries, and Kadek ambient beats are removed. Hydration filters those two obsolete inventory entries from old saves so missing definitions cannot leak raw IDs into the Bag. The Discovery Ledger stays read-only and derived; the commission clue unlocks at three runs, and the hidden-metric clue uses the existing aggregate `driverRating >= 4.5` plus one completed delivery. Individual delivery ratings are not persisted, so adding a "first 4.5 delivery" history field would be a schema/system change outside this reskin.
+
+The reconciliation grep intentionally retains only internal IDs/keys (`rio`, `pak_bagus`, race constants, texture keys, memory/save keys), real Indonesian `Jalan` road references and `Awas, jalan rusak`, plus normal non-canon words such as "priority"/"serious" that happen to match broad search terms. No player-facing Elena, Rumah, Rio, Pak Bagus, Berawa 2.0, or Jalan-app copy remains.
+
 ## 2026-06-20 - Shared Identity Bridge
 
 `PlayerProfile.lifestyleTags` is the local cross-app identity bridge. The field is intentionally open-ended and local in this step, with `remoteAccountId: null` reserved for a later shared account that can also back a companion co-living social app.

@@ -20,8 +20,8 @@ function template(id: string): OpportunityTemplate {
   return found!;
 }
 
-describe("rio no-questions choice", () => {
-  it("registers the Rio scene as manual so quest turn-ins never trigger it", () => {
+describe("Leo no-questions choice", () => {
+  it("registers the Leo scene as manual so quest turn-ins never trigger it", () => {
     const scene = getRelationshipChoiceScene("rio_no_questions_package");
     expect(scene).toBeDefined();
     expect(scene?.npcId).toBe("rio");

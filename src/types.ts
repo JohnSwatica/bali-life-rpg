@@ -11,11 +11,12 @@ export type Act0Step =
   | "buy_meal_and_coffee"
   | "sleep_first_night"
   | "complete";
-export type DiscoveryLedgerEntryKind = "elena_fragment" | "codex_note";
+export type DiscoveryLedgerEntryKind = "investigation" | "codex_note";
 export type DiscoveryLedgerUnlockCondition =
   | { type: "pickup_collected"; pickupId: string }
   | { type: "act0_step_complete"; step: Act0Step }
-  | { type: "delivery_count"; count: number };
+  | { type: "delivery_count"; count: number }
+  | { type: "driver_rating"; minimumRating: number };
 export interface DiscoveryLedgerEntry {
   id: string;
   kind: DiscoveryLedgerEntryKind;
