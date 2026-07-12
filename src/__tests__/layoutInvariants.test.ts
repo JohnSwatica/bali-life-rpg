@@ -269,6 +269,26 @@ describe("authored street layout invariants", () => {
     expect(activeStreetTemplate.slots.some((slot) => overlaps(rect, slotRect(slot)))).toBe(false);
   });
 
+  it("builds the BAKED back-alley parcel but keeps its future shortcut visibly gated", () => {
+    const alley = walkableStreetParcels.find((parcel) => parcel.id === "baked_locked_back_alley");
+    const fence = collisionRects.find((collision) => collision.id === "baked-locked-alley-fence");
+    expect(alley).toMatchObject({ kind: "gated_alley", widthTiles: 14, heightTiles: 1 });
+    expect(fence).toBeDefined();
+    if (!alley || !fence) return;
+    const rect: Rect = {
+      id: alley.id,
+      x: alley.tileX * TILE_SIZE,
+      y: alley.tileY * TILE_SIZE,
+      width: alley.widthTiles * TILE_SIZE,
+      height: alley.heightTiles * TILE_SIZE
+    };
+    expect(rect.x + rect.width).toBe(activeStreetTemplate.roadLeftTile * TILE_SIZE);
+    expect(isPointInsidePlayableBounds(authoredPlayableBounds, { x: rect.x, y: rect.y })).toBe(true);
+    expect(isPointInsidePlayableBounds(authoredPlayableBounds, { x: rect.x + rect.width, y: rect.y + rect.height })).toBe(true);
+    expect(activeStreetTemplate.slots.some((slot) => overlaps(rect, slotRect(slot)))).toBe(false);
+    expect(overlaps(rect, fence)).toBe(true);
+  });
+
   it("keeps villa gate dressing aligned to existing villa delivery dropoff points", () => {
     const villaDeliveries = deliveryDefinitions.filter(
       (delivery) => delivery.dropoffId.toLowerCase().includes("villa") || delivery.dropoffName.toLowerCase().includes("villa")

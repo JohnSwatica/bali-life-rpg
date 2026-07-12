@@ -320,39 +320,28 @@ export type ActiveActivityState =
       source: "activity";
       activityId: string;
       opportunityId?: never;
-      checkpointId?: never;
     })
   | (ActiveActivityBaseState & {
       source: "opportunity";
       opportunityId: string;
       activityId?: never;
-      checkpointId?: never;
-    })
-  | (ActiveActivityBaseState & {
-      source: "rideCheckpoint";
-      checkpointId: string;
-      activityId?: never;
-      opportunityId?: never;
     })
   | (ActiveActivityBaseState & {
       source: "scooterRepair";
       activityId?: never;
       opportunityId?: never;
-      checkpointId?: never;
     })
   | (ActiveActivityBaseState & {
       source: "rivalRace";
       raceId: string;
       activityId?: never;
       opportunityId?: never;
-      checkpointId?: never;
     })
   | (ActiveActivityBaseState & {
       source: "warungRush";
       activityId: "warung_lunch_rush";
       rush: WarungRushState;
       opportunityId?: never;
-      checkpointId?: never;
     });
 
 export type RelationshipArcPayoffKind = "club_invite" | "recurring_hangout" | "discount_hook" | "housing_lead_tease";
@@ -510,6 +499,15 @@ export interface ActiveDeliveryState {
   starRating?: number;
   cargoIntegrity?: number;
   cargoDamageEvents?: number;
+  rideRun?: DeliveryRideRunState;
+}
+
+export interface DeliveryRideRunState {
+  elapsedMs: number;
+  hazardsSpawned: number;
+  hazardsAvoided: number;
+  nearMisses: number;
+  contacts: number;
 }
 
 export interface HustleState {

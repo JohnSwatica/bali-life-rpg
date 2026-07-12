@@ -125,7 +125,6 @@ function migrateActiveActivityState(raw: unknown): ActiveActivityState | null {
   if (
     (value.source !== "activity" &&
       value.source !== "opportunity" &&
-      value.source !== "rideCheckpoint" &&
       value.source !== "scooterRepair" &&
       value.source !== "rivalRace" &&
       value.source !== "warungRush") ||
@@ -155,9 +154,6 @@ function migrateActiveActivityState(raw: unknown): ActiveActivityState | null {
   }
   if (value.source === "opportunity" && typeof value.opportunityId === "string") {
     return { ...base, source: "opportunity", opportunityId: value.opportunityId };
-  }
-  if (value.source === "rideCheckpoint" && typeof value.checkpointId === "string") {
-    return { ...base, source: "rideCheckpoint", checkpointId: value.checkpointId };
   }
   if (value.source === "scooterRepair") {
     return { ...base, source: "scooterRepair" };

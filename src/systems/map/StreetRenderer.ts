@@ -94,6 +94,7 @@ export function renderStreetTemplate(scene: Phaser.Scene, template: StreetTempla
 
   const props = scene.add.graphics().setDepth(-95);
   drawStreetProps(props, template);
+  createLockedAlleyCue(scene, template);
 
   const buildings = scene.add.graphics().setDepth(-90);
   drawStreetBuildings(buildings, template);
@@ -720,6 +721,23 @@ function drawWalkableParcels(g: Phaser.GameObjects.Graphics, template: StreetTem
       }
       continue;
     }
+    if (parcel.kind === "gated_alley") {
+      g.fillStyle(0x2a211b, 0.22);
+      g.fillRoundedRect(x + 3, y + 4, width, height, 5);
+      g.fillStyle(0x8b8068, 1);
+      g.fillRoundedRect(x, y, width, height, 5);
+      g.lineStyle(2, 0xb8aa8c, 0.5);
+      for (let seam = 12; seam < width; seam += 24) g.lineBetween(x + seam, y + 3, x + seam - 6, y + height - 3);
+      const gateX = x + width - 18;
+      g.fillStyle(0x253a35, 1);
+      g.fillRect(gateX, y - 2, 8, height + 4);
+      g.fillRect(gateX + 13, y - 2, 8, height + 4);
+      g.lineStyle(4, 0x4f7f5a, 1);
+      for (let barY = y + 7; barY < y + height; barY += 13) g.lineBetween(gateX, barY, gateX + 21, barY);
+      g.fillStyle(0xf2c35d, 1);
+      g.fillRoundedRect(gateX + 7, y + height / 2 - 6, 8, 12, 2);
+      continue;
+    }
     g.fillStyle(0x4d3825, 0.18);
     g.fillRoundedRect(x + 3, y + 5, width, height, 8);
     g.fillStyle(0xb88b55, 1);
@@ -731,6 +749,24 @@ function drawWalkableParcels(g: Phaser.GameObjects.Graphics, template: StreetTem
       g.fillEllipse(x + offset, y + height / 2 + (offset % 3) - 1, 12, 4);
     }
   }
+}
+
+function createLockedAlleyCue(scene: Phaser.Scene, template: StreetTemplate): void {
+  const alley = walkableStreetParcels.find(
+    (parcel) => parcel.templateId === template.id && parcel.id === "baked_locked_back_alley"
+  );
+  if (!alley) return;
+  scene.add
+    .text((alley.tileX + alley.widthTiles - 1.5) * TILE_SIZE, (alley.tileY + alley.heightTiles + 0.35) * TILE_SIZE,
+      "LOCKED · Someone could open this", {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: "11px",
+        color: "#fff0bd",
+        backgroundColor: "rgba(16, 24, 32, 0.82)",
+        padding: { x: 5, y: 3 }
+      })
+    .setOrigin(1, 0)
+    .setDepth(36);
 }
 
 function drawStreetLandmarks(g: Phaser.GameObjects.Graphics, template: StreetTemplate): void {

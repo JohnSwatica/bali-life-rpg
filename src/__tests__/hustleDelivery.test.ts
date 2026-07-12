@@ -168,7 +168,14 @@ describe("Act 0 hustle and deliveries", () => {
       stage: "picked_up",
       pickedUpAt: acceptedAt + 12
     });
-    expect(world.life.hustle.activeDelivery?.cargoIntegrity).toBeUndefined();
+    expect(world.life.hustle.activeDelivery?.cargoIntegrity).toBe(100);
+    expect(world.life.hustle.activeDelivery?.rideRun).toEqual({
+      elapsedMs: 0,
+      hazardsSpawned: 0,
+      hazardsAvoided: 0,
+      nearMisses: 0,
+      contacts: 0
+    });
     expect(getQuantity(player, "delivery_pastry_box")).toBe(1);
 
     const completed = completeDelivery(world, acceptedAt + 35, 1);
@@ -185,6 +192,12 @@ describe("Act 0 hustle and deliveries", () => {
     expect(world.reputation.score).toBe(62);
     expect(getRelationship(world, "npc", "ibu_sari")?.affinity).toBe(3);
     expect(getRelationship(world, "npc", "kadek")?.affinity).toBe(2);
+  });
+
+  it("never reduces base payout even for a degraded straight-line run", () => {
+    expect(calculateDeliveryPayout(145, 1)).toBe(145);
+    expect(calculateDeliveryPayout(145, 2.5)).toBeGreaterThanOrEqual(145);
+    expect(calculateDeliveryPayout(145, 5)).toBe(160);
   });
 
   it("keeps Act 0 progression in order through delivery, meal, and first sleep", () => {

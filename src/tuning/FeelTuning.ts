@@ -125,6 +125,31 @@ export const RIDE_FEEL_TUNING = {
   nearMissMinimumSpeedRatio: 0.72
 } as const;
 
+/** Authored delivery-ride pressure. Edit here to tune a street without touching base bike handling. */
+export const DELIVERY_RIDE_FEEL_TUNING = {
+  streets: {
+    jl_pantai_berawa: {
+      tutorialDensity: 0.55,
+      act1Density: 1,
+      baseHazardCount: 10
+    }
+  },
+  contactRadius: 30,
+  nearMissRadius: 58,
+  awarenessRadius: 112,
+  contactCooldownMs: 900,
+  stumbleSpeedMultiplier: 0.38,
+  nightVisibilityMultiplier: 0.78,
+  score: {
+    failForwardFloor: 0.28,
+    avoidanceWeight: 0.42,
+    nearMissWeight: 0.16,
+    timeWeight: 0.14,
+    contactPenalty: 0.16,
+    targetSecondsPerHazard: 3.5
+  }
+} as const;
+
 /** Central tuning for the movement-based Warung Rush service round. */
 export const WARUNG_RUSH_FEEL_TUNING = {
   roundDurationMs: 75000,

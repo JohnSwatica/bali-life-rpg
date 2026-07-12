@@ -121,11 +121,13 @@ import {
 } from "../systems/minigames/ActivityMinigames";
 import { calculateWarungRushPerformance, createWarungRushState, pickUpWarungDish, serveWarungOrder, updateWarungRush, WARUNG_DISH_LABELS } from "../systems/minigames/WarungRush";
 import {
-  getRideCheckpointsForDelivery,
-  pickOutcomeToast,
-  resolveRideCheckpointPosition,
-  type RideCheckpointDefinition
-} from "../systems/ride/DeliveryRideCheckpoints";
+  applyDeliveryHazardContact,
+  getDeliveryHazards,
+  getDeliveryRideDensity,
+  getDeliveryRunPerformance,
+  getHazardVisibilityDistance,
+  type DeliveryHazardDefinition
+} from "../systems/ride/DeliveryRideMode";
 import {
   createRideModelState,
   updateRideModel,
@@ -134,7 +136,7 @@ import {
 } from "../systems/ride/RideModel";
 import { canPlayerBeOnBike, resolveRequestedBikeState } from "../systems/ride/RideMode";
 import { getRideTelemetry, type RideTelemetry } from "../systems/ride/RideTelemetry";
-import { applyCargoDamage, isCargoCareEligible, shouldShowCargoCareChip } from "../systems/ride/CargoCare";
+import { applyCargoDamage, shouldShowCargoCareChip } from "../systems/ride/CargoCare";
 import {
   advanceRivalRaceGhost,
   applyRivalRaceOutcome,
@@ -254,7 +256,13 @@ import {
   getChapterCutsceneDelayMs,
   type PayoutCelebrationSpec
 } from "../systems/animation/PayoutCelebration";
-import { CARGO_FEEL_TUNING, PAYOUT_FEEL_TUNING, RIDE_FEEL_TUNING, WARUNG_RUSH_FEEL_TUNING } from "../tuning/FeelTuning";
+import {
+  CARGO_FEEL_TUNING,
+  DELIVERY_RIDE_FEEL_TUNING,
+  PAYOUT_FEEL_TUNING,
+  RIDE_FEEL_TUNING,
+  WARUNG_RUSH_FEEL_TUNING
+} from "../tuning/FeelTuning";
 import {
   advanceClock,
   formatClock,
@@ -360,6 +368,7 @@ interface BaliLifeDebugSnapshot {
   driverRating: number;
   activeDelivery: string | null;
   activeDeliveryDueAt: number | null;
+  deliveryRideRun: { elapsedMs: number; hazardsSpawned: number; hazardsAvoided: number; nearMisses: number; contacts: number } | null;
   cutscene: { id: string; stepId: string | null; elapsedMs: number } | null;
   fieldObjective: FieldObjectiveState;
   fieldObjectiveLine: string;
@@ -455,6 +464,14 @@ interface TrafficBikeRuntime {
   speed: number;
   velocity: Phaser.Math.Vector2;
   seed: number;
+}
+
+interface DeliveryHazardRuntime {
+  definition: DeliveryHazardDefinition;
+  visual: Phaser.GameObjects.Graphics;
+  approached: boolean;
+  resolved: boolean;
+  nearMissed: boolean;
 }
 
 interface WantedOffenderRuntime {
@@ -702,8 +719,9 @@ export class GameScene extends Phaser.Scene {
   private committedMinigameFeedback?: HTMLDivElement;
   private warungRushVisuals?: Phaser.GameObjects.Graphics;
   private warungRushCustomers: Phaser.GameObjects.Sprite[] = [];
-  private activeDeliveryResolvedCheckpointIds: string[] = [];
-  private activeDeliveryPerformanceScores: number[] = [];
+  private deliveryHazards: DeliveryHazardRuntime[] = [];
+  private deliveryHazardDeliveryId: string | null = null;
+  private deliveryHazardContactCooldown = 0;
   private activeRivalRace?: RivalRaceRuntime;
   private rivalRaceGhost?: Phaser.GameObjects.Sprite;
   private rivalRaceMarkerLayer!: Phaser.GameObjects.Graphics;
@@ -829,7 +847,7 @@ export class GameScene extends Phaser.Scene {
     this.updatePlayer(delta);
     if (!menuOpen) {
       this.updateRivalRace(delta);
-      this.updateRideCheckpoints();
+      this.updateDeliveryRideMode(delta);
     }
     if (!this.activeCutscene) {
       this.updateMapDiscovery();
@@ -852,6 +870,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   destroy(): void {
+    this.clearDeliveryHazards();
     this.destroyDialogueOverlay();
     this.destroyCommittedActivityOverlay();
     this.activeCutscene?.overlay.container.destroy(true);
@@ -1799,8 +1818,7 @@ export class GameScene extends Phaser.Scene {
     this.rivalRaceGhost = undefined;
     this.rivalRaceMarkerLayer?.clear();
     this.finishPayoutCelebration();
-    this.activeDeliveryResolvedCheckpointIds = [];
-    this.activeDeliveryPerformanceScores = [];
+    this.clearDeliveryHazards();
     this.world = loadWorldState();
     this.playerState = getLocalPlayer(this.world);
     this.activeInteriorId = null;
@@ -2051,13 +2069,14 @@ export class GameScene extends Phaser.Scene {
     }
     if (this.isNearMissAgainstTraffic() || this.isNearMissAgainstPedestrians()) {
       this.nearMissFeedbackCooldown = RIDE_NEAR_MISS_COOLDOWN_MS;
+      this.recordDeliveryNearMiss();
       this.spawnInteractionFlourish("nearMiss", this.player.x, this.player.y, "Whoosh");
       this.playSound("nearMiss");
     }
   }
 
   private isNearMissAgainstTraffic(): boolean {
-    return this.trafficBikes.some((bike) => this.isNearMissDistance(bike.sprite.x, bike.sprite.y));
+    return this.trafficBikes.some((bike) => bike.sprite.visible && this.isNearMissDistance(bike.sprite.x, bike.sprite.y));
   }
 
   private isNearMissAgainstPedestrians(): boolean {
@@ -2117,7 +2136,15 @@ export class GameScene extends Phaser.Scene {
   private updateTraffic(delta: number): void {
     this.trafficHitCooldown = Math.max(0, this.trafficHitCooldown - delta);
     this.bikeHarmCooldown = Math.max(0, this.bikeHarmCooldown - delta);
-    for (const bike of this.trafficBikes) {
+    const activeDelivery = this.world.life.hustle.activeDelivery;
+    const trafficDensity = activeDelivery?.stage === "picked_up"
+      ? getDeliveryRideDensity(this.world.life.actProgress.currentAct, activeDelivery.deliveryId)
+      : 1;
+    const liveTrafficCount = Math.max(1, Math.round(this.trafficBikes.length * trafficDensity));
+    for (const [index, bike] of this.trafficBikes.entries()) {
+      const live = index < liveTrafficCount;
+      bike.sprite.setVisible(live);
+      if (!live) continue;
       this.moveTrafficBikeAlongRoad(bike, (bike.speed * delta) / 1000);
       bike.sprite.setDepth(bike.sprite.y + 3);
 
@@ -2307,6 +2334,23 @@ export class GameScene extends Phaser.Scene {
 
   private applyTrafficHit(source: TrafficBikeRuntime): void {
     this.trafficHitCooldown = TRAFFIC_HIT_COOLDOWN_MS;
+    const activeDelivery = this.world.life.hustle.activeDelivery;
+    if (activeDelivery?.stage === "picked_up" && this.playerState.onBike) {
+      const contact = applyDeliveryHazardContact();
+      const cargoDamage = this.damageActiveDeliveryCargo(contact.cargoReason);
+      activeDelivery.rideRun ??= { elapsedMs: 0, hazardsSpawned: 0, hazardsAvoided: 0, nearMisses: 0, contacts: 0 };
+      activeDelivery.rideRun.contacts += 1;
+      this.applyDeliverySpeedStumble(contact.speedMultiplier);
+      this.applyTrafficKnockback(source);
+      this.cameras.main.shake(140, 0.004);
+      this.spawnHitSplash(this.player.x, this.player.y);
+      if (cargoDamage?.damaged) {
+        this.spawnFloatingText(`Cargo -${cargoDamage.amount}%`, this.player.x, this.player.y - scaleDistance(34), "#f4b860");
+      }
+      saveWorldState(this.world);
+      this.showToast(`Scooter clip — soft hit, keep riding. Cargo ${cargoDamage?.after ?? activeDelivery.cargoIntegrity ?? 100}%.`);
+      return;
+    }
     const moneyLoss = Math.min(this.playerState.money, TRAFFIC_HIT_MONEY_LOSS);
     this.playerState.safety = Phaser.Math.Clamp(this.playerState.safety - 12, 0, 100);
     adjustPlayerMeters(this.world, { focus: -5 });
@@ -3195,8 +3239,13 @@ export class GameScene extends Phaser.Scene {
     const cargoSurface = this.mode === "world" ? "world" : this.mode === "interior" ? "interior" : "overlay";
     if (cargoIntegrity != null && shouldShowCargoCareChip(cargoIntegrity, cargoSurface, Boolean(this.activeRivalRace))) {
       const color = cargoIntegrity >= 70 ? "#62c48f" : cargoIntegrity >= 35 ? "#f4b860" : "#ff8f80";
+      const rideRun = this.world.life.hustle.activeDelivery?.rideRun;
       this.cargoChipText
-        .setText(`Cargo ${cargoIntegrity}%`)
+        .setText(
+          rideRun
+            ? `Cargo ${cargoIntegrity}% · Avoid ${rideRun.hazardsAvoided}/${rideRun.hazardsSpawned} · Near ${rideRun.nearMisses}`
+            : `Cargo ${cargoIntegrity}%`
+        )
         .setColor(color)
         .setPosition(16, warningY)
         .setVisible(true);
@@ -5530,10 +5579,7 @@ export class GameScene extends Phaser.Scene {
       this.committedActivityProgress.style.width = `${Math.round(progress * 100)}%`;
     }
     if (this.committedActivityStatus) {
-      this.committedActivityStatus.textContent =
-        active.source === "rideCheckpoint"
-          ? "React now -- this resolves in a moment."
-          : `Fast-forwarding ${elapsedMinutes}/${active.durationMin} in-game minutes`;
+      this.committedActivityStatus.textContent = `Fast-forwarding ${elapsedMinutes}/${active.durationMin} in-game minutes`;
     }
     if (progress >= 1) {
       this.completeCommittedActivity();
@@ -5567,10 +5613,6 @@ export class GameScene extends Phaser.Scene {
     this.mode = this.activeInteriorId ? "interior" : "world";
     const performanceScore = resolvePerformanceScore(active.minigame);
     active.performanceScore = performanceScore;
-    if (active.source === "rideCheckpoint") {
-      this.finishRideCheckpoint(active.checkpointId, performanceScore);
-      return;
-    }
     if (active.source === "scooterRepair") {
       this.finishScooterRepair(performanceScore);
       return;
@@ -5600,71 +5642,139 @@ export class GameScene extends Phaser.Scene {
     this.finishCommittedOpportunity(active.opportunityId, performanceScore);
   }
 
-  private updateRideCheckpoints(): void {
-    if (this.mode !== "world") {
-      return;
-    }
+  private updateDeliveryRideMode(delta: number): void {
     const active = this.world.life.hustle.activeDelivery;
-    if (!active || active.stage !== "picked_up") {
+    const deliveryRideActive = Boolean(active && active.stage === "picked_up");
+    const raceRideActive = Boolean(this.activeRivalRace);
+    if (!deliveryRideActive && !raceRideActive) {
+      this.clearDeliveryHazards();
       return;
     }
-    const checkpoints = getRideCheckpointsForDelivery(active.deliveryId, active.conditionId);
-    for (const checkpoint of checkpoints) {
-      if (this.activeDeliveryResolvedCheckpointIds.includes(checkpoint.id)) {
+    const rideId = deliveryRideActive ? active!.deliveryId : "leo_rival_race";
+    this.ensureDeliveryHazards(rideId);
+    if (active?.stage === "picked_up") {
+      active.rideRun ??= { elapsedMs: 0, hazardsSpawned: this.deliveryHazards.length, hazardsAvoided: 0, nearMisses: 0, contacts: 0 };
+      active.rideRun.elapsedMs += delta;
+      active.rideRun.hazardsSpawned = Math.max(active.rideRun.hazardsSpawned, this.deliveryHazards.length);
+    }
+    if (this.mode !== "world" || !this.playerState.onBike) return;
+
+    const elapsedMs = active?.rideRun?.elapsedMs ?? this.activeRivalRace?.elapsedMs ?? 0;
+    this.deliveryHazardContactCooldown = Math.max(0, this.deliveryHazardContactCooldown - delta);
+    const night = getTimePhase(this.world.clock.minuteOfDay) === "night";
+    const visibilityDistance = scaleDistance(getHazardVisibilityDistance(night));
+    const awarenessDistance = scaleDistance(DELIVERY_RIDE_FEEL_TUNING.awarenessRadius);
+    const contactDistance = scaleDistance(DELIVERY_RIDE_FEEL_TUNING.contactRadius);
+    const nearMissDistance = scaleDistance(DELIVERY_RIDE_FEEL_TUNING.nearMissRadius);
+
+    for (const hazard of this.deliveryHazards) {
+      if (hazard.definition.kind === "pedestrian") {
+        hazard.visual.x = Math.sin(elapsedMs / 1500 + hazard.definition.y) * scaleDistance(42);
+      }
+      const hazardX = hazard.definition.x + hazard.visual.x;
+      const hazardY = hazard.definition.y;
+      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, hazardX, hazardY);
+      hazard.visual.setAlpha(night && distance > visibilityDistance ? 0.12 : hazard.resolved ? 0.28 : 0.92);
+      if (hazard.resolved) continue;
+      if (distance <= awarenessDistance) hazard.approached = true;
+
+      if (
+        distance <= contactDistance &&
+        this.deliveryHazardContactCooldown <= 0
+      ) {
+        const contact = applyDeliveryHazardContact();
+        const cargoDamage = this.damageActiveDeliveryCargo(contact.cargoReason);
+        if (active?.rideRun) active.rideRun.contacts += 1;
+        hazard.resolved = true;
+        this.deliveryHazardContactCooldown = DELIVERY_RIDE_FEEL_TUNING.contactCooldownMs;
+        this.applyDeliverySpeedStumble(contact.speedMultiplier);
+        this.cameras.main.shake(130, 0.0035);
+        this.spawnFloatingText(
+          cargoDamage?.damaged ? `Cargo -${cargoDamage.amount}%` : "Stumble",
+          this.player.x,
+          this.player.y - scaleDistance(34),
+          "#f4b860"
+        );
+        this.showToast(`${this.hazardLabel(hazard.definition.kind)} — soft hit, keep riding.`);
         continue;
       }
-      const position = resolveRideCheckpointPosition(checkpoint);
-      if (!position) {
-        continue;
+      if (
+        !hazard.nearMissed &&
+        distance > contactDistance &&
+        distance <= nearMissDistance &&
+        (this.rideModelOutput?.speedRatio ?? 0) >= RIDE_FEEL_TUNING.nearMissMinimumSpeedRatio
+      ) {
+        hazard.nearMissed = true;
+        this.recordDeliveryNearMiss();
       }
-      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, position.x, position.y);
-      if (distance <= scaleDistance(checkpoint.radius)) {
-        this.startRideCheckpoint(checkpoint);
-        return;
+      if (hazard.approached && distance > awarenessDistance * 1.15) {
+        hazard.resolved = true;
+        if (active?.rideRun) active.rideRun.hazardsAvoided += 1;
       }
     }
   }
 
-  private startRideCheckpoint(checkpoint: RideCheckpointDefinition): void {
-    this.closePanel(false);
-    this.mode = "committedActivity";
-    this.committedActivity = {
-      source: "rideCheckpoint",
-      checkpointId: checkpoint.id,
-      venueId: checkpoint.deliveryId,
-      venueName: "En route",
-      label: "Ride Checkpoint",
-      durationMin: 0,
-      elapsedMs: 0,
-      realDurationMs: 3200,
-      startedAt: this.getAbsoluteMinute(),
-      minigame: createActiveMinigame(getActivityMinigameDefinition(checkpoint.minigameId))
+  private ensureDeliveryHazards(deliveryId: string): void {
+    if (this.deliveryHazardDeliveryId === deliveryId) return;
+    this.clearDeliveryHazards();
+    this.deliveryHazardDeliveryId = deliveryId;
+    const definitions = getDeliveryHazards(this.world.life.actProgress.currentAct, deliveryId);
+    this.deliveryHazards = definitions.map((definition) => ({
+      definition,
+      visual: this.createDeliveryHazardVisual(definition),
+      approached: false,
+      resolved: false,
+      nearMissed: false
+    }));
+  }
+
+  private createDeliveryHazardVisual(definition: DeliveryHazardDefinition): Phaser.GameObjects.Graphics {
+    const visual = this.add.graphics().setPosition(0, 0).setDepth(definition.y + 2);
+    if (definition.kind === "pothole") {
+      visual.fillStyle(0x443a32, 0.94);
+      visual.fillEllipse(definition.x, definition.y, scaleDistance(42), scaleDistance(24));
+      visual.lineStyle(Math.max(1, scaleDistance(2)), 0x8d806d, 0.72);
+      visual.strokeEllipse(definition.x, definition.y, scaleDistance(42), scaleDistance(24));
+    } else if (definition.kind === "puddle") {
+      visual.fillStyle(0x4e98ad, 0.58);
+      visual.fillEllipse(definition.x, definition.y, scaleDistance(48), scaleDistance(25));
+      visual.lineStyle(Math.max(1, scaleDistance(2)), 0x9ee6df, 0.5);
+      visual.strokeEllipse(definition.x, definition.y, scaleDistance(48), scaleDistance(25));
+    } else {
+      visual.fillStyle(0x253a35, 0.9);
+      visual.fillCircle(definition.x, definition.y - scaleDistance(10), scaleDistance(7));
+      visual.lineStyle(scaleDistance(4), 0xf2c35d, 0.92);
+      visual.lineBetween(definition.x, definition.y - scaleDistance(2), definition.x, definition.y + scaleDistance(16));
+      visual.lineBetween(definition.x, definition.y + scaleDistance(6), definition.x - scaleDistance(8), definition.y + scaleDistance(18));
+      visual.lineBetween(definition.x, definition.y + scaleDistance(6), definition.x + scaleDistance(8), definition.y + scaleDistance(18));
+    }
+    return visual;
+  }
+
+  private clearDeliveryHazards(): void {
+    for (const hazard of this.deliveryHazards) hazard.visual.destroy();
+    this.deliveryHazards = [];
+    this.deliveryHazardDeliveryId = null;
+    this.deliveryHazardContactCooldown = 0;
+  }
+
+  private recordDeliveryNearMiss(): void {
+    const active = this.world.life.hustle.activeDelivery;
+    if (!active?.rideRun || active.stage !== "picked_up") return;
+    active.rideRun.nearMisses += 1;
+  }
+
+  private applyDeliverySpeedStumble(multiplier: number): void {
+    this.rideModelState = {
+      ...this.rideModelState,
+      velocityX: this.rideModelState.velocityX * multiplier,
+      velocityY: this.rideModelState.velocityY * multiplier
     };
-    this.world.activeActivity = { ...this.committedActivity };
-    this.createCommittedActivityOverlay(this.committedActivity);
-    this.showToast(checkpoint.arriveToast);
+    this.player.setVelocity(this.rideModelState.velocityX, this.rideModelState.velocityY);
   }
 
-  private finishRideCheckpoint(checkpointId: string, performanceScore: number | undefined): void {
-    const score = performanceScore ?? 0.72;
-    this.activeDeliveryResolvedCheckpointIds.push(checkpointId);
-    this.activeDeliveryPerformanceScores.push(score);
-    const activeDelivery = this.world.life.hustle.activeDelivery;
-    const checkpoint = getRideCheckpointsForDelivery(activeDelivery?.deliveryId ?? "", activeDelivery?.conditionId).find(
-      (candidate) => candidate.id === checkpointId
-    );
-    if (checkpoint) {
-      this.showToast(pickOutcomeToast(checkpoint, score));
-    }
-    saveWorldState(this.world);
-  }
-
-  private averageRideCheckpointPerformance(): number | undefined {
-    if (this.activeDeliveryPerformanceScores.length === 0) {
-      return undefined;
-    }
-    const sum = this.activeDeliveryPerformanceScores.reduce((total, score) => total + score, 0);
-    return sum / this.activeDeliveryPerformanceScores.length;
+  private hazardLabel(kind: DeliveryHazardDefinition["kind"]): string {
+    return kind === "pothole" ? "Pothole" : kind === "puddle" ? "Puddle" : "Pedestrian crossing";
   }
 
   private isRideSurfaceSlick(): boolean {
@@ -5689,10 +5799,6 @@ export class GameScene extends Phaser.Scene {
     if (!delivery) {
       return null;
     }
-    const condition = getDeliveryCondition(delivery, active.conditionId);
-    if (!isCargoCareEligible(this.world.life.actProgress.currentAct, delivery, condition)) {
-      return null;
-    }
     const result = applyCargoDamage(active.cargoIntegrity ?? 100, reason);
     active.cargoIntegrity = result.after;
     active.cargoDamageEvents = (active.cargoDamageEvents ?? 0) + (result.damaged ? 1 : 0);
@@ -5710,9 +5816,6 @@ export class GameScene extends Phaser.Scene {
   private cancelCommittedActivity(): void {
     if (!this.committedActivity) {
       this.closePanel();
-      return;
-    }
-    if (this.committedActivity.source === "rideCheckpoint") {
       return;
     }
     const label = this.committedActivity.label;
@@ -5865,10 +5968,7 @@ export class GameScene extends Phaser.Scene {
 
     const status = document.createElement("div");
     status.className = "bali-life-activity-progress-status";
-    status.textContent =
-      active.source === "rideCheckpoint"
-        ? "React now -- this resolves in a moment."
-        : `Fast-forwarding 0/${active.durationMin} in-game minutes`;
+    status.textContent = `Fast-forwarding 0/${active.durationMin} in-game minutes`;
 
     const minigame = this.createCommittedMinigameElement(active);
 
@@ -5886,9 +5986,7 @@ export class GameScene extends Phaser.Scene {
     if (minigame) {
       overlay.appendChild(minigame);
     }
-    if (active.source !== "rideCheckpoint") {
-      overlay.appendChild(cancel);
-    }
+    overlay.appendChild(cancel);
     document.body.appendChild(overlay);
     this.committedActivityOverlay = overlay;
     this.committedActivityProgress = fill;
@@ -8008,7 +8106,7 @@ export class GameScene extends Phaser.Scene {
     }
     const wasPickup = active.stage === "accepted";
     const now = this.getAbsoluteMinute();
-    const performanceScore = wasPickup ? undefined : this.averageRideCheckpointPerformance();
+    const performanceScore = wasPickup ? undefined : getDeliveryRunPerformance(active);
     const previousMoney = this.playerState.money;
     const previousDriverRating = this.world.life.hustle.driverRating;
     const previousAct = this.world.life.actProgress.currentAct;
@@ -8019,11 +8117,11 @@ export class GameScene extends Phaser.Scene {
         ? pickupDelivery(this.world, now)
         : completeDelivery(this.world, now, performanceScore);
     if (result.ok && wasPickup) {
-      this.activeDeliveryResolvedCheckpointIds = [];
-      this.activeDeliveryPerformanceScores = [];
+      this.ensureDeliveryHazards(active.deliveryId);
       completeAct0Step(this.world, "pickup_first_delivery");
       this.spawnInteractionFlourish("pickup", this.player.x, this.player.y, "Picked up");
     } else if (result.ok && !this.world.life.hustle.activeDelivery) {
+      this.clearDeliveryHazards();
       const negotiatedFee = applyAct0NegotiatedCompletionFee(this.world, active.deliveryId);
       if (negotiatedFee > 0) {
         result.payout = (result.payout ?? 0) + negotiatedFee;
@@ -8095,7 +8193,6 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.deliveryMarkerLayer.clear();
-    this.drawRideCheckpointMarkers();
     const targets = this.getFieldObjectiveTargets();
     for (const target of targets) {
       const pulse = 0.55 + Math.sin(Date.now() / 180) * 0.12;
@@ -8108,37 +8205,6 @@ export class GameScene extends Phaser.Scene {
       this.deliveryMarkerLayer.fillTriangle(target.x, target.y - 34, target.x - 16, target.y - 8, target.x + 16, target.y - 8);
       this.deliveryMarkerLayer.lineStyle(2, 0xfff0bd, 0.9);
       this.deliveryMarkerLayer.strokeTriangle(target.x, target.y - 34, target.x - 16, target.y - 8, target.x + 16, target.y - 8);
-    }
-  }
-
-  private drawRideCheckpointMarkers(): void {
-    const active = this.world.life.hustle.activeDelivery;
-    if (!active || active.stage !== "picked_up") {
-      return;
-    }
-    const pulse = 0.5 + Math.sin(Date.now() / 160) * 0.14;
-    for (const checkpoint of getRideCheckpointsForDelivery(active.deliveryId, active.conditionId)) {
-      if (this.activeDeliveryResolvedCheckpointIds.includes(checkpoint.id)) {
-        continue;
-      }
-      const position = resolveRideCheckpointPosition(checkpoint);
-      if (!position) {
-        continue;
-      }
-      const radius = scaleDistance(15);
-      this.deliveryMarkerLayer.fillStyle(0x101820, 0.28);
-      this.deliveryMarkerLayer.fillCircle(position.x, position.y, radius + scaleDistance(5));
-      this.deliveryMarkerLayer.lineStyle(Math.max(1, scaleDistance(2)), 0x8ee6ff, 0.48 + pulse * 0.28);
-      this.deliveryMarkerLayer.strokeCircle(position.x, position.y, radius);
-      this.deliveryMarkerLayer.fillStyle(0x8ee6ff, 0.88);
-      this.deliveryMarkerLayer.fillTriangle(
-        position.x,
-        position.y - scaleDistance(8),
-        position.x - scaleDistance(7),
-        position.y + scaleDistance(6),
-        position.x + scaleDistance(7),
-        position.y + scaleDistance(6)
-      );
     }
   }
 
@@ -8990,6 +9056,9 @@ export class GameScene extends Phaser.Scene {
       driverRating: this.world.life.hustle.driverRating,
       activeDelivery: this.world.life.hustle.activeDelivery?.deliveryId ?? null,
       activeDeliveryDueAt: this.world.life.hustle.activeDelivery?.dueAt ?? null,
+      deliveryRideRun: this.world.life.hustle.activeDelivery?.rideRun
+        ? { ...this.world.life.hustle.activeDelivery.rideRun }
+        : null,
       cutscene: this.activeCutscene
         ? {
             id: this.activeCutscene.script.id,

@@ -14,9 +14,9 @@ NusaDrop storyline). GATE v3 authorizes feature work targeted at those
 findings. **RPG-20260712-01, -02, and -04 are DONE** (259 tests green,
 committed on `feat/rpg-20260706-09-rio-race`; 02+04 landed as one combined
 commit since their diffs shared modified files — see that commit message for
-the full breakdown and 04's known proof gap). **RPG-20260712-03 is next and
-is now unblocked** — branch from this branch's current HEAD (NOT from
-`main`; see the corrected note below and the standing rule above).
+the full breakdown and 04's known proof gap). **RPG-20260712-03 is DONE**
+on `feat/rpg-20260712-03-steering-delivery`, branched from this branch's
+`1bc9a8d` HEAD as directed (NOT from `main`).
 
 ## Active queue — RPG-20260712 (playtest response)
 
@@ -24,7 +24,7 @@ is now unblocked** — branch from this branch's current HEAD (NOT from
 |----|-------|---------------|--------|
 | [RPG-20260712-01](RPG-20260712-01-nusadrop-canon-swap.md) | v4 canon swap: NusaDrop, Leo, Vance; retire Elena thread | Terra · Medium | DONE |
 | [RPG-20260712-02](RPG-20260712-02-cinematic-cold-open.md) | Cinematic cold-open + 3-minute hook + first choice | Sol · High | DONE (50.97s, see proof doc) |
-| [RPG-20260712-03](RPG-20260712-03-steering-delivery-mode.md) | Steering delivery mode v1 (continuous obstacle-avoidance) | Sol · High | **NEXT — branch from this branch's current HEAD** |
+| [RPG-20260712-03](RPG-20260712-03-steering-delivery-mode.md) | Steering delivery mode v1 (continuous obstacle-avoidance) | Sol · High | DONE (see steering proof doc) |
 | [RPG-20260712-04](RPG-20260712-04-warung-rush.md) | Warung Rush v1 (Diner-Dash-style service) | Terra · Medium | DONE (logic proven; scene-feel proof still owed) |
 
 **On 02→03 sequencing (corrected 2026-07-12):** the original note here said

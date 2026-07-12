@@ -24,6 +24,7 @@ let page;
 let activeBeat = "boot";
 let browserError;
 const rideSamples = [];
+const capturedRideFrames = new Set();
 let rideStartedAt = 0;
 let openingStartedAt = 0;
 
@@ -72,7 +73,7 @@ async function main() {
   await clickButton("Take the keys. ‘I won’t forget this.’");
   const hookLive = await waitForDebug(
     (state) => state.act0Step === "dropoff_first_delivery" && state.activeDelivery === "act0_ibu_milk_madu_catering",
-    "timed catering hook live",
+    "live-steering catering hook active",
     8_000
   );
   const hookElapsedMs = Date.now() - openingStartedAt;
@@ -87,7 +88,7 @@ async function main() {
   if (saveKeysAfterChoice.length === 0) {
     throw new Error("Choice resolved and delivery went live without a durable save");
   }
-  await capture("05-timed-delivery-live");
+  await capture("05-steering-delivery-live");
   await closeDialogueIfPresent();
   await ensureMounted();
   rideStartedAt = Date.now();
@@ -123,6 +124,16 @@ async function main() {
   const finalState = await getDebug();
   console.log(`[PASS] Act 0 complete at ${finalState.time}; ${finalState.fieldObjectiveLine}`);
   await capture("09-act0-complete");
+  await ensureWorldForProof();
+  await moveToPoint({ x: 1708, y: 92 });
+  await capture("10-baked-locked-alley");
+  await page.evaluate(() => {
+    const button = [...document.querySelectorAll("button")].find((candidate) => candidate.textContent?.trim() === "SAVE");
+    if (!(button instanceof HTMLButtonElement)) throw new Error("SAVE button missing from HUD");
+    button.click();
+  });
+  await delay(250);
+  await verifyMobileTouchSurface();
 }
 
 async function captureOpeningStep(name, stepId) {
@@ -154,7 +165,7 @@ async function followObjectiveIntoInterior() {
   const before = await getDebug();
   if (before.mode === "interior") return;
   await moveToObjective();
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
     const beforeAction = await getDebug();
     console.log(
       `[DOOR] attempt=${attempt + 1} mode=${beforeAction.mode} nearest=${beforeAction.nearestInteraction ?? "none"} ` +
@@ -175,11 +186,15 @@ async function followObjectiveIntoInterior() {
         await waitForDebug((state) => state.mode === "world", "wrong doorway panel closed", 1_200);
         await holdKeys([attempt % 2 === 0 ? "w" : "s"], 90);
       }
+      const target = afterAction.objectiveTargets[0];
+      if (target && afterAction.mode === "world") {
+        await moveToward(afterAction.player, target, pointDistance(afterAction.player, target));
+      }
       await delay(120);
     }
   }
   const latest = await getDebug();
-  throw new Error(`Doorway did not open after three E presses; prompt='${latest.prompt}'`);
+  throw new Error(`Doorway did not open after six E presses; prompt='${latest.prompt}'`);
 }
 
 async function leaveInteriorByObjective() {
@@ -231,13 +246,71 @@ async function moveToObjective({ collectRide = false } = {}) {
       distance,
       collectRide ? () => getDebug() : undefined
     );
-    if (movingState?.ride) rideSamples.push({ at: Date.now(), ...movingState.ride });
+    if (movingState?.ride) {
+      rideSamples.push({ at: Date.now(), ...movingState.ride, rideRun: movingState.deliveryRideRun });
+      if ([2, 4, 6].includes(rideSamples.length) && !capturedRideFrames.has(rideSamples.length)) {
+        capturedRideFrames.add(rideSamples.length);
+        await capture(`06-ride-live-${rideSamples.length}`);
+      }
+    }
   }
   const latest = await getDebug();
   throw new Error(
     `Timed out walking to objective for ${activeBeat}; player=${latest.player.x},${latest.player.y} ` +
       `target=${JSON.stringify(latest.objectiveTargets[0])} mode=${latest.mode}`
   );
+}
+
+async function moveToPoint(target) {
+  const deadline = Date.now() + STEP_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const state = await getDebug();
+    if (state.mode !== "world") {
+      await delay(90);
+      continue;
+    }
+    const distance = pointDistance(state.player, target);
+    if (distance < 28) return;
+    await moveToward(state.player, target, distance);
+  }
+  throw new Error(`Timed out moving to map-proof point ${JSON.stringify(target)}`);
+}
+
+async function ensureWorldForProof() {
+  const deadline = Date.now() + 25_000;
+  while (Date.now() < deadline) {
+    const state = await getDebug();
+    if (state.mode === "world" && !state.cutscene) return;
+    if (state.cutscene || state.interiorTransitioning || state.mode === "committedActivity") {
+      await delay(120);
+      continue;
+    }
+    if (state.mode === "interior") {
+      await leaveInteriorByObjective();
+      continue;
+    }
+    await press("Escape");
+  }
+  throw new Error(`Could not return to world for proof capture; last=${JSON.stringify(await getDebug())}`);
+}
+
+async function verifyMobileTouchSurface() {
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+  const mobileUrl = BASE_URL.includes("?") ? `${BASE_URL}&touch=1` : `${BASE_URL}?touch=1`;
+  await page.goto(mobileUrl, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector('[data-ui-surface="title-screen"]', { timeout: 10_000 });
+  await clickButton("Continue");
+  const state = await waitForDebug((next) => next.mode === "world" && next.touchControlsVisible, "390x844 touch world", 8_000);
+  const bounds = await page.evaluate(() =>
+    [...document.querySelectorAll("button")].map((button) => {
+      const rect = button.getBoundingClientRect();
+      return { label: button.textContent?.trim() ?? "", left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+    })
+  );
+  const outOfBounds = bounds.filter((rect) => rect.left < 0 || rect.top < 0 || rect.right > 390 || rect.bottom > 844);
+  if (outOfBounds.length > 0) throw new Error(`390x844 controls out of bounds: ${JSON.stringify(outOfBounds)}`);
+  console.log(`[TOUCH] 390x844 joystickVisible=${state.touchControlsVisible} buttons=${bounds.length} allInBounds=true`);
+  await capture("11-touch-390x844");
 }
 
 async function moveToward(player, target, distance, sampleWhileMoving) {
@@ -388,9 +461,12 @@ function printRideSummary() {
     throw new Error("Ride telemetry never reported movement during the Canggu-Station-to-Milk-&-Madu leg");
   }
   const maxDrift = Math.max(...rideSamples.map((sample) => sample.drift));
+  const finalRun = [...rideSamples].reverse().find((sample) => sample.rideRun)?.rideRun;
   console.log(
     `[RIDE] samples=${speeds.length} speed min/avg/max=${Math.min(...speeds).toFixed(2)}/${average.toFixed(2)}/${Math.max(...speeds).toFixed(2)} ` +
-      `driftEngaged=${maxDrift > 0.01} maxDrift=${maxDrift.toFixed(3)} time-to-dropoff=${elapsedSeconds.toFixed(2)}s`
+      `driftEngaged=${maxDrift > 0.01} maxDrift=${maxDrift.toFixed(3)} time-to-dropoff=${elapsedSeconds.toFixed(2)}s ` +
+      `hazards=${finalRun?.hazardsSpawned ?? 0} avoided=${finalRun?.hazardsAvoided ?? 0} ` +
+      `nearMisses=${finalRun?.nearMisses ?? 0} contacts=${finalRun?.contacts ?? 0}`
   );
 }
 

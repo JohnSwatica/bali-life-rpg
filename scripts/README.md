@@ -8,7 +8,7 @@ Run:
 npm run smoke
 ```
 
-The script starts an isolated Vite server on port `4176`, launches the system Chrome through `puppeteer-core`, clears the browser save, clicks **New Game**, observes the complete unskipped v4 bus-arrival cutscene beat-by-beat, chooses Ibu Sari's humble scooter deal, and proves the timed Milk & Madu delivery is live in under three minutes. It then drives the visible Act 0 objective chain with real keyboard input through NusaDrop signup/meal, first sleep, and the Act 1 card. Timestamped screenshots and logs land in `tmp/smoke/`. It is intentionally separate from `npm test`: browser availability must not make unit tests or Pages deployment flaky.
+The script starts an isolated Vite server on port `4176`, launches the system Chrome through `puppeteer-core`, clears the browser save, clicks **New Game**, observes the complete unskipped v4 bus-arrival cutscene beat-by-beat, chooses Ibu Sari's humble scooter deal, and proves the live-steering Milk & Madu delivery is active in under three minutes. It then drives the visible Act 0 objective chain with real keyboard input through NusaDrop signup/meal, first sleep, and the Act 1 card. Ride telemetry reports hazard, avoidance, near-miss, and contact counts; a dumb straight-line route must still finish. The final pass captures the locked BAKED alley and verifies the joystick/control surface at `390x844`. Timestamped screenshots and logs land in `tmp/smoke/`. It is intentionally separate from `npm test`: browser availability must not make unit tests or Pages deployment flaky.
 
 Artifacts are written to `tmp/smoke/`. Every successful beat gets a screenshot. On the first failure the process exits nonzero, names the stalled beat/state, and writes `FAIL-<beat>.png`.
 

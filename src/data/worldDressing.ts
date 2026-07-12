@@ -39,7 +39,7 @@ export interface StreetLandmarkDefinition {
 export interface WalkableStreetParcel {
   id: string;
   templateId: string;
-  kind: "dirt_path" | "bus_dropoff";
+  kind: "dirt_path" | "bus_dropoff" | "gated_alley";
   tileX: number;
   tileY: number;
   widthTiles: number;
@@ -120,6 +120,15 @@ export const streetLandmarks: StreetLandmarkDefinition[] = [
 ];
 
 export const walkableStreetParcels: WalkableStreetParcel[] = [
+  {
+    id: "baked_locked_back_alley",
+    templateId: "jl_pantai_berawa",
+    kind: "gated_alley",
+    tileX: 43,
+    tileY: 0,
+    widthTiles: 14,
+    heightTiles: 1
+  },
   {
     id: "canggu_station_bus_dropoff",
     templateId: "jl_pantai_berawa",

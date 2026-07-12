@@ -19,6 +19,7 @@ import {
 import { applyDeliveryScooterWear, MIN_DELIVERY_BIKE_CONDITION } from "./HustleEconomy";
 import { getAct1MoveOutReadiness } from "./HustleMilestones";
 import type { ActiveDeliveryState, WorldState } from "../../types";
+import { createDeliveryRideRun } from "../ride/DeliveryRideMode";
 
 export interface DeliveryResult {
   ok: boolean;
@@ -103,10 +104,9 @@ export function pickupDelivery(world: WorldState, now: number): DeliveryResult {
     addItem(world.players[world.localPlayerId], definition.itemId, 1);
   }
   const condition = getDeliveryCondition(definition, active.conditionId);
-  if (isCargoCareEligible(world.life.actProgress.currentAct, definition, condition)) {
-    active.cargoIntegrity = active.cargoIntegrity ?? 100;
-    active.cargoDamageEvents = active.cargoDamageEvents ?? 0;
-  }
+  active.cargoIntegrity = active.cargoIntegrity ?? 100;
+  active.cargoDamageEvents = active.cargoDamageEvents ?? 0;
+  active.rideRun = active.rideRun ?? createDeliveryRideRun();
   active.stage = "picked_up";
   active.pickedUpAt = now;
   advanceWorldMinutes(world, 8);
@@ -216,8 +216,8 @@ export function calculateDeliveryStarRating(
 }
 
 export function calculateDeliveryPayout(basePayout: number, starRating: number): number {
-  const multiplier = 0.82 + (Math.max(1, Math.min(5, starRating)) / 5) * 0.28;
-  return Math.round(basePayout * multiplier);
+  const shippedMultiplier = 0.82 + (Math.max(1, Math.min(5, starRating)) / 5) * 0.28;
+  return Math.max(basePayout, Math.round(basePayout * shippedMultiplier));
 }
 
 function updateDriverRating(current: number, latest: number, weight: number): number {

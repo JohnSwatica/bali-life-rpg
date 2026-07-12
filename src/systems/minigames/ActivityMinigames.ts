@@ -167,46 +167,6 @@ const ACTIVITY_MINIGAMES: Record<string, ActivityMinigameDefinition | undefined>
       { id: "story", label: "Invite a story", score: 1, feedback: "Perfect. The group opens up." },
       { id: "flex", label: "Name-drop loudly", score: 0.18, feedback: "That cooled the room fast." }
     ]
-  },
-  ride_checkpoint_traffic_gap: {
-    kind: "timing",
-    title: "Threading the Junction",
-    prompt: "A truck is easing out of a side lane. Tap when the gap opens to slide through clean.",
-    actionLabel: "Go",
-    targetStart: 0.46,
-    targetEnd: 0.6
-  },
-  ride_checkpoint_corner_lean: {
-    kind: "timing",
-    title: "The Tight Corner",
-    prompt: "The lane narrows into a blind corner. Tap as the turn lines up to lean it through smooth.",
-    actionLabel: "Lean",
-    targetStart: 0.4,
-    targetEnd: 0.56
-  },
-  ride_checkpoint_pothole: {
-    kind: "timing",
-    title: "Broken Asphalt",
-    prompt: "Tap when the front wheel lines up with the clean strip between potholes.",
-    actionLabel: "Thread",
-    targetStart: 0.48,
-    targetEnd: 0.6
-  },
-  ride_checkpoint_cargo_balance: {
-    kind: "balance",
-    title: "Cargo Balance",
-    prompt: "Tap while the marker is centered to settle the load before it shifts.",
-    actionLabel: "Steady",
-    targetStart: 0.38,
-    targetEnd: 0.62
-  },
-  ride_checkpoint_rain_slick: {
-    kind: "timing",
-    title: "Rain Slick",
-    prompt: "Tap in the grip window to feather the brake before the painted line.",
-    actionLabel: "Brake",
-    targetStart: 0.34,
-    targetEnd: 0.49
   }
 };
 

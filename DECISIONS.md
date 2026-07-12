@@ -1,5 +1,13 @@
 # Decisions
 
+## 2026-07-12 - Delivery Riding Is Continuous World Play, Not A Committed Activity
+
+RPG-20260712-03 removes the delivery-only checkpoint definitions, timing/balance minigames, modal trigger zones, markers, persistence variant, and tests. A picked-up delivery now owns a small persisted `rideRun` record (elapsed time, hazards spawned/avoided, near-misses, contacts). `GameScene` keeps normal steering, touch joystick input, slick grip, ambient traffic, and Leo's separate ghost-race route active while procedural potholes, puddles, crossing pedestrians, and oncoming traffic are live in the world. Leo's race uses the same hazard field without changing its checkpoint/ghost rules.
+
+The single density edit point is `DELIVERY_RIDE_FEEL_TUNING.streets.jl_pantai_berawa`: Act 0/tutorial runs use `0.55`, while Act 1 board runs and the Leo race use `1.0`. These values scale both authored hazard count and ambient traffic count. No acceleration, drift, grip, slick, or top-speed constant changed. Night only shortens hazard visibility; rain continues to use the existing slick flag.
+
+Contacts are soft delivery consequences: cargo integrity loss plus a temporary speed stumble, with no knockout or delivery failure. Delivery payout math now treats the authored payout as an inviolable base and adds at most a quality margin; cargo care still risks only authored bonus money. The BAKED map increment is a contiguous paved back-alley parcel with a collision-backed locked fence and an explicit “Someone could open this” cue. It remains locked for a later Kadek-tier unlock.
+
 ## 2026-07-12 - STORY_BIBLE v4 Canon Reconciliation Uses Stable IDs And Derived Investigation Unlocks
 
 RPG-20260712-01 changes presentation/data only: `rio` and `pak_bagus` remain stable internal/save identifiers, but display as Leo and Julian Vance. The delivery app is NusaDrop, and Julian's development language is Vanguard Co-Living / Enclave Berawa. This avoids a save-schema migration while allowing every visible surface to adopt STORY_BIBLE v4 naturally.

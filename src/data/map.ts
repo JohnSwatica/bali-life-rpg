@@ -6,6 +6,7 @@ export const WORLD_WIDTH = TILE_WORLD.width;
 export const WORLD_HEIGHT = TILE_WORLD.height;
 
 export const collisionRects: RectDefinition[] = [
+  { id: "baked-locked-alley-fence", x: 1760, y: 0, width: 14, height: 32 }
 ];
 
 export const pickupDefinitions: PickupDefinition[] = [

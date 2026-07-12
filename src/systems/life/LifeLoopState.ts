@@ -201,7 +201,22 @@ function migrateActiveDelivery(raw: unknown): ActiveDeliveryState | null {
     starRating: typeof value.starRating === "number" ? clamp(value.starRating, 1, 5) : undefined,
     cargoIntegrity: typeof value.cargoIntegrity === "number" ? clamp(value.cargoIntegrity, 0, 100) : undefined,
     cargoDamageEvents:
-      typeof value.cargoDamageEvents === "number" ? Math.max(0, Math.floor(value.cargoDamageEvents)) : undefined
+      typeof value.cargoDamageEvents === "number" ? Math.max(0, Math.floor(value.cargoDamageEvents)) : undefined,
+    rideRun: migrateDeliveryRideRun(value.rideRun)
+  };
+}
+
+function migrateDeliveryRideRun(raw: unknown): ActiveDeliveryState["rideRun"] {
+  if (!raw || typeof raw !== "object") return undefined;
+  const value = raw as Partial<NonNullable<ActiveDeliveryState["rideRun"]>>;
+  const count = (candidate: unknown): number =>
+    typeof candidate === "number" && Number.isFinite(candidate) ? Math.max(0, Math.floor(candidate)) : 0;
+  return {
+    elapsedMs: count(value.elapsedMs),
+    hazardsSpawned: count(value.hazardsSpawned),
+    hazardsAvoided: count(value.hazardsAvoided),
+    nearMisses: count(value.nearMisses),
+    contacts: count(value.contacts)
   };
 }
 

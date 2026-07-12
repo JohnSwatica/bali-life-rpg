@@ -399,38 +399,6 @@ describe("Persistence migration", () => {
     expect(loaded.activeActivity).toEqual(world.activeActivity);
   });
 
-  it("migrates ride-checkpoint committed activity state", () => {
-    const world = createInitialWorldState();
-    world.activeActivity = {
-      source: "rideCheckpoint",
-      checkpointId: "first_baked_villa_delivery_traffic_gap",
-      venueId: "first_baked_villa_delivery",
-      venueName: "En route",
-      label: "Ride Checkpoint",
-      durationMin: 0,
-      elapsedMs: 1200,
-      realDurationMs: 3200,
-      startedAt: 8 * 60,
-      performanceScore: 0.4,
-      minigame: {
-        kind: "timing",
-        title: "Threading the Junction",
-        prompt: "A truck is easing out of a side lane.",
-        actionLabel: "Go",
-        attempts: 1,
-        bestScore: 0.4,
-        markerPhase: 0.2,
-        targetStart: 0.46,
-        targetEnd: 0.6
-      }
-    };
-
-    saveWorldState(world);
-    const loaded = loadWorldState();
-
-    expect(loaded.activeActivity).toEqual(world.activeActivity);
-  });
-
   it("migrates scooter-repair committed activity state", () => {
     const world = createInitialWorldState();
     world.activeActivity = {
