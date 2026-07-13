@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-13 (RPG-20260713-01/02)
+Last updated: 2026-07-13 (RPG-20260713-01/02, PR #1 merged)
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -12,10 +12,10 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 
 Current durable truth:
 
-- **RPG-20260713-01/02 complete:** authored venue interaction footprints are collision-safe, so Act 0's Milk & Madu objective can no longer resolve to adjacent Milu by Nook. Fresh Act 1 entry now visibly and persistently cuts NusaDrop board base pay 15%, then stages Leo's one-time pickup-rail encounter before his existing race. Fresh smoke proof covers the correct Milk & Madu panel, Act 0 completion, the rate-cut card, Leo's dialogue, and a lower first Act 1 payout. Proof: `docs/RPG-20260713-01_VENUE_COLLISION_PROOF.md` and `docs/RPG-20260713-02_ACT1_INCITING_HOOK_PROOF.md`.
+- **RPG-20260713-01/02 complete and merged:** authored venue interaction footprints are collision-safe, so Act 0's Milk & Madu objective can no longer resolve to adjacent Milu by Nook. Fresh Act 1 entry now visibly and persistently cuts NusaDrop board base pay 15%, then stages Leo's one-time pickup-rail encounter before his existing race. Fresh smoke proof covers the correct Milk & Madu panel, Act 0 completion, the rate-cut card, Leo's dialogue, and a lower first Act 1 payout. Proof: `docs/RPG-20260713-01_VENUE_COLLISION_PROOF.md` and `docs/RPG-20260713-02_ACT1_INCITING_HOOK_PROOF.md`. PR #1 (Phases 1-2 + all RPG-20260708/712/713 work) merged to `main` 2026-07-13 (`c20c527`); GitHub Pages deploy triggered automatically.
 
 - Branch: `main` — `feat/gameplay-stations` was fast-forward merged into `main` on 2026-07-06; `main` is now the working truth again.
-- Remote: `https://github.com/JohnSwatica/bali-life-rpg` (created 2026-07-06). All branches pushed. New work should branch from `main` and open PRs; John remains sole merge authority.
+- Remote: `https://github.com/JohnSwatica/bali-life-rpg` (created 2026-07-06). All branches pushed. New work should branch from `main` and open PRs. Merge authority: Claude has standing merge authority for this repo specifically (set 2026-07-13, see global CLAUDE.md Standing Rule 8) after actually reviewing a PR (diffs, tests, build, proof) — not a rubber stamp. match.co/NomadNest are unaffected; John still merges those himself.
 - Public playable build: `https://johnswatica.github.io/bali-life-rpg/` — auto-deploys from `main` via `.github/workflows/deploy-pages.yml` (CI runs tests, then builds with `--base=/bali-life-rpg/`; local dev/build unchanged). Verified live 2026-07-06 with assets resolving.
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
@@ -49,7 +49,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: RPG-20260713-01 and RPG-20260713-02 are complete. John can now merge the queued work and share the updated build with 3-5 outside players. Capture their written feedback before broadening Act 1 beyond the explicitly listed follow-ups. Hard boundaries unchanged: no multiplayer, backend, AI calls, real commerce, Google data, or the Act 3 management sim.
+Immediate next move: PR #1 is merged to `main` and the public build is redeploying. John should confirm the live build at `https://johnswatica.github.io/bali-life-rpg/` reflects the fix, then share it with 3-5 outside players and capture their written feedback before broadening Act 1 beyond the explicitly listed follow-ups (Made's room offer, Kadek's priority-driver moment, the midpoint scooter-breakdown reversal, the closing milestone). Hard boundaries unchanged: no multiplayer, backend, AI calls, real commerce, Google data, or the Act 3 management sim.
 
 ## Project
 
