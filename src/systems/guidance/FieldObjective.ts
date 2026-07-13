@@ -175,7 +175,7 @@ function getHustleObjectiveTargets(world: WorldState): FieldObjectiveTargetRef[]
     ];
   }
 
-  return [{ type: "npc", id: "hustle_board_ibu_sari", label: "Ask Ibu Sari about the Hustle Board", npcId: "ibu_sari" }];
+  return [{ type: "npc", id: "hustle_board_ibu_sari", label: "Ask Ibu Sari about the NusaDrop Board", npcId: "ibu_sari" }];
 }
 
 function getAct2ObjectiveTargets(world: WorldState): FieldObjectiveTargetRef[] {

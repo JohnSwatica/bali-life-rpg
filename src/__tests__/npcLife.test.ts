@@ -30,11 +30,10 @@ import type { NpcDefinition, RelationshipMemory } from "../types";
 const namedNpcIds = ["ibu_sari", "kadek", "made", "ari", "rio", "pak_bagus", "willow"] as const;
 
 describe("NPC daily routine routes", () => {
-  it("registers the narrative foundation NPCs without spawning Elena early", () => {
-    expect(npcDefinitions.rio.role).toBe("Jalan Driver, Leaderboard #1");
-    expect(npcDefinitions.pak_bagus.role).toBe("Berawa 2.0 Developer");
+  it("registers the v4 narrative foundation NPC display identities", () => {
+    expect(npcDefinitions.rio).toMatchObject({ name: "Leo", role: "NusaDrop Driver, Leaderboard #1" });
+    expect(npcDefinitions.pak_bagus).toMatchObject({ name: "Julian Vance", role: "Vanguard Co-Living Partner" });
     expect(npcDefinitions.willow.role).toBe("@WillowWanders -- Wellness Creator");
-    expect(npcDefinitions.elena).toBeUndefined();
 
     expect(npcDefinitions.rio.idleTag).toBe("generic_idle");
     expect(npcDefinitions.pak_bagus.idleTag).toBe("generic_idle");

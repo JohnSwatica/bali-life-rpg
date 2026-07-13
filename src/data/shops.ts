@@ -1,5 +1,5 @@
 import type { ShopDefinition } from "../types";
-import { getVenuePoint } from "./layoutLookup";
+import { getVenueInteractionRadius, getVenuePoint } from "./layoutLookup";
 import { scaleDistance } from "../systems/map/WorldScale";
 
 const cangguStation = getVenuePoint("canggu_station", { x: 610, y: 742 });
@@ -16,7 +16,7 @@ export const shopDefinitions: Record<string, ShopDefinition> = {
     keeperNpcId: "ibu_sari",
     x: cangguStation.x,
     y: cangguStation.y,
-    radius: scaleDistance(100),
+    radius: getVenueInteractionRadius("canggu_station", scaleDistance(100)),
     sells: ["pantry_bag", "coconut", "nasi_bungkus", "kopi_bali", "padel_wristband"],
     buys: ["coconut", "frangipani"],
     greeting: "A grocery stop on the FINNS-side Berawa run."
@@ -27,7 +27,7 @@ export const shopDefinitions: Record<string, ShopDefinition> = {
     keeperNpcId: "made",
     x: milkMadu.x,
     y: milkMadu.y,
-    radius: scaleDistance(95),
+    radius: getVenueInteractionRadius("milk_madu_berawa", scaleDistance(95)),
     sells: ["brunch_slice", "kopi_bali", "coconut"],
     buys: ["frangipani", "coconut"],
     greeting: "A busy Berawa cafe stop for brunch, coffee, and quick meetups."
@@ -37,7 +37,7 @@ export const shopDefinitions: Record<string, ShopDefinition> = {
     name: "BAKED. Berawa",
     x: baked.x,
     y: baked.y,
-    radius: scaleDistance(96),
+    radius: getVenueInteractionRadius("baked_berawa", scaleDistance(96)),
     sells: ["butter_croissant", "coffee_beans", "kopi_bali"],
     buys: ["frangipani"],
     greeting: "A Semat-side bakery stop with pastries and coffee."
@@ -47,7 +47,7 @@ export const shopDefinitions: Record<string, ShopDefinition> = {
     name: "Bungalow Living Bali",
     x: bungalowLiving.x,
     y: bungalowLiving.y,
-    radius: scaleDistance(105),
+    radius: getVenueInteractionRadius("bungalow_living", scaleDistance(105)),
     sells: ["home_cushion", "woven_sarong", "beach_tote"],
     buys: ["frangipani", "coconut"],
     greeting: "A Berawa homewares and lifestyle shop with warm cafe energy."
@@ -57,7 +57,7 @@ export const shopDefinitions: Record<string, ShopDefinition> = {
     name: "Satu-Satu Coffee Company",
     x: satuSatu.x,
     y: satuSatu.y,
-    radius: scaleDistance(120),
+    radius: getVenueInteractionRadius("satu_satu_coffee", scaleDistance(120)),
     sells: ["coffee_beans", "kopi_bali", "butter_croissant"],
     buys: ["frangipani", "pantry_bag"],
     greeting: "A Jl. Pantai Berawa coffee stop for serious morning fuel."
@@ -67,7 +67,7 @@ export const shopDefinitions: Record<string, ShopDefinition> = {
     name: "Bali Family Rental Scooter",
     x: scooterRental.x,
     y: scooterRental.y,
-    radius: scaleDistance(92),
+    radius: getVenueInteractionRadius("bali_family_rental_scooter", scaleDistance(92)),
     sells: ["scooter_rental"],
     buys: [],
     greeting: "A compact Jl. Pantai Berawa scooter counter. Save up, rent once, and Berawa opens up."

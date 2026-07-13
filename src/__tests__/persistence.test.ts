@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
-import { CURRENT_SCHEMA_VERSION, loadWorldState, saveWorldState } from "../systems/Persistence";
+import { CURRENT_SCHEMA_VERSION, hasSavedWorldState, loadWorldState, saveWorldState } from "../systems/Persistence";
 import { createInitialWorldState, LOCAL_PLAYER_ID } from "../systems/WorldState";
 import { installMemoryLocalStorage, writeRawSave } from "./testUtils";
 import type { WorldState } from "../types";
@@ -101,6 +101,26 @@ function expectCommonMigrationFields(world: WorldState): void {
 }
 
 describe("Persistence migration", () => {
+  it("drops retired v3 mystery items while preserving the rest of an existing inventory", () => {
+    const raw = baseRawSave();
+    const player = raw.players as Record<string, { inventory: Array<{ itemId: string; quantity: number }> }>;
+    player[LOCAL_PLAYER_ID].inventory.push({ itemId: "elena_notebook", quantity: 1 }, { itemId: "elena_sim", quantity: 1 });
+    writeRawSave(raw);
+
+    expect(loadWorldState().players[LOCAL_PLAYER_ID].inventory).toEqual([
+      { itemId: "coconut", quantity: 3 },
+      { itemId: "kopi_bali", quantity: 1 }
+    ]);
+  });
+
+  it("recognizes only a valid local world save for the title screen", () => {
+    expect(hasSavedWorldState()).toBe(false);
+    writeRawSave(baseRawSave());
+    expect(hasSavedWorldState()).toBe(true);
+    localStorage.setItem("bali-life-rpg.berawa-finns.save.v1", "not json");
+    expect(hasSavedWorldState()).toBe(false);
+  });
+
   it("migrates a raw v1 save to v11 without losing legacy state", () => {
     writeRawSave(baseRawSave());
 
@@ -379,38 +399,6 @@ describe("Persistence migration", () => {
     expect(loaded.activeActivity).toEqual(world.activeActivity);
   });
 
-  it("migrates ride-checkpoint committed activity state", () => {
-    const world = createInitialWorldState();
-    world.activeActivity = {
-      source: "rideCheckpoint",
-      checkpointId: "first_baked_villa_delivery_traffic_gap",
-      venueId: "first_baked_villa_delivery",
-      venueName: "En route",
-      label: "Ride Checkpoint",
-      durationMin: 0,
-      elapsedMs: 1200,
-      realDurationMs: 3200,
-      startedAt: 8 * 60,
-      performanceScore: 0.4,
-      minigame: {
-        kind: "timing",
-        title: "Threading the Junction",
-        prompt: "A truck is easing out of a side lane.",
-        actionLabel: "Go",
-        attempts: 1,
-        bestScore: 0.4,
-        markerPhase: 0.2,
-        targetStart: 0.46,
-        targetEnd: 0.6
-      }
-    };
-
-    saveWorldState(world);
-    const loaded = loadWorldState();
-
-    expect(loaded.activeActivity).toEqual(world.activeActivity);
-  });
-
   it("migrates scooter-repair committed activity state", () => {
     const world = createInitialWorldState();
     world.activeActivity = {
@@ -439,5 +427,39 @@ describe("Persistence migration", () => {
     const loaded = loadWorldState();
 
     expect(loaded.activeActivity).toEqual(world.activeActivity);
+  });
+
+  it("migrates rival-race transient activity state", () => {
+    const world = createInitialWorldState();
+    world.activeActivity = {
+      source: "rivalRace",
+      raceId: "rio_streak_duel",
+      venueId: "bali_family_rental_scooter",
+      venueName: "Bali Family Rental Scooter",
+      label: "Leo's NusaDrop Streak Duel",
+      durationMin: 0,
+      elapsedMs: 12000,
+      realDurationMs: 70000,
+      startedAt: 8 * 60
+    };
+
+    saveWorldState(world);
+    const loaded = loadWorldState();
+
+    expect(loaded.activeActivity).toEqual(world.activeActivity);
+  });
+
+  it("round-trips an interrupted Warung Rush without a schema bump", () => {
+    const world = createInitialWorldState();
+    world.activeActivity = {
+      source: "warungRush", activityId: "warung_lunch_rush", venueId: "canggu_station", venueName: "Warung Sari",
+      label: "Ibu needs a hand — lunch rush", durationMin: 70, elapsedMs: 12000, realDurationMs: 75000, startedAt: 12 * 60,
+      rush: { elapsedMs: 12000, nextOrderAtMs: 12400, maxSimultaneousOrders: 2, servedCount: 1, expiredCount: 0, heldDishId: "mie_goreng", orders: [
+        { id: "order-1", tableId: "left", dishId: "nasi_campur", patienceMs: 4000, maxPatienceMs: 18000, status: "served" },
+        { id: "order-2", tableId: "right", dishId: "mie_goreng", patienceMs: 9000, maxPatienceMs: 18000, status: "waiting" }
+      ] }
+    };
+    saveWorldState(world);
+    expect(loadWorldState().activeActivity).toEqual(world.activeActivity);
   });
 });

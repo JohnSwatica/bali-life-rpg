@@ -11,8 +11,8 @@ export const TILE_WORLD = {
 } as const;
 
 export const STREET_CAMERA = {
-  desktopZoom: 1.6,
-  mobileZoom: 1.28
+  desktopZoom: 1.76,
+  mobileZoom: 1.38
 } as const;
 
 export const TILE_IDS = {
@@ -207,10 +207,13 @@ function drawDock(g: Phaser.GameObjects.Graphics, tileId: number): void {
 
 function drawPlot(g: Phaser.GameObjects.Graphics, tileId: number): void {
   const x = offset(tileId);
-  g.fillStyle(0x7fbd73, 1);
+  g.fillStyle(0x4f7159, 1);
   g.fillRect(x, 0, TILE_SIZE, TILE_SIZE);
-  g.fillStyle(0x5f9e62, 0.35);
+  g.fillStyle(0x355343, 0.5);
   g.fillRect(x + 2, 2, TILE_SIZE - 4, TILE_SIZE - 4);
+  g.lineStyle(1, 0x9bc084, 0.24);
+  g.lineBetween(x + 5, 7, x + TILE_SIZE - 5, 7);
+  g.lineBetween(x + 5, TILE_SIZE - 7, x + TILE_SIZE - 5, TILE_SIZE - 7);
 }
 
 function drawRoof(g: Phaser.GameObjects.Graphics, tileId: number): void {

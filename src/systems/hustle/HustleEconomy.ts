@@ -61,7 +61,7 @@ export function getRentPressureState(world: WorldState): RentPressureState {
       status: "due_soon",
       daysRemaining,
       shortLabel: "Rent due tomorrow",
-      message: "Rent is due tomorrow. Hustle now, sleep easier later."
+      message: "Rent is due tomorrow. Run NusaDrop now, sleep easier later."
     };
   }
   return {
@@ -211,7 +211,6 @@ export function upgradeToDailyScooter(world: WorldState, now: number): HustleAct
   const player = world.players[world.localPlayerId];
   player.money -= DAILY_SCOOTER_UPGRADE_COST;
   player.hasBike = true;
-  player.onBike = true;
   player.bikeStuck = false;
   player.bikeCondition = 100;
   world.life.hustle.scooterTier = "daily_rental";

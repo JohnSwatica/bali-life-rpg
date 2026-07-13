@@ -11,11 +11,12 @@ export type Act0Step =
   | "buy_meal_and_coffee"
   | "sleep_first_night"
   | "complete";
-export type DiscoveryLedgerEntryKind = "elena_fragment" | "codex_note";
+export type DiscoveryLedgerEntryKind = "investigation" | "codex_note";
 export type DiscoveryLedgerUnlockCondition =
   | { type: "pickup_collected"; pickupId: string }
   | { type: "act0_step_complete"; step: Act0Step }
-  | { type: "delivery_count"; count: number };
+  | { type: "delivery_count"; count: number }
+  | { type: "driver_rating"; minimumRating: number };
 export interface DiscoveryLedgerEntry {
   id: string;
   kind: DiscoveryLedgerEntryKind;
@@ -67,7 +68,7 @@ export type EventType =
 export type GroupPurpose = "social" | "run" | "coworking" | "surf" | "food" | "housing";
 export type OpportunityType = "gig" | "social" | "help_out" | "flash_deal" | "rumor" | "trade";
 export type OpportunityStatus = "live" | "accepted" | "completed" | "missed";
-export type ActivityMinigameKind = "timing" | "balance" | "choice";
+export type ActivityMinigameKind = "timing" | "balance" | "choice" | "service";
 export type ReputationTag =
   | "helpful"
   | "reliable"
@@ -82,7 +83,9 @@ export type MemoryType =
   | "bought_item"
   | "helped"
   | "attended_event"
-  | "missed_opportunity";
+  | "missed_opportunity"
+  | "lost_to_you_clean"
+  | "beat_you";
 export type OfflineActivityType =
   | "venue_challenge"
   | "neighborhood_ritual"
@@ -279,6 +282,27 @@ export interface ActiveMinigameState {
   choices?: ActiveMinigameChoice[];
 }
 
+export type WarungDishId = "nasi_campur" | "mie_goreng" | "es_teh";
+
+export interface WarungRushOrder {
+  id: string;
+  tableId: string;
+  dishId: WarungDishId;
+  patienceMs: number;
+  maxPatienceMs: number;
+  status: "waiting" | "served" | "expired";
+}
+
+export interface WarungRushState {
+  elapsedMs: number;
+  nextOrderAtMs: number;
+  maxSimultaneousOrders: number;
+  servedCount: number;
+  expiredCount: number;
+  heldDishId?: WarungDishId;
+  orders: WarungRushOrder[];
+}
+
 interface ActiveActivityBaseState {
   venueId: string;
   venueName: string;
@@ -296,25 +320,28 @@ export type ActiveActivityState =
       source: "activity";
       activityId: string;
       opportunityId?: never;
-      checkpointId?: never;
     })
   | (ActiveActivityBaseState & {
       source: "opportunity";
       opportunityId: string;
       activityId?: never;
-      checkpointId?: never;
-    })
-  | (ActiveActivityBaseState & {
-      source: "rideCheckpoint";
-      checkpointId: string;
-      activityId?: never;
-      opportunityId?: never;
     })
   | (ActiveActivityBaseState & {
       source: "scooterRepair";
       activityId?: never;
       opportunityId?: never;
-      checkpointId?: never;
+    })
+  | (ActiveActivityBaseState & {
+      source: "rivalRace";
+      raceId: string;
+      activityId?: never;
+      opportunityId?: never;
+    })
+  | (ActiveActivityBaseState & {
+      source: "warungRush";
+      activityId: "warung_lunch_rush";
+      rush: WarungRushState;
+      opportunityId?: never;
     });
 
 export type RelationshipArcPayoffKind = "club_invite" | "recurring_hangout" | "discount_hook" | "housing_lead_tease";
@@ -470,6 +497,17 @@ export interface ActiveDeliveryState {
   pickedUpAt?: number;
   completedAt?: number;
   starRating?: number;
+  cargoIntegrity?: number;
+  cargoDamageEvents?: number;
+  rideRun?: DeliveryRideRunState;
+}
+
+export interface DeliveryRideRunState {
+  elapsedMs: number;
+  hazardsSpawned: number;
+  hazardsAvoided: number;
+  nearMisses: number;
+  contacts: number;
 }
 
 export interface HustleState {

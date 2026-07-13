@@ -1,4 +1,8 @@
 import Phaser from "phaser";
+import { METER_PRESENTATION } from "../../systems/guidance/MeterVisibility";
+import { shouldUseTouchControls } from "../../systems/input/TouchInputPolicy";
+import type { Meter } from "../../types";
+import { getPhoneCameraScale } from "../phone/PhoneLayout";
 
 const TOUCH_JOYSTICK_RADIUS = 56;
 const MINIMAP_MAX_WIDTH = 168;
@@ -29,6 +33,7 @@ interface HudMeterReadout {
   wellbeing: number;
   focus: number;
   social: number;
+  visibleMeters: Meter[];
 }
 
 interface HudControllerCallbacks {
@@ -60,12 +65,21 @@ export class HudController {
   private minimapLayout?: DomMinimapLayout;
   private minimapDpr = 1;
   private phoneButton?: HTMLButtonElement;
+  private actionButton?: HTMLButtonElement;
+  private overlayOpen = false;
+  private readonly touchInputActive: boolean;
 
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly depth: number,
     private readonly callbacks: HudControllerCallbacks
-  ) {}
+  ) {
+    this.touchInputActive = shouldUseTouchControls(
+      scene.sys.game.device.input.touch,
+      Boolean((import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV),
+      typeof window === "undefined" ? "" : window.location.search
+    );
+  }
 
   get joystickVector(): Phaser.Math.Vector2 {
     return this.movementVector;
@@ -75,8 +89,17 @@ export class HudController {
     return this.touchContainer?.visible ?? false;
   }
 
+  get isTouchInputActive(): boolean {
+    return this.touchInputActive;
+  }
+
   createTouchControls(): void {
-    this.touchContainer = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(this.depth + 2);
+    const camera = this.scene.cameras.main;
+    this.touchContainer = this.scene.add
+      .container(camera.worldView.x, camera.worldView.y)
+      .setScrollFactor(1)
+      .setDepth(this.depth + 2)
+      .setScale(getPhoneCameraScale(camera.zoom || 1));
     this.joystickBase = this.scene.add
       .circle(0, 0, TOUCH_JOYSTICK_RADIUS, 0x101820, 0.42)
       .setStrokeStyle(2, 0xf4d58d, 0.55);
@@ -88,7 +111,7 @@ export class HudController {
   }
 
   handlePointerDown(pointer: Phaser.Input.Pointer, mode: string): void {
-    if (mode !== "world") {
+    if (!this.touchInputActive || this.overlayOpen || (mode !== "world" && mode !== "interior" && mode !== "warungRush")) {
       return;
     }
 
@@ -135,8 +158,8 @@ export class HudController {
       return;
     }
     const { width, height } = this.scene.scale;
-    const showTouch = this.scene.sys.game.device.input.touch;
-    this.touchContainer.setVisible(showTouch);
+    this.syncTouchControlsToCamera();
+    this.touchContainer.setVisible(this.touchInputActive && !this.overlayOpen);
 
     const baseX = 96;
     const controlHeight = Math.min(height, this.getConfiguredGameHeight());
@@ -148,6 +171,33 @@ export class HudController {
     }
 
     this.layoutDomOverlay();
+  }
+
+  syncTouchControlsToCamera(): void {
+    if (!this.touchContainer) {
+      return;
+    }
+    const camera = this.scene.cameras.main;
+    this.touchContainer
+      .setPosition(camera.worldView.x, camera.worldView.y)
+      .setScale(getPhoneCameraScale(camera.zoom || 1));
+  }
+
+  cancelTouchInput(): void {
+    this.joystickPointerId = undefined;
+    this.movementVector.set(0, 0);
+    this.layoutTouchControls();
+  }
+
+  setActionButtonMode(mode: "action" | "concede"): void {
+    if (!this.actionButton) {
+      return;
+    }
+    const label = mode === "concede" ? "QUIT" : "ACT";
+    if (this.actionButton.textContent !== label) {
+      this.actionButton.textContent = label;
+      this.actionButton.setAttribute("aria-label", mode === "concede" ? "Concede race" : "Action");
+    }
   }
 
   getMinimapSurface(worldWidth: number, worldHeight: number): DomMinimapSurface | null {
@@ -193,12 +243,12 @@ export class HudController {
     if (!this.meterOverlay) {
       return;
     }
-    const rows: Array<{ label: string; value: number; color: string; title: string }> = [
-      { label: "E", value: readout.energy, color: "#f4b860", title: `Energy ${readout.energy}` },
-      { label: "W", value: readout.wellbeing, color: "#62c48f", title: `Wellbeing ${readout.wellbeing}` },
-      { label: "F", value: readout.focus, color: "#6ab7ff", title: `Focus ${readout.focus}` },
-      { label: "S", value: readout.social, color: "#e58fb1", title: `Social ${readout.social}` }
-    ];
+    const rows = readout.visibleMeters.map((meter) => ({
+      label: METER_PRESENTATION[meter].shortLabel,
+      value: readout[meter],
+      color: METER_PRESENTATION[meter].color,
+      title: `${METER_PRESENTATION[meter].label} ${readout[meter]}`
+    }));
     this.meterOverlay.replaceChildren(
       ...rows.map(({ label, value, color, title }) => {
         const row = document.createElement("div");
@@ -241,6 +291,14 @@ export class HudController {
   }
 
   setOverlayOpen(open: boolean): void {
+    if (open !== this.overlayOpen) {
+      this.overlayOpen = open;
+      if (open) {
+        this.joystickPointerId = undefined;
+        this.movementVector.set(0, 0);
+      }
+      this.touchContainer?.setVisible(this.touchInputActive && !open);
+    }
     this.setMinimapHidden(open);
     this.setActionButtonsMuted(open);
     if (typeof document !== "undefined") {
@@ -266,7 +324,7 @@ export class HudController {
     this.buttonOverlay = document.createElement("div");
     this.buttonOverlay.id = "bali-life-hud-buttons";
     this.buttonOverlay.className = "bali-life-hud-buttons";
-    if (!this.scene.sys.game.device.input.touch) {
+    if (!this.touchInputActive) {
       this.buttonOverlay.classList.add("is-desktop-hidden");
     }
     this.buttonOverlay.dataset.uiSurface = "hud-buttons";
@@ -300,6 +358,9 @@ export class HudController {
       });
       if (config.action === "phone") {
         this.phoneButton = button;
+      }
+      if (config.action === "action") {
+        this.actionButton = button;
       }
       this.buttonOverlay.appendChild(button);
     }

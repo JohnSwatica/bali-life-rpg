@@ -2,20 +2,6 @@ import type { DiscoveryLedgerEntry } from "../types";
 
 export const discoveryLedgerEntries: DiscoveryLedgerEntry[] = [
   {
-    id: "elena_notebook_1",
-    kind: "elena_fragment",
-    title: "A Water-Damaged Notebook",
-    body: "Tucked under the scooter seat, the pages are swollen and soft at the edges, but some of the ink survived. Recipe ratios. A sketch of a floor plan labeled 'RUMAH' in block letters. And, on the last legible page, one line underlined twice: 'Tell them it's temporary. It has to be temporary.'",
-    unlock: { type: "pickup_collected", pickupId: "elena-notebook-seat" }
-  },
-  {
-    id: "elena_sim_1",
-    kind: "elena_fragment",
-    title: "An Old SIM Card",
-    body: "No phone to put it in -- not that it would still connect. Whoever it belonged to hasn't paid for service in a long time. Ibu Sari saw you turning it over in your hand and went very quiet before finding something urgent to do at the back of the shop.",
-    unlock: { type: "pickup_collected", pickupId: "elena-sim-seat" }
-  },
-  {
     id: "codex_housing_ladder",
     kind: "codex_note",
     title: "Kos, Kontrakan, Villa: The Ladder",
@@ -23,10 +9,17 @@ export const discoveryLedgerEntries: DiscoveryLedgerEntry[] = [
     unlock: { type: "act0_step_complete", step: "meet_ibu_sari" }
   },
   {
-    id: "elena_notebook_2",
-    kind: "elena_fragment",
-    title: "Notebook Page -- 'Rumah'",
-    body: "Further into the notebook, one page survived better than the rest: a rough floor plan, tables sketched in, a name at the top underlined so many times the pen tore the paper -- RUMAH. Someone asked you today, not quite joking, if you're 'the new one driving Rumah's old bike.' When you asked what Rumah was, they went quiet and changed the subject.",
+    id: "nusadrop_commission_squeeze",
+    kind: "investigation",
+    title: "NusaDrop Commission Squeeze",
+    body: "After three runs, the numbers start to feel less like bad luck. Each completed delivery leaves a little more of the fare with NusaDrop and a little less for the driver doing the waiting, fuel, and weather. The board calls it efficiency. The street calls it a squeeze.",
     unlock: { type: "delivery_count", count: 3 }
+  },
+  {
+    id: "nusadrop_hidden_rating_metric",
+    kind: "investigation",
+    title: "A Rating That Does More Than Rate",
+    body: "A 4.5-star run changes more than the number beside your name. Better jobs surface faster, and some disappear before ordinary drivers even see them. NusaDrop is measuring something behind the visible rating -- the question is who that hidden score is really built to serve.",
+    unlock: { type: "driver_rating", minimumRating: 4.5 }
   }
 ];

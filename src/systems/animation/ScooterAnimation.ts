@@ -9,6 +9,7 @@ export interface ScooterVisualInput {
   velocityY: number;
   maxSpeed: number;
   elapsedMs: number;
+  leanDegrees?: number;
 }
 
 export interface ScooterVisualState {
@@ -41,7 +42,7 @@ export function getScooterVisualState(input: ScooterVisualInput): ScooterVisualS
   const idleFactor = speedRatio < 0.08 ? 1 : input.tier === "borrowed_rattletrap" ? 0.28 : 0.12;
   const wobbleWave = Math.sin(input.elapsedMs / 72);
   const rattleWave = Math.sin(input.elapsedMs / 39);
-  const leanDegrees = clamp((input.velocityX / Math.max(1, input.maxSpeed)) * 8.5, -8.5, 8.5);
+  const leanDegrees = input.leanDegrees ?? clamp((input.velocityX / Math.max(1, input.maxSpeed)) * 8.5, -8.5, 8.5);
   const wobbleDegrees = wobbleWave * rattleAmplitude * 0.55 * idleFactor;
   const speedCueAlpha = speedRatio > 0.72 ? clamp((speedRatio - 0.72) * 1.9, 0.16, 0.58) : 0;
 

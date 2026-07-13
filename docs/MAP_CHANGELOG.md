@@ -1,0 +1,29 @@
+# Map Changelog — the CEO's per-packet growth ledger
+
+One line per map increment, appended by the packet that ships it, per the Map
+Growth Rule in `AGENTS.md` (CEO directive 2026-07-11). The map grows by small
+contiguous parcels — never big dumps — so every change is individually
+reviewable. Packets with `MAP DELTA: none` do not append here (their "none" is
+recorded in the packet file itself).
+
+Format:
+
+```
+- YYYY-MM-DD · [PACKET-ID] · <what grew, one sentence> · proof: <screenshot path>
+```
+
+## Baseline (pre-rule, for diffing)
+
+As of 2026-07-11 the playable world is: the authored Jl. Pantai Berawa tile
+street (32px grid, ~29 venues on the strip), quest-critical Raya Semat stubs
+(BAKED, Canggu Station), the beach terminus (Berawa Beach + FINNS area), seven
+enterable interiors, and authored playable bounds `x=914..2528, y=0..2720`
+(street corridor clamps tighter at `x=1091..2502`, widening at `y>=1952` for
+the beach approach). Rice paddies west of the strip are visual-only (not
+walkable) pending RPG-20260708-06 verification.
+
+## Increments
+
+- 2026-07-11 · RPG-20260708-06 · Added the 10x1-tile Corner paddy-edge dirt path between the existing sidewalk and yellowing field. · proof: `tmp/street-legibility-2026-07-11/04-after-paddy-path-desktop.png`
+- 2026-07-12 · RPG-20260712-02 · Added a contiguous 6x3-tile bus drop-off bay at the Canggu Station street edge for the v4 cold-open arrival. · proof: before `tmp/act0-v4-proof/00-before-bus-pocket.png`, after `tmp/smoke/04-first-choice-t+049.9s.png`
+- 2026-07-12 · RPG-20260712-03 · Added the contiguous BAKED back-alley shortcut parcel, visibly fenced and locked for a later Kadek-tier unlock. · proof: before `tmp/street-legibility-2026-07-11/02-after-near-baked.png`, after `tmp/smoke/10-baked-locked-alley-t+156.2s.png`

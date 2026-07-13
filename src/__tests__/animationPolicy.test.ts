@@ -94,9 +94,33 @@ describe("cheap animation policy", () => {
     const pickup = getInteractionFlourishSpec("pickup");
     const delivery = getInteractionFlourishSpec("delivery");
     const activity = getInteractionFlourishSpec("activity");
+    const nearMiss = getInteractionFlourishSpec("nearMiss");
     expect(talk.durationMs).toBeLessThanOrEqual(400);
     expect(pickup.endScale).toBeGreaterThan(pickup.startScale);
     expect(delivery.durationMs).toBeGreaterThan(pickup.durationMs);
     expect(activity.ringColor).not.toBe(delivery.ringColor);
+    expect(nearMiss.durationMs).toBeLessThanOrEqual(340);
+  });
+
+  it("lets the ride model override scooter lean while keeping the velocity fallback", () => {
+    const fallback = getScooterVisualState({
+      tier: "daily_rental",
+      bikeCondition: 90,
+      velocityX: 320,
+      velocityY: 0,
+      maxSpeed: 345,
+      elapsedMs: 160
+    });
+    const modeled = getScooterVisualState({
+      tier: "daily_rental",
+      bikeCondition: 90,
+      velocityX: 320,
+      velocityY: 0,
+      maxSpeed: 345,
+      elapsedMs: 160,
+      leanDegrees: -6
+    });
+    expect(fallback.angleDegrees).toBeGreaterThan(0);
+    expect(modeled.angleDegrees).toBeLessThan(0);
   });
 });

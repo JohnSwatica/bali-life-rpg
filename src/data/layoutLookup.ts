@@ -11,6 +11,10 @@ export function getVenuePoint(venueId: string, fallback: LayoutPoint): LayoutPoi
   return node ? { x: node.x, y: node.y } : scalePoint(fallback);
 }
 
+export function getVenueInteractionRadius(venueId: string, fallback: number): number {
+  return venueMapNodes.find((candidate) => candidate.venueId === venueId)?.radius ?? fallback;
+}
+
 export function offsetVenuePoint(venueId: string, fallback: LayoutPoint, dx = 0, dy = 0): LayoutPoint {
   const point = getVenuePoint(venueId, fallback);
   return { x: point.x + dx, y: point.y + dy };

@@ -6,6 +6,7 @@ import { getGameplayStationLoopForVenue, type GameplayStationId, type StationTim
 import { venueDefinitions } from "../../data/venues";
 import { addItem } from "../Inventory";
 import { adjustPlayerMeters } from "../meters/PlayerMeters";
+import { formatVisibleMeterDeltas } from "../guidance/MeterVisibility";
 import {
   formatPerformanceSummary,
   scaleMeterDeltasForPerformance,
@@ -133,10 +134,11 @@ export function applyActivity(
 
   const morningPenaltySummary = queueNextMorningPenalty(world, context, activity);
 
+  const visibleMeterSummary = meterSummary(world, meterDeltas);
   return {
     ok: true,
-    message: `${activity.label}: ${formatClockTime(world.clock.minuteOfDay)}. ${formatMoneyDelta(moneyDelta)}${meterSummary(meterDeltas)}${formatTimeModifierSummary(availability.timeModifier)}${morningPenaltySummary}${formatPerformanceSummary(options.performanceScore)}`,
-    meterSummary: meterSummary(meterDeltas),
+    message: `${activity.label}: ${formatClockTime(world.clock.minuteOfDay)}. ${formatMoneyDelta(moneyDelta)}${visibleMeterSummary}${formatTimeModifierSummary(availability.timeModifier)}${morningPenaltySummary}${formatPerformanceSummary(options.performanceScore)}`,
+    meterSummary: visibleMeterSummary,
     moneyDelta,
     morningPenaltySummary
   };
@@ -155,6 +157,9 @@ function evaluateActivity(world: WorldState, context: VenueActivityContext, acti
   if (activity.requires?.minEnergy && world.meters.energy < activity.requires.minEnergy) {
     return { activity, available: false, reason: `Need Energy ${activity.requires.minEnergy}.`, timeModifier: getActiveActivityTimeModifier(world, activity) };
   }
+  if (activity.requires?.minAct && world.life.actProgress.currentAct < activity.requires.minAct) {
+    return { activity, available: false, reason: "Available after your first day.", timeModifier: getActiveActivityTimeModifier(world, activity) };
+  }
   if (activity.requires?.openHoursOnly && !isOpenAt(context.openHours, world.clock)) {
     return { activity, available: false, reason: "Venue is closed.", timeModifier: getActiveActivityTimeModifier(world, activity) };
   }
@@ -165,6 +170,12 @@ function evaluateActivity(world: WorldState, context: VenueActivityContext, acti
     const existing = world.life.activityHistory[activityRecordKey(context.venueId, activity.id)];
     if (existing?.lastDay === world.clock.day && existing.count > 0) {
       return { activity, available: false, reason: "Already done today.", timeModifier: getActiveActivityTimeModifier(world, activity) };
+    }
+  }
+  if (activity.requires?.maxDailyUses) {
+    const existing = world.life.activityHistory[activityRecordKey(context.venueId, activity.id)];
+    if (existing?.lastDay === world.clock.day && existing.count >= activity.requires.maxDailyUses) {
+      return { activity, available: false, reason: "Lunch rush is done for today.", timeModifier: getActiveActivityTimeModifier(world, activity) };
     }
   }
   return { activity, available: true, reason: null, timeModifier: getActiveActivityTimeModifier(world, activity) };
@@ -183,7 +194,7 @@ export function applyPendingMorningPenalties(world: WorldState): string {
   }
   adjustPlayerMeters(world, combined);
   world.life.pendingMorningPenalties = [];
-  return ` Morning consequences applied: ${meterSummary(combined).replace(/^ \| /, "")}.`;
+  return ` Morning consequences applied: ${meterSummary(world, combined).replace(/^ \| /, "")}.`;
 }
 
 export function getActiveActivityTimeModifier(world: WorldState, activity: Activity): StationTimeOfDayModifier | null {
@@ -340,9 +351,9 @@ function openHoursFromTypicalHours(typicalHours: string | null | undefined): Ope
   };
 }
 
-function meterSummary(deltas: Partial<Record<string, number>>): string {
-  const parts = Object.entries(deltas).map(([meter, delta]) => `${meter} ${Number(delta) >= 0 ? "+" : ""}${delta}`);
-  return parts.length ? ` | ${parts.join(", ")}` : "";
+function meterSummary(world: WorldState, deltas: Partial<Record<Meter, number>>): string {
+  const summary = formatVisibleMeterDeltas(world, deltas);
+  return summary ? ` | ${summary}` : "";
 }
 
 function formatMoneyDelta(delta: number): string {

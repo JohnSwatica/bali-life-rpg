@@ -12,6 +12,7 @@ import {
 } from "../data/authoredStreetLayout";
 import { ambientNpcDefinitions, type AmbientNpcDefinition } from "../data/ambientNpcs";
 import { activityDefinitions, interestGroupDefinitions } from "../data/community";
+import type { Activity } from "../data/activities";
 import { itemDefinitions } from "../data/items";
 import { authoredPlayableBounds } from "../data/playableBounds";
 import { playerHomeBase } from "../data/homeBase";
@@ -21,13 +22,28 @@ import { collisionRects, pickupDefinitions, WORLD_HEIGHT, WORLD_WIDTH } from "..
 import { npcDefinitions } from "../data/npcs";
 import { questDefinitions } from "../data/quests";
 import { shopDefinitions } from "../data/shops";
-import { getDeliveryDefinition } from "../data/deliveries";
+import { walkableStreetParcels } from "../data/worldDressing";
+import { getDeliveryCondition, getDeliveryDefinition } from "../data/deliveries";
 import { getStreetVenueFlavor } from "../data/streetVenueFlavors";
 import { addItem, formatInventory, getQuantity, removeItem } from "../systems/Inventory";
 import { LocalNetworkAdapter, type NetworkAdapter } from "../systems/NetworkAdapter";
-import { clearSave, loadWorldState, saveWorldState } from "../systems/Persistence";
+import { clearSave, hasSavedWorldState, loadWorldState, saveWorldState } from "../systems/Persistence";
+import { BUILD_STAMP } from "../systems/build/BuildInfo";
+import { createFeedbackMailto } from "../systems/feedback/SessionSummary";
 import { ScriptedDialogueProvider, type DialogueProvider } from "../systems/dialogue/DialogueProvider";
 import { getAmbientNpcLine, getNpcDialogueSurface } from "../systems/dialogue/DialoguePresentation";
+import { getPortraitDataUrl, getPortraitDefinition, portraitVariantForTier } from "../systems/dialogue/PortraitArt";
+import { buildAct1IntroCutscene, buildAct2IntroCutscene } from "../systems/cutscene/ActCardScripts";
+import { buildAct0OpeningCutscene } from "../systems/cutscene/Act0OpeningScript";
+import {
+  getCutsceneStepState,
+  shouldPauseQueuedFeedback,
+  skipCutscene,
+  type CutsceneScript,
+  type CutsceneStep,
+  type CutsceneStepState
+} from "../systems/cutscene/CutsceneSequencer";
+import { SoundManager, type SoundCue } from "../systems/audio/SoundManager";
 import { InteractionController, type InteractionTarget } from "../systems/interaction/InteractionController";
 import { InputController, type GameKeyMap } from "../systems/input/InputController";
 import { IntentDispatcher, type IntentResult } from "../systems/intents/IntentDispatcher";
@@ -37,11 +53,20 @@ import {
   type FieldObjectiveState,
   type FieldObjectiveTargetRef
 } from "../systems/guidance/FieldObjective";
+import {
+  areAdvancedMetersVisible,
+  formatVisibleMeterDeltas,
+  formatVisibleMeterValues,
+  getVisibleMeters
+} from "../systems/guidance/MeterVisibility";
 import { getFieldIndicators, type VenueFieldIndicator } from "../systems/guidance/FieldIndicators";
 import {
   getEventWorldScenes,
+  getAct1IncitingHookWorldScenes,
   getFieldFirstDiscoveryAudit,
   getOpportunityWorldScenes,
+  getRivalRaceWorldScenes,
+  resolveWorldSceneVenueAnchor,
   type EventWorldScene,
   type FieldFirstDiscoveryAudit,
   type OpportunityWorldScene,
@@ -50,7 +75,12 @@ import {
 import { getMembershipDebugState, getSocialGroupsForVenue, isSocialGroupJoined } from "../systems/groups/GroupRegistry";
 import { PLAYER_UNIT, POKEMON_SCALE } from "../systems/map/PlayerUnitScale";
 import { getPresentedRoads, getVenueSnapRoads } from "../systems/map/RoadPresentation";
-import { getPermanentlySignedVenueIds, renderStreetTemplate } from "../systems/map/StreetRenderer";
+import {
+  getPermanentlySignedVenueIds,
+  renderStreetTemplate,
+  selectVisibleStreetSignIds,
+  type StreetSignHandle
+} from "../systems/map/StreetRenderer";
 import { STREET_CAMERA, TILE_SIZE } from "../systems/map/TileStreetScale";
 import { clampPointToPlayableBounds } from "../systems/map/PlayableBounds";
 import { scaleDistance, scalePoint } from "../systems/map/WorldScale";
@@ -58,9 +88,10 @@ import {
   getInteriorByVenueId,
   getInteriorDeliveryPickupForStation,
   getOccupiedInteriorNpcSlots,
-  getPrimaryInteriorStationForVenue,
   getScheduledInteriorForNpc,
-  isInteriorPointInsideRoom
+  INTERIOR_NPC_INTERACTION_RADIUS,
+  isInteriorPointInsideRoom,
+  resolveInteriorObjectiveTargets
 } from "../systems/interiors/InteriorState";
 import { calculateInteriorCameraBounds, calculateInteriorCameraZoom } from "../systems/interiors/InteriorCamera";
 import {
@@ -89,12 +120,33 @@ import {
   scoreChoice,
   scoreTimingAttempt
 } from "../systems/minigames/ActivityMinigames";
+import { calculateWarungRushPerformance, createWarungRushState, pickUpWarungDish, serveWarungOrder, updateWarungRush, WARUNG_DISH_LABELS } from "../systems/minigames/WarungRush";
 import {
-  getRideCheckpointsForDelivery,
-  pickOutcomeToast,
-  resolveRideCheckpointPosition,
-  type RideCheckpointDefinition
-} from "../systems/ride/DeliveryRideCheckpoints";
+  applyDeliveryHazardContact,
+  getDeliveryHazards,
+  getDeliveryRideDensity,
+  getDeliveryRunPerformance,
+  getHazardVisibilityDistance,
+  type DeliveryHazardDefinition
+} from "../systems/ride/DeliveryRideMode";
+import {
+  createRideModelState,
+  updateRideModel,
+  type RideModelOutput,
+  type RideModelState
+} from "../systems/ride/RideModel";
+import { canPlayerBeOnBike, resolveRequestedBikeState } from "../systems/ride/RideMode";
+import { getRideTelemetry, type RideTelemetry } from "../systems/ride/RideTelemetry";
+import { applyCargoDamage, shouldShowCargoCareChip } from "../systems/ride/CargoCare";
+import {
+  advanceRivalRaceGhost,
+  applyRivalRaceOutcome,
+  getRioRaceEligibility,
+  getRivalRaceRoutePosition,
+  resolveRivalRaceOutcome,
+  RIO_RACE,
+  type RivalRaceConfig
+} from "../systems/ride/RivalRace";
 import {
   getRelationshipChoiceScene,
   getRelationshipChoiceSceneForNpc,
@@ -117,6 +169,7 @@ import { getSettlingInGoalTitle, updateSettlingInGoals } from "../systems/life/S
 import { getStationSocialBridgeOptions } from "../systems/life/StationSocialBridge";
 import { sleepAtHomeUntilMorning } from "../systems/life/SleepCycle";
 import {
+  applyAct0NegotiatedCompletionFee,
   completeAct0Step,
   getAct0ColdOpenCopy,
   getAct0MealProgressKindForActivity,
@@ -147,6 +200,11 @@ import {
 } from "../systems/hustle/HustleEconomy";
 import { shouldOpenIbuHustleBoard as canOpenIbuHustleBoard } from "../systems/hustle/IbuHustleBoard";
 import { isAct1MoveOutReady } from "../systems/hustle/HustleMilestones";
+import {
+  getAct1LeoEncounterHookLine,
+  isAct1LeoEncounterPending,
+  triggerAct1RateCut
+} from "../systems/story/Act1IncitingHook";
 import { getMorningHandCards, shouldShowMorningHand, type MorningHandCard } from "../systems/hustle/MorningHand";
 import {
   buildDayLedgerSummary,
@@ -178,7 +236,7 @@ import {
   resolveWaterBoundaryPosition,
   type WaterBoundaryGuard
 } from "../systems/map/WaterBoundary";
-import { bumpRelationshipAffinity, getRelationship } from "../systems/relationships/RelationshipMemory";
+import { bumpRelationshipAffinity, getAffinityTier, getRelationship } from "../systems/relationships/RelationshipMemory";
 import { completeNextRelationshipArcBeat } from "../systems/relationships/RelationshipArcs";
 import {
   clearWantedStanding,
@@ -200,6 +258,18 @@ import {
   type InteractionFlourishKind
 } from "../systems/animation/InteractionFlourishes";
 import {
+  buildPayoutCelebrationSpec,
+  getChapterCutsceneDelayMs,
+  type PayoutCelebrationSpec
+} from "../systems/animation/PayoutCelebration";
+import {
+  CARGO_FEEL_TUNING,
+  DELIVERY_RIDE_FEEL_TUNING,
+  PAYOUT_FEEL_TUNING,
+  RIDE_FEEL_TUNING,
+  WARUNG_RUSH_FEEL_TUNING
+} from "../tuning/FeelTuning";
+import {
   advanceClock,
   formatClock,
   getLocalPlayer,
@@ -209,6 +279,8 @@ import { isQuestActive, isQuestComplete, startQuest } from "../systems/QuestSyst
 import { resolveNpcQuestInteraction } from "../systems/quests/QuestRegistry";
 import { HudController } from "../ui/hud/HudController";
 import { PhoneShell } from "../ui/phone/PhoneShell";
+import { TitleScreen } from "../ui/title/TitleScreen";
+import { shouldAdvanceGameplayBehindMenu } from "../ui/title/TitleMenuState";
 import { getPhoneCameraScale } from "../ui/phone/PhoneLayout";
 import { getAllVenues, getVenue } from "../systems/venues/VenueRegistry";
 import type {
@@ -231,7 +303,41 @@ import type {
   WorldState
 } from "../types";
 
-type Mode = "world" | "interior" | "dialogue" | "shop" | "inventory" | "activity" | "committedActivity" | "community" | "phone" | "godmode";
+type Mode =
+  | "world"
+  | "interior"
+  | "dialogue"
+  | "shop"
+  | "inventory"
+  | "activity"
+  | "committedActivity"
+  | "warungRush"
+  | "community"
+  | "phone"
+  | "godmode"
+  | "cutscene"
+  | "title"
+  | "pause";
+
+interface CutsceneOverlay {
+  container: Phaser.GameObjects.Container;
+  topBar: Phaser.GameObjects.Rectangle;
+  bottomBar: Phaser.GameObjects.Rectangle;
+  dim: Phaser.GameObjects.Rectangle;
+  title: Phaser.GameObjects.Text;
+  subtitle: Phaser.GameObjects.Text;
+}
+
+interface ActiveCutsceneRunner {
+  script: CutsceneScript;
+  elapsedMs: number;
+  priorMode: Mode;
+  overlay: CutsceneOverlay;
+  onComplete?: () => void;
+  activeStepId?: string;
+  playerStart?: { x: number; y: number };
+  actors?: Map<string, Phaser.GameObjects.Container>;
+}
 
 const SHOW_NPC_IDLE_DEBUG_LABELS = shouldShowNpcIdleCueLabel();
 const TOAST_DURATION_MS = 2600;
@@ -267,6 +373,10 @@ interface BaliLifeDebugSnapshot {
   act0Step: string;
   driverRating: number;
   activeDelivery: string | null;
+  activeDeliveryStage: "accepted" | "picked_up" | null;
+  activeDeliveryDueAt: number | null;
+  deliveryRideRun: { elapsedMs: number; hazardsSpawned: number; hazardsAvoided: number; nearMisses: number; contacts: number } | null;
+  cutscene: { id: string; stepId: string | null; elapsedMs: number } | null;
   fieldObjective: FieldObjectiveState;
   fieldObjectiveLine: string;
   worldSceneAudit: FieldFirstDiscoveryAudit;
@@ -291,6 +401,10 @@ interface BaliLifeDebugSnapshot {
   revealAllMap: boolean;
   trafficHitCooldown: number;
   npcRoutines: Record<string, string>;
+  objectiveTargets: { x: number; y: number }[];
+  interiorExit: { x: number; y: number } | null;
+  interiorTransitioning: boolean;
+  ride: RideTelemetry | null;
   updatedAt: number;
 }
 
@@ -359,6 +473,14 @@ interface TrafficBikeRuntime {
   seed: number;
 }
 
+interface DeliveryHazardRuntime {
+  definition: DeliveryHazardDefinition;
+  visual: Phaser.GameObjects.Graphics;
+  approached: boolean;
+  resolved: boolean;
+  nearMissed: boolean;
+}
+
 interface WantedOffenderRuntime {
   id: string;
   name: string;
@@ -372,6 +494,14 @@ interface WantedOffenderRuntime {
   speed: number;
 }
 
+interface RivalRaceRuntime {
+  config: RivalRaceConfig;
+  elapsedMs: number;
+  checkpointIndex: number;
+  ghostProgress: number;
+  ghostFinishedAtMs?: number;
+}
+
 interface MinimapLayout {
   x: number;
   y: number;
@@ -383,9 +513,12 @@ interface MinimapLayout {
 }
 
 const WALK_SPEED = scaleDistance(78);
-const BIKE_SPEED = scaleDistance(345);
+const BIKE_SPEED = scaleDistance(RIDE_FEEL_TUNING.baseBikeSpeed);
 const GROUP_WALK_SPEED = scaleDistance(92);
 const GROUP_BIKE_SPEED = scaleDistance(255);
+const RIDE_NEAR_MISS_RADIUS = scaleDistance(RIDE_FEEL_TUNING.nearMissRadius);
+const RIDE_NEAR_MISS_INNER_RADIUS = scaleDistance(RIDE_FEEL_TUNING.nearMissInnerRadius);
+const RIDE_NEAR_MISS_COOLDOWN_MS = RIDE_FEEL_TUNING.nearMissCooldownMs;
 const BIKE_RENTAL_ITEM_ID = "scooter_rental";
 const SCOOTER_KEY_ITEM_ID = "scooter_key";
 const REQUIRED_BIKE_HELPERS = 5;
@@ -397,6 +530,8 @@ const REPEAT_FLAG_BOUNTY = 35;
 const TRAFFIC_HIT_COOLDOWN_MS = 2200;
 const TRAFFIC_HIT_MONEY_LOSS = 10;
 const TRAFFIC_KNOCKBACK_DISTANCE = scaleDistance(76);
+const CARGO_HARD_COLLISION_COOLDOWN_MS = CARGO_FEEL_TUNING.hardCollisionCooldownMs;
+const CARGO_HARD_COLLISION_SPEED = scaleDistance(CARGO_FEEL_TUNING.hardCollisionSpeed);
 const WATER_BOUNDARY_TOAST_COOLDOWN_MS = 1800;
 const VENUE_LABEL_NEAR_RADIUS = scaleDistance(210);
 const NPC_PROXIMITY_REACTION_RADIUS = scaleDistance(112);
@@ -460,11 +595,8 @@ function formatSigned(value: number): string {
   return value >= 0 ? `+${value}` : `${value}`;
 }
 
-function formatMeterDeltaSummary(deltas: Partial<Record<Meter, number>>): string {
-  const parts = Object.entries(deltas)
-    .filter(([, value]) => typeof value === "number" && value !== 0)
-    .map(([meter, value]) => `${meter} ${formatSigned(Number(value))}`);
-  return parts.join(", ");
+function formatMeterDeltaSummary(world: WorldState, deltas: Partial<Record<Meter, number>>): string {
+  return formatVisibleMeterDeltas(world, deltas);
 }
 
 function buildTrafficJunctionIndex(routes: TrafficRouteDefinition[]): Map<string, TrafficJunctionOption[]> {
@@ -519,6 +651,7 @@ export class GameScene extends Phaser.Scene {
   private trafficBikes: TrafficBikeRuntime[] = [];
   private trafficRouteCursor = 0;
   private trafficHitCooldown = 0;
+  private cargoHardCollisionCooldown = 0;
   private bikeHarmCooldown = 0;
   private groupLeader?: GroupTravelerRuntime;
   private groupFollowers: GroupTravelerRuntime[] = [];
@@ -534,8 +667,12 @@ export class GameScene extends Phaser.Scene {
   private interactionController!: InteractionController;
   private inputController!: InputController;
   private dialogueProvider: DialogueProvider = new ScriptedDialogueProvider();
+  private soundManager = new SoundManager();
   private hudController!: HudController;
   private phone?: PhoneShell;
+  private titleScreen?: TitleScreen;
+  private sessionStartedAt: number | null = null;
+  private skipTitleScreenForFreshStart = false;
   private act0FirstRunGateSessionActive = false;
   private showMovementTutorialPrompt = false;
   private activeInteriorId: string | null = null;
@@ -546,6 +683,7 @@ export class GameScene extends Phaser.Scene {
   private godmodePanel?: Phaser.GameObjects.Container;
   private movementSpeedMultiplier = 1;
   private discoveryLabels: Array<{ subjectType: "area" | "venue"; id: string; label: Phaser.GameObjects.Text }> = [];
+  private streetSigns: StreetSignHandle[] = [];
   private unsubscribeNetwork?: () => void;
   private networkPushTimer = 0;
   private autosaveTimer = 0;
@@ -558,11 +696,23 @@ export class GameScene extends Phaser.Scene {
   private questText!: Phaser.GameObjects.Text;
   private wantedChipText!: Phaser.GameObjects.Text;
   private bikeChipText!: Phaser.GameObjects.Text;
+  private cargoChipText!: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
   private toastText!: Phaser.GameObjects.Text;
   private toastTimer = 0;
   private toastGapTimer = 0;
   private toastQueue: string[] = [];
+  private activeCutscene?: ActiveCutsceneRunner;
+  private cutsceneDeferredSave = false;
+  private pendingAct2CutscenePreviousAct?: number;
+  private payoutCelebration?: {
+    container: Phaser.GameObjects.Container;
+    countText: Phaser.GameObjects.Text;
+    ratingText: Phaser.GameObjects.Text;
+    rentText?: Phaser.GameObjects.Text;
+    countTween: Phaser.Tweens.Tween;
+    spec: PayoutCelebrationSpec;
+  };
   private hudObjectiveTitle = "";
   private hudObjectiveDetailUntil = 0;
   private panel?: Phaser.GameObjects.Container;
@@ -574,8 +724,19 @@ export class GameScene extends Phaser.Scene {
   private committedActivityStatus?: HTMLDivElement;
   private committedMinigameMarker?: HTMLDivElement;
   private committedMinigameFeedback?: HTMLDivElement;
-  private activeDeliveryResolvedCheckpointIds: string[] = [];
-  private activeDeliveryPerformanceScores: number[] = [];
+  private warungRushVisuals?: Phaser.GameObjects.Graphics;
+  private warungRushCustomers: Phaser.GameObjects.Sprite[] = [];
+  private deliveryHazards: DeliveryHazardRuntime[] = [];
+  private deliveryHazardDeliveryId: string | null = null;
+  private deliveryHazardContactCooldown = 0;
+  private activeRivalRace?: RivalRaceRuntime;
+  private rivalRaceGhost?: Phaser.GameObjects.Sprite;
+  private rivalRaceMarkerLayer!: Phaser.GameObjects.Graphics;
+  private rideModelState: RideModelState = createRideModelState();
+  private rideModelOutput: RideModelOutput | null = null;
+  private rideCameraOffsetX = 0;
+  private rideCameraOffsetY = 0;
+  private nearMissFeedbackCooldown = 0;
   private awaitingRelationshipChoice = false;
   private pendingChoiceOpportunityId?: string;
   private nightOverlayLayer!: Phaser.GameObjects.Container;
@@ -599,7 +760,12 @@ export class GameScene extends Phaser.Scene {
     super("GameScene");
   }
 
+  init(data?: { startFresh?: boolean }): void {
+    this.skipTitleScreenForFreshStart = Boolean(data?.startFresh);
+  }
+
   create(): void {
+    const hasSaveAtBoot = !this.skipTitleScreenForFreshStart && hasSavedWorldState();
     this.world = loadWorldState();
     this.playerState = getLocalPlayer(this.world);
     this.phone = new PhoneShell({
@@ -607,8 +773,11 @@ export class GameScene extends Phaser.Scene {
       getWorld: () => this.world,
       dispatcher: this.dispatcher,
       getNow: () => this.getAbsoluteMinute(),
-      save: () => saveWorldState(this.world),
+      save: () => this.requestSave(),
       toast: (message) => this.showToast(message),
+      playUiClick: () => this.playUiClick(),
+      isAudioMuted: () => this.soundManager.isMuted,
+      onAudioMutedChange: (muted) => this.setAudioMuted(muted),
       onOpportunityAccept: (opportunityId) => this.acceptPhoneOpportunity(opportunityId),
       onOpportunityTrack: (opportunityId) => this.trackPhoneOpportunity(opportunityId),
       onDeliveryAccept: (deliveryId) => this.acceptPhoneDelivery(deliveryId),
@@ -616,6 +785,7 @@ export class GameScene extends Phaser.Scene {
       onRepairScooter: () => this.repairPhoneScooter(),
       onUpgradeScooter: () => this.upgradePhoneScooter(),
       onFeedViewed: () => this.markPhoneFeedRead(),
+      onFeedback: () => this.sendFeedback(),
       onClose: () => {
         if (this.mode === "phone") {
           this.mode = "world";
@@ -640,8 +810,7 @@ export class GameScene extends Phaser.Scene {
     this.createInteractionController();
     this.createInput();
     this.createHud();
-    this.updateMapDiscovery(true);
-    this.resumeCommittedActivityIfNeeded();
+    this.updateMapDiscovery(true, !this.skipTitleScreenForFreshStart);
     this.updateOpportunityFeed(0, true);
 
     this.cameras.main.setBounds(
@@ -656,23 +825,41 @@ export class GameScene extends Phaser.Scene {
     this.unsubscribeNetwork = this.network.subscribeToWorldPatches(() => undefined);
     void this.network.connect(this.world);
 
-    this.showToast("Welcome to Berawa near FINNS. Press E near people, venues, and pickups.");
-    this.openFirstRunHint();
+    if (this.skipTitleScreenForFreshStart) {
+      this.skipTitleScreenForFreshStart = false;
+      this.sessionStartedAt = Date.now();
+      this.startAct0Opening();
+    } else {
+      this.openTitleScreen(hasSaveAtBoot, "title");
+    }
   }
 
   update(_time: number, delta: number): void {
-    advanceClock(this.world, delta);
+    const menuOpen = !shouldAdvanceGameplayBehindMenu(this.mode) || Boolean(this.activeCutscene);
+    if (!menuOpen) {
+      advanceClock(this.world, delta);
+    }
     this.discoveryToastCooldown = Math.max(0, this.discoveryToastCooldown - delta);
     this.waterBoundaryToastCooldown = Math.max(0, this.waterBoundaryToastCooldown - delta);
-    this.autosaveTimer += delta;
-    if (this.autosaveTimer > 15000) {
-      this.autosaveTimer = 0;
-      saveWorldState(this.world);
+    this.nearMissFeedbackCooldown = Math.max(0, this.nearMissFeedbackCooldown - delta);
+    if (!menuOpen) {
+      this.autosaveTimer += delta;
+      if (this.autosaveTimer > 15000) {
+        this.autosaveTimer = 0;
+        this.requestSave();
+      }
     }
+    this.updateCutscene(delta);
 
     this.updatePlayer(delta);
-    this.updateRideCheckpoints();
-    this.updateMapDiscovery();
+    if (!menuOpen) {
+      this.updateRivalRace(delta);
+      this.updateDeliveryRideMode(delta);
+    }
+    if (!this.activeCutscene) {
+      this.updateMapDiscovery();
+    }
+    this.updateStreetSignVisibility();
     this.updateTraffic(delta);
     this.updateWantedOffenders(delta);
     this.updateGroupLine(delta);
@@ -680,23 +867,34 @@ export class GameScene extends Phaser.Scene {
     this.updateAmbientNpcs(delta);
     this.updatePickups();
     this.updateOpportunityFeed(delta);
-    this.updateCommittedActivity(delta);
+    if (!menuOpen) {
+      this.updateCommittedActivity(delta);
+      this.updateWarungRush(delta);
+    }
     this.updateHud(delta);
     this.updateLighting();
     this.updateDynamicObjectCulling();
   }
 
   destroy(): void {
+    this.clearDeliveryHazards();
     this.destroyDialogueOverlay();
     this.destroyCommittedActivityOverlay();
+    this.activeCutscene?.overlay.container.destroy(true);
+    for (const actor of this.activeCutscene?.actors?.values() ?? []) {
+      actor.destroy(true);
+    }
+    this.activeCutscene = undefined;
+    this.soundManager.destroy();
     this.unsubscribeNetwork?.();
     this.network.disconnect();
   }
 
   private drawNeighborhood(): void {
-    renderStreetTemplate(this, activeStreetTemplate);
+    this.streetSigns = renderStreetTemplate(this, activeStreetTemplate).signs;
     this.opportunityMarkerLayer = this.add.graphics().setDepth(210);
     this.deliveryMarkerLayer = this.add.graphics().setDepth(211);
+    this.rivalRaceMarkerLayer = this.add.graphics().setDepth(211.5);
     this.fieldIndicatorLayer = this.add.graphics().setDepth(212);
     this.worldSceneLayer = this.add.graphics().setDepth(213);
     this.addAreaLabels();
@@ -1380,7 +1578,7 @@ export class GameScene extends Phaser.Scene {
     this.player.body?.setOffset(PLAYER_BODY_OFFSET_X, PLAYER_BODY_OFFSET_Y);
     this.playerBike = this.add.sprite(this.playerState.x, this.playerState.y + scaleDistance(10), "player-bike").setVisible(false);
     this.playerBikeSpeedCue = this.add.graphics().setVisible(false);
-    this.physics.add.collider(this.player, this.obstacleGroup);
+    this.physics.add.collider(this.player, this.obstacleGroup, () => this.handleHardCargoCollision());
     this.updatePlayerBikeVisual();
   }
 
@@ -1502,34 +1700,41 @@ export class GameScene extends Phaser.Scene {
       phone: () => this.togglePhone(),
       godmode: () => this.toggleGodmodePanel(),
       escape: () => {
-        if (this.godmodePanel) {
+        if (this.activeCutscene) {
+          this.skipActiveCutscene();
+        } else if (this.activeRivalRace) {
+          this.finishRivalRace({ conceded: true });
+        } else if (this.mode === "title") {
+          return;
+        } else if (this.mode === "pause") {
+          this.closePauseMenu();
+        } else if (this.godmodePanel) {
           this.closeGodmodePanel();
-        } else if (this.mode === "committedActivity") {
+        } else if (this.mode === "committedActivity" || this.mode === "warungRush") {
           this.cancelCommittedActivity();
         } else if (this.awaitingRelationshipChoice) {
+          const scene = getRelationshipChoiceScene("ibu_sari_act0_scooter_deal");
+          if (scene && this.world.life.actProgress.act0Step === "meet_ibu_sari" && !this.world.questFlags.act0_v4_opening_complete) {
+            this.resolveRelationshipChoice(scene, scene.options[0]);
+          }
           return;
         } else if (this.phone?.isOpen) {
           this.phone.close();
+        } else if (this.mode === "world" || this.mode === "interior") {
+          this.openPauseMenu();
         } else {
           this.closePanel();
         }
       },
       save: () => this.saveGame(),
       reset: () => {
-        clearSave();
-        this.world = loadWorldState();
-        this.playerState = getLocalPlayer(this.world);
-        this.activeInteriorId = null;
-        this.interiorReturnPoint = undefined;
-        this.interiorTransitioning = false;
-        this.mode = "world";
-        this.applyWorldCameraBounds();
-        const start = this.clampToPlayableBounds(this.playerState.x, this.playerState.y, scaleDistance(28));
-        this.playerState.x = Math.round(start.x);
-        this.playerState.y = Math.round(start.y);
-        this.player.setPosition(this.playerState.x, this.playerState.y);
-        this.clearGroupLine();
-        this.updatePlayerBikeVisual();
+        const wasOnMenu = Boolean(this.titleScreen);
+        this.resetToFreshWorld();
+        if (wasOnMenu) {
+          this.closePauseMenu();
+          this.sessionStartedAt = Date.now();
+          this.openFirstRunHint();
+        }
         this.showToast("Save cleared. New neighbor day started.");
       }
     });
@@ -1540,10 +1745,100 @@ export class GameScene extends Phaser.Scene {
     this.cursors = bindings.cursors;
     this.keys = bindings.keys;
 
+    this.input.keyboard?.on("keydown", () => {
+      this.unlockAudio();
+      this.finishPayoutCelebration();
+    });
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => this.handlePointerDown(pointer));
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => this.handlePointerMove(pointer));
     this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => this.handlePointerUp(pointer));
-    this.scale.on("resize", () => this.layoutForViewport());
+    this.input.on("gameout", () => this.hudController.cancelTouchInput());
+    this.scale.on("resize", () => {
+      this.hudController.cancelTouchInput();
+      this.layoutForViewport();
+    });
+  }
+
+  private openTitleScreen(hasSave: boolean, mode: "title" | "pause"): void {
+    if (typeof document === "undefined") {
+      this.mode = this.activeInteriorId ? "interior" : "world";
+      return;
+    }
+    this.titleScreen?.destroy();
+    this.mode = mode;
+    this.hudController.setOverlayOpen(true);
+    this.titleScreen = new TitleScreen({
+      hasSave,
+      buildStamp: BUILD_STAMP,
+      mode,
+      onContinue: () => this.resumeFromMenu(),
+      onNewGame: () => this.startNewGameFromMenu(),
+      onFeedback: () => this.sendFeedback(),
+      onClose: () => this.closePauseMenu()
+    });
+  }
+
+  private openPauseMenu(): void {
+    this.openTitleScreen(hasSavedWorldState(), "pause");
+  }
+
+  private closePauseMenu(): void {
+    this.titleScreen?.destroy();
+    this.titleScreen = undefined;
+    this.hudController.setOverlayOpen(false);
+    this.mode = this.activeInteriorId ? "interior" : "world";
+  }
+
+  private resumeFromMenu(): void {
+    this.closePauseMenu();
+    this.resumeCommittedActivityIfNeeded();
+    if (this.pendingAct2CutscenePreviousAct != null) {
+      const previousAct = this.pendingAct2CutscenePreviousAct;
+      this.pendingAct2CutscenePreviousAct = undefined;
+      this.maybeStartAct2Cutscene(previousAct);
+    }
+    this.sessionStartedAt ??= Date.now();
+    this.showToast("Welcome to Berawa near FINNS. Press E near people, venues, and pickups.");
+    this.openFirstRunHint();
+  }
+
+  private startNewGameFromMenu(): void {
+    clearSave();
+    this.titleScreen?.destroy();
+    this.titleScreen = undefined;
+    this.hudController.setOverlayOpen(false);
+    this.scene.restart({ startFresh: true });
+  }
+
+  private resetToFreshWorld(): void {
+    clearSave();
+    this.phone?.close();
+    this.closePanel(false);
+    this.activeCutscene?.overlay.container.destroy(true);
+    this.activeCutscene = undefined;
+    this.cutsceneDeferredSave = false;
+    this.pendingAct2CutscenePreviousAct = undefined;
+    this.committedActivity = undefined;
+    this.destroyCommittedActivityOverlay();
+    this.activeRivalRace = undefined;
+    this.rivalRaceGhost?.destroy();
+    this.rivalRaceGhost = undefined;
+    this.rivalRaceMarkerLayer?.clear();
+    this.finishPayoutCelebration();
+    this.clearDeliveryHazards();
+    this.world = loadWorldState();
+    this.playerState = getLocalPlayer(this.world);
+    this.activeInteriorId = null;
+    this.interiorReturnPoint = undefined;
+    this.interiorTransitioning = false;
+    this.mode = "world";
+    this.applyWorldCameraBounds();
+    const start = this.clampToPlayableBounds(this.playerState.x, this.playerState.y, scaleDistance(28));
+    this.playerState.x = Math.round(start.x);
+    this.playerState.y = Math.round(start.y);
+    this.player.setPosition(this.playerState.x, this.playerState.y);
+    this.clearGroupLine();
+    this.updatePlayerBikeVisual();
   }
 
   private createHud(): void {
@@ -1556,6 +1851,7 @@ export class GameScene extends Phaser.Scene {
     this.questText = this.add.text(16, 46, "", this.hudTextStyle(14));
     this.wantedChipText = this.add.text(16, 0, "", this.hudTextStyle(13)).setColor("#ff8f80").setVisible(false);
     this.bikeChipText = this.add.text(16, 0, "", this.hudTextStyle(13)).setColor("#f4b860").setVisible(false);
+    this.cargoChipText = this.add.text(16, 0, "", this.hudTextStyle(13)).setColor("#62c48f").setVisible(false);
     this.promptText = this.add.text(16, 0, "", this.hudTextStyle(15));
     this.toastText = this.add
       .text(0, 0, "", {
@@ -1577,6 +1873,7 @@ export class GameScene extends Phaser.Scene {
       this.questText,
       this.wantedChipText,
       this.bikeChipText,
+      this.cargoChipText,
       this.promptText,
       this.toastText
     ]);
@@ -1585,12 +1882,34 @@ export class GameScene extends Phaser.Scene {
     this.nightOverlayLayer.add(this.nightOverlay);
     this.lanternGlow = this.add.graphics().setDepth(905);
     this.hudController = new HudController(this, UI_DEPTH, {
-      action: () => this.handleAction(),
-      inventory: () => this.toggleInventory(),
-      community: () => this.toggleCommunityBoard(),
-      bike: () => this.toggleBike(),
-      phone: () => this.togglePhone(),
-      save: () => this.saveGame()
+      action: () => {
+        this.playUiClick();
+        if (this.activeRivalRace && this.hudController.isTouchInputActive) {
+          this.finishRivalRace({ conceded: true });
+          return;
+        }
+        this.handleAction();
+      },
+      inventory: () => {
+        this.playUiClick();
+        this.toggleInventory();
+      },
+      community: () => {
+        this.playUiClick();
+        this.toggleCommunityBoard();
+      },
+      bike: () => {
+        this.playUiClick();
+        this.toggleBike();
+      },
+      phone: () => {
+        this.playUiClick();
+        this.togglePhone();
+      },
+      save: () => {
+        this.playUiClick();
+        this.saveGame();
+      }
     });
     this.hudController.createTouchControls();
     this.layoutForViewport();
@@ -1600,25 +1919,63 @@ export class GameScene extends Phaser.Scene {
     if (!this.player.body) {
       return;
     }
+    this.cargoHardCollisionCooldown = Math.max(0, this.cargoHardCollisionCooldown - delta);
 
     const movement = this.inputController.getMovementVector(this.mode, this.cursors, this.keys, this.hudController.joystickVector);
+    const hasMovementInput = movement.lengthSq() > 0;
+    const canMove = this.mode === "world" || this.mode === "interior" || this.mode === "warungRush";
+    const isRidingBike =
+      canMove &&
+      canPlayerBeOnBike(this.mode, this.playerState.hasBike, this.activeInteriorId) &&
+      this.playerState.onBike &&
+      !this.playerState.bikeStuck;
 
-    if (movement.lengthSq() > 0) {
+    if (hasMovementInput) {
       this.showMovementTutorialPrompt = false;
+    }
+
+    if (isRidingBike) {
+      if (hasMovementInput) {
+        movement.normalize();
+      }
+      const ride = updateRideModel({
+        inputX: hasMovementInput ? movement.x : 0,
+        inputY: hasMovementInput ? movement.y : 0,
+        deltaMs: delta,
+        state: this.rideModelState,
+        baseMaxSpeed: BIKE_SPEED * this.movementSpeedMultiplier,
+        tier: this.world.life.hustle.scooterTier,
+        bikeCondition: this.playerState.bikeCondition,
+        slick: this.isRideSurfaceSlick()
+      });
+      this.rideModelState = ride;
+      this.rideModelOutput = ride;
+      this.player.setVelocity(ride.velocityX, ride.velocityY);
+      if (hasMovementInput || ride.speed > scaleDistance(RIDE_FEEL_TUNING.minimumAnimatedRideSpeed)) {
+        this.playerState.direction = this.directionFromVector(new Phaser.Math.Vector2(ride.velocityX, ride.velocityY));
+      }
+      this.updateRideCameraLookahead(ride);
+      this.checkRideNearMiss(ride);
+    } else if (hasMovementInput) {
+      this.rideModelState = createRideModelState();
+      this.rideModelOutput = null;
+      this.updateRideCameraLookahead();
       movement.normalize();
-      const baseSpeed = this.playerState.onBike && !this.playerState.bikeStuck ? BIKE_SPEED : WALK_SPEED;
-      const speed = baseSpeed * this.movementSpeedMultiplier;
+      const speed = WALK_SPEED * this.movementSpeedMultiplier;
       this.player.setVelocity(movement.x * speed, movement.y * speed);
       this.playerState.direction = this.directionFromVector(movement);
     } else {
+      this.rideModelState = createRideModelState();
+      this.rideModelOutput = null;
+      this.updateRideCameraLookahead();
       this.player.setVelocity(0, 0);
     }
-    const walkingOnFoot = movement.lengthSq() > 0 && !this.playerState.onBike;
+    const walkingOnFoot = hasMovementInput && !isRidingBike;
     this.applyCharacterAnimation(this.player, "player", this.playerState.direction, walkingOnFoot, CHARACTER_SPRITE_SCALE);
 
     if (this.activeInteriorId) {
       this.enforceInteriorBounds();
-      this.tryAutoExitInterior();
+      if (this.mode !== "warungRush") this.tryAutoExitInterior();
     } else {
       this.enforceWaterBoundary();
       this.enforcePlayableBounds();
@@ -1648,7 +2005,9 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.scooterMotionElapsedMs = (this.scooterMotionElapsedMs + delta) % 120000;
-    const visible = this.playerState.onBike || this.playerState.bikeStuck;
+    const visible =
+      canPlayerBeOnBike(this.mode, this.playerState.hasBike, this.activeInteriorId) &&
+      (this.playerState.onBike || this.playerState.bikeStuck);
     const bodyVelocity = this.player.body?.velocity;
     const visual = getScooterVisualState({
       tier: this.world.life.hustle.scooterTier,
@@ -1656,7 +2015,8 @@ export class GameScene extends Phaser.Scene {
       velocityX: visible ? bodyVelocity?.x ?? 0 : 0,
       velocityY: visible ? bodyVelocity?.y ?? 0 : 0,
       maxSpeed: BIKE_SPEED * this.movementSpeedMultiplier,
-      elapsedMs: this.scooterMotionElapsedMs
+      elapsedMs: this.scooterMotionElapsedMs,
+      leanDegrees: this.playerState.onBike && !this.playerState.bikeStuck ? this.rideModelState.leanDegrees : undefined
     });
     this.playerBike.setVisible(visible);
     this.playerBike.setPosition(this.player.x + visual.offsetX, this.player.y + scaleDistance(10) + visual.offsetY);
@@ -1670,6 +2030,79 @@ export class GameScene extends Phaser.Scene {
       PLAYER_BIKE_SPRITE_SCALE * visual.scaleY
     );
     this.drawPlayerScooterSpeedCue(visible, visual, bodyVelocity?.x ?? 0, bodyVelocity?.y ?? 0);
+  }
+
+  private updateRideCameraLookahead(ride?: RideModelOutput): void {
+    const shouldLead =
+      ride &&
+      !this.activeInteriorId &&
+      this.playerState.onBike &&
+      !this.playerState.bikeStuck &&
+      ride.speedRatio > RIDE_FEEL_TUNING.cameraLeadMinimumSpeedRatio;
+    const targetX = shouldLead
+      ? -Math.sign(ride.velocityX) *
+        Math.min(
+          scaleDistance(RIDE_FEEL_TUNING.cameraLeadMaxX),
+          Math.abs(ride.velocityX / Math.max(1, ride.maxSpeed)) * scaleDistance(RIDE_FEEL_TUNING.cameraLeadMaxX)
+        )
+      : 0;
+    const targetY = shouldLead
+      ? -Math.sign(ride.velocityY) *
+        Math.min(
+          scaleDistance(RIDE_FEEL_TUNING.cameraLeadMaxY),
+          Math.abs(ride.velocityY / Math.max(1, ride.maxSpeed)) * scaleDistance(RIDE_FEEL_TUNING.cameraLeadMaxY)
+        )
+      : 0;
+    this.rideCameraOffsetX = Phaser.Math.Linear(
+      this.rideCameraOffsetX,
+      targetX,
+      RIDE_FEEL_TUNING.cameraLeadLerp
+    );
+    this.rideCameraOffsetY = Phaser.Math.Linear(
+      this.rideCameraOffsetY,
+      targetY,
+      RIDE_FEEL_TUNING.cameraLeadLerp
+    );
+    this.cameras.main.setFollowOffset(this.rideCameraOffsetX, this.rideCameraOffsetY);
+  }
+
+  private checkRideNearMiss(ride: RideModelOutput): void {
+    if (
+      this.activeInteriorId ||
+      this.nearMissFeedbackCooldown > 0 ||
+      ride.speedRatio < RIDE_FEEL_TUNING.nearMissMinimumSpeedRatio
+    ) {
+      return;
+    }
+    if (this.isNearMissAgainstTraffic() || this.isNearMissAgainstPedestrians()) {
+      this.nearMissFeedbackCooldown = RIDE_NEAR_MISS_COOLDOWN_MS;
+      this.recordDeliveryNearMiss();
+      this.spawnInteractionFlourish("nearMiss", this.player.x, this.player.y, "Whoosh");
+      this.playSound("nearMiss");
+    }
+  }
+
+  private isNearMissAgainstTraffic(): boolean {
+    return this.trafficBikes.some((bike) => bike.sprite.visible && this.isNearMissDistance(bike.sprite.x, bike.sprite.y));
+  }
+
+  private isNearMissAgainstPedestrians(): boolean {
+    for (const sprite of this.npcSprites.values()) {
+      if (this.isNearMissDistance(sprite.x, sprite.y)) {
+        return true;
+      }
+    }
+    for (const sprite of this.ambientNpcSprites.values()) {
+      if (this.isNearMissDistance(sprite.x, sprite.y)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private isNearMissDistance(x: number, y: number): boolean {
+    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, x, y);
+    return distance >= RIDE_NEAR_MISS_INNER_RADIUS && distance <= RIDE_NEAR_MISS_RADIUS;
   }
 
   private drawPlayerScooterSpeedCue(visible: boolean, visual: ScooterVisualState, velocityX: number, velocityY: number): void {
@@ -1710,7 +2143,15 @@ export class GameScene extends Phaser.Scene {
   private updateTraffic(delta: number): void {
     this.trafficHitCooldown = Math.max(0, this.trafficHitCooldown - delta);
     this.bikeHarmCooldown = Math.max(0, this.bikeHarmCooldown - delta);
-    for (const bike of this.trafficBikes) {
+    const activeDelivery = this.world.life.hustle.activeDelivery;
+    const trafficDensity = activeDelivery?.stage === "picked_up"
+      ? getDeliveryRideDensity(this.world.life.actProgress.currentAct, activeDelivery.deliveryId)
+      : 1;
+    const liveTrafficCount = Math.max(1, Math.round(this.trafficBikes.length * trafficDensity));
+    for (const [index, bike] of this.trafficBikes.entries()) {
+      const live = index < liveTrafficCount;
+      bike.sprite.setVisible(live);
+      if (!live) continue;
       this.moveTrafficBikeAlongRoad(bike, (bike.speed * delta) / 1000);
       bike.sprite.setDepth(bike.sprite.y + 3);
 
@@ -1831,6 +2272,25 @@ export class GameScene extends Phaser.Scene {
     bike.sprite.setAngle(Phaser.Math.RadToDeg(Math.atan2(bike.velocity.y, bike.velocity.x)));
   }
 
+  private handleHardCargoCollision(): void {
+    if (this.cargoHardCollisionCooldown > 0 || !this.playerState.onBike || this.mode !== "world") {
+      return;
+    }
+    const speed = Math.hypot(this.player.body?.velocity.x ?? 0, this.player.body?.velocity.y ?? 0);
+    if (speed < CARGO_HARD_COLLISION_SPEED) {
+      return;
+    }
+    const cargoDamage = this.damageActiveDeliveryCargo("hard_collision");
+    if (!cargoDamage?.damaged) {
+      return;
+    }
+    this.cargoHardCollisionCooldown = CARGO_HARD_COLLISION_COOLDOWN_MS;
+    this.spawnFloatingText(`Cargo -${cargoDamage.amount}%`, this.player.x, this.player.y - scaleDistance(34), "#f4b860");
+    this.cameras.main.shake(120, 0.003);
+    saveWorldState(this.world);
+    this.showToast(`Hard stop. Cargo ${cargoDamage.after}%.`);
+  }
+
   private updateWantedOffenders(delta: number): void {
     for (const offender of this.wantedOffenders.values()) {
       if (offender.wantedLevel <= 0) {
@@ -1881,6 +2341,23 @@ export class GameScene extends Phaser.Scene {
 
   private applyTrafficHit(source: TrafficBikeRuntime): void {
     this.trafficHitCooldown = TRAFFIC_HIT_COOLDOWN_MS;
+    const activeDelivery = this.world.life.hustle.activeDelivery;
+    if (activeDelivery?.stage === "picked_up" && this.playerState.onBike) {
+      const contact = applyDeliveryHazardContact();
+      const cargoDamage = this.damageActiveDeliveryCargo(contact.cargoReason);
+      activeDelivery.rideRun ??= { elapsedMs: 0, hazardsSpawned: 0, hazardsAvoided: 0, nearMisses: 0, contacts: 0 };
+      activeDelivery.rideRun.contacts += 1;
+      this.applyDeliverySpeedStumble(contact.speedMultiplier);
+      this.applyTrafficKnockback(source);
+      this.cameras.main.shake(140, 0.004);
+      this.spawnHitSplash(this.player.x, this.player.y);
+      if (cargoDamage?.damaged) {
+        this.spawnFloatingText(`Cargo -${cargoDamage.amount}%`, this.player.x, this.player.y - scaleDistance(34), "#f4b860");
+      }
+      saveWorldState(this.world);
+      this.showToast(`Scooter clip — soft hit, keep riding. Cargo ${cargoDamage?.after ?? activeDelivery.cargoIntegrity ?? 100}%.`);
+      return;
+    }
     const moneyLoss = Math.min(this.playerState.money, TRAFFIC_HIT_MONEY_LOSS);
     this.playerState.safety = Phaser.Math.Clamp(this.playerState.safety - 12, 0, 100);
     adjustPlayerMeters(this.world, { focus: -5 });
@@ -1892,16 +2369,21 @@ export class GameScene extends Phaser.Scene {
         this.playerState.onBike = false;
       }
     }
+    const cargoDamage = this.damageActiveDeliveryCargo("traffic_hit");
     this.applyTrafficKnockback(source);
     this.cameras.main.shake(180, 0.006);
     this.spawnHitSplash(this.player.x, this.player.y);
     this.spawnFloatingText("Ouch!", this.player.x, this.player.y - scaleDistance(34), "#ffdfb3");
+    if (cargoDamage?.damaged) {
+      this.spawnFloatingText(`Cargo -${cargoDamage.amount}%`, this.player.x - scaleDistance(20), this.player.y - scaleDistance(6), "#f4b860");
+    }
     if (moneyLoss > 0) {
       this.spawnCashBurst(this.player.x, this.player.y, moneyLoss);
       this.spawnFloatingText(`-Rp ${moneyLoss}`, this.player.x + scaleDistance(20), this.player.y - scaleDistance(12), "#fff0bd");
     }
     saveWorldState(this.world);
-    this.showToast(`A passing scooter clipped you. Safety -12, Focus -5${moneyLoss > 0 ? `, Rp -${moneyLoss}` : ""}.`);
+    const cargoCopy = cargoDamage?.damaged ? ` Cargo ${cargoDamage.after}%.` : "";
+    this.showToast(`A passing scooter clipped you. Safety -12, Focus -5${moneyLoss > 0 ? `, Rp -${moneyLoss}` : ""}.${cargoCopy}`);
   }
 
   private applyTrafficKnockback(source: TrafficBikeRuntime): void {
@@ -2004,13 +2486,140 @@ export class GameScene extends Phaser.Scene {
       onComplete: () => ghost.destroy()
     });
     this.spawnInteractionFlourish("pickup", sprite.x, sprite.y, label);
+    this.playSound("pickup");
   }
 
-  private playDeliveryFlourish(x: number, y: number, payout?: number): void {
+  private playDeliveryFlourish(x: number, y: number, payout?: number, celebration?: PayoutCelebrationSpec): void {
     this.spawnInteractionFlourish("delivery", x, y, payout ? `Delivered +Rp ${payout}` : "Delivered");
+    this.playSound("payout");
+    if (celebration) {
+      this.showPayoutCelebration(celebration);
+    }
     if (payout && payout > 0) {
       this.spawnCashBurst(x, y, payout);
     }
+  }
+
+  private showPayoutCelebration(spec: PayoutCelebrationSpec): void {
+    this.finishPayoutCelebration();
+    const panelWidth = spec.rentMilestone ? 246 : 218;
+    const panelHeight = spec.rentMilestone ? 86 : 66;
+    const x = Phaser.Math.Clamp(this.scale.width - panelWidth - 18, 16, Math.max(16, this.scale.width - panelWidth - 18));
+    const y = 92;
+    const container = this.add.container(x, y).setAlpha(1);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x101820, 0.9);
+    bg.fillRoundedRect(0, 0, panelWidth, panelHeight, 8);
+    bg.lineStyle(spec.rentMilestone ? 2 : 1, spec.rentMilestone ? 0xfff0bd : 0x8ee6ff, spec.rentMilestone ? 0.82 : 0.42);
+    bg.strokeRoundedRect(0, 0, panelWidth, panelHeight, 8);
+    const countText = this.add
+      .text(14, 10, "Rp +0", {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: spec.tier === "great" ? "24px" : "22px",
+        fontStyle: "900",
+        color: spec.tier === "great" ? "#fff0bd" : "#8ee6ff"
+      })
+      .setOrigin(0, 0);
+    const ratingText = this.add
+      .text(16, 40, this.formatPayoutRatingLine(spec), {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: "13px",
+        color: "#fff8df"
+      })
+      .setOrigin(0, 0);
+    const children: Phaser.GameObjects.GameObject[] = [bg, countText, ratingText];
+    let rentText: Phaser.GameObjects.Text | undefined;
+    if (spec.rentMilestone) {
+      rentText = this.add
+        .text(16, 62, "Rent target covered", {
+          fontFamily: "Inter, Arial, sans-serif",
+          fontSize: "12px",
+          fontStyle: "700",
+          color: "#fff0bd"
+        })
+        .setOrigin(0, 0);
+      children.push(rentText);
+    }
+    container.add(children);
+    this.hudLayer.add(container);
+    const counter = { value: 0 };
+    const countTween = this.tweens.add({
+      targets: counter,
+      value: spec.payout,
+      duration: spec.countUpDurationMs,
+      ease: "Cubic.easeOut",
+      onUpdate: () => countText.setText(`Rp +${Math.round(counter.value)}`),
+      onComplete: () => countText.setText(`Rp +${spec.payout}`)
+    });
+    this.payoutCelebration = { container, countText, ratingText, rentText, countTween, spec };
+    this.tweens.add({
+      targets: countText,
+      scaleX: spec.scalePunch,
+      scaleY: spec.scalePunch,
+      duration: PAYOUT_FEEL_TUNING.amountPunchDurationMs,
+      yoyo: true,
+      ease: "Back.easeOut"
+    });
+    if (spec.ratingMoved) {
+      this.tweens.add({
+        targets: ratingText,
+        scaleX: 1.12,
+        scaleY: 1.12,
+        duration: PAYOUT_FEEL_TUNING.ratingPunchDurationMs,
+        delay: PAYOUT_FEEL_TUNING.ratingPunchDelayMs,
+        yoyo: true,
+        ease: "Back.easeOut"
+      });
+    }
+    if (spec.rentMilestone && rentText) {
+      this.tweens.add({
+        targets: rentText,
+        alpha: 0.38,
+        duration: PAYOUT_FEEL_TUNING.rentPulseDurationMs,
+        yoyo: true,
+        repeat: PAYOUT_FEEL_TUNING.rentPulseRepeatCount,
+        ease: "Sine.easeInOut"
+      });
+    }
+    this.tweens.add({
+      targets: container,
+      alpha: 0,
+      duration: PAYOUT_FEEL_TUNING.fadeOutDurationMs,
+      delay: Math.max(0, spec.totalDurationMs - PAYOUT_FEEL_TUNING.fadeOutDurationMs),
+      onComplete: () => {
+        if (this.payoutCelebration?.container === container) {
+          this.payoutCelebration = undefined;
+        }
+        container.destroy(true);
+      }
+    });
+  }
+
+  private finishPayoutCelebration(): void {
+    if (!this.payoutCelebration) {
+      return;
+    }
+    const { container, countText, ratingText, rentText, countTween, spec } = this.payoutCelebration;
+    countTween.stop();
+    countText.setText(`Rp +${spec.payout}`);
+    ratingText.setText(this.formatPayoutRatingLine(spec));
+    rentText?.setAlpha(1);
+    this.tweens.killTweensOf([container, countText, ratingText, rentText].filter(Boolean));
+    this.payoutCelebration = undefined;
+    this.tweens.add({
+      targets: container,
+      alpha: 0,
+      duration: PAYOUT_FEEL_TUNING.dismissFadeDurationMs,
+      onComplete: () => container.destroy(true)
+    });
+  }
+
+  private formatPayoutRatingLine(spec: PayoutCelebrationSpec): string {
+    const run = `Run ${spec.starRating.toFixed(1)}★`;
+    if (!spec.ratingMoved) {
+      return run;
+    }
+    return `${run} · Driver ${spec.previousDriverRating.toFixed(1)}→${spec.nextDriverRating.toFixed(1)}★`;
   }
 
   private playActivityCommitFlourish(x: number, y: number, label: string): void {
@@ -2592,6 +3201,7 @@ export class GameScene extends Phaser.Scene {
 
   private updateHud(delta: number): void {
     this.syncHudLayerToCamera();
+    this.hudController.syncTouchControlsToCamera();
     const unreadCount = getUnreadOpportunityMessageCount(this.world.opportunities);
     const wantedLevel = getWantedLevel(this.world.reputation);
     const bounty = getBounty(this.world.reputation);
@@ -2604,7 +3214,8 @@ export class GameScene extends Phaser.Scene {
       energy: this.world.meters.energy,
       wellbeing: this.world.meters.wellbeing,
       focus: this.world.meters.focus,
-      social: this.world.meters.social
+      social: this.world.meters.social,
+      visibleMeters: getVisibleMeters(this.world)
     });
     this.hudController.updatePhoneBadge(unreadCount, this.phoneBuzzTimer > 0);
     this.updateOverlayChrome();
@@ -2627,14 +3238,38 @@ export class GameScene extends Phaser.Scene {
     }
     if (this.playerState.onBike && this.playerState.bikeCondition < 50) {
       this.bikeChipText.setText(`Scooter ${this.playerState.bikeCondition}%`).setPosition(16, warningY).setVisible(true);
+      warningY += this.bikeChipText.height + 8;
     } else {
       this.bikeChipText.setText("").setVisible(false);
+    }
+    const cargoIntegrity = this.getActiveCargoIntegrity();
+    const cargoSurface = this.mode === "world" ? "world" : this.mode === "interior" ? "interior" : "overlay";
+    if (cargoIntegrity != null && shouldShowCargoCareChip(cargoIntegrity, cargoSurface, Boolean(this.activeRivalRace))) {
+      const color = cargoIntegrity >= 70 ? "#62c48f" : cargoIntegrity >= 35 ? "#f4b860" : "#ff8f80";
+      const rideRun = this.world.life.hustle.activeDelivery?.rideRun;
+      this.cargoChipText
+        .setText(
+          rideRun
+            ? `Cargo ${cargoIntegrity}% · Avoid ${rideRun.hazardsAvoided}/${rideRun.hazardsSpawned} · Near ${rideRun.nearMisses}`
+            : `Cargo ${cargoIntegrity}%`
+        )
+        .setColor(color)
+        .setPosition(16, warningY)
+        .setVisible(true);
+    } else {
+      this.cargoChipText.setText("").setVisible(false);
     }
 
     const homeSleepReady = this.isAct0HomeSleepReady();
     const target = this.mode === "world" ? this.getNearestInteraction() : undefined;
     const interiorTarget = this.mode === "interior" ? this.getNearestInteriorInteraction() : undefined;
-    if (this.mode === "world" && this.playerState.bikeStuck) {
+    this.hudController.setActionButtonMode(this.activeRivalRace ? "concede" : "action");
+    if (this.activeRivalRace) {
+      const next = this.activeRivalRace.config.route[this.activeRivalRace.checkpointIndex];
+      this.promptText.setText(
+        `Race Leo: ${next ? `hit ${next.label}` : "finish the lap"}. ${this.getRaceConcedeHint()}`
+      );
+    } else if (this.mode === "world" && this.playerState.bikeStuck) {
       this.promptText.setText(`E / ACT: ask ${REQUIRED_BIKE_HELPERS} helpers to drag the bike out`);
     } else if (this.mode === "world" && isAct0FirstRunGateActive(this.world, this.act0FirstRunGateSessionActive)) {
       this.promptText.setText("Find Ibu Sari first - follow the arrow and press E / ACT.");
@@ -2655,7 +3290,13 @@ export class GameScene extends Phaser.Scene {
     } else if (this.mode === "phone") {
       this.promptText.setText("ESC closes the phone.");
     } else if (this.mode === "committedActivity") {
-      this.promptText.setText("Activity in progress. ESC cancels early.");
+      this.promptText.setText(
+        this.hudController.isTouchInputActive
+          ? "Activity in progress. Use the on-screen controls."
+          : "Activity in progress. ESC cancels early."
+      );
+    } else if (this.mode === "warungRush") {
+      this.promptText.setText("Lunch rush — E / ACT at Ibu's counter to pick up, then at the matching table to serve.");
     } else {
       this.promptText.setText("ESC closes the current panel.");
     }
@@ -2664,6 +3305,7 @@ export class GameScene extends Phaser.Scene {
 
     this.redrawHudChrome();
     this.drawOpportunityMarkers();
+    this.drawRivalRaceMarkers();
     this.drawFieldIndicators();
     this.drawWorldInteractionScenes();
     this.drawObjectiveMarkers();
@@ -2738,6 +3380,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleAction(): void {
+    if (this.activeCutscene) {
+      this.skipActiveCutscene();
+      return;
+    }
     if (this.interiorTransitioning) {
       return;
     }
@@ -2747,6 +3393,11 @@ export class GameScene extends Phaser.Scene {
         return;
       }
       this.closePanel();
+      return;
+    }
+
+    if (this.mode === "warungRush") {
+      this.handleWarungRushAction();
       return;
     }
 
@@ -2854,13 +3505,26 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    this.playerState.onBike = !this.playerState.onBike;
+    this.setPlayerBikeMode(!this.playerState.onBike);
     if (this.playerState.onBike && this.playerState.tutorialStep === "rent_bike") {
       this.playerState.tutorialStep = "join_group";
     }
     saveWorldState(this.world);
-    this.updatePlayerBikeVisual();
     this.showToast(this.playerState.onBike ? "Bike mode on. Roads are fast; beach rides stay smooth." : "Bike parked. You are back on foot.");
+  }
+
+  private setPlayerBikeMode(requestedOnBike: boolean): boolean {
+    this.playerState.onBike = resolveRequestedBikeState(
+      requestedOnBike,
+      this.mode,
+      this.playerState.hasBike,
+      this.activeInteriorId
+    );
+    if (!this.playerState.onBike) {
+      this.rideModelState = createRideModelState();
+    }
+    this.updatePlayerBikeVisual();
+    return this.playerState.onBike;
   }
 
   private interactWithNpc(npcId: string): void {
@@ -2899,7 +3563,7 @@ export class GameScene extends Phaser.Scene {
         this.openRelationshipChoiceScene(choiceScene);
         return;
       }
-      this.openDialogue(npc.name, questInteraction.dialogue);
+      this.openDialogue(npc.name, questInteraction.dialogue, npcId);
       return;
     }
 
@@ -2918,11 +3582,22 @@ export class GameScene extends Phaser.Scene {
       : "";
     this.openDialogue(
       npc.name,
-      `${baseLine}\n\nRight now ${npc.name} is ${routineLabel ?? "taking in the neighborhood"}.${arcCopy}`
+      `${baseLine}\n\nRight now ${npc.name} is ${routineLabel ?? "taking in the neighborhood"}.${arcCopy}`,
+      npcId
     );
   }
 
   private getNpcDialogueLine(npcId: string): string {
+    if (npcId === "ibu_sari" && this.world.life.hustle.completedDeliveryIds.includes("act0_ibu_milk_madu_catering")) {
+      if (!this.world.questFlags.act0_catering_on_time) {
+        return this.world.questFlags.act0_negotiated_fee
+          ? '"You bargained, then missed the window," Ibu Sari says. "Still — you finished. I remember both."'
+          : '"The window went, but you did not abandon the box," Ibu Sari says. "I remember that."';
+      }
+      return this.world.questFlags.act0_negotiated_fee
+        ? '"You bargained before you had a bed," Ibu Sari says. "But you delivered what you promised. I remember both."'
+        : '"You said you would not forget," Ibu Sari says. "You made the window. I remember that too."';
+    }
     const line = this.dialogueProvider.getLine(npcId, { memory: getRelationship(this.world, "npc", npcId) });
     if (typeof line === "string") {
       return line;
@@ -2930,10 +3605,10 @@ export class GameScene extends Phaser.Scene {
     return npcDefinitions[npcId]?.defaultLine ?? "The neighborhood hums around you.";
   }
 
-  private openDialogue(title: string, body: string): void {
+  private openDialogue(title: string, body: string, npcId?: string): void {
     this.closePanel();
     this.mode = "dialogue";
-    this.createDialogueOverlay(title, body);
+    this.createDialogueOverlay(title, body, npcId);
   }
 
   private openRelationshipChoiceScene(scene: RelationshipChoiceScene): void {
@@ -2941,6 +3616,15 @@ export class GameScene extends Phaser.Scene {
     this.mode = "dialogue";
     this.awaitingRelationshipChoice = true;
     this.createRelationshipChoiceOverlay(scene);
+  }
+
+  private openRioRaceChallenge(): void {
+    const scene = getRelationshipChoiceScene("rio_streak_duel_challenge");
+    if (!scene) {
+      this.showToast("Leo's race scene is missing.");
+      return;
+    }
+    this.openRelationshipChoiceScene(scene);
   }
 
   private createRelationshipChoiceOverlay(scene: RelationshipChoiceScene): void {
@@ -2979,14 +3663,29 @@ export class GameScene extends Phaser.Scene {
       choiceRow.appendChild(button);
     }
 
-    overlay.append(titleEl, bodyEl, choiceRow);
+    const content = document.createElement("div");
+    content.className = "bali-life-dialogue-content";
+    const portrait = this.createDialoguePortraitElement(scene.npcId);
+    if (portrait) {
+      overlay.classList.add("has-portrait");
+      content.appendChild(portrait);
+    }
+    const copy = document.createElement("div");
+    copy.className = "bali-life-dialogue-copy";
+    copy.append(titleEl, bodyEl);
+    content.appendChild(copy);
+
+    overlay.append(content, choiceRow);
     document.body.appendChild(overlay);
     this.dialogueOverlay = overlay;
   }
 
   private resolveRelationshipChoice(scene: RelationshipChoiceScene, option: RelationshipChoiceOption): void {
     this.awaitingRelationshipChoice = false;
-    this.world.collectedPickups[scene.id] = (this.world.collectedPickups[scene.id] ?? 0) + 1;
+    const consumesScene = option.actionId !== "start_rio_race" && option.actionId !== "decline_rio_race";
+    if (consumesScene) {
+      this.world.collectedPickups[scene.id] = (this.world.collectedPickups[scene.id] ?? 0) + 1;
+    }
     const meterDeltas: Partial<Record<"energy" | "focus", number>> = {};
     if (option.energyDelta) {
       meterDeltas.energy = option.energyDelta;
@@ -3017,6 +3716,31 @@ export class GameScene extends Phaser.Scene {
         detail: option.memory.detail
       });
     }
+    if (option.actionId === "accept_act0_humbly" || option.actionId === "negotiate_act0_fee") {
+      this.resolveAct0OpeningChoice(option);
+      return;
+    }
+    if (option.actionId === "start_rio_race") {
+      this.pendingChoiceOpportunityId = undefined;
+      this.destroyDialogueOverlay();
+      this.startRioRace();
+      return;
+    }
+    if (option.actionId === "decline_rio_race") {
+      this.pendingChoiceOpportunityId = undefined;
+      saveWorldState(this.world);
+      this.openDialogue(npcDefinitions[scene.npcId]?.name ?? scene.npcId, option.resultLine, scene.npcId);
+      return;
+    }
+    if (option.actionId === "complete_act1_leo_encounter") {
+      saveWorldState(this.world);
+      this.openDialogue(
+        npcDefinitions[scene.npcId]?.name ?? scene.npcId,
+        `${option.resultLine}\n\n${getAct1LeoEncounterHookLine(this.world)}`,
+        scene.npcId
+      );
+      return;
+    }
     let followUpLine = "";
     if (option.actionId === "accept_no_questions" && this.pendingChoiceOpportunityId) {
       const result = acceptOpportunity(
@@ -3041,10 +3765,10 @@ export class GameScene extends Phaser.Scene {
     }
     this.pendingChoiceOpportunityId = undefined;
     saveWorldState(this.world);
-    this.openDialogue(npcDefinitions[scene.npcId]?.name ?? scene.npcId, option.resultLine + followUpLine);
+    this.openDialogue(npcDefinitions[scene.npcId]?.name ?? scene.npcId, option.resultLine + followUpLine, scene.npcId);
   }
 
-  private createDialogueOverlay(title: string, body: string): void {
+  private createDialogueOverlay(title: string, body: string, npcId?: string): void {
     this.destroyDialogueOverlay();
     if (typeof document === "undefined") {
       return;
@@ -3070,11 +3794,64 @@ export class GameScene extends Phaser.Scene {
 
     const hint = document.createElement("div");
     hint.className = "bali-life-dialogue-hint";
-    hint.textContent = "E / ESC";
+    hint.textContent = this.hudController.isTouchInputActive ? "Tap Continue" : "E / ESC";
 
-    overlay.append(titleEl, bodyEl, hint);
+    const content = document.createElement("div");
+    content.className = "bali-life-dialogue-content";
+    const portrait = this.createDialoguePortraitElement(npcId);
+    if (portrait) {
+      overlay.classList.add("has-portrait");
+      content.appendChild(portrait);
+    }
+    const copy = document.createElement("div");
+    copy.className = "bali-life-dialogue-copy";
+    copy.append(titleEl, bodyEl);
+    content.appendChild(copy);
+
+    overlay.appendChild(content);
+    if (this.hudController.isTouchInputActive) {
+      const footer = document.createElement("div");
+      footer.className = "bali-life-dialogue-footer";
+      const continueButton = document.createElement("button");
+      continueButton.type = "button";
+      continueButton.className = "bali-life-dialogue-continue";
+      continueButton.textContent = "Continue";
+      continueButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.playUiClick();
+        this.handleAction();
+      });
+      footer.append(hint, continueButton);
+      overlay.appendChild(footer);
+    } else {
+      overlay.appendChild(hint);
+    }
     document.body.appendChild(overlay);
     this.dialogueOverlay = overlay;
+  }
+
+  private createDialoguePortraitElement(npcId: string | undefined): HTMLImageElement | null {
+    if (!npcId || typeof document === "undefined") {
+      return null;
+    }
+    const definition = getPortraitDefinition(npcId);
+    if (!definition) {
+      return null;
+    }
+    const tier = getAffinityTier(getRelationship(this.world, "npc", npcId));
+    const variant = portraitVariantForTier(tier);
+    const src = getPortraitDataUrl(npcId, variant);
+    if (!src) {
+      return null;
+    }
+    const img = document.createElement("img");
+    img.className = "bali-life-dialogue-portrait";
+    img.src = src;
+    img.alt = definition.alt;
+    img.dataset.npcId = npcId;
+    img.dataset.variant = variant;
+    return img;
   }
 
   private destroyDialogueOverlay(): void {
@@ -3113,8 +3890,14 @@ export class GameScene extends Phaser.Scene {
     }
 
     saveWorldState(this.world);
+    const firstVisitMeterCopy = formatVisibleMeterDeltas(this.world, {
+      focus: flavor.focusDelta,
+      social: flavor.socialEnergyDelta
+    });
     const statLine = isFirstVisit
-      ? `\n\nFirst visit: Focus ${formatSigned(flavor.focusDelta)}  |  Social ${formatSigned(flavor.socialEnergyDelta)}  |  Links ${formatSigned(flavor.connectionDelta)}`
+      ? `\n\nFirst visit: ${
+          firstVisitMeterCopy ? `${firstVisitMeterCopy.replace(/, /g, "  |  ")}  |  ` : ""
+        }Links ${formatSigned(flavor.connectionDelta)}`
       : "\n\nYou have already mapped this stop. It still feels useful as a landmark.";
     this.openDialogue(venue?.name ?? node.name, `${flavor.body}${statLine}`);
     this.showToast(isFirstVisit ? flavor.firstVisitToast : flavor.repeatToast);
@@ -3122,8 +3905,8 @@ export class GameScene extends Phaser.Scene {
 
   private startAct0WithIbuSari(): void {
     this.playerState.hasBike = true;
-    this.playerState.onBike = true;
     this.playerState.bikeStuck = false;
+    this.setPlayerBikeMode(false);
     this.playerState.bikeCondition = Math.min(this.playerState.bikeCondition, 48);
     this.playerState.tutorialStep = "free_roam";
     this.world.life.hustle.scooterTier = "borrowed_rattletrap";
@@ -3133,7 +3916,6 @@ export class GameScene extends Phaser.Scene {
     const accepted = acceptDelivery(this.world, "first_baked_villa_delivery", this.getAbsoluteMinute());
     completeAct0Step(this.world, "meet_ibu_sari");
     saveWorldState(this.world);
-    this.updatePlayerBikeVisual();
     this.openDialogue(
       "Ibu Sari",
       [
@@ -3142,9 +3924,90 @@ export class GameScene extends Phaser.Scene {
         accepted.ok
           ? "Your first gig is already on the phone: pick up pastries at BAKED and take them to the villa gate. Do this clean and you get your first rating."
           : accepted.message
-      ].join("\n\n")
+      ].join("\n\n"),
+      "ibu_sari"
     );
     this.showToast("Borrowed scooter unlocked. First delivery accepted.");
+  }
+
+  private startAct0Opening(): void {
+    if (this.world.life.actProgress.act0Step !== "meet_ibu_sari" || this.world.questFlags.act0_v4_opening_complete) {
+      this.openFirstRunHint();
+      return;
+    }
+    this.act0FirstRunGateSessionActive = true;
+    this.showMovementTutorialPrompt = false;
+    this.world.clock.minuteOfDay = 6 * 60 + 50;
+    this.player.setPosition(2352, 96);
+    this.player.body?.reset(2352, 96);
+
+    const bus = this.add.container(2420, 96).setDepth(220);
+    bus.add([
+      this.add.rectangle(0, 0, 132, 48, 0x315b78).setStrokeStyle(3, 0xfff0bd, 0.8),
+      this.add.rectangle(-24, -7, 22, 14, 0x9ee6df, 0.9),
+      this.add.rectangle(8, -7, 22, 14, 0x9ee6df, 0.9),
+      this.add.circle(-42, 23, 10, 0x101820),
+      this.add.circle(42, 23, 10, 0x101820)
+    ]);
+    const ibu = this.add.container(2192, 96).setDepth(221);
+    ibu.add(this.add.sprite(0, 0, "npc-sari").setScale(CHARACTER_SPRITE_SCALE));
+    const backpack = this.add.container(2352, 110).setDepth(2351);
+    backpack.add([
+      this.add.ellipse(0, 4, 36, 20, 0x5f4635).setStrokeStyle(2, 0xd1a968, 0.8),
+      this.add.rectangle(0, -7, 22, 18, 0x7a5940).setStrokeStyle(2, 0x3d2c23, 0.7)
+    ]);
+    const actors = new Map<string, Phaser.GameObjects.Container>([
+      ["arrival_bus", bus],
+      ["ibu_sari_cutscene", ibu],
+      ["arrival_backpack", backpack]
+    ]);
+    const script = buildAct0OpeningCutscene({
+      player: { x: 2352, y: 96 },
+      busStart: { x: 2420, y: 96 },
+      busExit: { x: 2820, y: 96 },
+      ibuStart: { x: 2192, y: 96 },
+      ibuEnd: { x: 2304, y: 96 },
+      station: { x: 2192, y: 96 }
+    });
+    this.startCutscene(script, () => {
+      const choice = getRelationshipChoiceScene("ibu_sari_act0_scooter_deal");
+      if (choice) {
+        this.openRelationshipChoiceScene(choice);
+      }
+    }, actors);
+  }
+
+  private resolveAct0OpeningChoice(option: RelationshipChoiceOption): void {
+    this.world.questFlags.firstRunHintSeen = true;
+    this.world.questFlags.act0_v4_opening_complete = true;
+    this.world.questFlags.act0_negotiated_fee = option.actionId === "negotiate_act0_fee";
+    this.playerState.hasBike = true;
+    this.playerState.bikeStuck = false;
+    this.playerState.bikeCondition = Math.min(this.playerState.bikeCondition, 48);
+    this.playerState.tutorialStep = "free_roam";
+    this.world.life.hustle.scooterTier = "borrowed_rattletrap";
+    if (getQuantity(this.playerState, SCOOTER_KEY_ITEM_ID) === 0) {
+      addItem(this.playerState, SCOOTER_KEY_ITEM_ID, 1);
+    }
+    const accepted = acceptDelivery(this.world, "act0_ibu_milk_madu_catering", this.getAbsoluteMinute());
+    if (accepted.ok) {
+      pickupDelivery(this.world, this.getAbsoluteMinute());
+      if (this.world.life.hustle.activeDelivery) {
+        this.world.life.hustle.activeDelivery.dueAt = this.getAbsoluteMinute() + 15;
+      }
+      completeAct0Step(this.world, "meet_ibu_sari");
+      completeAct0Step(this.world, "pickup_first_delivery");
+      this.setPlayerBikeMode(true);
+    }
+    this.pendingChoiceOpportunityId = undefined;
+    saveWorldState(this.world);
+    this.destroyDialogueOverlay();
+    this.openDialogue(
+      "Ibu Sari",
+      `${option.resultLine}\n\n${accepted.ok ? "Catering box loaded. The 15:00 countdown is live — ride to Milk & Madu now." : accepted.message}`,
+      "ibu_sari"
+    );
+    this.showToast("TIMED DELIVERY LIVE — Milk & Madu · 15 min");
   }
 
   private openExteriorVenueInteraction(venueId: string): void {
@@ -3205,8 +4068,7 @@ export class GameScene extends Phaser.Scene {
     this.phone?.close();
     this.interiorTransitioning = true;
     this.interiorReturnPoint = { x: this.player.x, y: this.player.y };
-    this.playerState.onBike = false;
-    this.updatePlayerBikeVisual();
+    this.setPlayerBikeMode(false);
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.time.delayedCall(400, () => {
       this.activeInteriorId = interior.id;
@@ -3239,7 +4101,11 @@ export class GameScene extends Phaser.Scene {
       this.interiorReturnPoint = undefined;
       this.interiorTransitioning = false;
       this.cameras.main.fadeIn(400, 0, 0, 0);
-      this.showToast(`Left ${interior.name}.`);
+      this.showToast(
+        this.playerState.hasBike
+          ? `Left ${interior.name}. Your scooter is outside; press B / BIKE to ride.`
+          : `Left ${interior.name}.`
+      );
     });
   }
 
@@ -3623,7 +4489,7 @@ export class GameScene extends Phaser.Scene {
     overlay.dataset.activityPanel = "true";
     overlay.dataset.uiSurface = "activity-panel";
     overlay.setAttribute("role", "dialog");
-    overlay.setAttribute("aria-label", "Ibu Sari hustle board");
+    overlay.setAttribute("aria-label", "Ibu Sari NusaDrop board");
     overlay.addEventListener("pointerdown", (event) => event.stopPropagation());
     overlay.addEventListener("click", (event) => event.stopPropagation());
 
@@ -3631,7 +4497,7 @@ export class GameScene extends Phaser.Scene {
     header.className = "bali-life-activity-menu-header";
     const title = document.createElement("h2");
     title.className = "bali-life-activity-menu-title";
-    title.textContent = "Ibu Sari's Hustle Board";
+    title.textContent = "Ibu Sari's NusaDrop Board";
     const meta = document.createElement("div");
     meta.className = "bali-life-activity-menu-meta";
     meta.textContent =
@@ -3858,13 +4724,12 @@ export class GameScene extends Phaser.Scene {
     const meta = document.createElement("div");
     meta.className = "bali-life-activity-menu-meta";
     const rhythm = getStationRhythmState(this.world, context);
-    const rhythmCopy = rhythm
+    const rhythmCopy = rhythm && areAdvancedMetersVisible(this.world)
       ? `${rhythm.stationTitle} | Best: ${rhythm.bestTimeOfDay}${rhythm.activeModifierLabels.length ? ` | Active: ${rhythm.activeModifierLabels.join(", ")}` : ""}`
       : `${context.category.replace(/_/g, " ")} activities`;
     meta.textContent =
       `${rhythmCopy} | ${formatClock(this.world)} | ` +
-      `Energy ${this.world.meters.energy}  Wellbeing ${this.world.meters.wellbeing}  ` +
-      `Focus ${this.world.meters.focus}  Social ${this.world.meters.social}  Rp ${this.playerState.money}`;
+      `${formatVisibleMeterValues(this.world)}  Rp ${this.playerState.money}`;
 
     header.append(title, meta);
 
@@ -3886,6 +4751,28 @@ export class GameScene extends Phaser.Scene {
 
     if (context.venueId === "bali_family_rental_scooter") {
       this.appendScooterCounterActions(content);
+      if (isAct1LeoEncounterPending(this.world)) {
+        this.appendActivityMenuSection(content, "Pickup rail");
+        this.appendActivityMenuRow(content, {
+          title: "Leo is waiting by the NusaDrop pickup rail",
+          body: "He saw the rate-cut notice too. He is looking at your scooter like it submitted an application.",
+          actionLabel: "Face Leo",
+          onAction: () => {
+            const scene = getRelationshipChoiceScene("rio_act1_rate_cut_encounter");
+            if (scene) this.openRelationshipChoiceScene(scene);
+          }
+        });
+      }
+      const raceEligibility = getRioRaceEligibility(this.world);
+      if (!isAct1LeoEncounterPending(this.world) && raceEligibility.eligible) {
+        this.appendActivityMenuSection(content, "Leo's streak");
+        this.appendActivityMenuRow(content, {
+          title: RIO_RACE.title,
+          body: "Leo is posted by the timing board with his helmet already on. Bail = he wins. He will mention it.",
+          actionLabel: "Hear him out",
+          onAction: () => this.openRioRaceChallenge()
+        });
+      }
     }
 
     const activeEvents = getActiveEventsAtVenue(this.world.clock, venueId, this.world);
@@ -3895,7 +4782,7 @@ export class GameScene extends Phaser.Scene {
         const cost = event.participation.cost ?? 0;
         const canAfford = cost <= 0 || this.playerState.money >= cost;
         const moneyCopy = cost < 0 ? `Earn Rp ${Math.abs(cost)}` : cost > 0 ? `Cost Rp ${cost}` : "Free";
-        const meterCopy = formatMeterDeltaSummary(event.participation.meterDeltas);
+        const meterCopy = formatMeterDeltaSummary(this.world, event.participation.meterDeltas);
         this.appendActivityMenuRow(content, {
           title: event.title,
           body: `${event.description}\n${event.participation.timeCost} min | ${moneyCopy}${meterCopy ? ` | ${meterCopy}` : ""}`,
@@ -4125,7 +5012,7 @@ export class GameScene extends Phaser.Scene {
     for (const offer of offers.slice(0, 5)) {
       const delivery = offer.delivery;
       const condition = offer.available ? previewDeliveryCondition(this.world, delivery, this.getAbsoluteMinute()) : undefined;
-      const terms = getEffectiveDeliveryTerms(delivery, condition);
+      const terms = getEffectiveDeliveryTerms(delivery, condition, this.world);
       const status = offer.available
         ? `Rp ${terms.payout} | ${terms.timeLimitMin} min${condition ? ` | ${condition.label}` : ""}`
         : offer.reason ?? "Locked";
@@ -4149,9 +5036,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private payHomeRent(): void {
+    const previousAct = this.world.life.actProgress.currentAct;
     const result = payHustleRent(this.world, this.getAbsoluteMinute());
     this.showToast(result.message);
     saveWorldState(this.world);
+    if (result.ok && this.maybeStartAct2Cutscene(previousAct, () => this.openHomeActivityMenu())) {
+      return;
+    }
     this.openHomeActivityMenu();
   }
 
@@ -4190,6 +5081,173 @@ export class GameScene extends Phaser.Scene {
     this.showToast(result.message);
   }
 
+  private startRioRace(): void {
+    const eligibility = getRioRaceEligibility(this.world);
+    if (!eligibility.eligible) {
+      this.openDialogue("Leo", eligibility.reason ?? "Leo is not ready to race right now.", "rio");
+      return;
+    }
+    if (this.playerState.money < RIO_RACE.stake) {
+      this.openDialogue("Leo", `"Bring Rp ${RIO_RACE.stake} if you want to put your mouth on the road."`, "rio");
+      return;
+    }
+
+    this.playerState.money -= RIO_RACE.stake;
+    this.prepareExteriorRaceStart();
+    saveWorldState(this.world);
+    this.startCutscene(this.buildRioRaceCountdownCutscene(), () => this.beginRioRaceRun());
+  }
+
+  private prepareExteriorRaceStart(): void {
+    this.closePanel(false);
+    this.destroyDialogueOverlay();
+    this.activeInteriorId = null;
+    this.interiorReturnPoint = undefined;
+    this.interiorTransitioning = false;
+    this.mode = "world";
+    this.applyWorldCameraBounds();
+    this.layoutForViewport();
+    this.hudController.setMinimapHidden(false);
+    this.resetNpcSpritesToRoutineState();
+    const start = RIO_RACE.route[0];
+    this.playerState.hasBike = true;
+    this.playerState.bikeStuck = false;
+    this.setPlayerBikeMode(true);
+    this.placePlayerSprite(start, true);
+  }
+
+  private buildRioRaceCountdownCutscene(): CutsceneScript {
+    return {
+      id: "rio_streak_duel_countdown",
+      after: "world",
+      timeoutMs: 3600,
+      steps: [
+        { id: "letterbox_in", kind: "letterbox_in", durationMs: 260 },
+        {
+          id: "three",
+          kind: "act_card",
+          durationMs: 620,
+          title: "3",
+          subtitle: "Leo revs beside you."
+        },
+        {
+          id: "two",
+          kind: "act_card",
+          durationMs: 620,
+          title: "2",
+          subtitle: `Hit the route markers. ${this.getRaceConcedeHint()}`
+        },
+        {
+          id: "one",
+          kind: "act_card",
+          durationMs: 620,
+          title: "1",
+          subtitle: "Rental, station, Bungalow, beach, back."
+        },
+        {
+          id: "go",
+          kind: "act_card",
+          durationMs: 520,
+          title: "GO",
+          subtitle: "Beat Leo clean."
+        },
+        { id: "letterbox_out", kind: "letterbox_out", durationMs: 260 }
+      ]
+    };
+  }
+
+  private beginRioRaceRun(): void {
+    this.mode = "world";
+    this.activeRivalRace = {
+      config: RIO_RACE,
+      elapsedMs: 0,
+      checkpointIndex: 1,
+      ghostProgress: 0
+    };
+    const start = RIO_RACE.route[0];
+    this.rivalRaceGhost?.destroy();
+    this.rivalRaceGhost = this.add.sprite(start.x - scaleDistance(28), start.y, "npc-rio").setDepth(start.y + 2);
+    this.setSpriteFacing(this.rivalRaceGhost, false, CHARACTER_SPRITE_SCALE);
+    this.world.activeActivity = {
+      source: "rivalRace",
+      raceId: RIO_RACE.id,
+      venueId: RIO_RACE.venueId,
+      venueName: "Bali Family Rental Scooter",
+      label: RIO_RACE.title,
+      durationMin: 0,
+      elapsedMs: 0,
+      realDurationMs: RIO_RACE.maxRaceMs,
+      startedAt: this.getAbsoluteMinute()
+    };
+    this.showToast(`Race started. Hit the route markers. ${this.getRaceConcedeHint()}`);
+  }
+
+  private updateRivalRace(delta: number): void {
+    const race = this.activeRivalRace;
+    if (!race) {
+      return;
+    }
+    race.elapsedMs += delta;
+    const playerProgress = Math.max(0, (race.checkpointIndex - 1) / Math.max(1, race.config.route.length - 1));
+    const ghost = advanceRivalRaceGhost(race.config, race.ghostProgress, race.elapsedMs, playerProgress, delta);
+    race.ghostProgress = ghost.progress;
+    if (ghost.finished && race.ghostFinishedAtMs == null) {
+      race.ghostFinishedAtMs = race.elapsedMs;
+    }
+    const ghostPosition = getRivalRaceRoutePosition(race.config, race.ghostProgress);
+    this.rivalRaceGhost?.setPosition(ghostPosition.x, ghostPosition.y).setDepth(ghostPosition.y + 2);
+
+    const next = race.config.route[race.checkpointIndex];
+    if (next) {
+      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, next.x, next.y);
+      if (distance <= scaleDistance(race.config.checkpointRadius)) {
+        race.checkpointIndex += 1;
+        this.showToast(race.checkpointIndex >= race.config.route.length ? "Finish line." : `Checkpoint: ${next.label}.`);
+      }
+    }
+
+    this.world.activeActivity = this.world.activeActivity?.source === "rivalRace"
+      ? { ...this.world.activeActivity, elapsedMs: race.elapsedMs }
+      : this.world.activeActivity;
+
+    if (race.checkpointIndex >= race.config.route.length) {
+      this.finishRivalRace({ playerFinishMs: race.elapsedMs, ghostFinishMs: race.ghostFinishedAtMs });
+      return;
+    }
+    if (race.elapsedMs >= race.config.maxRaceMs) {
+      this.finishRivalRace({ playerFinishMs: race.elapsedMs, ghostFinishMs: race.ghostFinishedAtMs, timedOut: true });
+    }
+  }
+
+  private finishRivalRace(input: { playerFinishMs?: number; ghostFinishMs?: number; conceded?: boolean; timedOut?: boolean }): void {
+    const race = this.activeRivalRace;
+    if (!race) {
+      return;
+    }
+    const outcome = resolveRivalRaceOutcome(input);
+    applyRivalRaceOutcome(this.world, outcome, this.getAbsoluteMinute());
+    this.activeRivalRace = undefined;
+    this.world.activeActivity = null;
+    this.rivalRaceGhost?.destroy();
+    this.rivalRaceGhost = undefined;
+    this.rivalRaceMarkerLayer?.clear();
+    saveWorldState(this.world);
+
+    if (outcome.result === "win") {
+      this.openDialogue(
+        "Leo",
+        'Leo pulls in half a breath after you, smile gone sharp instead of gone. "Clean line. Annoying." He tosses the side-bet cash at you. "Do not make a speech. I still have the better rating."',
+        "rio"
+      );
+      return;
+    }
+    const line =
+      outcome.reason === "conceded"
+        ? 'Leo circles back before you can park. "Bailed? Good strategy if the goal was me winning." He taps your mirror. "Rematch stays open. Try courage next time."'
+        : 'Leo is waiting at the rental, one foot on the curb. "See? Streaks are not luck." He grins, too pleased. "Rematch stays open."';
+    this.openDialogue("Leo", line, "rio");
+  }
+
   private appendActivityOptionRow(parent: HTMLElement, context: VenueActivityContext, option: ActivityAvailability): void {
     const activity = option.activity;
     const moneyCopy = activity.cost
@@ -4198,7 +5256,7 @@ export class GameScene extends Phaser.Scene {
         : `Cost Rp ${activity.cost}`
       : "Free";
     const status = option.available ? `${activity.timeCost} min | ${moneyCopy}` : option.reason ?? "Unavailable";
-    const preview = formatActivityPreview(activity, option.timeModifier);
+    const preview = areAdvancedMetersVisible(this.world) ? formatActivityPreview(activity, option.timeModifier) : "";
     this.appendActivityMenuRow(parent, {
       title: activity.label,
       body: `${activity.description}\n${preview ? `${preview}\n` : ""}${status}`,
@@ -4335,6 +5393,11 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    if (activityId === "warung_lunch_rush" && this.activeInteriorId === "warung_sari_interior") {
+      this.startWarungRush(context, option.activity);
+      return;
+    }
+
     if (!this.activeInteriorId) {
       const node = venueMapNodes.find((candidate) => candidate.venueId === context.venueId);
       this.placePlayerAtCommittedVenue(node);
@@ -4358,7 +5421,101 @@ export class GameScene extends Phaser.Scene {
     this.createCommittedActivityOverlay(this.committedActivity);
     this.playActivityCommitFlourish(this.player.x, this.player.y, option.activity.label);
     saveWorldState(this.world);
-    this.showToast(`${option.activity.label} started. ESC cancels early.`);
+    const activityHint = this.hudController.isTouchInputActive
+      ? "Use the on-screen controls."
+      : "ESC cancels early.";
+    this.showToast(`${option.activity.label} started. ${activityHint}`);
+  }
+
+  private startWarungRush(context: VenueActivityContext, activity: Activity): void {
+    const plays = this.world.life.activityHistory[`${context.venueId}:${activity.id}`]?.totalCount ?? 0;
+    this.closePanel(false);
+    const rush = createWarungRushState(plays);
+    this.committedActivity = {
+      source: "warungRush", activityId: "warung_lunch_rush", rush,
+      venueId: context.venueId, venueName: context.name, label: activity.label,
+      durationMin: activity.timeCost, elapsedMs: 0, realDurationMs: WARUNG_RUSH_FEEL_TUNING.roundDurationMs,
+      startedAt: this.getAbsoluteMinute()
+    };
+    this.mode = "warungRush";
+    this.world.activeActivity = { ...this.committedActivity };
+    this.createWarungRushVisuals();
+    this.createCommittedActivityOverlay(this.committedActivity);
+    saveWorldState(this.world);
+    this.showToast(`Lunch rush! Walk to Ibu's counter, then E / ACT at the matching table.`);
+  }
+
+  private handleWarungRushAction(): void {
+    const active = this.committedActivity;
+    if (!active || active.source !== "warungRush") return;
+    const interior = this.getActiveInterior();
+    if (!interior) return;
+    const counter = interior.stations.find((station) => station.id === "meal_counter");
+    if (counter && Phaser.Math.Distance.Between(this.player.x, this.player.y, counter.x, counter.y) <= counter.radius) {
+      const before = active.rush.heldDishId;
+      active.rush = pickUpWarungDish(active.rush);
+      this.showToast(active.rush.heldDishId && !before ? `Picked up ${WARUNG_DISH_LABELS[active.rush.heldDishId]}.` : "Hands full — deliver that dish first.");
+      return;
+    }
+    const tableId = this.getWarungRushTableId();
+    if (!tableId) {
+      this.showToast("Move to Ibu's counter or a customer table.");
+      return;
+    }
+    const result = serveWarungOrder(active.rush, tableId);
+    active.rush = result.state;
+    this.showToast(result.message);
+  }
+
+  private getWarungRushTableId(): string | undefined {
+    const interior = this.getActiveInterior();
+    if (!interior) return undefined;
+    const { x, y } = interior.origin;
+    const tables = [
+      { id: "left", x: x + TILE_SIZE * 2.35, y: y + TILE_SIZE * 4.55 },
+      { id: "right", x: x + TILE_SIZE * 8.75, y: y + TILE_SIZE * 4.8 },
+      { id: "counter", x: x + TILE_SIZE * 6.9, y: y + TILE_SIZE * 4.95 }
+    ];
+    return tables.find((table) => Phaser.Math.Distance.Between(this.player.x, this.player.y, table.x, table.y) <= TILE_SIZE * 0.95)?.id;
+  }
+
+  private createWarungRushVisuals(): void {
+    this.destroyWarungRushVisuals();
+    const interior = this.getActiveInterior();
+    if (!interior) return;
+    const { x, y } = interior.origin;
+    this.warungRushVisuals = this.add.graphics().setDepth(80);
+    const tables = [
+      { x: x + TILE_SIZE * 2.35, y: y + TILE_SIZE * 4.15 }, { x: x + TILE_SIZE * 8.75, y: y + TILE_SIZE * 4.4 }, { x: x + TILE_SIZE * 6.9, y: y + TILE_SIZE * 4.55 }
+    ];
+    this.warungRushCustomers = tables.map((table, index) => this.add.sprite(table.x, table.y, index % 2 ? "npc-kadek" : "npc-ibu_sari").setDepth(table.y + 3).setTint(index % 2 ? 0xffc4a2 : 0xaedbff).setScale(CHARACTER_SPRITE_SCALE * 0.82));
+    this.updateWarungRushVisuals();
+  }
+
+  private updateWarungRushVisuals(): void {
+    const active = this.committedActivity;
+    if (!active || active.source !== "warungRush" || !this.warungRushVisuals) return;
+    const interior = this.getActiveInterior();
+    if (!interior) return;
+    const { x, y } = interior.origin;
+    const tablePositions: Record<string, { x: number; y: number }> = {
+      left: { x: x + TILE_SIZE * 2.35, y: y + TILE_SIZE * 3.55 }, right: { x: x + TILE_SIZE * 8.75, y: y + TILE_SIZE * 3.8 }, counter: { x: x + TILE_SIZE * 6.9, y: y + TILE_SIZE * 3.95 }
+    };
+    this.warungRushVisuals.clear();
+    for (const order of active.rush.orders.filter((order) => order.status === "waiting")) {
+      const point = tablePositions[order.tableId]; if (!point) continue;
+      const ratio = order.patienceMs / order.maxPatienceMs;
+      this.warungRushVisuals.lineStyle(4, ratio > .5 ? 0x62c48f : ratio > .25 ? 0xf4b860 : 0xff7d70, .95);
+      this.warungRushVisuals.beginPath(); this.warungRushVisuals.arc(point.x, point.y, TILE_SIZE * .48, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ratio); this.warungRushVisuals.strokePath();
+      this.warungRushVisuals.fillStyle(0x101820, .9); this.warungRushVisuals.fillRoundedRect(point.x - 34, point.y - 25, 68, 15, 4);
+      // A small dish-color pip keeps the order readable at normal and touch zoom.
+      this.warungRushVisuals.fillStyle(order.dishId === "nasi_campur" ? 0xf4d58d : order.dishId === "mie_goreng" ? 0xe38b52 : 0x6ab7ff, 1); this.warungRushVisuals.fillCircle(point.x, point.y - 17, 5);
+    }
+  }
+
+  private destroyWarungRushVisuals(): void {
+    this.warungRushVisuals?.destroy(); this.warungRushVisuals = undefined;
+    this.warungRushCustomers.forEach((sprite) => sprite.destroy()); this.warungRushCustomers = [];
   }
 
   private startCommittedOpportunity(opportunityId: string, venueId: string): void {
@@ -4420,7 +5577,10 @@ export class GameScene extends Phaser.Scene {
     this.createCommittedActivityOverlay(this.committedActivity);
     this.playActivityCommitFlourish(this.player.x, this.player.y, template.title);
     saveWorldState(this.world);
-    this.showToast(`${template.title} started. ESC cancels early.`);
+    const activityHint = this.hudController.isTouchInputActive
+      ? "Use the on-screen controls."
+      : "ESC cancels early.";
+    this.showToast(`${template.title} started. ${activityHint}`);
   }
 
   private placePlayerAtCommittedVenue(node: VenueMapNode | undefined): void {
@@ -4447,14 +5607,27 @@ export class GameScene extends Phaser.Scene {
       this.committedActivityProgress.style.width = `${Math.round(progress * 100)}%`;
     }
     if (this.committedActivityStatus) {
-      this.committedActivityStatus.textContent =
-        active.source === "rideCheckpoint"
-          ? "React now -- this resolves in a moment."
-          : `Fast-forwarding ${elapsedMinutes}/${active.durationMin} in-game minutes`;
+      this.committedActivityStatus.textContent = `Fast-forwarding ${elapsedMinutes}/${active.durationMin} in-game minutes`;
     }
     if (progress >= 1) {
       this.completeCommittedActivity();
     }
+  }
+
+  private updateWarungRush(delta: number): void {
+    const active = this.committedActivity;
+    if (!active || active.source !== "warungRush" || this.mode !== "warungRush") return;
+    active.elapsedMs = Math.min(active.realDurationMs, active.elapsedMs + delta);
+    active.rush = updateWarungRush(active.rush, delta);
+    this.world.activeActivity = { ...active };
+    this.updateWarungRushVisuals();
+    const progress = active.elapsedMs / active.realDurationMs;
+    if (this.committedActivityProgress) this.committedActivityProgress.style.width = `${Math.round(progress * 100)}%`;
+    if (this.committedActivityStatus) {
+      const held = active.rush.heldDishId ? `Holding ${WARUNG_DISH_LABELS[active.rush.heldDishId]}` : "Hands empty — counter is ready";
+      this.committedActivityStatus.textContent = `${held} · Served ${active.rush.servedCount} · Left ${Math.ceil((active.realDurationMs - active.elapsedMs) / 1000)}s`;
+    }
+    if (progress >= 1) this.completeCommittedActivity();
   }
 
   private completeCommittedActivity(): void {
@@ -4468,12 +5641,14 @@ export class GameScene extends Phaser.Scene {
     this.mode = this.activeInteriorId ? "interior" : "world";
     const performanceScore = resolvePerformanceScore(active.minigame);
     active.performanceScore = performanceScore;
-    if (active.source === "rideCheckpoint") {
-      this.finishRideCheckpoint(active.checkpointId, performanceScore);
-      return;
-    }
     if (active.source === "scooterRepair") {
       this.finishScooterRepair(performanceScore);
+      return;
+    }
+    if (active.source === "warungRush") {
+      this.destroyWarungRushVisuals();
+      const context = getVenueActivityContext(active.venueId);
+      if (context) this.resolveVenueActivity(context, active.activityId, calculateWarungRushPerformance(active.rush));
       return;
     }
     if (active.source === "activity") {
@@ -4485,74 +5660,177 @@ export class GameScene extends Phaser.Scene {
       this.resolveVenueActivity(context, active.activityId, performanceScore);
       return;
     }
+    if (active.source === "rivalRace") {
+      return;
+    }
+    if (!active.opportunityId) {
+      this.showToast("Activity finished, but the opportunity was missing.");
+      return;
+    }
     this.finishCommittedOpportunity(active.opportunityId, performanceScore);
   }
 
-  private updateRideCheckpoints(): void {
-    if (this.mode !== "world") {
+  private updateDeliveryRideMode(delta: number): void {
+    const active = this.world.life.hustle.activeDelivery;
+    const deliveryRideActive = Boolean(active && active.stage === "picked_up");
+    const raceRideActive = Boolean(this.activeRivalRace);
+    if (!deliveryRideActive && !raceRideActive) {
+      this.clearDeliveryHazards();
       return;
     }
+    const rideId = deliveryRideActive ? active!.deliveryId : "leo_rival_race";
+    this.ensureDeliveryHazards(rideId);
+    if (active?.stage === "picked_up") {
+      active.rideRun ??= { elapsedMs: 0, hazardsSpawned: this.deliveryHazards.length, hazardsAvoided: 0, nearMisses: 0, contacts: 0 };
+      active.rideRun.elapsedMs += delta;
+      active.rideRun.hazardsSpawned = Math.max(active.rideRun.hazardsSpawned, this.deliveryHazards.length);
+    }
+    if (this.mode !== "world" || !this.playerState.onBike) return;
+
+    const elapsedMs = active?.rideRun?.elapsedMs ?? this.activeRivalRace?.elapsedMs ?? 0;
+    this.deliveryHazardContactCooldown = Math.max(0, this.deliveryHazardContactCooldown - delta);
+    const night = getTimePhase(this.world.clock.minuteOfDay) === "night";
+    const visibilityDistance = scaleDistance(getHazardVisibilityDistance(night));
+    const awarenessDistance = scaleDistance(DELIVERY_RIDE_FEEL_TUNING.awarenessRadius);
+    const contactDistance = scaleDistance(DELIVERY_RIDE_FEEL_TUNING.contactRadius);
+    const nearMissDistance = scaleDistance(DELIVERY_RIDE_FEEL_TUNING.nearMissRadius);
+
+    for (const hazard of this.deliveryHazards) {
+      if (hazard.definition.kind === "pedestrian") {
+        hazard.visual.x = Math.sin(elapsedMs / 1500 + hazard.definition.y) * scaleDistance(42);
+      }
+      const hazardX = hazard.definition.x + hazard.visual.x;
+      const hazardY = hazard.definition.y;
+      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, hazardX, hazardY);
+      hazard.visual.setAlpha(night && distance > visibilityDistance ? 0.12 : hazard.resolved ? 0.28 : 0.92);
+      if (hazard.resolved) continue;
+      if (distance <= awarenessDistance) hazard.approached = true;
+
+      if (
+        distance <= contactDistance &&
+        this.deliveryHazardContactCooldown <= 0
+      ) {
+        const contact = applyDeliveryHazardContact();
+        const cargoDamage = this.damageActiveDeliveryCargo(contact.cargoReason);
+        if (active?.rideRun) active.rideRun.contacts += 1;
+        hazard.resolved = true;
+        this.deliveryHazardContactCooldown = DELIVERY_RIDE_FEEL_TUNING.contactCooldownMs;
+        this.applyDeliverySpeedStumble(contact.speedMultiplier);
+        this.cameras.main.shake(130, 0.0035);
+        this.spawnFloatingText(
+          cargoDamage?.damaged ? `Cargo -${cargoDamage.amount}%` : "Stumble",
+          this.player.x,
+          this.player.y - scaleDistance(34),
+          "#f4b860"
+        );
+        this.showToast(`${this.hazardLabel(hazard.definition.kind)} — soft hit, keep riding.`);
+        continue;
+      }
+      if (
+        !hazard.nearMissed &&
+        distance > contactDistance &&
+        distance <= nearMissDistance &&
+        (this.rideModelOutput?.speedRatio ?? 0) >= RIDE_FEEL_TUNING.nearMissMinimumSpeedRatio
+      ) {
+        hazard.nearMissed = true;
+        this.recordDeliveryNearMiss();
+      }
+      if (hazard.approached && distance > awarenessDistance * 1.15) {
+        hazard.resolved = true;
+        if (active?.rideRun) active.rideRun.hazardsAvoided += 1;
+      }
+    }
+  }
+
+  private ensureDeliveryHazards(deliveryId: string): void {
+    if (this.deliveryHazardDeliveryId === deliveryId) return;
+    this.clearDeliveryHazards();
+    this.deliveryHazardDeliveryId = deliveryId;
+    const definitions = getDeliveryHazards(this.world.life.actProgress.currentAct, deliveryId);
+    this.deliveryHazards = definitions.map((definition) => ({
+      definition,
+      visual: this.createDeliveryHazardVisual(definition),
+      approached: false,
+      resolved: false,
+      nearMissed: false
+    }));
+  }
+
+  private createDeliveryHazardVisual(definition: DeliveryHazardDefinition): Phaser.GameObjects.Graphics {
+    const visual = this.add.graphics().setPosition(0, 0).setDepth(definition.y + 2);
+    if (definition.kind === "pothole") {
+      visual.fillStyle(0x443a32, 0.94);
+      visual.fillEllipse(definition.x, definition.y, scaleDistance(42), scaleDistance(24));
+      visual.lineStyle(Math.max(1, scaleDistance(2)), 0x8d806d, 0.72);
+      visual.strokeEllipse(definition.x, definition.y, scaleDistance(42), scaleDistance(24));
+    } else if (definition.kind === "puddle") {
+      visual.fillStyle(0x4e98ad, 0.58);
+      visual.fillEllipse(definition.x, definition.y, scaleDistance(48), scaleDistance(25));
+      visual.lineStyle(Math.max(1, scaleDistance(2)), 0x9ee6df, 0.5);
+      visual.strokeEllipse(definition.x, definition.y, scaleDistance(48), scaleDistance(25));
+    } else {
+      visual.fillStyle(0x253a35, 0.9);
+      visual.fillCircle(definition.x, definition.y - scaleDistance(10), scaleDistance(7));
+      visual.lineStyle(scaleDistance(4), 0xf2c35d, 0.92);
+      visual.lineBetween(definition.x, definition.y - scaleDistance(2), definition.x, definition.y + scaleDistance(16));
+      visual.lineBetween(definition.x, definition.y + scaleDistance(6), definition.x - scaleDistance(8), definition.y + scaleDistance(18));
+      visual.lineBetween(definition.x, definition.y + scaleDistance(6), definition.x + scaleDistance(8), definition.y + scaleDistance(18));
+    }
+    return visual;
+  }
+
+  private clearDeliveryHazards(): void {
+    for (const hazard of this.deliveryHazards) hazard.visual.destroy();
+    this.deliveryHazards = [];
+    this.deliveryHazardDeliveryId = null;
+    this.deliveryHazardContactCooldown = 0;
+  }
+
+  private recordDeliveryNearMiss(): void {
+    const active = this.world.life.hustle.activeDelivery;
+    if (!active?.rideRun || active.stage !== "picked_up") return;
+    active.rideRun.nearMisses += 1;
+  }
+
+  private applyDeliverySpeedStumble(multiplier: number): void {
+    this.rideModelState = {
+      ...this.rideModelState,
+      velocityX: this.rideModelState.velocityX * multiplier,
+      velocityY: this.rideModelState.velocityY * multiplier
+    };
+    this.player.setVelocity(this.rideModelState.velocityX, this.rideModelState.velocityY);
+  }
+
+  private hazardLabel(kind: DeliveryHazardDefinition["kind"]): string {
+    return kind === "pothole" ? "Pothole" : kind === "puddle" ? "Puddle" : "Pedestrian crossing";
+  }
+
+  private isRideSurfaceSlick(): boolean {
+    const active = this.world.life.hustle.activeDelivery;
+    return Boolean(active?.conditionId?.includes("rain"));
+  }
+
+  private getActiveCargoIntegrity(): number | null {
+    const active = this.world.life.hustle.activeDelivery;
+    if (!active || active.stage !== "picked_up" || active.cargoIntegrity == null) {
+      return null;
+    }
+    return Phaser.Math.Clamp(Math.round(active.cargoIntegrity), 0, 100);
+  }
+
+  private damageActiveDeliveryCargo(reason: "traffic_hit" | "hard_collision"): ReturnType<typeof applyCargoDamage> | null {
     const active = this.world.life.hustle.activeDelivery;
     if (!active || active.stage !== "picked_up") {
-      return;
+      return null;
     }
-    const checkpoints = getRideCheckpointsForDelivery(active.deliveryId, active.conditionId);
-    for (const checkpoint of checkpoints) {
-      if (this.activeDeliveryResolvedCheckpointIds.includes(checkpoint.id)) {
-        continue;
-      }
-      const position = resolveRideCheckpointPosition(checkpoint);
-      if (!position) {
-        continue;
-      }
-      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, position.x, position.y);
-      if (distance <= scaleDistance(checkpoint.radius)) {
-        this.startRideCheckpoint(checkpoint);
-        return;
-      }
+    const delivery = getDeliveryDefinition(active.deliveryId);
+    if (!delivery) {
+      return null;
     }
-  }
-
-  private startRideCheckpoint(checkpoint: RideCheckpointDefinition): void {
-    this.closePanel(false);
-    this.mode = "committedActivity";
-    this.committedActivity = {
-      source: "rideCheckpoint",
-      checkpointId: checkpoint.id,
-      venueId: checkpoint.deliveryId,
-      venueName: "En route",
-      label: "Ride Checkpoint",
-      durationMin: 0,
-      elapsedMs: 0,
-      realDurationMs: 3200,
-      startedAt: this.getAbsoluteMinute(),
-      minigame: createActiveMinigame(getActivityMinigameDefinition(checkpoint.minigameId))
-    };
-    this.world.activeActivity = { ...this.committedActivity };
-    this.createCommittedActivityOverlay(this.committedActivity);
-    this.showToast(checkpoint.arriveToast);
-  }
-
-  private finishRideCheckpoint(checkpointId: string, performanceScore: number | undefined): void {
-    const score = performanceScore ?? 0.72;
-    this.activeDeliveryResolvedCheckpointIds.push(checkpointId);
-    this.activeDeliveryPerformanceScores.push(score);
-    const activeDelivery = this.world.life.hustle.activeDelivery;
-    const checkpoint = getRideCheckpointsForDelivery(activeDelivery?.deliveryId ?? "", activeDelivery?.conditionId).find(
-      (candidate) => candidate.id === checkpointId
-    );
-    if (checkpoint) {
-      this.showToast(pickOutcomeToast(checkpoint, score));
-    }
-    saveWorldState(this.world);
-  }
-
-  private averageRideCheckpointPerformance(): number | undefined {
-    if (this.activeDeliveryPerformanceScores.length === 0) {
-      return undefined;
-    }
-    const sum = this.activeDeliveryPerformanceScores.reduce((total, score) => total + score, 0);
-    return sum / this.activeDeliveryPerformanceScores.length;
+    const result = applyCargoDamage(active.cargoIntegrity ?? 100, reason);
+    active.cargoIntegrity = result.after;
+    active.cargoDamageEvents = (active.cargoDamageEvents ?? 0) + (result.damaged ? 1 : 0);
+    return result;
   }
 
   private finishCommittedOpportunity(opportunityId: string, performanceScore?: number): void {
@@ -4568,13 +5846,12 @@ export class GameScene extends Phaser.Scene {
       this.closePanel();
       return;
     }
-    if (this.committedActivity.source === "rideCheckpoint") {
-      return;
-    }
     const label = this.committedActivity.label;
+    const wasWarungRush = this.committedActivity.source === "warungRush";
     this.committedActivity = undefined;
     this.world.activeActivity = null;
     this.destroyCommittedActivityOverlay();
+    if (wasWarungRush) this.destroyWarungRushVisuals();
     this.mode = this.activeInteriorId ? "interior" : "world";
     saveWorldState(this.world);
     this.showToast(`${label} cancelled. No reward earned.`);
@@ -4584,11 +5861,46 @@ export class GameScene extends Phaser.Scene {
     if (!this.world.activeActivity) {
       return;
     }
+    if (this.world.activeActivity.source === "rivalRace") {
+      this.resumeRivalRace(this.world.activeActivity);
+      return;
+    }
+    if (this.world.activeActivity.source === "warungRush") {
+      const interior = interiorDefinitions.warung_sari_interior;
+      this.activeInteriorId = interior.id;
+      this.applyInteriorCameraBounds(interior);
+      this.placePlayerSprite(interior.entrance, false);
+      this.committedActivity = { ...this.world.activeActivity };
+      this.mode = "warungRush";
+      this.createWarungRushVisuals();
+      this.createCommittedActivityOverlay(this.committedActivity);
+      return;
+    }
     this.committedActivity = { ...this.world.activeActivity };
     this.mode = "committedActivity";
     const node = venueMapNodes.find((candidate) => candidate.venueId === this.committedActivity?.venueId);
     this.placePlayerAtCommittedVenue(node);
     this.createCommittedActivityOverlay(this.committedActivity);
+  }
+
+  private resumeRivalRace(active: Extract<ActiveActivityState, { source: "rivalRace" }>): void {
+    this.prepareExteriorRaceStart();
+    const progress = Math.max(0, Math.min(1, active.elapsedMs / Math.max(1, RIO_RACE.maxRaceMs)));
+    this.activeRivalRace = {
+      config: RIO_RACE,
+      elapsedMs: active.elapsedMs,
+      checkpointIndex: Math.max(1, Math.min(RIO_RACE.route.length - 1, Math.round(progress * (RIO_RACE.route.length - 1)))),
+      ghostProgress: Math.min(0.92, progress)
+    };
+    const ghostPosition = getRivalRaceRoutePosition(RIO_RACE, this.activeRivalRace.ghostProgress);
+    this.rivalRaceGhost?.destroy();
+    this.rivalRaceGhost = this.add.sprite(ghostPosition.x, ghostPosition.y, "npc-rio").setDepth(ghostPosition.y + 2);
+    this.setSpriteFacing(this.rivalRaceGhost, false, CHARACTER_SPRITE_SCALE);
+    this.showToast(`Race resumed. Hit the next marker. ${this.getRaceConcedeHint()}`);
+  }
+
+  private getRaceConcedeHint(): string {
+    return this.hudController.isTouchInputActive ? "QUIT concedes." : "ESC concedes.";
   }
 
   private updateCommittedMinigame(delta: number): void {
@@ -4684,10 +5996,7 @@ export class GameScene extends Phaser.Scene {
 
     const status = document.createElement("div");
     status.className = "bali-life-activity-progress-status";
-    status.textContent =
-      active.source === "rideCheckpoint"
-        ? "React now -- this resolves in a moment."
-        : `Fast-forwarding 0/${active.durationMin} in-game minutes`;
+    status.textContent = `Fast-forwarding 0/${active.durationMin} in-game minutes`;
 
     const minigame = this.createCommittedMinigameElement(active);
 
@@ -4705,9 +6014,7 @@ export class GameScene extends Phaser.Scene {
     if (minigame) {
       overlay.appendChild(minigame);
     }
-    if (active.source !== "rideCheckpoint") {
-      overlay.appendChild(cancel);
-    }
+    overlay.appendChild(cancel);
     document.body.appendChild(overlay);
     this.committedActivityOverlay = overlay;
     this.committedActivityProgress = fill;
@@ -4818,7 +6125,7 @@ export class GameScene extends Phaser.Scene {
     saveWorldState(this.world);
 
     const moneyCopy = cost < 0 ? `Rp ${Math.abs(cost)} earned` : cost > 0 ? `Rp ${cost} spent` : "free";
-    const meterCopy = formatMeterDeltaSummary(event.participation.meterDeltas);
+    const meterCopy = formatMeterDeltaSummary(this.world, event.participation.meterDeltas);
     const details = `${moneyCopy}${meterCopy ? ` | ${meterCopy}` : ""}`;
     this.showToast(goalMessage ? `${intentResult.message} ${details}. ${goalMessage}` : `${intentResult.message} ${details}.`);
     this.openVenueActivityMenu(event.locationVenueId);
@@ -4923,8 +6230,8 @@ export class GameScene extends Phaser.Scene {
 
     this.playerState.money -= rental.buyPrice;
     this.playerState.hasBike = true;
-    this.playerState.onBike = true;
     this.playerState.bikeStuck = false;
+    this.setPlayerBikeMode(false);
     this.playerState.bikeCondition = 100;
     this.playerState.tutorialStep = "join_group";
     if (getQuantity(this.playerState, SCOOTER_KEY_ITEM_ID) === 0) {
@@ -4938,7 +6245,6 @@ export class GameScene extends Phaser.Scene {
       detail: rental.name
     });
     saveWorldState(this.world);
-    this.updatePlayerBikeVisual();
     this.showToast("Scooter rented. Berawa suddenly feels connected. Press B to park or ride.");
     this.renderShopPanel(shop);
   }
@@ -4963,10 +6269,12 @@ export class GameScene extends Phaser.Scene {
     const joined = group ? this.playerState.joinedGroupIds.includes(group.id) : false;
     const matchingShop = Object.values(shopDefinitions).find((shop) => shop.name === activity.venueName);
     const costLine = activity.moneyCost > 0 ? `Cost: Rp ${activity.moneyCost}` : "Cost: free";
-    const energyLine =
-      activity.socialEnergyDelta < 0
+    const advancedMetersVisible = areAdvancedMetersVisible(this.world);
+    const energyLine = advancedMetersVisible
+      ? activity.socialEnergyDelta < 0
         ? `Social energy: ${activity.socialEnergyDelta}`
-        : `Social energy: +${activity.socialEnergyDelta}`;
+        : `Social energy: +${activity.socialEnergyDelta}`
+      : "Rest cost: handled by Energy";
     const redemptionLine = activity.isRedemption
       ? `\nRepair: Rep +${activity.reputationReward ?? 0}  |  Wanted -${activity.wantedReduction ?? 0}  |  Bounty -Rp ${activity.bountyReduction ?? 0}`
       : "";
@@ -4995,7 +6303,9 @@ export class GameScene extends Phaser.Scene {
     content.className = "bali-life-activity-menu-content";
     this.appendActivityMenuRow(content, {
       title: "Plan",
-      body: `${activity.description}\n${costLine} | Focus ${activity.focusReward >= 0 ? "+" : ""}${activity.focusReward} | ${energyLine} | Links +${activity.connectionReward}${redemptionLine}`,
+      body: `${activity.description}\n${costLine}${
+        advancedMetersVisible ? ` | Focus ${activity.focusReward >= 0 ? "+" : ""}${activity.focusReward}` : ""
+      } | ${energyLine} | Links +${activity.connectionReward}${redemptionLine}`,
       actionLabel: "Do Activity",
       onAction: () => this.participateInActivity(activity)
     });
@@ -5043,7 +6353,11 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (activity.socialEnergyDelta < 0 && this.world.meters.social < Math.abs(activity.socialEnergyDelta)) {
+    if (
+      areAdvancedMetersVisible(this.world) &&
+      activity.socialEnergyDelta < 0 &&
+      this.world.meters.social < Math.abs(activity.socialEnergyDelta)
+    ) {
       this.showToast("Your social battery is too low. Try a calmer activity first.");
       return;
     }
@@ -5126,7 +6440,12 @@ export class GameScene extends Phaser.Scene {
         this.showToast("Bike lines are blocked because someone in the party does not have a bike.");
         return;
       }
-      this.playerState.onBike = true;
+      if (!this.setPlayerBikeMode(true)) {
+        this.showToast("Step back outside before mounting for a bike line.");
+        return;
+      }
+    } else {
+      this.setPlayerBikeMode(false);
     }
 
     this.clearGroupLine();
@@ -5290,12 +6609,11 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.playerState.bikeStuck = false;
-    this.playerState.onBike = true;
+    this.setPlayerBikeMode(true);
     this.playerState.bikeCondition = Phaser.Math.Clamp(this.playerState.bikeCondition + 8, 1, 100);
     this.playerState.tutorialStep = "free_roam";
     this.syncGroupWorldState("traveling");
     saveWorldState(this.world);
-    this.updatePlayerBikeVisual();
     this.showToast("The group hauled the bike out. Mud lesson learned.");
   }
 
@@ -5408,6 +6726,7 @@ export class GameScene extends Phaser.Scene {
         36,
         "Walk Line",
         () => {
+          this.closePanel();
           this.startGroupTravel(activeGroupId, "walk");
           this.openCommunityBoard();
         },
@@ -5421,6 +6740,7 @@ export class GameScene extends Phaser.Scene {
         36,
         "Bike Line",
         () => {
+          this.closePanel();
           this.startGroupTravel(activeGroupId, "bike");
           this.openCommunityBoard();
         },
@@ -5452,7 +6772,7 @@ export class GameScene extends Phaser.Scene {
       this.add.text(
         x + 22,
         y + 56,
-        `Money: Rp ${this.playerState.money}  |  Energy ${this.world.meters.energy}  |  Wellbeing ${this.world.meters.wellbeing}  |  Focus ${this.world.meters.focus}  |  Social ${this.world.meters.social}\nRep ${getReputationScore(this.world.reputation)}  |  Wanted ${getWantedLevel(this.world.reputation)}  |  Bounty Rp ${getBounty(this.world.reputation)}  |  ${this.getBikeStatusLabel()}`,
+        `Money: Rp ${this.playerState.money}  |  ${formatVisibleMeterValues(this.world)}\nRep ${getReputationScore(this.world.reputation)}  |  Wanted ${getWantedLevel(this.world.reputation)}  |  Bounty Rp ${getBounty(this.world.reputation)}  |  ${this.getBikeStatusLabel()}`,
         {
           ...this.panelBodyStyle(),
           wordWrap: { width: panelWidth - 44 }
@@ -5513,7 +6833,7 @@ export class GameScene extends Phaser.Scene {
     this.openDialogue(copy.title, copy.body);
   }
 
-  private updateMapDiscovery(initial = false): void {
+  private updateMapDiscovery(initial = false, persist = true): void {
     const discovery = this.world.mapDiscovery;
     let changed = false;
     const newVenueNames: string[] = [];
@@ -5542,7 +6862,9 @@ export class GameScene extends Phaser.Scene {
       this.updateDiscoveryLabelVisibility();
     }
     if (changed) {
-      saveWorldState(this.world);
+      if (persist) {
+        saveWorldState(this.world);
+      }
       if (!initial && newVenueNames.length > 0 && this.discoveryToastCooldown <= 0) {
         this.discoveryToastCooldown = 2600;
         this.showToast(`Map updated: ${newVenueNames[0]} discovered.`);
@@ -5613,6 +6935,24 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private updateStreetSignVisibility(): void {
+    const maxDistance = scaleDistance(250);
+    const visibleIds = new Set(
+      selectVisibleStreetSignIds(
+        this.streetSigns.map(({ venueId, label }) => ({ venueId, x: label.x, y: label.y })),
+        this.player,
+        3,
+        maxDistance
+      )
+    );
+    for (const { venueId, label } of this.streetSigns) {
+      const visible = visibleIds.has(venueId) && !this.activeInteriorId;
+      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, label.x, label.y);
+      label.setVisible(visible);
+      label.setAlpha(visible ? Phaser.Math.Clamp(1 - distance / maxDistance, 0.48, 1) : 0);
+    }
+  }
+
   private getOpportunityTemplateSafe(templateId: string) {
     return getOpportunityTemplate(templateId);
   }
@@ -5670,7 +7010,7 @@ export class GameScene extends Phaser.Scene {
     this.opportunityMarkerZones = [];
 
     for (const opportunity of this.world.opportunities.live) {
-      const node = venueMapNodes.find((candidate) => candidate.venueId === opportunity.locationVenueId);
+      const node = resolveWorldSceneVenueAnchor(opportunity.locationVenueId);
       const template = opportunity.templateId ? this.getOpportunityTemplateSafe(opportunity.templateId) : undefined;
       if (!node || !template) {
         continue;
@@ -5711,6 +7051,43 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private drawRivalRaceMarkers(): void {
+    if (!this.rivalRaceMarkerLayer) {
+      return;
+    }
+    this.rivalRaceMarkerLayer.clear();
+    const race = this.activeRivalRace;
+    if (!race) {
+      return;
+    }
+    race.config.route.forEach((point, index) => {
+      if (index === 0) {
+        return;
+      }
+      const isNext = index === race.checkpointIndex;
+      const reached = index < race.checkpointIndex;
+      const radius = scaleDistance(isNext ? 24 : 16);
+      this.rivalRaceMarkerLayer.fillStyle(0x101820, reached ? 0.26 : 0.62);
+      this.rivalRaceMarkerLayer.fillCircle(point.x, point.y, radius + scaleDistance(5));
+      this.rivalRaceMarkerLayer.lineStyle(scaleDistance(isNext ? 4 : 2), isNext ? 0xfff0bd : 0xff5d5d, isNext ? 0.95 : 0.5);
+      this.rivalRaceMarkerLayer.strokeCircle(point.x, point.y, radius);
+      this.rivalRaceMarkerLayer.fillStyle(reached ? 0x62c48f : isNext ? 0xfff0bd : 0xff5d5d, reached ? 0.72 : 0.92);
+      this.rivalRaceMarkerLayer.fillCircle(point.x, point.y, scaleDistance(isNext ? 8 : 5));
+      if (isNext) {
+        this.rivalRaceMarkerLayer.lineStyle(scaleDistance(2), 0xfff0bd, 0.82);
+        this.rivalRaceMarkerLayer.lineBetween(point.x - scaleDistance(16), point.y - scaleDistance(28), point.x - scaleDistance(16), point.y + scaleDistance(8));
+        this.rivalRaceMarkerLayer.fillTriangle(
+          point.x - scaleDistance(16),
+          point.y - scaleDistance(28),
+          point.x + scaleDistance(12),
+          point.y - scaleDistance(20),
+          point.x - scaleDistance(16),
+          point.y - scaleDistance(12)
+        );
+      }
+    });
+  }
+
   private drawWorldInteractionScenes(): void {
     if (!this.worldSceneLayer) {
       return;
@@ -5720,7 +7097,7 @@ export class GameScene extends Phaser.Scene {
     const phase = Date.now() / 1000;
 
     for (const scene of getOpportunityWorldScenes(this.world)) {
-      const node = venueMapNodes.find((candidate) => candidate.venueId === scene.venueId);
+      const node = resolveWorldSceneVenueAnchor(scene.venueId);
       if (!node) {
         continue;
       }
@@ -5730,8 +7107,22 @@ export class GameScene extends Phaser.Scene {
       this.drawOpportunityWorldScene(scene, x, y, phase, activeLabelIds);
     }
 
+    for (const scene of getRivalRaceWorldScenes(this.world)) {
+      const node = resolveWorldSceneVenueAnchor(scene.venueId);
+      if (!node) {
+        continue;
+      }
+      const yOffset = Math.min(node.radius + scaleDistance(24), scaleDistance(92));
+      this.drawOpportunityWorldScene(scene, node.x, node.y - yOffset, phase, activeLabelIds);
+    }
+    for (const scene of getAct1IncitingHookWorldScenes(this.world)) {
+      const node = resolveWorldSceneVenueAnchor(scene.venueId);
+      if (!node) continue;
+      this.drawOpportunityWorldScene(scene, node.x, node.y - scaleDistance(58), phase, activeLabelIds);
+    }
+
     for (const scene of getEventWorldScenes(this.world)) {
-      const node = venueMapNodes.find((candidate) => candidate.venueId === scene.venueId);
+      const node = resolveWorldSceneVenueAnchor(scene.venueId);
       if (!node) {
         continue;
       }
@@ -5777,6 +7168,22 @@ export class GameScene extends Phaser.Scene {
       this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(1)), 0xffc6a6, 0.52);
       this.worldSceneLayer.lineBetween(x + scaleDistance(8), y + scaleDistance(17), x + scaleDistance(22), y + scaleDistance(17));
       this.drawWorldSceneSign(scene, x, y - scaleDistance(26), activeLabelIds, 0xffc6a6);
+      return;
+    }
+
+    if (scene.sceneKind === "race_challenge") {
+      this.drawWorldSceneActors(scene.actors, x - scaleDistance(24), y, phase, 1);
+      const flagX = x + scaleDistance(18);
+      const flagY = y + scaleDistance(4);
+      this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(2)), 0xfff0bd, 0.9);
+      this.worldSceneLayer.lineBetween(flagX, flagY - scaleDistance(26), flagX, flagY + scaleDistance(24));
+      for (let index = 0; index < 3; index += 1) {
+        this.worldSceneLayer.fillStyle(index % 2 === 0 ? 0xfff0bd : 0x101820, 0.95);
+        this.worldSceneLayer.fillRect(flagX, flagY - scaleDistance(26) + index * scaleDistance(7), scaleDistance(22), scaleDistance(7));
+      }
+      this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(2)), 0xff5d5d, 0.72 + Math.sin(phase * 7) * 0.14);
+      this.worldSceneLayer.strokeCircle(x + scaleDistance(14), y + scaleDistance(18), scaleDistance(24));
+      this.drawWorldSceneSign(scene, x, y - scaleDistance(30), activeLabelIds, 0xff5d5d);
       return;
     }
 
@@ -6019,6 +7426,19 @@ export class GameScene extends Phaser.Scene {
       const width = entry.visualClass === "main" ? 2.3 : entry.visualClass === "secondary" ? 1.5 : 0.9;
       const color = entry.visualClass === "main" ? 0xe5d08f : entry.visualClass === "secondary" ? 0xb9b49d : 0x7c897b;
       this.strokeMinimapPath(ctx, entry.road.points, layout, width, color, entry.visualClass === "lane" ? 0.58 : 0.86);
+    }
+
+    for (const parcel of walkableStreetParcels) {
+      this.fillRoundedRect(
+        ctx,
+        layout.offsetX + parcel.tileX * TILE_SIZE * layout.scale,
+        layout.offsetY + parcel.tileY * TILE_SIZE * layout.scale,
+        parcel.widthTiles * TILE_SIZE * layout.scale,
+        Math.max(1.5, parcel.heightTiles * TILE_SIZE * layout.scale),
+        1,
+        0xd1a968,
+        0.9
+      );
     }
 
     this.drawMinimapDiscoveredVenues(ctx, layout);
@@ -6331,7 +7751,12 @@ export class GameScene extends Phaser.Scene {
     });
     addGodButton("Toggle Bike", () => {
       this.playerState.hasBike = true;
-      this.playerState.onBike = !this.playerState.onBike;
+      this.playerState.onBike = resolveRequestedBikeState(
+        !this.playerState.onBike,
+        this.activeInteriorId ? "interior" : "world",
+        this.playerState.hasBike,
+        this.activeInteriorId
+      );
       if (getQuantity(this.playerState, SCOOTER_KEY_ITEM_ID) === 0) {
         addItem(this.playerState, SCOOTER_KEY_ITEM_ID, 1);
       }
@@ -6360,7 +7785,12 @@ export class GameScene extends Phaser.Scene {
       this.world.life.hustle.deliveryEarnings = Math.max(this.world.life.hustle.deliveryEarnings, 160);
       this.world.life.hustle.driverRating = Math.max(this.world.life.hustle.driverRating, 3.6);
       this.playerState.hasBike = true;
-      this.playerState.onBike = true;
+      this.playerState.onBike = resolveRequestedBikeState(
+        true,
+        this.activeInteriorId ? "interior" : "world",
+        this.playerState.hasBike,
+        this.activeInteriorId
+      );
       this.playerState.bikeStuck = false;
       this.playerState.bikeCondition = Math.max(this.playerState.bikeCondition, 48);
       if (getQuantity(this.playerState, SCOOTER_KEY_ITEM_ID) === 0) {
@@ -6540,10 +7970,6 @@ export class GameScene extends Phaser.Scene {
     addItem(this.playerState, pickup.itemId, 1);
     this.world.collectedPickups[pickup.id] = this.getAbsoluteMinute();
     saveWorldState(this.world);
-    if (pickup.itemId === "elena_notebook" || pickup.itemId === "elena_sim") {
-      this.showToast(`Collected ${itemDefinitions[pickup.itemId].name}. You ask Ibu Sari whose it was. She just says: "Besok ya."`);
-      return;
-    }
     this.showToast(`Collected ${itemDefinitions[pickup.itemId].name}.`);
   }
 
@@ -6655,7 +8081,7 @@ export class GameScene extends Phaser.Scene {
         continue;
       }
       const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, slot.x, slot.y);
-      if (distance <= scaleDistance(40)) {
+      if (distance <= INTERIOR_NPC_INTERACTION_RADIUS) {
         candidates.push({
           type: "npc",
           id: slot.npcId,
@@ -6712,22 +8138,87 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     const wasPickup = active.stage === "accepted";
+    const now = this.getAbsoluteMinute();
+    const performanceScore = wasPickup ? undefined : getDeliveryRunPerformance(active);
+    const previousMoney = this.playerState.money;
+    const previousDriverRating = this.world.life.hustle.driverRating;
+    const previousAct = this.world.life.actProgress.currentAct;
+    const rentAmount = this.world.life.hustle.rentAmount;
+    let chapterCutsceneDelayMs = 0;
     const result =
       wasPickup
-        ? pickupDelivery(this.world, this.getAbsoluteMinute())
-        : completeDelivery(this.world, this.getAbsoluteMinute(), this.averageRideCheckpointPerformance());
+        ? pickupDelivery(this.world, now)
+        : completeDelivery(this.world, now, performanceScore);
     if (result.ok && wasPickup) {
-      this.activeDeliveryResolvedCheckpointIds = [];
-      this.activeDeliveryPerformanceScores = [];
+      this.ensureDeliveryHazards(active.deliveryId);
       completeAct0Step(this.world, "pickup_first_delivery");
       this.spawnInteractionFlourish("pickup", this.player.x, this.player.y, "Picked up");
     } else if (result.ok && !this.world.life.hustle.activeDelivery) {
+      this.clearDeliveryHazards();
+      const negotiatedFee = applyAct0NegotiatedCompletionFee(this.world, active.deliveryId);
+      if (negotiatedFee > 0) {
+        result.payout = (result.payout ?? 0) + negotiatedFee;
+        result.message += ` Negotiated fee +Rp ${negotiatedFee}.`;
+      }
       completeAct0Step(this.world, "dropoff_first_delivery");
       this.refreshSettlingInGoals(false);
-      this.playDeliveryFlourish(this.player.x, this.player.y, result.payout);
+      const celebration = buildPayoutCelebrationSpec({
+        payout: result.payout ?? 0,
+        starRating: result.starRating ?? this.world.life.hustle.driverRating,
+        previousDriverRating,
+        nextDriverRating: this.world.life.hustle.driverRating,
+        previousMoney,
+        nextMoney: this.playerState.money,
+        rentAmount,
+        performanceScore
+      });
+      chapterCutsceneDelayMs = getChapterCutsceneDelayMs(
+        previousAct,
+        this.world.life.actProgress.currentAct,
+        celebration.totalDurationMs
+      );
+      this.playDeliveryFlourish(this.player.x, this.player.y, result.payout, celebration);
+      this.showCargoCareDeliveryReaction(active.deliveryId, result);
+      if (active.deliveryId === "act0_ibu_milk_madu_catering") {
+        this.world.questFlags.act0_catering_on_time = Boolean(result.onTime);
+        const line = result.onTime
+          ? this.world.questFlags.act0_negotiated_fee
+            ? "Ibu Sari texts: ‘Fee earned. And yes, I remember that you asked.’"
+            : "Ibu Sari texts: ‘On time. Keep the keys — and keep your word.’"
+          : "Ibu Sari texts: ‘Late. No bonus. But you finished — bring the scooter back in one piece.’";
+        this.time.delayedCall(900, () => this.showToast(line));
+      }
     }
     saveWorldState(this.world);
     this.showToast(result.message);
+    if (result.ok && !wasPickup) {
+      if (chapterCutsceneDelayMs > 0) {
+        this.time.delayedCall(chapterCutsceneDelayMs, () => {
+          if (!shouldAdvanceGameplayBehindMenu(this.mode)) {
+            this.pendingAct2CutscenePreviousAct = previousAct;
+            return;
+          }
+          this.maybeStartAct2Cutscene(previousAct);
+        });
+      } else {
+        this.maybeStartAct2Cutscene(previousAct);
+      }
+    }
+  }
+
+  private showCargoCareDeliveryReaction(deliveryId: string, result: ReturnType<typeof completeDelivery>): void {
+    const cargo = result.cargoCare;
+    if (!cargo || !cargo.eligible || cargo.originalBonus <= 0) {
+      return;
+    }
+    if (cargo.lostBonus > 0 && cargo.integrity < 45) {
+      this.showNpcAmbientLine("kadek", "\"That box sounds like it met every pothole on the lane.\"");
+      return;
+    }
+    const delivery = getDeliveryDefinition(deliveryId);
+    if (cargo.integrity >= 95 && delivery?.dropoffName.toLowerCase().includes("villa")) {
+      this.spawnFloatingText("Villa staff: \"Still perfect.\"", this.player.x, this.player.y - scaleDistance(52), "#fff0bd");
+    }
   }
 
   private drawObjectiveMarkers(): void {
@@ -6735,7 +8226,6 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.deliveryMarkerLayer.clear();
-    this.drawRideCheckpointMarkers();
     const targets = this.getFieldObjectiveTargets();
     for (const target of targets) {
       const pulse = 0.55 + Math.sin(Date.now() / 180) * 0.12;
@@ -6748,37 +8238,6 @@ export class GameScene extends Phaser.Scene {
       this.deliveryMarkerLayer.fillTriangle(target.x, target.y - 34, target.x - 16, target.y - 8, target.x + 16, target.y - 8);
       this.deliveryMarkerLayer.lineStyle(2, 0xfff0bd, 0.9);
       this.deliveryMarkerLayer.strokeTriangle(target.x, target.y - 34, target.x - 16, target.y - 8, target.x + 16, target.y - 8);
-    }
-  }
-
-  private drawRideCheckpointMarkers(): void {
-    const active = this.world.life.hustle.activeDelivery;
-    if (!active || active.stage !== "picked_up") {
-      return;
-    }
-    const pulse = 0.5 + Math.sin(Date.now() / 160) * 0.14;
-    for (const checkpoint of getRideCheckpointsForDelivery(active.deliveryId, active.conditionId)) {
-      if (this.activeDeliveryResolvedCheckpointIds.includes(checkpoint.id)) {
-        continue;
-      }
-      const position = resolveRideCheckpointPosition(checkpoint);
-      if (!position) {
-        continue;
-      }
-      const radius = scaleDistance(15);
-      this.deliveryMarkerLayer.fillStyle(0x101820, 0.28);
-      this.deliveryMarkerLayer.fillCircle(position.x, position.y, radius + scaleDistance(5));
-      this.deliveryMarkerLayer.lineStyle(Math.max(1, scaleDistance(2)), 0x8ee6ff, 0.48 + pulse * 0.28);
-      this.deliveryMarkerLayer.strokeCircle(position.x, position.y, radius);
-      this.deliveryMarkerLayer.fillStyle(0x8ee6ff, 0.88);
-      this.deliveryMarkerLayer.fillTriangle(
-        position.x,
-        position.y - scaleDistance(8),
-        position.x - scaleDistance(7),
-        position.y + scaleDistance(6),
-        position.x + scaleDistance(7),
-        position.y + scaleDistance(6)
-      );
     }
   }
 
@@ -6798,7 +8257,7 @@ export class GameScene extends Phaser.Scene {
 
     const venueOffsets = new Map<string, number>();
     for (const indicator of indicators.venues) {
-      const node = venueMapNodes.find((candidate) => candidate.venueId === indicator.venueId);
+      const node = resolveWorldSceneVenueAnchor(indicator.venueId);
       if (!node) {
         continue;
       }
@@ -6895,6 +8354,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private getFieldObjectiveTargets(objective = getFieldObjective(this.world)): FieldObjectiveTarget[] {
+    const activeInterior = this.getActiveInterior();
+    if (activeInterior) {
+      return resolveInteriorObjectiveTargets(this.world, activeInterior, objective.targets);
+    }
     return objective.targets
       .map((target) => this.resolveFieldObjectiveTarget(target))
       .filter((target): target is FieldObjectiveTarget => Boolean(target));
@@ -6926,18 +8389,6 @@ export class GameScene extends Phaser.Scene {
       return { id: target.id, label: target.label, x, y, radius: scaleDistance(92), type: target.type };
     }
     if (target.type === "venue") {
-      const activeInterior = this.getActiveInterior();
-      const activeInteriorStation = activeInterior ? getPrimaryInteriorStationForVenue(activeInterior, target.venueId) : undefined;
-      if (activeInteriorStation) {
-        return {
-          id: target.id,
-          label: target.label,
-          x: activeInteriorStation.x,
-          y: activeInteriorStation.y,
-          radius: activeInteriorStation.radius,
-          type: target.type
-        };
-      }
       const node = venueMapNodes.find((candidate) => candidate.venueId === target.venueId);
       if (!node) {
         return null;
@@ -7003,6 +8454,202 @@ export class GameScene extends Phaser.Scene {
     return "";
   }
 
+  private startCutscene(
+    script: CutsceneScript,
+    onComplete?: () => void,
+    actors?: Map<string, Phaser.GameObjects.Container>
+  ): void {
+    if (this.activeCutscene) {
+      this.finishCutscene(true);
+    }
+    this.closePanel(false);
+    const priorMode = this.mode === "cutscene" ? (this.activeInteriorId ? "interior" : "world") : this.mode;
+    const overlay = this.createCutsceneOverlay();
+    this.activeCutscene = {
+      script,
+      elapsedMs: 0,
+      priorMode,
+      overlay,
+      onComplete,
+      actors
+    };
+    this.mode = "cutscene";
+    this.player.setVelocity(0, 0);
+    this.playSound("toast");
+    const firstState = getCutsceneStepState(script, 0);
+    if (firstState.step) {
+      this.handleCutsceneStepStart(firstState.step);
+    }
+    this.applyCutsceneVisual(firstState);
+  }
+
+  private updateCutscene(delta: number): void {
+    const active = this.activeCutscene;
+    if (!active) {
+      return;
+    }
+    active.elapsedMs += delta;
+    this.syncZoomCompensatedContainer(active.overlay.container);
+    this.resizeCutsceneOverlay(active.overlay);
+    const state = getCutsceneStepState(active.script, active.elapsedMs);
+    if (state.step?.id !== active.activeStepId) {
+      active.activeStepId = state.step?.id;
+      if (state.step) {
+        this.handleCutsceneStepStart(state.step);
+      }
+    }
+    this.applyCutsceneVisual(state);
+    if (state.step?.kind === "scripted_walk") {
+      this.applyScriptedWalkStep(state.step, state.stepProgress);
+    }
+    if (state.complete) {
+      this.finishCutscene(false);
+    }
+  }
+
+  private skipActiveCutscene(): void {
+    const active = this.activeCutscene;
+    if (!active) {
+      return;
+    }
+    const endState = skipCutscene(active.script);
+    this.applyCutsceneVisual(endState);
+    this.finishCutscene(true);
+  }
+
+  private finishCutscene(_skipped: boolean): void {
+    const active = this.activeCutscene;
+    if (!active) {
+      return;
+    }
+    this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
+    active.overlay.container.destroy(true);
+    for (const actor of active.actors?.values() ?? []) {
+      actor.destroy(true);
+    }
+    const onComplete = active.onComplete;
+    const priorMode = active.priorMode === "cutscene" ? (this.activeInteriorId ? "interior" : "world") : active.priorMode;
+    this.activeCutscene = undefined;
+    this.mode = priorMode;
+    if (this.cutsceneDeferredSave) {
+      this.cutsceneDeferredSave = false;
+      saveWorldState(this.world);
+    }
+    onComplete?.();
+  }
+
+  private createCutsceneOverlay(): CutsceneOverlay {
+    const container = this.createZoomCompensatedContainer(UI_DEPTH + 40);
+    const { width, height } = this.scale;
+    const dim = this.add.rectangle(0, 0, width, height, 0x000000, 0).setOrigin(0, 0);
+    const topBar = this.add.rectangle(0, 0, width, 0, 0x05070a, 1).setOrigin(0, 0);
+    const bottomBar = this.add.rectangle(0, height, width, 0, 0x05070a, 1).setOrigin(0, 1);
+    const title = this.add
+      .text(width / 2, height * 0.42, "", {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: "28px",
+        fontStyle: "900",
+        color: "#fff0bd",
+        align: "center"
+      })
+      .setOrigin(0.5)
+      .setAlpha(0);
+    const subtitle = this.add
+      .text(width / 2, height * 0.5, "", {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: "15px",
+        fontStyle: "700",
+        color: "#fff8df",
+        align: "center",
+        wordWrap: { width: Math.min(560, width - 48) }
+      })
+      .setOrigin(0.5)
+      .setAlpha(0);
+    container.add([dim, topBar, bottomBar, title, subtitle]);
+    return { container, topBar, bottomBar, dim, title, subtitle };
+  }
+
+  private resizeCutsceneOverlay(overlay: CutsceneOverlay): void {
+    const { width, height } = this.scale;
+    overlay.dim.setSize(width, height);
+    overlay.topBar.setSize(width, overlay.topBar.height);
+    overlay.bottomBar.setPosition(0, height).setSize(width, overlay.bottomBar.height);
+    overlay.title.setPosition(width / 2, height * 0.42);
+    overlay.subtitle.setPosition(width / 2, height * 0.5).setWordWrapWidth(Math.min(560, width - 48), true);
+  }
+
+  private handleCutsceneStepStart(step: CutsceneStep): void {
+    const active = this.activeCutscene;
+    if (!active) {
+      return;
+    }
+    if (step.kind === "camera_pan" && step.target && !this.activeInteriorId) {
+      this.cameras.main.stopFollow();
+      this.cameras.main.pan(step.target.x, step.target.y, step.durationMs, "Sine.easeInOut", true);
+    }
+    if (step.kind === "camera_return") {
+      this.cameras.main.pan(this.player.x, this.player.y, step.durationMs, "Sine.easeInOut", true);
+    }
+    if (step.kind === "scripted_walk") {
+      active.playerStart = { x: this.player.x, y: this.player.y };
+    }
+  }
+
+  private applyCutsceneVisual(state: CutsceneStepState): void {
+    const active = this.activeCutscene;
+    if (!active) {
+      return;
+    }
+    const { overlay } = active;
+    const { height } = this.scale;
+    const maxBarHeight = Math.min(98, Math.max(62, height * 0.13));
+    const step = state.step;
+    const barProgress =
+      step?.kind === "letterbox_in"
+        ? state.stepProgress
+        : step?.kind === "letterbox_out"
+          ? 1 - state.stepProgress
+          : state.complete
+            ? 0
+            : 1;
+    const barHeight = maxBarHeight * barProgress;
+    overlay.topBar.setSize(this.scale.width, barHeight);
+    overlay.bottomBar.setPosition(0, height).setSize(this.scale.width, barHeight);
+
+    const cardVisible = step?.kind === "act_card";
+    const cardAlpha = cardVisible ? Math.min(1, Math.min(state.stepProgress / 0.18, (1 - state.stepProgress) / 0.18)) : 0;
+    overlay.dim.setAlpha(cardVisible ? 0.42 * Math.max(0, cardAlpha) : 0);
+    overlay.title.setText(cardVisible ? step.title ?? "" : "").setAlpha(Math.max(0, cardAlpha));
+    overlay.subtitle.setText(cardVisible ? step.subtitle ?? "" : "").setAlpha(Math.max(0, cardAlpha));
+  }
+
+  private applyScriptedWalkStep(step: CutsceneStep, progress: number): void {
+    const waypoints = step.waypoints;
+    if (!waypoints || waypoints.length < 2) {
+      return;
+    }
+    const start = waypoints[0];
+    const end = waypoints[waypoints.length - 1];
+    const x = Phaser.Math.Linear(start.x, end.x, progress);
+    const y = Phaser.Math.Linear(start.y, end.y, progress);
+    if (step.actorId) {
+      this.activeCutscene?.actors?.get(step.actorId)?.setPosition(x, y);
+      return;
+    }
+    this.player.setPosition(x, y);
+    this.player.body?.reset(x, y);
+  }
+
+  private maybeStartAct2Cutscene(previousAct: number, onComplete?: () => void): boolean {
+    if (previousAct >= 2 || this.world.life.actProgress.currentAct < 2) {
+      return false;
+    }
+    const beach = venueMapNodes.find((node) => node.venueId === "berawa_beach");
+    const target = beach ? { x: beach.x, y: beach.y } : { x: this.player.x, y: this.player.y + scaleDistance(420) };
+    this.startCutscene(buildAct2IntroCutscene(target), onComplete);
+    return true;
+  }
+
   private canSleepHere(): boolean {
     if (this.world.life.actProgress.act0Step === "sleep_first_night") {
       return isPlayerAtHomeBase(this.world);
@@ -7015,8 +8662,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   private sleepToMorning(): void {
+    this.unlockAudio();
+    this.playSound("sleep");
     const { morningPenaltyMessage } = sleepAtHomeUntilMorning(this.world);
     const completedAct0 = completeAct0Step(this.world, "sleep_first_night");
+    const rateCut = completedAct0 ? triggerAct1RateCut(this.world, this.getAbsoluteMinute()) : { fired: false };
+    if (rateCut.message) {
+      appendOpportunityMessage(this.world.opportunities, rateCut.message);
+    }
     this.mode = this.activeInteriorId ? "interior" : "world";
     this.updateLighting();
     const ledgerSummary = buildDayLedgerSummary(this.world);
@@ -7028,6 +8681,20 @@ export class GameScene extends Phaser.Scene {
         : `Slept until ${formatClock(this.world)}. Energy restored.${morningPenaltyMessage}`
     );
     this.updateOpportunityFeed(0, true);
+    const openMorningFlow = () => {
+      if (ledgerSummary) {
+        this.openDayLedger(ledgerSummary);
+        return;
+      }
+      this.openMorningHand();
+    };
+    if (completedAct0) {
+      this.startCutscene(
+        buildAct1IntroCutscene(this.world.life.hustle.rentAmount, this.world.life.hustle.rentDueDay, rateCut.fired),
+        openMorningFlow
+      );
+      return;
+    }
     if (ledgerSummary) {
       this.openDayLedger(ledgerSummary);
       return;
@@ -7082,7 +8749,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private isOverlayOpen(): boolean {
-    return this.mode !== "world" && this.mode !== "interior";
+    return this.mode !== "world" && this.mode !== "interior" && this.mode !== "warungRush";
   }
 
   private updateOverlayChrome(): void {
@@ -7122,9 +8789,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private payPhoneRent(): void {
+    const previousAct = this.world.life.actProgress.currentAct;
     const result = payHustleRent(this.world, this.getAbsoluteMinute());
     this.showToast(result.message);
     saveWorldState(this.world);
+    if (result.ok) {
+      this.maybeStartAct2Cutscene(previousAct);
+    }
   }
 
   private repairPhoneScooter(): void {
@@ -7167,8 +8838,33 @@ export class GameScene extends Phaser.Scene {
   }
 
   private saveGame(): void {
+    if (this.requestSave()) {
+      this.showToast("Game saved locally.");
+    } else {
+      this.showToast("Save queued until the scene finishes.");
+    }
+  }
+
+  private sendFeedback(): void {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const objective = formatFieldObjectiveLine(getFieldObjective(this.world));
+    window.location.href = createFeedbackMailto(this.world, {
+      buildStamp: BUILD_STAMP,
+      sessionStartedAt: this.sessionStartedAt,
+      now: Date.now(),
+      lastObjectiveLine: objective
+    });
+  }
+
+  private requestSave(): boolean {
+    if (this.activeCutscene) {
+      this.cutsceneDeferredSave = true;
+      return false;
+    }
     saveWorldState(this.world);
-    this.showToast("Game saved locally.");
+    return true;
   }
 
   private dispatchIntent(intent: GameIntent): IntentResult {
@@ -7177,6 +8873,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
+    this.unlockAudio();
+    this.finishPayoutCelebration();
+    if (this.activeCutscene) {
+      this.skipActiveCutscene();
+      return;
+    }
     this.hudController.handlePointerDown(pointer, this.mode);
   }
 
@@ -7224,8 +8926,15 @@ export class GameScene extends Phaser.Scene {
     }
     this.syncHudLayerToCamera();
     this.syncZoomCompensatedContainer(this.nightOverlayLayer);
+    if (this.activeCutscene) {
+      this.syncZoomCompensatedContainer(this.activeCutscene.overlay.container);
+      this.resizeCutsceneOverlay(this.activeCutscene.overlay);
+    }
     this.promptText.setPosition(16, height - 44);
-    this.toastText.setPosition(width / 2, Math.max(92, height * 0.17));
+    this.toastText
+      .setPosition(width / 2, Math.max(92, height * 0.17))
+      .setFontSize(width < 420 ? 14 : 16)
+      .setWordWrapWidth(Math.max(220, Math.min(520, width - 48)), true);
     this.hudController.layoutTouchControls();
     this.redrawHudChrome();
   }
@@ -7236,6 +8945,7 @@ export class GameScene extends Phaser.Scene {
     this.drawHudChipBackplate(this.questText);
     this.drawHudChipBackplate(this.wantedChipText);
     this.drawHudChipBackplate(this.bikeChipText);
+    this.drawHudChipBackplate(this.cargoChipText);
     this.drawHudChipBackplate(this.promptText);
   }
 
@@ -7293,6 +9003,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateToastVisual(delta: number): void {
+    if (shouldPauseQueuedFeedback(Boolean(this.activeCutscene))) {
+      this.toastText.setAlpha(0);
+      return;
+    }
     if (this.toastTimer > 0) {
       this.toastTimer = Math.max(0, this.toastTimer - delta);
       const elapsed = TOAST_DURATION_MS - this.toastTimer;
@@ -7317,10 +9031,31 @@ export class GameScene extends Phaser.Scene {
       this.toastText.setText(nextToast);
       this.toastTimer = TOAST_DURATION_MS;
       this.toastText.setAlpha(0);
+      this.playSound("toast");
       return;
     }
 
     this.toastText.setAlpha(0);
+  }
+
+  private unlockAudio(): void {
+    this.soundManager.unlock();
+  }
+
+  private playSound(cue: SoundCue): void {
+    this.soundManager.play(cue);
+  }
+
+  private playUiClick(): void {
+    this.unlockAudio();
+    this.finishPayoutCelebration();
+    this.playSound("uiClick");
+  }
+
+  private setAudioMuted(muted: boolean): void {
+    this.soundManager.setMuted(muted);
+    this.showToast(muted ? "Audio muted." : "Audio on.");
+    this.phone?.refresh();
   }
 
   private publishDebugSnapshot(target: InteractionTarget | undefined, fieldObjective: FieldObjectiveState): void {
@@ -7357,6 +9092,18 @@ export class GameScene extends Phaser.Scene {
       act0Step: this.world.life.actProgress.act0Step,
       driverRating: this.world.life.hustle.driverRating,
       activeDelivery: this.world.life.hustle.activeDelivery?.deliveryId ?? null,
+      activeDeliveryStage: this.world.life.hustle.activeDelivery?.stage ?? null,
+      activeDeliveryDueAt: this.world.life.hustle.activeDelivery?.dueAt ?? null,
+      deliveryRideRun: this.world.life.hustle.activeDelivery?.rideRun
+        ? { ...this.world.life.hustle.activeDelivery.rideRun }
+        : null,
+      cutscene: this.activeCutscene
+        ? {
+            id: this.activeCutscene.script.id,
+            stepId: this.activeCutscene.activeStepId ?? null,
+            elapsedMs: Math.round(this.activeCutscene.elapsedMs)
+          }
+        : null,
       fieldObjective,
       fieldObjectiveLine: formatFieldObjectiveLine(fieldObjective),
       worldSceneAudit: getFieldFirstDiscoveryAudit(this.world),
@@ -7383,6 +9130,16 @@ export class GameScene extends Phaser.Scene {
       npcRoutines: Object.fromEntries(
         Object.entries(this.world.npcs).map(([id, state]) => [id, state.currentRoutineId])
       ),
+      objectiveTargets: this.getFieldObjectiveTargets(fieldObjective).map((t) => ({
+        x: Math.round(t.x),
+        y: Math.round(t.y)
+      })),
+      interiorExit: (() => {
+        const interior = this.getActiveInterior();
+        return interior ? { x: Math.round(interior.exitMat.x), y: Math.round(interior.exitMat.y) } : null;
+      })(),
+      interiorTransitioning: this.interiorTransitioning,
+      ride: getRideTelemetry(this.rideModelOutput, this.playerState.onBike),
       updatedAt: Date.now()
     };
 

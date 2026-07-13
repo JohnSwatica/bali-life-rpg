@@ -337,18 +337,18 @@ export const npcDefinitions: Record<string, NpcDefinition> = {
   },
   rio: {
     id: "rio",
-    name: "Rio",
-    role: "Jalan Driver, Leaderboard #1",
+    name: "Leo",
+    role: "NusaDrop Driver, Leaderboard #1",
     spriteKey: "npc-rio",
     tint: 0xff5d5d,
     idleTag: "generic_idle",
-    defaultLine: "Rated 4.9, delivered in record time. You keeping up, new guy?",
+    defaultLine: "Rated 4.9. NusaDrop's optimal path says I should already be gone. You keeping up?",
     routine: [
       { id: "sleep", label: "resting at the scooter rental", x: rioSleep.x, y: rioSleep.y, startMinute: 0, endMinute: 300 },
-      { id: "rental-morning", label: "checking leaderboard times at Bali Family Rental Scooter", x: rioRentalMorning.x, y: rioRentalMorning.y, startMinute: 300, endMinute: 720 },
-      { id: "station-run", label: "hovering near the Canggu Station delivery board", x: rioStation.x, y: rioStation.y, startMinute: 720, endMinute: 960 },
+      { id: "rental-morning", label: "checking NusaDrop leaderboard times at Bali Family Rental Scooter", x: rioRentalMorning.x, y: rioRentalMorning.y, startMinute: 300, endMinute: 720 },
+      { id: "station-run", label: "hovering near the Canggu Station NusaDrop board", x: rioStation.x, y: rioStation.y, startMinute: 720, endMinute: 960 },
       { id: "beach-flex", label: "showing off by Berawa Beach", x: rioBeach.x, y: rioBeach.y, startMinute: 960, endMinute: 1260 },
-      { id: "rental-evening", label: "tuning routes at Bali Family Rental Scooter", x: rioRentalEvening.x, y: rioRentalEvening.y, startMinute: 1260, endMinute: 1440 }
+      { id: "rental-evening", label: "tuning NusaDrop routes at Bali Family Rental Scooter", x: rioRentalEvening.x, y: rioRentalEvening.y, startMinute: 1260, endMinute: 1440 }
     ],
     routineRoutes: [
       {
@@ -363,7 +363,7 @@ export const npcDefinitions: Record<string, NpcDefinition> = {
       },
       {
         id: "rio-rental-morning-route",
-        label: "checking leaderboard times at Bali Family Rental Scooter",
+        label: "checking NusaDrop leaderboard times at Bali Family Rental Scooter",
         startMinute: 300,
         endMinute: 720,
         waypoints: [
@@ -374,7 +374,7 @@ export const npcDefinitions: Record<string, NpcDefinition> = {
       },
       {
         id: "rio-station-route",
-        label: "hovering near the Canggu Station delivery board",
+        label: "hovering near the Canggu Station NusaDrop board",
         startMinute: 720,
         endMinute: 960,
         waypoints: [
@@ -396,7 +396,7 @@ export const npcDefinitions: Record<string, NpcDefinition> = {
       },
       {
         id: "rio-rental-evening-route",
-        label: "tuning routes at Bali Family Rental Scooter",
+        label: "tuning NusaDrop routes at Bali Family Rental Scooter",
         startMinute: 1260,
         endMinute: 1440,
         waypoints: [
@@ -409,16 +409,16 @@ export const npcDefinitions: Record<string, NpcDefinition> = {
   },
   pak_bagus: {
     id: "pak_bagus",
-    name: "Pak Bagus",
-    role: "Berawa 2.0 Developer",
+    name: "Julian Vance",
+    role: "Vanguard Co-Living Partner",
     spriteKey: "npc-pak-bagus",
     tint: 0xd4af6a,
     idleTag: "generic_idle",
-    defaultLine: "Berawa 2.0 isn't just buildings -- it's a promise to this street. You'll see.",
+    defaultLine: "Enclave Berawa is not a gated escape. It is a better system for this street.",
     routine: [
       { id: "sleep", label: "resting near FINNS Recreation Club", x: bagusSleep.x, y: bagusSleep.y, startMinute: 0, endMinute: 300 },
-      { id: "club-morning", label: "sponsoring the FINNS Recreation Club morning crowd", x: bagusClubMorning.x, y: bagusClubMorning.y, startMinute: 300, endMinute: 780 },
-      { id: "coffee-network", label: "networking at Satu-Satu Coffee", x: bagusCoffee.x, y: bagusCoffee.y, startMinute: 780, endMinute: 1020 },
+      { id: "club-morning", label: "hosting the Vanguard morning crowd at FINNS", x: bagusClubMorning.x, y: bagusClubMorning.y, startMinute: 300, endMinute: 780 },
+      { id: "coffee-network", label: "taking Enclave Berawa meetings at Satu-Satu Coffee", x: bagusCoffee.x, y: bagusCoffee.y, startMinute: 780, endMinute: 1020 },
       { id: "club-evening", label: "holding court near FINNS Recreation Club", x: bagusClubEvening.x, y: bagusClubEvening.y, startMinute: 1020, endMinute: 1440 }
     ],
     routineRoutes: [
@@ -434,7 +434,7 @@ export const npcDefinitions: Record<string, NpcDefinition> = {
       },
       {
         id: "bagus-club-morning-route",
-        label: "sponsoring the FINNS Recreation Club morning crowd",
+        label: "hosting the Vanguard morning crowd at FINNS",
         startMinute: 300,
         endMinute: 780,
         waypoints: [
@@ -445,7 +445,7 @@ export const npcDefinitions: Record<string, NpcDefinition> = {
       },
       {
         id: "bagus-coffee-route",
-        label: "networking at Satu-Satu Coffee",
+        label: "taking Enclave Berawa meetings at Satu-Satu Coffee",
         startMinute: 780,
         endMinute: 1020,
         waypoints: [

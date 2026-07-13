@@ -20,6 +20,7 @@ import type {
 export const CURRENT_SCHEMA_VERSION = 11;
 const SAVE_KEY = "bali-life-rpg.berawa-finns.save.v1";
 const PAUSED_V2_KEY = "bali-life-rpg.berawa-finns.save.v2";
+const RETIRED_INVENTORY_ITEM_IDS = new Set(["elena_notebook", "elena_sim"]);
 
 export function saveWorldState(world: WorldState): void {
   world.schemaVersion = CURRENT_SCHEMA_VERSION;
@@ -50,6 +51,19 @@ export function loadWorldState(): WorldState {
 export function clearSave(): void {
   localStorage.removeItem(SAVE_KEY);
   localStorage.removeItem(PAUSED_V2_KEY);
+}
+
+export function hasSavedWorldState(): boolean {
+  const { raw } = readRawSave();
+  if (!raw) {
+    return false;
+  }
+  try {
+    const parsed = JSON.parse(raw) as Partial<WorldState>;
+    return parsed.version === 1 && parsed.neighborhoodId === "berawa-finns-club";
+  } catch {
+    return false;
+  }
 }
 
 function readRawSave(): { raw: string | null; key: string } {
@@ -111,8 +125,9 @@ function migrateActiveActivityState(raw: unknown): ActiveActivityState | null {
   if (
     (value.source !== "activity" &&
       value.source !== "opportunity" &&
-      value.source !== "rideCheckpoint" &&
-      value.source !== "scooterRepair") ||
+      value.source !== "scooterRepair" &&
+      value.source !== "rivalRace" &&
+      value.source !== "warungRush") ||
     typeof value.venueId !== "string" ||
     typeof value.venueName !== "string" ||
     typeof value.label !== "string" ||
@@ -140,11 +155,33 @@ function migrateActiveActivityState(raw: unknown): ActiveActivityState | null {
   if (value.source === "opportunity" && typeof value.opportunityId === "string") {
     return { ...base, source: "opportunity", opportunityId: value.opportunityId };
   }
-  if (value.source === "rideCheckpoint" && typeof value.checkpointId === "string") {
-    return { ...base, source: "rideCheckpoint", checkpointId: value.checkpointId };
-  }
   if (value.source === "scooterRepair") {
     return { ...base, source: "scooterRepair" };
+  }
+  if (value.source === "rivalRace" && typeof value.raceId === "string") {
+    return { ...base, source: "rivalRace", raceId: value.raceId };
+  }
+  if (value.source === "warungRush" && value.activityId === "warung_lunch_rush" && value.rush && typeof value.rush === "object") {
+    const rush = value.rush as Partial<Extract<ActiveActivityState, { source: "warungRush" }>["rush"]>;
+    if (Array.isArray(rush.orders) && typeof rush.elapsedMs === "number" && typeof rush.nextOrderAtMs === "number" && typeof rush.maxSimultaneousOrders === "number") {
+      return {
+        ...base,
+        source: "warungRush",
+        activityId: "warung_lunch_rush",
+        rush: {
+          elapsedMs: Math.max(0, rush.elapsedMs), nextOrderAtMs: Math.max(0, rush.nextOrderAtMs),
+          maxSimultaneousOrders: Math.max(2, Math.min(4, rush.maxSimultaneousOrders)),
+          servedCount: readFiniteNumber(rush.servedCount, 0), expiredCount: readFiniteNumber(rush.expiredCount, 0),
+          heldDishId: rush.heldDishId === "nasi_campur" || rush.heldDishId === "mie_goreng" || rush.heldDishId === "es_teh" ? rush.heldDishId : undefined,
+          orders: rush.orders.filter((order): order is NonNullable<typeof rush.orders>[number] => Boolean(order)).filter((order) =>
+            typeof order.id === "string" && typeof order.tableId === "string" &&
+            (order.dishId === "nasi_campur" || order.dishId === "mie_goreng" || order.dishId === "es_teh") &&
+            typeof order.patienceMs === "number" && typeof order.maxPatienceMs === "number" &&
+            (order.status === "waiting" || order.status === "served" || order.status === "expired")
+          )
+        }
+      };
+    }
   }
   return null;
 }
@@ -155,7 +192,7 @@ function migrateActiveMinigameState(raw: unknown): ActiveMinigameState | undefin
   }
   const value = raw as Partial<ActiveMinigameState>;
   if (
-    (value.kind !== "timing" && value.kind !== "balance" && value.kind !== "choice") ||
+    (value.kind !== "timing" && value.kind !== "balance" && value.kind !== "choice" && value.kind !== "service") ||
     typeof value.title !== "string" ||
     typeof value.prompt !== "string" ||
     typeof value.actionLabel !== "string"
@@ -259,7 +296,7 @@ function hydratePlayerState(player: Partial<PlayerEntityState>): PlayerEntitySta
     bikeCondition: runtimePlayer.bikeCondition ?? 100,
     safety: runtimePlayer.safety ?? 100,
     tutorialStep: runtimePlayer.tutorialStep ?? "earn_bike_money",
-    inventory: runtimePlayer.inventory ?? fresh.inventory,
+    inventory: (runtimePlayer.inventory ?? fresh.inventory).filter((entry) => !RETIRED_INVENTORY_ITEM_IDS.has(entry.itemId)),
     activeQuestIds: runtimePlayer.activeQuestIds ?? [],
     completedQuestIds: runtimePlayer.completedQuestIds ?? [],
     joinedGroupIds: runtimePlayer.joinedGroupIds ?? []

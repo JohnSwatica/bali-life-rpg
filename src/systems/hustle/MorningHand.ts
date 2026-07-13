@@ -6,6 +6,7 @@ import {
 } from "./DeliverySystem";
 import { getRentPressureState, getScooterRepairStatus } from "./HustleEconomy";
 import { getOpportunityTemplate } from "../opportunities/OpportunityEngine";
+import { areAdvancedMetersVisible } from "../guidance/MeterVisibility";
 import type { WorldState } from "../../types";
 
 export type MorningHandCardAction = "accept_delivery" | "pay_rent" | "track_opportunity" | "close";
@@ -27,6 +28,12 @@ export interface MorningHandCard {
 const MIN_MORNING_HAND_CARDS = 3;
 const MAX_MORNING_HAND_CARDS = 5;
 
+export function getMorningRecoveryBody(world: WorldState): string {
+  return areAdvancedMetersVisible(world)
+    ? "If your meters are shaky, use a warung or cafe station before stacking delivery work."
+    : "If your Energy is shaky, use a warung or cafe station before stacking delivery work.";
+}
+
 export function shouldShowMorningHand(world: WorldState): boolean {
   return (
     world.life.actProgress.firstDayComplete &&
@@ -44,7 +51,7 @@ export function getMorningHandCards(world: WorldState, now: number): MorningHand
 
   for (const offer of availableOffers.slice(0, 3)) {
     const condition = previewDeliveryCondition(world, offer.delivery, now);
-    const terms = getEffectiveDeliveryTerms(offer.delivery, condition);
+    const terms = getEffectiveDeliveryTerms(offer.delivery, condition, world);
     cards.push({
       id: `delivery:${offer.delivery.id}`,
       kind: "delivery",
@@ -132,7 +139,7 @@ export function getMorningHandCards(world: WorldState, now: number): MorningHand
       id: "recovery:warung",
       kind: "recovery",
       title: "Eat before another run",
-      body: "If your meters are shaky, use a warung or cafe station before stacking delivery work.",
+      body: getMorningRecoveryBody(world),
       actionLabel: "Start Day",
       action: "close",
       venueId: "canggu_station",

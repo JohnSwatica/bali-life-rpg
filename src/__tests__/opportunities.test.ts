@@ -198,7 +198,7 @@ describe("opportunity engine", () => {
     expect(state.missedTemplateIds).toContain("ari_sunset_ping");
   });
 
-  it("sends a daily Hustle Board nudge after Act 0 when no delivery is active", () => {
+  it("sends a daily NusaDrop Board nudge after Act 0 when no delivery is active", () => {
     const world = createInitialWorldState();
     const state = createDefaultOpportunityState();
     setHour(world, 9);
@@ -218,7 +218,7 @@ describe("opportunity engine", () => {
     expect(generateOpportunityPhoneTexts(state, world).some((message) => message.id.startsWith("hustle-board"))).toBe(false);
   });
 
-  it("uses Act 1 next-step guidance in the daily Hustle Board nudge", () => {
+  it("uses Act 1 next-step guidance in the daily NusaDrop Board nudge", () => {
     const world = createInitialWorldState();
     const state = createDefaultOpportunityState();
     world.life.actProgress.firstDayComplete = true;

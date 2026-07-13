@@ -1,5 +1,7 @@
 # ACT3_BUSINESS_DESIGN.md — Run Your Own Spot (Draft v1)
 
+> **NARRATIVE NOTE (2026-07-12):** `STORY_BIBLE.md` v4 supersedes this doc's narrative framing (mentor beats, antagonist, legal path — now Vance/zoning, not banjar). The business-layer mechanics (stock-and-serve first, deepen later; villa+business+bike win) remain valid design targets; Act 3 build remains CEO-locked.
+
 > The Act 3 ambition layer: a classic management RPG where you build a Bali warung into a café. Tone: **gentle
 > satire** of the Canggu scene. Locked decisions: mentor = Ibu Sari · romance = friendship for now · win =
 > villa + business + bike (all three) · ~2 hrs per act.

@@ -19,6 +19,7 @@ import { getSettlingInGoalStates } from "../../systems/life/SettlingInGoals";
 import { getAct2GoalStates, getAct2NextStep } from "../../systems/life/Act2Goals";
 import { getAct3ReadinessGoalStates, getAct3ReadinessNextStep } from "../../systems/life/Act3Readiness";
 import { getAct0StepState } from "../../systems/life/ActProgression";
+import { formatVisibleMeterValues } from "../../systems/guidance/MeterVisibility";
 import { getDeliveryDefinition } from "../../data/deliveries";
 import { getDeliveryOfferAvailability, getEffectiveDeliveryTerms, previewDeliveryCondition } from "../../systems/hustle/DeliverySystem";
 import { getRentPressureState, getScooterRepairStatus, getScooterUpgradeStatus } from "../../systems/hustle/HustleEconomy";
@@ -37,6 +38,9 @@ interface PhoneShellOptions {
   getNow: () => number;
   save: () => void;
   toast: (message: string) => void;
+  playUiClick?: () => void;
+  isAudioMuted?: () => boolean;
+  onAudioMutedChange?: (muted: boolean) => void;
   onOpportunityAccept: (opportunityId: string) => void;
   onOpportunityTrack: (opportunityId: string) => void;
   onDeliveryAccept: (deliveryId: string) => void;
@@ -44,6 +48,7 @@ interface PhoneShellOptions {
   onRepairScooter: () => void;
   onUpgradeScooter: () => void;
   onFeedViewed: () => void;
+  onFeedback: () => void;
   onClose: () => void;
 }
 
@@ -273,7 +278,7 @@ export class PhoneShell {
     const rentPressure = getRentPressureState(world);
     const player = world.players[world.localPlayerId];
     this.renderTextList(container, x, y, width, [
-      `Hustle Board: ${world.life.hustle.completedDeliveryCount} runs | Rp ${world.life.hustle.deliveryEarnings} earned | ${world.life.hustle.driverRating.toFixed(1)}★`,
+      `NusaDrop Board: ${world.life.hustle.completedDeliveryCount} runs | Rp ${world.life.hustle.deliveryEarnings} earned | ${world.life.hustle.driverRating.toFixed(1)}★`,
       `Rent target: Rp ${world.life.hustle.rentAmount} by Day ${world.life.hustle.rentDueDay} (${rentPressure.shortLabel}) | Scooter: ${world.life.hustle.scooterTier.replace(/_/g, " ")} ${player.bikeCondition}%`
     ]);
     let rowY = y + 50;
@@ -362,7 +367,7 @@ export class PhoneShell {
     for (const offer of offers.slice(0, 5)) {
       const delivery = offer.delivery;
       const condition = offer.available ? previewDeliveryCondition(world, delivery, this.options.getNow()) : undefined;
-      const terms = getEffectiveDeliveryTerms(delivery, condition);
+      const terms = getEffectiveDeliveryTerms(delivery, condition, world);
       const gate = offer.available
         ? `Rp ${terms.payout} | ${terms.timeLimitMin} min${condition ? ` | ${condition.label}` : ""}`
         : offer.reason ?? "Locked";
@@ -426,7 +431,7 @@ export class PhoneShell {
     }
     return [
       ...unlocked.flatMap((entry) => [
-        `${entry.kind === "elena_fragment" ? "Fragment" : "Codex"}: ${entry.title}`,
+        `${entry.kind === "investigation" ? "Investigation" : "Codex"}: ${entry.title}`,
         entry.body,
         ""
       ]),
@@ -445,7 +450,7 @@ export class PhoneShell {
     const goals = getSettlingInGoalStates(world).map((goal) => `${goal.complete ? "Done" : "Goal"}: ${goal.title} - ${goal.description}`);
     const hustleGoals = getHustleGoalStates(world).map((goal) => {
       const progress = goal.complete ? goal.progress : `${goal.description} (${goal.progress})`;
-      return `${goal.complete ? "Done" : "Hustle"}: ${goal.title} - ${progress}`;
+      return `${goal.complete ? "Done" : "NusaDrop"}: ${goal.title} - ${progress}`;
     });
     const hustleNext = getHustleNextStep(world);
     const act2Next = getAct2NextStep(world);
@@ -465,7 +470,7 @@ export class PhoneShell {
         ? ["", "Act 0 First Day", `Current: ${act0Step.title} - ${act0Step.objective}`]
         : []),
       "",
-      "Act 1 Hustle",
+      "Act 1 NusaDrop",
       `Next: ${hustleNext.title} - ${hustleNext.detail}`,
       ...hustleGoals,
       ...(act2Goals.length
@@ -504,12 +509,27 @@ export class PhoneShell {
       `Bio: ${profile.bio}`,
       `Lifestyle tags: ${profile.lifestyleTags.length ? profile.lifestyleTags.join(", ") : "none"}`,
       `Reputation score: ${reputation.score}`,
+      `Meters: ${formatVisibleMeterValues(world)}`,
       `Visible reputation tags: ${reputation.tags.length ? reputation.tags.join(", ") : "none yet"}`,
+      `Audio: ${this.options.isAudioMuted?.() ? "muted" : "on"}`,
       "Tap tags below to edit local profile tags."
     ]);
 
+    const muted = this.options.isAudioMuted?.() ?? false;
+    this.addButton(
+      container,
+      x,
+      y + 174,
+      116,
+      28,
+      muted ? "Audio Muted" : "Audio On",
+      () => this.options.onAudioMutedChange?.(!muted),
+      muted ? 0x4a3331 : 0x35533f
+    );
+    this.addButton(container, x + 124, y + 174, 132, 28, "Send feedback", () => this.options.onFeedback(), 0x253a35);
+
     let tagX = x;
-    let tagY = y + 174;
+    let tagY = y + 216;
     for (const tag of lifestyleTagSuggestions) {
       const active = profile.lifestyleTags.includes(tag);
       const labelWidth = Math.max(74, Math.min(116, tag.length * 8 + 26));
@@ -778,6 +798,7 @@ export class PhoneShell {
     button.on("pointerdown", (pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event?: Phaser.Types.Input.EventData) => {
       event?.stopPropagation();
       pointer.event?.stopPropagation();
+      this.options.playUiClick?.();
       onClick();
     });
   }

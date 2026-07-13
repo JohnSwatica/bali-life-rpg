@@ -1,6 +1,7 @@
 import { getActiveEvents, getUpcomingEvents } from "../events/EventScheduler";
 import { getOpportunityTemplate } from "../opportunities/OpportunityEngine";
 import { getRelationshipArcStates } from "../relationships/RelationshipArcs";
+import { resolveWorldSceneVenueAnchor } from "../world/WorldScenes";
 import type { WorldState } from "../../types";
 
 export interface NpcFieldIndicator {
@@ -53,6 +54,9 @@ export function getVenueFieldIndicators(world: WorldState): VenueFieldIndicator[
       continue;
     }
     const template = getOpportunityTemplate(opportunity.templateId);
+    if (!resolveWorldSceneVenueAnchor(opportunity.locationVenueId)) {
+      continue;
+    }
     indicators.push({
       type: "opportunity",
       venueId: opportunity.locationVenueId,
@@ -65,6 +69,9 @@ export function getVenueFieldIndicators(world: WorldState): VenueFieldIndicator[
   const seenEventIds = new Set<string>();
   for (const event of eventWindow) {
     if (seenEventIds.has(event.id)) {
+      continue;
+    }
+    if (!resolveWorldSceneVenueAnchor(event.locationVenueId)) {
       continue;
     }
     seenEventIds.add(event.id);

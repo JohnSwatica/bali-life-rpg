@@ -31,12 +31,12 @@ const STEP_COPY: Record<Act0Step, { title: string; objective: string }> = {
     objective: "Ride to BAKED. Berawa and pick up the sealed pastry box."
   },
   dropoff_first_delivery: {
-    title: "Villa dropoff",
-    objective: "Take the pastry box to the marked villa gate before the timer slips."
+    title: "First timed dropoff",
+    objective: "Get the loaded box to the marked door before the visible timer expires."
   },
   buy_meal_and_coffee: {
-    title: "Spend your first earnings",
-    objective: "Use cafe station choices for quick coffee and a proper brunch plate."
+    title: "Get onto NusaDrop",
+    objective: "At Milk & Madu, finish NusaDrop signup over a quick coffee and a proper plate."
   },
   sleep_first_night: {
     title: "Sleep it off",
@@ -71,6 +71,19 @@ export function getAct0ColdOpenCopy(): Act0ColdOpenCopy {
 
 export function getAct0StepState(world: WorldState): Act0StepState {
   const id = world.life.actProgress.act0Step;
+  if (id === "dropoff_first_delivery" && world.life.hustle.activeDelivery) {
+    const delivery = getDeliveryDefinition(world.life.hustle.activeDelivery.deliveryId);
+    const timeLeft = Math.max(0, Math.ceil(world.life.hustle.activeDelivery.dueAt - absoluteMinute(world)));
+    return {
+      id,
+      title: timeLeft > 0 ? `TIMED DELIVERY · ${timeLeft} min` : "WINDOW MISSED · FINISH THE RUN",
+      objective:
+        timeLeft > 0
+          ? `${delivery?.dropoffLabel ?? "Reach the marked door."} Keep the box steady.`
+          : `The bonus is gone, but the story is not. ${delivery?.dropoffLabel ?? "Complete the marked dropoff."}`,
+      complete: false
+    };
+  }
   return {
     id,
     ...STEP_COPY[id],
@@ -95,7 +108,7 @@ export function getAct0HudLines(world: WorldState): string[] {
   }
   if (world.life.actProgress.firstDayComplete) {
     lines.push(
-      `Hustle: ${world.life.hustle.completedDeliveryCount} deliveries, Rp ${world.life.hustle.deliveryEarnings}, ${world.life.hustle.driverRating.toFixed(1)}★`
+      `NusaDrop: ${world.life.hustle.completedDeliveryCount} deliveries, Rp ${world.life.hustle.deliveryEarnings}, ${world.life.hustle.driverRating.toFixed(1)}★`
     );
   }
   return lines;
@@ -138,6 +151,21 @@ export function getAct0MealProgressKindForActivity(activityId: string): "coffee"
 
 export function isAct0Complete(world: WorldState): boolean {
   return world.life.actProgress.firstDayComplete || world.life.actProgress.act0Step === "complete";
+}
+
+export function applyAct0NegotiatedCompletionFee(world: WorldState, deliveryId: string): number {
+  if (
+    deliveryId !== "act0_ibu_milk_madu_catering" ||
+    !world.questFlags.act0_negotiated_fee ||
+    world.questFlags.act0_negotiated_fee_paid
+  ) {
+    return 0;
+  }
+  const fee = 25;
+  world.questFlags.act0_negotiated_fee_paid = true;
+  world.players[world.localPlayerId].money += fee;
+  world.life.hustle.deliveryEarnings += fee;
+  return fee;
 }
 
 function absoluteMinute(world: WorldState): number {

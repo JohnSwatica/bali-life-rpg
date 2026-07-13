@@ -257,6 +257,22 @@ describe("field-level indicators", () => {
     );
   });
 
+  it("suppresses opportunity indicators whose venue has no authored building anchor", () => {
+    const world = createInitialWorldState();
+    world.opportunities.live.push({
+      id: "orphan-opportunity",
+      templateId: "milk_madu_lunch_rush_shift",
+      status: "live",
+      spawnedAt: 1,
+      expiresAt: 100,
+      locationVenueId: "missing_grass_marker"
+    });
+
+    expect(getFieldIndicators(world).venues).not.toContainEqual(
+      expect.objectContaining({ id: "orphan-opportunity" })
+    );
+  });
+
   it("marks venues with active or soon events", () => {
     const world = createInitialWorldState();
     world.clock.day = 1;

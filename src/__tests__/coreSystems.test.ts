@@ -386,6 +386,29 @@ describe("InteractionController", () => {
     expect(controller.getNearestInteraction()).toMatchObject({ type: "venue", id: "nude_cafe_berawa" });
   });
 
+  it("resolves Milk & Madu at its authored objective point instead of adjacent Milu by Nook", () => {
+    const milkMadu = shopDefinitions.milk_madu_berawa;
+    const milu = curatedVenueNodes.find((venue) => venue.venueId === "milu_by_nook");
+    expect(milu).toBeDefined();
+    expect(Math.hypot(milkMadu.x - milu!.x, milkMadu.y - milu!.y)).toBeGreaterThan(
+      milkMadu.radius + milu!.radius
+    );
+
+    const controller = new InteractionController({
+      getPlayerPosition: () => ({ x: milkMadu.x, y: milkMadu.y }),
+      getNpcSprite: () => undefined,
+      isPickupAvailable: () => false,
+      getWantedOffenders: () => [],
+      getOffenderReward: () => 0
+    });
+
+    expect(controller.getNearestInteraction()).toMatchObject({
+      type: "shop",
+      id: "milk_madu_berawa",
+      label: "Enter Milk & Madu Berawa"
+    });
+  });
+
   it("prioritizes a foreground pickup over a closer broad venue zone", () => {
     const pickup = pickupDefinitions.find((candidate) => candidate.id === "coconut-jetty");
     const venue = curatedVenueNodes.find((candidate) => candidate.venueId === "berawa_beach");

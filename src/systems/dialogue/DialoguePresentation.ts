@@ -38,15 +38,17 @@ export function getAmbientNpcLine(world: WorldState, npcId: string, fallbackLine
   if (world.life.hustle.driverRating < 3.4 && (npcId === "ibu_sari" || npcId === "kadek")) {
     return "Slow down. Ratings recover when deliveries arrive clean.";
   }
-  if (npcId === "kadek" && world.collectedPickups["elena-notebook-seat"] && world.life.hustle.completedDeliveryCount < 5) {
-    return "\"Hey, that's--\" He stops himself and goes back to the oven.";
-  }
-  if (
-    npcId === "kadek" &&
-    world.life.hustle.completedDeliveryCount >= 5 &&
-    world.life.hustle.completedDeliveryCount < 10
-  ) {
-    return "\"That's Rumah's old bike.\" He says it plainly this time, then goes quiet.";
+  if (npcId === "rio") {
+    const rioMemory = world.relationships.find((memory) => memory.subjectType === "npc" && memory.subjectId === "rio");
+    const raceMemory = [...(rioMemory?.memories ?? [])]
+      .reverse()
+      .find((memory) => memory.type === "lost_to_you_clean" || memory.type === "beat_you");
+    const now = Math.floor((Math.max(1, world.clock.day) - 1) * 1440 + world.clock.minuteOfDay);
+    if (raceMemory && now - raceMemory.at >= 1440) {
+      return raceMemory.type === "lost_to_you_clean"
+        ? "Enjoy the leaderboard bump. It will not hold itself."
+        : "Rematch stays open. The NusaDrop board remembers everything.";
+    }
   }
   if (routineLabel) {
     return appendRoutineContext(shortenAmbientLine(fallbackLine), routineLabel);

@@ -3,6 +3,58 @@
 Created 2026-07-06 as part of executing `CLAUDE_PROJECT_REVIEW_2026-07-06.md` §5.
 This document is deliberately **not** a packet. Phase 3 is a stop-and-look, not a build.
 
+> ## GATE v3 — founder playtest received, 2026-07-12
+>
+> **The stop-and-look happened.** John played ~5 minutes and delivered the
+> exact evidence this gate existed to produce: bored by minute 5, four named
+> problems (no cinematic opening/agency, no hook in 3 minutes, minigame
+> monotony, fetch-quest plot), logged verbatim in `PLAYTEST_01.md`, plus a
+> CEO narrative pivot (`STORY_BIBLE.md` v4, NusaDrop storyline).
+>
+> **What this authorizes:** feature/content work targeted at the four
+> playtest findings — the RPG-20260712 queue (canon reskin, cinematic
+> cold-open + 3-minute hook, obstacle-avoidance steering delivery mode,
+> Diner-Dash-style service minigame). These are new-system builds, and that
+> is now legitimate: they are driven by real human play feedback, which was
+> always this gate's exit test. The epistemics changed, not just the orders.
+>
+> **What still stands:** (1) outside players remain wanted — founder feedback
+> is 1 human of the 3+ target, and the fixed build should still go to 3-5
+> strangers (share message in the 2026-07-08 session notes); (2) the three
+> open CEO decisions (project identity, stakes ceiling, weekly time budget)
+> remain parked in `TODO_LIST.md`; (3) speculative content NOT traceable to
+> playtest findings or the v4 bible still needs its own justification —
+> "feedback-driven" is the new bar, not "anything goes"; (4) hard boundaries
+> (no backend/multiplayer/AI/commerce, Act 3 sim CEO-locked) are untouched;
+> (5) the Map Growth Rule applies to every packet.
+
+> ## GATE v2 — CEO override, 2026-07-08
+>
+> All nine RPG-20260706 packets landed (218 tests green, verified). Codex
+> correctly stopped here. John then overrode the personal-playtest requirement:
+> he has no time to play and instructed development to continue.
+>
+> **What changed:** requirement #1 (John's 60-minute `PLAYTEST_01.md`) and
+> requirement #3 (the three decisions) are moved to the project `TODO_LIST.md`
+> as parked-not-cancelled items. Requirement #2 (3-5 outside players) becomes
+> the ACTIVE path to feedback and is being pursued without John's play time via
+> the RPG-20260708 packet batch (stranger-ready build, mobile pass, coherence
+> sweep) plus a two-minute share action from John.
+>
+> **What did NOT change:** the freeze list below stays fully in force, and the
+> distinction it protects gets sharper — until real human feedback exists (from
+> ANYONE, John or strangers), Codex work is limited to **polish, tuning,
+> integration, stranger-readiness, and bug fixes on existing systems**. New
+> systems, new acts, new map districts, new minigames, and new narrative content
+> remain blocked. A CEO instruction to "keep developing" authorizes the former
+> category, not the latter — that reading is deliberate, because building new
+> systems against zero feedback is the exact failure mode this gate exists to
+> stop, and no override changes the epistemics, only the schedule.
+>
+> **Gate v2 exit condition:** feedback from 3+ real humans (any mix of John and
+> strangers) is written down in `PLAYTEST_01.md` or a sibling file. Then the
+> "After the gate" section below applies unchanged.
+
 ## What Phase 3 is
 
 After the Phase 1 packets (RPG-20260706-01 … 06) and Phase 2 packets
@@ -38,10 +90,18 @@ actually reach it.
 
 ## What stays frozen until the gate opens
 
-Unchanged from the review's freeze list: the six-district map, minigames beyond
-ride/repair/one social, any sixth guidance surface, crafting, the OSM pipeline,
-Act 3 business sim (still CEO-locked per `AGENTS.md`), Act 4/5 content, and any
-further design-doc scope expansion.
+Unchanged from the review's freeze list: the six-district map **as a one-shot
+build**, minigames beyond ride/repair/one social, any sixth guidance surface,
+crafting, the OSM pipeline, Act 3 business sim (still CEO-locked per
+`AGENTS.md`), Act 4/5 content, and any further design-doc scope expansion.
+
+> **CEO amendment, 2026-07-11 — incremental map growth is authorized.** Per
+> the Map Growth Rule in `AGENTS.md`, packets now grow the map in small,
+> contiguous, reviewable increments (one parcel per packet, logged in
+> `docs/MAP_CHANGELOG.md`). This replaces the blanket map freeze: what remains
+> banned is the big-bang expansion — multi-district dumps, detached areas, or
+> any single packet exceeding the small-parcel bound. Rationale: John can
+> track and critique growth per-increment; he cannot review a 2-3x map dump.
 
 ## After the gate
 
@@ -57,8 +117,13 @@ Whatever the evidence says, wins. Expected shapes (not commitments):
 
 ## Sequencing note for AI tabs
 
-If you are a Codex/Claude tab reading this after finishing RPG-20260706-09:
-your next action is to tell John this gate is waiting on him, then stop. Building
-past this line without `PLAYTEST_01.md` reproduces the exact failure mode the
-2026-07-06 review identified (13 days of systems while the playtest stayed
-undone). Do not be the tab that does that.
+Under GATE v2 (see top): after RPG-20260706-09, the authorized work queue is the
+RPG-20260708 batch (stranger-readiness/mobile/coherence) and, beyond it, only
+polish/tuning/integration/bug-fix packets on existing systems. If you are asked
+to write or build a NEW system, act, district, minigame, or narrative content
+before written feedback from 3+ real humans exists, point at this gate and ask
+John to override it explicitly for that specific packet — a general "keep
+developing" does not cover it. Building new systems past this line without any
+human feedback reproduces the exact failure mode the 2026-07-06 review
+identified (13 days of systems while the playtest stayed undone). Do not be the
+tab that does that.

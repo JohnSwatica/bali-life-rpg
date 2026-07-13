@@ -7,5 +7,8 @@ export function isDiscoveryLedgerEntryUnlocked(world: WorldState, entry: Discove
   if (entry.unlock.type === "act0_step_complete") {
     return world.life.actProgress.completedAct0StepIds.includes(entry.unlock.step);
   }
+  if (entry.unlock.type === "driver_rating") {
+    return world.life.hustle.completedDeliveryCount > 0 && world.life.hustle.driverRating >= entry.unlock.minimumRating;
+  }
   return world.life.hustle.completedDeliveryCount >= entry.unlock.count;
 }

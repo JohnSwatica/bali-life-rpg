@@ -10,9 +10,17 @@ import { adjustPlayerMeters } from "../meters/PlayerMeters";
 import { bumpRelationshipAffinity } from "../relationships/RelationshipMemory";
 import { adjustReputation, awardReputationTag } from "../reputation/ReputationState";
 import { advanceWorldMinutes } from "../time/DailyClock";
+import {
+  calculateCargoCareAdjustment,
+  describeCargoCareLoss,
+  isCargoCareEligible,
+  type CargoCareAdjustment
+} from "../ride/CargoCare";
 import { applyDeliveryScooterWear, MIN_DELIVERY_BIKE_CONDITION } from "./HustleEconomy";
 import { getAct1MoveOutReadiness } from "./HustleMilestones";
 import type { ActiveDeliveryState, WorldState } from "../../types";
+import { createDeliveryRideRun } from "../ride/DeliveryRideMode";
+import { getDeliveryBasePayoutAfterAct1Cut } from "../story/Act1IncitingHook";
 
 export interface DeliveryResult {
   ok: boolean;
@@ -20,6 +28,9 @@ export interface DeliveryResult {
   activeDelivery?: ActiveDeliveryState;
   starRating?: number;
   payout?: number;
+  cargoCare?: CargoCareAdjustment;
+  onTime?: boolean;
+  onTimeBonus?: number;
 }
 
 export interface DeliveryOfferAvailability {
@@ -55,6 +66,9 @@ export function acceptDelivery(world: WorldState, deliveryId: string, now: numbe
   if (world.life.hustle.activeDelivery) {
     return { ok: false, message: "Finish your current delivery first." };
   }
+  if (world.activeActivity?.source === "rivalRace") {
+    return { ok: false, message: "Finish Leo's race before taking a delivery." };
+  }
   if (definition.boardAvailable) {
     const eligibility = evaluateDeliveryOffer(world, definition);
     if (!eligibility.available) {
@@ -62,7 +76,7 @@ export function acceptDelivery(world: WorldState, deliveryId: string, now: numbe
     }
   }
   const condition = selectDeliveryCondition(world, definition, now);
-  const terms = getEffectiveDeliveryTerms(definition, condition);
+  const terms = getEffectiveDeliveryTerms(definition, condition, world);
   const activeDelivery: ActiveDeliveryState = {
     deliveryId,
     stage: "accepted",
@@ -90,6 +104,10 @@ export function pickupDelivery(world: WorldState, now: number): DeliveryResult {
   if (getQuantity(world.players[world.localPlayerId], definition.itemId) === 0) {
     addItem(world.players[world.localPlayerId], definition.itemId, 1);
   }
+  const condition = getDeliveryCondition(definition, active.conditionId);
+  active.cargoIntegrity = active.cargoIntegrity ?? 100;
+  active.cargoDamageEvents = active.cargoDamageEvents ?? 0;
+  active.rideRun = active.rideRun ?? createDeliveryRideRun();
   active.stage = "picked_up";
   active.pickedUpAt = now;
   advanceWorldMinutes(world, 8);
@@ -114,9 +132,26 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
   }
 
   const condition = getDeliveryCondition(definition, active.conditionId);
-  const terms = getEffectiveDeliveryTerms(definition, condition);
+  const terms = getEffectiveDeliveryTerms(definition, condition, world);
   const starRating = calculateDeliveryStarRating(active, now, performanceScore, condition);
-  const payout = calculateDeliveryPayout(terms.payout, starRating);
+  const onTime = now <= active.dueAt;
+  const cargoEligible =
+    isCargoCareEligible(world.life.actProgress.currentAct, definition, condition) &&
+    (definition.onTimeBonus == null || onTime);
+  const originalCargoCare = calculateCargoCareAdjustment(
+    definition,
+    condition,
+    active.cargoIntegrity ?? 100,
+    cargoEligible
+  );
+  const cutBasePayout = getDeliveryBasePayoutAfterAct1Cut(world, definition);
+  const cargoCare = {
+    ...originalCargoCare,
+    adjustedPayoutBase: cutBasePayout + originalCargoCare.retainedBonus
+  };
+  const onTimeBonus = onTime ? definition.onTimeBonus ?? 0 : 0;
+  const payoutBase = cargoCare.eligible ? cargoCare.adjustedPayoutBase : terms.payout + onTimeBonus;
+  const payout = calculateDeliveryPayout(payoutBase, starRating);
   player.money += payout;
   adjustPlayerMeters(world, terms.meterDeltas);
   const scooterWear = applyDeliveryScooterWear(world, terms.scooterWear);
@@ -160,11 +195,17 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
       : "";
   const wearCopy = scooterWear > 0 ? ` Scooter -${scooterWear}% (${player.bikeCondition}%).` : "";
 
+  const cargoCopy = describeCargoCareLoss(cargoCare);
   return {
     ok: true,
-    message: `Delivered ${definition.title}${condition ? ` (${condition.label})` : ""}. Rp +${payout}. Driver rating ${starRating.toFixed(1)}★.${wearCopy}${moveOutCopy}`,
+    message: `Delivered ${definition.title}${condition ? ` (${condition.label})` : ""}. Rp +${payout}. Driver rating ${starRating.toFixed(1)}★.${
+      definition.onTimeBonus ? (onTime ? ` On-time bonus included.` : ` Window missed — no Rp ${definition.onTimeBonus} bonus.`) : ""
+    }${cargoCopy}${wearCopy}${moveOutCopy}`,
     starRating,
-    payout
+    payout,
+    cargoCare: cargoCare.eligible ? cargoCare : undefined,
+    onTime,
+    onTimeBonus
   };
 }
 
@@ -181,8 +222,8 @@ export function calculateDeliveryStarRating(
 }
 
 export function calculateDeliveryPayout(basePayout: number, starRating: number): number {
-  const multiplier = 0.82 + (Math.max(1, Math.min(5, starRating)) / 5) * 0.28;
-  return Math.round(basePayout * multiplier);
+  const shippedMultiplier = 0.82 + (Math.max(1, Math.min(5, starRating)) / 5) * 0.28;
+  return Math.max(basePayout, Math.round(basePayout * shippedMultiplier));
 }
 
 function updateDriverRating(current: number, latest: number, weight: number): number {
@@ -194,6 +235,9 @@ function evaluateDeliveryOffer(world: WorldState, delivery: DeliveryDefinition):
   const player = world.players[world.localPlayerId];
   if (world.life.hustle.activeDelivery) {
     return { delivery, available: false, reason: "Finish your active delivery first." };
+  }
+  if (world.activeActivity?.source === "rivalRace") {
+    return { delivery, available: false, reason: "Finish Leo's race before taking a delivery." };
   }
   if (!world.life.actProgress.firstDayComplete) {
     return { delivery, available: false, reason: "Finish Ibu Sari's first-day run first." };
@@ -231,10 +275,12 @@ export function previewDeliveryCondition(world: WorldState, delivery: DeliveryDe
 
 export function getEffectiveDeliveryTerms(
   delivery: DeliveryDefinition,
-  condition?: DeliveryCondition
+  condition?: DeliveryCondition,
+  world?: WorldState
 ): EffectiveDeliveryTerms {
+  const basePayout = world ? getDeliveryBasePayoutAfterAct1Cut(world, delivery) : delivery.payout;
   return {
-    payout: Math.max(0, delivery.payout + (condition?.payoutBonus ?? 0)),
+    payout: Math.max(0, basePayout + (condition?.payoutBonus ?? 0)),
     timeLimitMin: Math.max(25, delivery.timeLimitMin + (condition?.timeLimitDeltaMin ?? 0)),
     meterDeltas: mergeMeterDeltas(delivery.meterDeltas, condition?.meterDeltas),
     scooterWear: getConditionScooterWear(condition)
