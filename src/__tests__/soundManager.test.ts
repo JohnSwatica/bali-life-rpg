@@ -1,12 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { AUDIO_MUTED_STORAGE_KEY, SOUND_CUES, SoundManager } from "../systems/audio/SoundManager";
+import {
+  AMBIENT_BEDS,
+  AUDIO_MUTED_STORAGE_KEY,
+  selectAmbientBed,
+  SOUND_CUES,
+  SoundManager
+} from "../systems/audio/SoundManager";
 import { installMemoryLocalStorage } from "./testUtils";
 
 describe("sound manager", () => {
   installMemoryLocalStorage();
 
   it("exposes the procedural cue keys used by the game", () => {
-    expect(SOUND_CUES).toEqual(["pickup", "payout", "uiClick", "toast", "sleep", "ambientLoop", "nearMiss"]);
+    expect(SOUND_CUES).toEqual(["pickup", "payout", "uiClick", "toast", "sleep", "ambientLoop", "nearMiss", "thunder"]);
+    expect(AMBIENT_BEDS).toEqual(["morningStreet", "cafeInterior", "rain", "nightQuiet"]);
   });
 
   it("persists mute state outside the versioned save", () => {
@@ -29,5 +36,21 @@ describe("sound manager", () => {
     for (const cue of SOUND_CUES) {
       expect(() => manager.play(cue)).not.toThrow();
     }
+  });
+
+  it("selects beds by weather, scene, and time phase", () => {
+    expect(selectAmbientBed({ phase: "day", weather: "clear", scene: "street" })).toBe("morningStreet");
+    expect(selectAmbientBed({ phase: "day", weather: "clear", scene: "cafeInterior" })).toBe("cafeInterior");
+    expect(selectAmbientBed({ phase: "night", weather: "clear", scene: "street" })).toBe("nightQuiet");
+    expect(selectAmbientBed({ phase: "night", weather: "storm", scene: "cafeInterior" })).toBe("rain");
+  });
+
+  it("changes the requested bed idempotently without bypassing mute", () => {
+    const manager = new SoundManager({ storage: localStorage, audioContextFactory: () => null });
+    manager.setMuted(true);
+    expect(manager.setAmbientBed("rain")).toBe(true);
+    expect(manager.setAmbientBed("rain")).toBe(false);
+    expect(manager.currentAmbientBed).toBe("rain");
+    expect(manager.isMuted).toBe(true);
   });
 });
