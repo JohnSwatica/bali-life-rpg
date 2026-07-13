@@ -43,7 +43,12 @@ import {
   type CutsceneStep,
   type CutsceneStepState
 } from "../systems/cutscene/CutsceneSequencer";
-import { SoundManager, type SoundCue } from "../systems/audio/SoundManager";
+import {
+  selectAmbientBed,
+  SoundManager,
+  type AmbientScene,
+  type SoundCue
+} from "../systems/audio/SoundManager";
 import { InteractionController, type InteractionTarget } from "../systems/interaction/InteractionController";
 import { InputController, type GameKeyMap } from "../systems/input/InputController";
 import { IntentDispatcher, type IntentResult } from "../systems/intents/IntentDispatcher";
@@ -156,6 +161,18 @@ import {
 import { getActiveEvents, getActiveEventsAtVenue, isEventActive } from "../systems/events/EventScheduler";
 import { applyEventParticipation } from "../systems/events/EventParticipation";
 import { canSleepNow } from "../systems/time/DailyClock";
+import {
+  createAuthoredDay1ClockState,
+  setTimePhaseForBeat as applyTimePhaseForBeat,
+  type AuthoredDay1ClockState,
+  type Day1TimeBeat
+} from "../systems/time/AuthoredDay1Clock";
+import {
+  isRideSurfaceSlick as isWeatherRideSurfaceSlick,
+  isWeatherWet,
+  WorldWeatherController,
+  type WeatherKind
+} from "../systems/weather/WorldWeather";
 import {
   applyActivity,
   formatActivityPreview,
@@ -328,6 +345,17 @@ interface CutsceneOverlay {
   subtitle: Phaser.GameObjects.Text;
 }
 
+interface RainDropRuntime {
+  x: number;
+  y: number;
+  speed: number;
+  length: number;
+  drift: number;
+  alpha: number;
+}
+
+const CAFE_AMBIENT_INTERIOR_IDS = new Set(["milk_madu_interior", "baked_berawa_interior", "satu_satu_interior"]);
+
 interface ActiveCutsceneRunner {
   script: CutsceneScript;
   elapsedMs: number;
@@ -390,6 +418,11 @@ interface BaliLifeDebugSnapshot {
   prompt: string;
   time: string;
   timePhase: string;
+  authoredDay1Clock: AuthoredDay1ClockState;
+  weather: { kind: WeatherKind; source: string | null; revision: number };
+  ambientBed: string;
+  rainDropCount: number;
+  fps: number;
   activeGroupId?: string;
   groupTravelMode?: GroupTravelMode;
   groupHelpers: number;
@@ -411,6 +444,13 @@ interface BaliLifeDebugSnapshot {
 declare global {
   interface Window {
     __BALI_LIFE_DEBUG__?: BaliLifeDebugSnapshot;
+    __BALI_LIFE_DEV_SENSATION__?: {
+      setTimePhaseForBeat: (beat: Day1TimeBeat) => boolean;
+      startWeather: (kind: Exclude<WeatherKind, "clear">) => boolean;
+      stopWeather: () => boolean;
+      enterKos: () => void;
+      teleport: (x: number, y: number) => void;
+    };
   }
 }
 
@@ -668,6 +708,9 @@ export class GameScene extends Phaser.Scene {
   private inputController!: InputController;
   private dialogueProvider: DialogueProvider = new ScriptedDialogueProvider();
   private soundManager = new SoundManager();
+  private authoredDay1Clock: AuthoredDay1ClockState = createAuthoredDay1ClockState();
+  private weather = new WorldWeatherController();
+  private ambientSceneOverride: AmbientScene | null = null;
   private hudController!: HudController;
   private phone?: PhoneShell;
   private titleScreen?: TitleScreen;
@@ -742,6 +785,12 @@ export class GameScene extends Phaser.Scene {
   private nightOverlayLayer!: Phaser.GameObjects.Container;
   private nightOverlay!: Phaser.GameObjects.Graphics;
   private lanternGlow!: Phaser.GameObjects.Graphics;
+  private weatherOverlayLayer!: Phaser.GameObjects.Container;
+  private wetStreetTint!: Phaser.GameObjects.Graphics;
+  private rainLayer!: Phaser.GameObjects.Graphics;
+  private thunderFlash!: Phaser.GameObjects.Graphics;
+  private rainDrops: RainDropRuntime[] = [];
+  private thunderFlashAlpha = 0;
   private objectiveArrowLayer!: Phaser.GameObjects.Graphics;
   private discoveryToastCooldown = 0;
   private waterBoundaryToastCooldown = 0;
@@ -762,6 +811,11 @@ export class GameScene extends Phaser.Scene {
 
   init(data?: { startFresh?: boolean }): void {
     this.skipTitleScreenForFreshStart = Boolean(data?.startFresh);
+    this.authoredDay1Clock = createAuthoredDay1ClockState();
+    this.weather = new WorldWeatherController();
+    this.ambientSceneOverride = null;
+    this.rainDrops = [];
+    this.thunderFlashAlpha = 0;
   }
 
   create(): void {
@@ -812,6 +866,16 @@ export class GameScene extends Phaser.Scene {
     this.createHud();
     this.updateMapDiscovery(true, !this.skipTitleScreenForFreshStart);
     this.updateOpportunityFeed(0, true);
+
+    if (this.isDevBuild() && typeof window !== "undefined") {
+      window.__BALI_LIFE_DEV_SENSATION__ = {
+        setTimePhaseForBeat: (beat) => this.setTimePhaseForBeat(beat),
+        startWeather: (kind) => this.startWeather(kind),
+        stopWeather: () => this.stopWeather(),
+        enterKos: () => this.enterInterior("cheap_kos_interior"),
+        teleport: (x, y) => this.devTeleport(x, y)
+      };
+    }
 
     this.cameras.main.setBounds(
       authoredPlayableBounds.x,
@@ -873,6 +937,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.updateHud(delta);
     this.updateLighting();
+    this.updateWeather(delta);
     this.updateDynamicObjectCulling();
   }
 
@@ -886,6 +951,9 @@ export class GameScene extends Phaser.Scene {
     }
     this.activeCutscene = undefined;
     this.soundManager.destroy();
+    if (typeof window !== "undefined") {
+      delete window.__BALI_LIFE_DEV_SENSATION__;
+    }
     this.unsubscribeNetwork?.();
     this.network.disconnect();
   }
@@ -1881,6 +1949,11 @@ export class GameScene extends Phaser.Scene {
     this.nightOverlay = this.add.graphics();
     this.nightOverlayLayer.add(this.nightOverlay);
     this.lanternGlow = this.add.graphics().setDepth(905);
+    this.weatherOverlayLayer = this.createZoomCompensatedContainer(910);
+    this.wetStreetTint = this.add.graphics();
+    this.rainLayer = this.add.graphics();
+    this.thunderFlash = this.add.graphics();
+    this.weatherOverlayLayer.add([this.wetStreetTint, this.rainLayer, this.thunderFlash]);
     this.hudController = new HudController(this, UI_DEPTH, {
       action: () => {
         this.playUiClick();
@@ -3345,14 +3418,20 @@ export class GameScene extends Phaser.Scene {
     let color = 0x111a31;
 
     if (phase === "night") {
-      alpha = minute < 360 ? 0.5 : 0.44;
+      alpha = minute < 360 ? 0.5 : 0.47;
       color = 0x071126;
     } else if (phase === "dawn") {
       alpha = 0.16;
       color = 0x6c4a7c;
     } else if (phase === "dusk") {
-      alpha = 0.24;
-      color = 0x5c3452;
+      alpha = 0.29;
+      color = 0x4d3157;
+    } else if (this.authoredDay1Clock.active && this.authoredDay1Clock.beat === "morning") {
+      alpha = 0.09;
+      color = 0xd98b45;
+    } else if (this.authoredDay1Clock.active && this.authoredDay1Clock.beat === "noon") {
+      alpha = 0.035;
+      color = 0xffedc4;
     }
 
     this.nightOverlay.clear();
@@ -3371,12 +3450,130 @@ export class GameScene extends Phaser.Scene {
       ];
       for (const [x, y] of lanterns) {
         const point = scalePoint({ x, y });
-        this.lanternGlow.fillStyle(0xffcc66, phase === "night" ? 0.23 : 0.13);
-        this.lanternGlow.fillCircle(point.x, point.y, scaleDistance(phase === "night" ? 84 : 56));
+        this.lanternGlow.fillStyle(0xffcc66, phase === "night" ? 0.28 : 0.15);
+        this.lanternGlow.fillCircle(point.x, point.y, scaleDistance(phase === "night" ? 92 : 62));
         this.lanternGlow.fillStyle(0xffefad, 0.65);
         this.lanternGlow.fillCircle(point.x, point.y, scaleDistance(8));
       }
     }
+
+    this.syncAmbientBed();
+  }
+
+  /** Story scenes call this at Day-1 beat boundaries; normal clock flow then continues. */
+  setTimePhaseForBeat(beat: Day1TimeBeat): boolean {
+    const changed = applyTimePhaseForBeat(this.world, this.authoredDay1Clock, beat);
+    if (changed) {
+      this.updateLighting();
+    }
+    return changed;
+  }
+
+  /** Starts an authored rain/storm scene without persisting weather into the save. */
+  startWeather(kind: Exclude<WeatherKind, "clear">): boolean {
+    const changed = this.weather.start(kind, "scene");
+    if (changed) {
+      this.syncAmbientBed();
+    }
+    return changed;
+  }
+
+  stopWeather(): boolean {
+    const changed = this.weather.stop();
+    if (changed) {
+      this.syncAmbientBed();
+    }
+    return changed;
+  }
+
+  /** Optional scene override; null returns bed selection to phase/weather/interior context. */
+  setAmbientScene(scene: AmbientScene | null): void {
+    this.ambientSceneOverride = scene;
+    this.syncAmbientBed();
+  }
+
+  private syncAmbientBed(): void {
+    const scene =
+      this.ambientSceneOverride ??
+      (this.activeInteriorId && CAFE_AMBIENT_INTERIOR_IDS.has(this.activeInteriorId)
+        ? "cafeInterior"
+        : this.activeInteriorId
+          ? "interior"
+          : "street");
+    this.soundManager.setAmbientBed(
+      selectAmbientBed({
+        phase: getTimePhase(this.world.clock.minuteOfDay),
+        weather: this.weather.state.kind,
+        scene
+      })
+    );
+  }
+
+  private updateWeather(delta: number): void {
+    const activeDelivery = this.world.life.hustle.activeDelivery;
+    this.weather.syncDeliveryCondition(activeDelivery?.conditionId);
+    const weatherUpdate = this.weather.update(delta);
+    if (weatherUpdate.thunder) {
+      this.thunderFlashAlpha = 0.72;
+      this.playSound("thunder");
+    }
+    this.thunderFlashAlpha = Math.max(0, this.thunderFlashAlpha - delta / 420);
+    this.syncZoomCompensatedContainer(this.weatherOverlayLayer);
+
+    this.wetStreetTint.clear();
+    this.rainLayer.clear();
+    this.thunderFlash.clear();
+
+    const worldVisible = !this.activeInteriorId && this.mode !== "title";
+    if (!worldVisible || !isWeatherWet(this.weather.state)) {
+      this.syncAmbientBed();
+      return;
+    }
+
+    const storm = this.weather.state.kind === "storm";
+    this.wetStreetTint.fillStyle(storm ? 0x304e68 : 0x426b7d, storm ? 0.2 : 0.14);
+    this.wetStreetTint.fillRect(0, 0, this.scale.width, this.scale.height);
+    this.wetStreetTint.lineStyle(1, 0x9dd6dc, storm ? 0.12 : 0.08);
+    for (let y = this.scale.height * 0.62; y < this.scale.height; y += 28) {
+      this.wetStreetTint.lineBetween(0, y, this.scale.width, y + 5);
+    }
+
+    const activeDropCount = this.scale.width <= 480 ? 72 : 128;
+    this.ensureRainPool(activeDropCount);
+    this.rainLayer.lineStyle(this.scale.width <= 480 ? 1 : 1.35, 0xd5f1ef, storm ? 0.7 : 0.58);
+    for (let index = 0; index < activeDropCount; index += 1) {
+      const drop = this.rainDrops[index];
+      drop.y += drop.speed * (delta / 1000) * (storm ? 1.18 : 1);
+      drop.x += drop.drift * (delta / 1000);
+      if (drop.y > this.scale.height + drop.length || drop.x > this.scale.width + 24) {
+        this.resetRainDrop(drop, true);
+      }
+      this.rainLayer.lineStyle(this.scale.width <= 480 ? 1 : 1.35, 0xd5f1ef, drop.alpha * (storm ? 1 : 0.82));
+      this.rainLayer.lineBetween(drop.x, drop.y, drop.x - drop.drift * 0.035, drop.y - drop.length);
+    }
+
+    if (this.thunderFlashAlpha > 0) {
+      this.thunderFlash.fillStyle(0xe8f4ff, this.thunderFlashAlpha);
+      this.thunderFlash.fillRect(0, 0, this.scale.width, this.scale.height);
+    }
+    this.syncAmbientBed();
+  }
+
+  private ensureRainPool(count: number): void {
+    while (this.rainDrops.length < count) {
+      const drop: RainDropRuntime = { x: 0, y: 0, speed: 0, length: 0, drift: 0, alpha: 0 };
+      this.resetRainDrop(drop, false);
+      this.rainDrops.push(drop);
+    }
+  }
+
+  private resetRainDrop(drop: RainDropRuntime, fromTop: boolean): void {
+    drop.x = Math.random() * (this.scale.width + 80) - 40;
+    drop.y = fromTop ? -20 - Math.random() * this.scale.height * 0.3 : Math.random() * this.scale.height;
+    drop.speed = 470 + Math.random() * 420;
+    drop.length = 12 + Math.random() * 18;
+    drop.drift = 72 + Math.random() * 52;
+    drop.alpha = 0.38 + Math.random() * 0.42;
   }
 
   private handleAction(): void {
@@ -4127,15 +4324,16 @@ export class GameScene extends Phaser.Scene {
     const doorGap = TILE_SIZE * 1.35;
     const doorLeft = interior.exitMat.x - doorGap / 2;
     const doorRight = interior.exitMat.x + doorGap / 2;
+    const isBleakKos = interior.id === "cheap_kos_interior";
 
     g.fillStyle(0x101820, 1);
     g.fillRect(x - TILE_SIZE * 8, y - TILE_SIZE * 7, width + TILE_SIZE * 16, height + TILE_SIZE * 14);
-    g.fillStyle(0xb9824f, 1);
+    g.fillStyle(isBleakKos ? 0x302b29 : 0xb9824f, 1);
     g.fillRoundedRect(x, y, width, height, TILE_SIZE * 0.18);
-    g.fillStyle(0xdab277, 1);
+    g.fillStyle(isBleakKos ? 0x514b45 : 0xdab277, 1);
     g.fillRect(x + wall, y + wall, width - wall * 2, height - wall * 2);
 
-    g.lineStyle(1, 0xc99b62, 0.32);
+    g.lineStyle(1, isBleakKos ? 0x756c61 : 0xc99b62, isBleakKos ? 0.18 : 0.32);
     for (let row = 1; row < 8; row += 1) {
       g.lineBetween(x + wall, y + row * TILE_SIZE, x + width - wall, y + row * TILE_SIZE);
     }
@@ -4143,17 +4341,17 @@ export class GameScene extends Phaser.Scene {
       g.lineBetween(x + column * TILE_SIZE, y + wall, x + column * TILE_SIZE, y + height - wall);
     }
 
-    g.fillStyle(0x5b3a29, 1);
+    g.fillStyle(isBleakKos ? 0x211e1d : 0x5b3a29, 1);
     g.fillRect(x, y, width, wall);
     g.fillRect(x, y, wall, height);
     g.fillRect(x + width - wall, y, wall, height);
     g.fillRect(x, y + height - wall, Math.max(0, doorLeft - x), wall);
     g.fillRect(doorRight, y + height - wall, Math.max(0, x + width - doorRight), wall);
 
-    g.fillStyle(0xf0d192, 1);
-    g.fillRoundedRect(x + TILE_SIZE * 1.1, y + TILE_SIZE * 0.8, TILE_SIZE * 9.8, TILE_SIZE * 0.56, TILE_SIZE * 0.12);
-    g.fillStyle(0x7f4f35, 1);
-    g.fillRoundedRect(x + TILE_SIZE * 1.35, y + TILE_SIZE * 1.12, TILE_SIZE * 9.3, TILE_SIZE * 0.28, TILE_SIZE * 0.08);
+    g.fillStyle(isBleakKos ? 0x625a50 : 0xf0d192, 1);
+    g.fillRoundedRect(x + TILE_SIZE * 1.1, y + TILE_SIZE * 0.8, TILE_SIZE * (isBleakKos ? 3.1 : 9.8), TILE_SIZE * 0.56, TILE_SIZE * 0.12);
+    g.fillStyle(isBleakKos ? 0x393431 : 0x7f4f35, 1);
+    g.fillRoundedRect(x + TILE_SIZE * 1.35, y + TILE_SIZE * 1.12, TILE_SIZE * (isBleakKos ? 2.6 : 9.3), TILE_SIZE * 0.28, TILE_SIZE * 0.08);
 
     g.fillStyle(0x253a35, 0.82);
     g.fillRoundedRect(interior.exitMat.x - TILE_SIZE * 0.55, interior.exitMat.y - TILE_SIZE * 0.26, TILE_SIZE * 1.1, TILE_SIZE * 0.52, TILE_SIZE * 0.08);
@@ -4227,24 +4425,40 @@ export class GameScene extends Phaser.Scene {
       g.fillStyle(0x7f4f35, 1);
       g.fillRect(x + TILE_SIZE * 1.58, y + TILE_SIZE * 5.55, TILE_SIZE * 0.22, TILE_SIZE * 0.62);
     } else if (interior.id === "cheap_kos_interior") {
-      g.fillStyle(0x9f8d76, 1);
-      g.fillRoundedRect(x + TILE_SIZE * 0.95, y + TILE_SIZE * 1.15, TILE_SIZE * 2.35, TILE_SIZE * 4.25, TILE_SIZE * 0.12);
-      g.fillStyle(0xfff0bd, 0.78);
-      g.fillRoundedRect(x + TILE_SIZE * 1.18, y + TILE_SIZE * 1.42, TILE_SIZE * 1.92, TILE_SIZE * 1.08, TILE_SIZE * 0.12);
-      g.fillStyle(0x6ab7ff, 0.46);
-      g.fillRoundedRect(x + TILE_SIZE * 1.18, y + TILE_SIZE * 2.7, TILE_SIZE * 1.92, TILE_SIZE * 2.25, TILE_SIZE * 0.08);
-      g.fillStyle(0x8b5937, 1);
-      g.fillRoundedRect(x + TILE_SIZE * 5.65, y + TILE_SIZE * 1.35, TILE_SIZE * 2.55, TILE_SIZE * 0.72, TILE_SIZE * 0.1);
-      g.fillStyle(0x101820, 0.9);
-      g.fillRoundedRect(x + TILE_SIZE * 6.1, y + TILE_SIZE * 1.08, TILE_SIZE * 0.86, TILE_SIZE * 0.28, TILE_SIZE * 0.05);
-      g.fillStyle(0x6f4a2f, 1);
-      g.fillRoundedRect(x + TILE_SIZE * 5.35, y + TILE_SIZE * 3.65, TILE_SIZE * 1.05, TILE_SIZE * 0.92, TILE_SIZE * 0.1);
-      g.fillRoundedRect(x + TILE_SIZE * 7.05, y + TILE_SIZE * 3.35, TILE_SIZE * 0.95, TILE_SIZE * 1.25, TILE_SIZE * 0.1);
-      g.fillStyle(0xf4d58d, 0.86);
-      g.fillCircle(x + TILE_SIZE * 8.15, y + TILE_SIZE * 1.12, TILE_SIZE * 0.18);
-      g.lineStyle(2, 0xf4d58d, 0.45);
-      g.lineBetween(x + TILE_SIZE * 8.15, y + TILE_SIZE * 1.3, x + TILE_SIZE * 8.15, y + TILE_SIZE * 1.9);
-      g.lineBetween(x + TILE_SIZE * 7.86, y + TILE_SIZE * 1.92, x + TILE_SIZE * 8.44, y + TILE_SIZE * 1.92);
+      // One tired mattress, one crate, one shelf: this room is the BUILD motivator.
+      g.fillStyle(0x292524, 0.62);
+      g.fillEllipse(x + TILE_SIZE * 2.55, y + TILE_SIZE * 4.82, TILE_SIZE * 3.1, TILE_SIZE * 0.58);
+      g.fillStyle(0x8b8175, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 1.15, y + TILE_SIZE * 3.08, TILE_SIZE * 2.8, TILE_SIZE * 1.72, TILE_SIZE * 0.08);
+      g.fillStyle(0xb4a68f, 0.9);
+      g.fillRoundedRect(x + TILE_SIZE * 1.3, y + TILE_SIZE * 3.2, TILE_SIZE * 2.5, TILE_SIZE * 0.48, TILE_SIZE * 0.06);
+      g.fillStyle(0x6f665c, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 6.45, y + TILE_SIZE * 4.05, TILE_SIZE * 1.1, TILE_SIZE * 0.9, TILE_SIZE * 0.06);
+      g.lineStyle(1, 0xa99a83, 0.42);
+      g.strokeRoundedRect(x + TILE_SIZE * 6.45, y + TILE_SIZE * 4.05, TILE_SIZE * 1.1, TILE_SIZE * 0.9, TILE_SIZE * 0.06);
+      g.fillStyle(0x34302d, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 5.75, y + TILE_SIZE * 1.15, TILE_SIZE * 2.55, TILE_SIZE * 0.28, TILE_SIZE * 0.04);
+      g.fillStyle(0x7b7063, 0.72);
+      g.fillRoundedRect(x + TILE_SIZE * 6.05, y + TILE_SIZE * 0.95, TILE_SIZE * 0.42, TILE_SIZE * 0.18, TILE_SIZE * 0.03);
+      g.fillRoundedRect(x + TILE_SIZE * 6.72, y + TILE_SIZE * 0.92, TILE_SIZE * 0.3, TILE_SIZE * 0.21, TILE_SIZE * 0.03);
+
+      // Damp stains and bare patches stay outside the bulb's strongest radius.
+      g.fillStyle(0x2f4542, 0.34);
+      g.fillEllipse(x + TILE_SIZE * 1.1, y + TILE_SIZE * 1.9, TILE_SIZE * 0.72, TILE_SIZE * 0.48);
+      g.fillEllipse(x + TILE_SIZE * 8.8, y + TILE_SIZE * 5.1, TILE_SIZE * 0.82, TILE_SIZE * 0.38);
+
+      const bulbX = x + TILE_SIZE * 7.9;
+      const bulbY = y + TILE_SIZE * 1.35;
+      g.fillStyle(0xf4bd62, 0.07);
+      g.fillCircle(bulbX, bulbY + TILE_SIZE * 0.9, TILE_SIZE * 2.75);
+      g.fillStyle(0xffca68, 0.12);
+      g.fillCircle(bulbX, bulbY + TILE_SIZE * 0.48, TILE_SIZE * 1.7);
+      g.lineStyle(2, 0x2a2522, 0.88);
+      g.lineBetween(bulbX, y + wall, bulbX, bulbY - TILE_SIZE * 0.17);
+      g.fillStyle(0xffd978, 0.98);
+      g.fillCircle(bulbX, bulbY, TILE_SIZE * 0.17);
+      g.fillStyle(0xfff0bd, 0.86);
+      g.fillCircle(bulbX, bulbY - TILE_SIZE * 0.03, TILE_SIZE * 0.07);
     } else if (interior.id === "scooter_rental_interior") {
       g.fillStyle(0x253a47, 1);
       g.fillRoundedRect(x + TILE_SIZE * 1.1, y + TILE_SIZE * 1.55, TILE_SIZE * 9.8, TILE_SIZE * 1.05, TILE_SIZE * 0.1);
@@ -5806,8 +6020,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private isRideSurfaceSlick(): boolean {
-    const active = this.world.life.hustle.activeDelivery;
-    return Boolean(active?.conditionId?.includes("rain"));
+    return isWeatherRideSurfaceSlick(this.weather.state);
   }
 
   private getActiveCargoIntegrity(): number | null {
@@ -9117,6 +9330,11 @@ export class GameScene extends Phaser.Scene {
       prompt: this.promptText.text,
       time: formatClock(this.world),
       timePhase: getTimePhase(this.world.clock.minuteOfDay),
+      authoredDay1Clock: { ...this.authoredDay1Clock },
+      weather: { ...this.weather.state },
+      ambientBed: this.soundManager.currentAmbientBed,
+      rainDropCount: isWeatherWet(this.weather.state) && !this.activeInteriorId ? (this.scale.width <= 480 ? 72 : 128) : 0,
+      fps: Math.round(this.game.loop.actualFps * 10) / 10,
       activeGroupId: this.playerState.activeGroupId,
       groupTravelMode: this.playerState.groupTravelMode,
       groupHelpers: this.countGroupHelpers(),

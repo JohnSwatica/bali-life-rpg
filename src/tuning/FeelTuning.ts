@@ -20,7 +20,21 @@ export const AUDIO_FEEL_TUNING = {
   /** Raises or lowers the continuous ambient bed. */
   ambientMasterGain: 0.018,
   /** Raises or lowers the high shimmer above the ambient bed. */
-  ambientShimmerGain: 0.006
+  ambientShimmerGain: 0.006,
+  /** Raises or lowers the procedural rain-noise layer. */
+  rainBedGain: 0.78,
+  /** Raises or lowers the filtered cafe chatter texture. */
+  cafeChatterGain: 0.28,
+  /** Raises or lowers the faint cafe espresso-machine whine. */
+  espressoTextureGain: 0.012,
+  /** Raises or lowers the first night cricket tone. */
+  cricketGain: 0.055,
+  /** Raises or lowers the quieter answering cricket tone. */
+  cricketEchoGain: 0.025,
+  /** Raises or lowers the bass body of a thunder sting. */
+  thunderLowGain: 0.04,
+  /** Raises or lowers the short upper crack of a thunder sting. */
+  thunderCrackGain: 0.018
 } as const;
 
 export const PAYOUT_FEEL_TUNING = {

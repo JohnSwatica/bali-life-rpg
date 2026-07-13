@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-13 (RPG-20260713-01/02, PR #1 merged)
+Last updated: 2026-07-13 (RPG-20260713-03 sensation layer complete locally)
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -12,15 +12,17 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 
 Current durable truth:
 
+- **RPG-20260713-03 complete on `feat/rpg-20260713-03-sensation-layer`:** Day 1 now has a transient authored beat clock over the existing clock/lighting path, one canonical clear/rain/storm state that owns both visible weather and slick ride physics, capped batched rain at desktop/mobile widths, wet-street tint, storm flash/thunder, phase/weather/interior-selected procedural ambient beds, stronger dusk/night lantern treatment, and a genuinely bleak one-bulb kos. No story/Act 0 step logic, map geometry, save schema, audio assets, delivery math, rate cut, or race logic changed. Proof: `docs/RPG-20260713-03_SENSATION_LAYER_PROOF.md`. Verification: 42 files / 270 tests, production build, full Act 0→Act 1 browser smoke, six sensory screenshots, zero browser errors, and <1% comparative rain-frame delta in the throttled headless harness.
+
 - **RPG-20260713-01/02 complete and merged:** authored venue interaction footprints are collision-safe, so Act 0's Milk & Madu objective can no longer resolve to adjacent Milu by Nook. Fresh Act 1 entry now visibly and persistently cuts NusaDrop board base pay 15%, then stages Leo's one-time pickup-rail encounter before his existing race. Fresh smoke proof covers the correct Milk & Madu panel, Act 0 completion, the rate-cut card, Leo's dialogue, and a lower first Act 1 payout. Proof: `docs/RPG-20260713-01_VENUE_COLLISION_PROOF.md` and `docs/RPG-20260713-02_ACT1_INCITING_HOOK_PROOF.md`. PR #1 (Phases 1-2 + all RPG-20260708/712/713 work) merged to `main` 2026-07-13 (`c20c527`); GitHub Pages deploy triggered automatically.
 
-- Branch: `main` — `feat/gameplay-stations` was fast-forward merged into `main` on 2026-07-06; `main` is now the working truth again.
+- Branch: `feat/rpg-20260713-03-sensation-layer`, branched cleanly from merged `main` at `561f107` for packet -03.
 - Remote: `https://github.com/JohnSwatica/bali-life-rpg` (created 2026-07-06). All branches pushed. New work should branch from `main` and open PRs. Merge authority: Claude has standing merge authority for this repo specifically (set 2026-07-13, see global CLAUDE.md Standing Rule 8) after actually reviewing a PR (diffs, tests, build, proof) — not a rubber stamp. match.co/NomadNest are unaffected; John still merges those himself.
 - Public playable build: `https://johnswatica.github.io/bali-life-rpg/` — auto-deploys from `main` via `.github/workflows/deploy-pages.yml` (CI runs tests, then builds with `--base=/bali-life-rpg/`; local dev/build unchanged). Verified live 2026-07-06 with assets resolving.
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test -- --run` = 40 files / 258 passing, 0 skipped; `npm run build` passes. RPG-20260712-03 replaces delivery checkpoint overlays with continuous steering through live hazards and traffic. The smoke harness drives Ibu Sari's named catering run straight through with degraded/variable run quality, logs hazards/avoidance/near-misses/contacts, captures a dense ride sequence and the locked BAKED alley, and checks the touch joystick/control surface at `390x844`. Physical iOS/Android verification remains pending.
+- Current verification: `npm test -- --run` = 42 files / 270 passing, 0 skipped; `npm run build` and `npm run smoke` pass. The smoke harness still drives the full Act 0→Act 1 path and checks the touch joystick/control surface at `390x844`; packet -03 adds separate sensory screenshots and clear-vs-rain frame sampling. Physical iOS/Android verification remains pending.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Packet execution status (updated 2026-07-12):
@@ -49,7 +51,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move (CEO directive 2026-07-13): **the first ten minutes.** John played the merged build and it "still felt the same" — diagnosis and beat-by-beat rebuild script are in `docs/FIRST_TEN_MINUTES.md` (the design contract). Execute `RPG-20260713-03` (Day-1 sensation layer: storm, authored clock arc, audio beds, bleak kos) then `RPG-20260713-04` (Act 0 back-half restaged as STORY_BIBLE v4's real arc: cafe scene + diegetic NusaDrop signup with Vance/Leo plants, storm ride, midnight deposit ultimatum, night villa setpiece, collapse close). **Hold the 3-5 outsider share until these land** — first impressions are one-shot and the CEO's own verdict says the current first impression loses people. Act 1 follow-ups (Made's room offer, Kadek's priority-driver moment, midpoint breakdown, closing milestone) queue behind this. Hard boundaries unchanged: no multiplayer, backend, AI calls, real commerce, Google data, or the Act 3 management sim.
+Immediate next move (CEO directive 2026-07-13): **RPG-20260713-04**, staging the rebuilt Act 0 back half on packet -03's now-complete sensation APIs: cafe scene + diegetic NusaDrop signup with Vance/Leo plants, storm ride, midnight deposit ultimatum, night villa setpiece, collapse close. Diagnosis and beat script remain in `docs/FIRST_TEN_MINUTES.md`. **Hold the 3-5 outsider share until -04 lands** — first impressions are one-shot and the CEO's own verdict says the current first impression loses people. Act 1 follow-ups (Made's room offer, Kadek's priority-driver moment, midpoint breakdown, closing milestone) queue behind this. Hard boundaries unchanged: no multiplayer, backend, AI calls, real commerce, Google data, or the Act 3 management sim.
 
 ## Project
 
