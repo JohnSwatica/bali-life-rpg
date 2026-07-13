@@ -49,7 +49,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move: PR #1 is merged to `main` and the public build is redeploying. John should confirm the live build at `https://johnswatica.github.io/bali-life-rpg/` reflects the fix, then share it with 3-5 outside players and capture their written feedback before broadening Act 1 beyond the explicitly listed follow-ups (Made's room offer, Kadek's priority-driver moment, the midpoint scooter-breakdown reversal, the closing milestone). Hard boundaries unchanged: no multiplayer, backend, AI calls, real commerce, Google data, or the Act 3 management sim.
+Immediate next move (CEO directive 2026-07-13): **the first ten minutes.** John played the merged build and it "still felt the same" — diagnosis and beat-by-beat rebuild script are in `docs/FIRST_TEN_MINUTES.md` (the design contract). Execute `RPG-20260713-03` (Day-1 sensation layer: storm, authored clock arc, audio beds, bleak kos) then `RPG-20260713-04` (Act 0 back-half restaged as STORY_BIBLE v4's real arc: cafe scene + diegetic NusaDrop signup with Vance/Leo plants, storm ride, midnight deposit ultimatum, night villa setpiece, collapse close). **Hold the 3-5 outsider share until these land** — first impressions are one-shot and the CEO's own verdict says the current first impression loses people. Act 1 follow-ups (Made's room offer, Kadek's priority-driver moment, midpoint breakdown, closing milestone) queue behind this. Hard boundaries unchanged: no multiplayer, backend, AI calls, real commerce, Google data, or the Act 3 management sim.
 
 ## Project
 

@@ -17,4 +17,4 @@ Format for new entries:
 The personal-playtest half of this entry is RESOLVED — John played on 2026-07-12 and the feedback is logged in `PLAYTEST_01.md` (bored at minute 5; four problems; narrative pivot to STORY_BIBLE v4). Still outstanding:
 
 - John answers the three decisions from `CLAUDE_PROJECT_REVIEW_2026-07-06.md` §6: project identity (hobby vs. audience asset), stakes ceiling, weekly time budget vs. NomadNest/match.co.
-- 3-5 outside players on the public URL once the RPG-20260712 fixes land (share message drafted in the 2026-07-08 session notes; the URL only updates when PR #1 merges).
+- 3-5 outside players on the public URL — **now gated behind the first-ten-minutes rebuild** (RPG-20260713-03/04, per the 2026-07-13 CEO directive: John played the merged build and it "still felt the same"; don't burn one-shot first impressions on a build the founder himself wouldn't love). Share once -03/-04 land and John signs off on a fresh playthrough.
