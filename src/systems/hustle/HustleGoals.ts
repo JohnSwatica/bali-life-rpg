@@ -67,7 +67,7 @@ export function getHustleGoalStates(world: WorldState): HustleGoalState[] {
     {
       id: "move_out_ready",
       title: "Move-out ready",
-      description: "Reach 5 deliveries, Rp 700 delivery earnings, 4.2★ driver rating, and first rent covered.",
+      description: `Reach ${ACT1_MOVE_OUT_DELIVERIES} deliveries, Rp ${ACT1_MOVE_OUT_DELIVERY_EARNINGS} delivery earnings, ${ACT1_MOVE_OUT_DRIVER_RATING.toFixed(1)}★ driver rating, and first rent covered.`,
       progress: `${Math.min(ACT1_MOVE_OUT_DELIVERIES, hustle.completedDeliveryCount)}/${ACT1_MOVE_OUT_DELIVERIES} runs, Rp ${Math.min(ACT1_MOVE_OUT_DELIVERY_EARNINGS, hustle.deliveryEarnings)}/${ACT1_MOVE_OUT_DELIVERY_EARNINGS}, ${Math.min(ACT1_MOVE_OUT_DRIVER_RATING, hustle.driverRating).toFixed(1)}/${ACT1_MOVE_OUT_DRIVER_RATING.toFixed(1)}★, rent ${moveOutReadiness.firstRentCovered ? "covered" : "open"}`,
       complete: hustle.moveOutReady
     }

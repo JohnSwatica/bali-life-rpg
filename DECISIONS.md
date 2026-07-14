@@ -1,5 +1,21 @@
 # Decisions
 
+## 2026-07-14 — Venue Menus Pass The Verb Test; Street Density Must Tell Place, Availability, Or Direction
+
+RPG-20260714-06 sets the venue-menu rule: each venue states one purpose and
+offers at most three actions that are things the player does *there*. Generic
+category fallback rows are removed rather than renamed; shop counters,
+milestone-critical scooter repair/upgrade, Ibu's service loop, and authored
+story/relationship rails remain. The Settling In regular goal stays at three
+actions because multiple real venues retain three purposeful actions.
+
+Outdoor density follows a second rule: every added visual must communicate
+place, availability, or direction without obscuring a door, sign, marker, or
+rideable road. Static place cues are baked once into a compact render texture;
+the same headless comparison measured no meaningful desktop/mobile frame-rate
+change. Interiors use the same static flat-color language and never move
+interactable coordinates. Proof: `docs/RPG-20260714-06_OVERHAUL_PROOF.md`.
+
 ## 2026-07-14 - Made's Room Offer Is A Persistent Steady-Runner Goal, Not A Housing System
 
 RPG-20260714-03 implements only Act 1 TP2: after the existing three-delivery Steady Runner threshold, Made sends one persistent Bungalow Living Feed invitation and remains staged in that venue's existing interior slot until the player takes the one-time portrait scene. The scene uses the existing `collectedPickups` flag map and the existing rent due-day state; its visible room goal reports rent-record clean ✓/✗ and permanently reports recommendation letter ✗. The letter path, Ibu guarantee, move-out montage, and all milestone changes remain Beat 5 work. No rent, deposit, payout, delivery, or rating value changes here; save schema stays v11. Made's one secret plant is limited to the oblique question of who he pays.

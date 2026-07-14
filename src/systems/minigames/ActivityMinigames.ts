@@ -48,14 +48,6 @@ const ACTIVITY_MINIGAMES: Record<string, ActivityMinigameDefinition | undefined>
       { id: "scroll", label: "Scroll through the meal", score: 0.25, feedback: "Fed, but barely present." }
     ]
   },
-  surf_beach_time: {
-    kind: "balance",
-    title: "Find the Line",
-    prompt: "Tap while the balance marker is centered to keep your board steady.",
-    actionLabel: "Balance",
-    targetStart: 0.38,
-    targetEnd: 0.62
-  },
   beach_surf_session: {
     kind: "balance",
     title: "Find the Line",
@@ -145,28 +137,6 @@ const ACTIVITY_MINIGAMES: Record<string, ActivityMinigameDefinition | undefined>
     actionLabel: "Tighten",
     targetStart: 0.43,
     targetEnd: 0.57
-  },
-  relax_hangout: {
-    kind: "choice",
-    title: "Read the Table",
-    prompt: "Pick the response that keeps the hangout easy and warm.",
-    actionLabel: "Choose",
-    choices: [
-      { id: "listen", label: "Ask a follow-up", score: 1, feedback: "That landed. People remember listeners." },
-      { id: "pitch", label: "Pitch your project", score: 0.45, feedback: "A little intense for a chill table." },
-      { id: "drift", label: "Check your phone", score: 0.2, feedback: "You were there, but barely present." }
-    ]
-  },
-  night_out: {
-    kind: "choice",
-    title: "Keep the Vibe",
-    prompt: "Choose how you enter the conversation without making it weird.",
-    actionLabel: "Choose",
-    choices: [
-      { id: "round", label: "Buy a small round", score: 0.78, feedback: "Generous, memorable, a bit expensive." },
-      { id: "story", label: "Invite a story", score: 1, feedback: "Perfect. The group opens up." },
-      { id: "flex", label: "Name-drop loudly", score: 0.18, feedback: "That cooled the room fast." }
-    ]
   }
 };
 

@@ -674,7 +674,7 @@ export class PhoneShell {
     const player = world.players[world.localPlayerId];
     const active = player.activeQuestIds.map((id) => `Active: ${questDefinitions[id]?.title ?? id}`);
     const complete = player.completedQuestIds.map((id) => `Done: ${questDefinitions[id]?.title ?? id}`);
-    const quests = [...active, ...complete].length ? [...active, ...complete] : ["No active quests. Talk to Ibu Sari or Kadek."];
+    const quests = [...active, ...complete];
     const goals = getSettlingInGoalStates(world).map((goal) => `${goal.complete ? "Done" : "Goal"}: ${goal.title} - ${goal.description}`);
     const hustleGoals = [...getHustleGoalStates(world)]
       .sort((a, b) => {
