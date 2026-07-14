@@ -200,7 +200,7 @@ describe("Act 0 hustle and deliveries", () => {
     expect(calculateDeliveryPayout(145, 5)).toBe(160);
   });
 
-  it("keeps Act 0 progression in order through delivery, meal, and first sleep", () => {
+  it("keeps the rebuilt Act 0 back half in authored order through the first sleep", () => {
     const world = createInitialWorldState();
     const player = world.players[world.localPlayerId];
 
@@ -220,6 +220,18 @@ describe("Act 0 hustle and deliveries", () => {
     expect(markAct0MealProgress(world, "coffee")).toBe(false);
     expect(world.life.actProgress.act0Step).toBe("buy_meal_and_coffee");
     expect(markAct0MealProgress(world, "meal")).toBe(true);
+    expect(world.life.actProgress.act0Step).toBe("nusadrop_signup");
+    for (const step of [
+      "nusadrop_signup",
+      "dropoff_storm_delivery",
+      "landlord_ultimatum",
+      "villa_order_ping",
+      "pickup_villa_delivery",
+      "dropoff_villa_delivery",
+      "pay_kos_deposit"
+    ] as const) {
+      expect(completeAct0Step(world, step)).toBe(true);
+    }
     expect(world.life.actProgress.act0Step).toBe("sleep_first_night");
     expect(canUseHomeSleep(world)).toBe(false);
     player.x = playerHomeBase.x;

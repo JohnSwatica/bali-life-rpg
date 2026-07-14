@@ -200,16 +200,16 @@ describe("field objective readout", () => {
     ).toBe("Now: Explore Berawa - Talk to locals.");
   });
 
-  it("keeps every Act 0 step progressable from field guidance without requiring the phone", () => {
-    const act0Steps: Act0Step[] = [
+  it("keeps travel beats in the field and reserves only diegetic moments for the phone", () => {
+    const fieldSteps: Act0Step[] = [
       "meet_ibu_sari",
-      "pickup_first_delivery",
       "dropoff_first_delivery",
       "buy_meal_and_coffee",
+      "pay_kos_deposit",
       "sleep_first_night"
     ];
 
-    for (const step of act0Steps) {
+    for (const step of fieldSteps) {
       const world = createInitialWorldState();
       world.life.actProgress.act0Step = step;
       world.life.actProgress.firstDayComplete = false;
@@ -219,6 +219,15 @@ describe("field objective readout", () => {
       expect(objective.source, step).toBe("act0");
       expect(objective.targets.length, step).toBeGreaterThan(0);
       expect(line, step).not.toMatch(/phone|feed|quests/);
+    }
+
+    for (const step of ["nusadrop_signup", "landlord_ultimatum", "villa_order_ping"] as const) {
+      const world = createInitialWorldState();
+      world.life.actProgress.act0Step = step;
+      const objective = getFieldObjective(world);
+      expect(objective.source, step).toBe("act0");
+      expect(objective.targets, step).toEqual([]);
+      expect(formatFieldObjectiveLine(objective).toLowerCase(), step).toMatch(/phone|alert|dropoff/);
     }
   });
 });

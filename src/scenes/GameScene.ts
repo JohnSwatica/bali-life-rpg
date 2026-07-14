@@ -36,6 +36,12 @@ import { getPortraitDataUrl, getPortraitDefinition, portraitVariantForTier } fro
 import { buildAct1IntroCutscene, buildAct2IntroCutscene } from "../systems/cutscene/ActCardScripts";
 import { buildAct0OpeningCutscene } from "../systems/cutscene/Act0OpeningScript";
 import {
+  buildAct0CafeScene,
+  buildAct0CollapseScene,
+  buildAct0KosResolveScene,
+  buildAct0LandlordUltimatumScene
+} from "../systems/cutscene/Act0BackHalfScripts";
+import {
   getCutsceneStepState,
   shouldPauseQueuedFeedback,
   skipCutscene,
@@ -202,6 +208,7 @@ import {
 import { canUseHomeSleep, isPlayerAtHomeBase } from "../systems/life/HomeBase";
 import {
   acceptDelivery,
+  calculateDeliveryPayout,
   completeDelivery,
   getDeliveryOfferAvailability,
   getEffectiveDeliveryTerms,
@@ -222,6 +229,20 @@ import {
   isAct1LeoEncounterPending,
   triggerAct1RateCut
 } from "../systems/story/Act1IncitingHook";
+import {
+  ACT0_CAFE_SCENE_COST,
+  ACT0_STORM_DELIVERY_ID,
+  ACT0_STORM_TRIGGER_MS,
+  ACT0_VILLA_DELIVERY_ID,
+  getAct0CriticalPathMenuOpenCount,
+  getAct0DepositState,
+  getAct0StormTriggerCount,
+  isAct0StoryDelivery,
+  markAct0StormTriggered,
+  recordAct0CriticalPathMenuOpen,
+  resolveAct0Deposit,
+  revealAct0Deposit
+} from "../systems/story/Act0BackHalf";
 import { getMorningHandCards, shouldShowMorningHand, type MorningHandCard } from "../systems/hustle/MorningHand";
 import {
   buildDayLedgerSummary,
@@ -399,6 +420,11 @@ interface BaliLifeDebugSnapshot {
   lifestyleTags: string[];
   portal: string;
   act0Step: string;
+  phoneStoryMoment: string | null;
+  phoneStoryStep: number | null;
+  deposit: ReturnType<typeof getAct0DepositState> | null;
+  act0CriticalPathMenuOpens: number;
+  act0StormTriggerCount: number;
   driverRating: number;
   activeDelivery: string | null;
   activeDeliveryStage: "accepted" | "picked_up" | null;
@@ -738,6 +764,7 @@ export class GameScene extends Phaser.Scene {
   private timeText!: Phaser.GameObjects.Text;
   private questText!: Phaser.GameObjects.Text;
   private wantedChipText!: Phaser.GameObjects.Text;
+  private depositChipText!: Phaser.GameObjects.Text;
   private bikeChipText!: Phaser.GameObjects.Text;
   private cargoChipText!: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
@@ -842,7 +869,7 @@ export class GameScene extends Phaser.Scene {
       onFeedback: () => this.sendFeedback(),
       onClose: () => {
         if (this.mode === "phone") {
-          this.mode = "world";
+          this.mode = this.activeInteriorId ? "interior" : "world";
         }
       }
     });
@@ -1860,6 +1887,7 @@ export class GameScene extends Phaser.Scene {
   private resumeFromMenu(): void {
     this.closePauseMenu();
     this.resumeCommittedActivityIfNeeded();
+    this.resumeAct0BackHalfIfNeeded();
     if (this.pendingAct2CutscenePreviousAct != null) {
       const previousAct = this.pendingAct2CutscenePreviousAct;
       this.pendingAct2CutscenePreviousAct = undefined;
@@ -1918,6 +1946,7 @@ export class GameScene extends Phaser.Scene {
     this.timeText = this.add.text(16, 12, "", this.hudTextStyle(15));
     this.questText = this.add.text(16, 46, "", this.hudTextStyle(14));
     this.wantedChipText = this.add.text(16, 0, "", this.hudTextStyle(13)).setColor("#ff8f80").setVisible(false);
+    this.depositChipText = this.add.text(16, 0, "", this.hudTextStyle(13)).setColor("#fff0bd").setVisible(false);
     this.bikeChipText = this.add.text(16, 0, "", this.hudTextStyle(13)).setColor("#f4b860").setVisible(false);
     this.cargoChipText = this.add.text(16, 0, "", this.hudTextStyle(13)).setColor("#62c48f").setVisible(false);
     this.promptText = this.add.text(16, 0, "", this.hudTextStyle(15));
@@ -1940,6 +1969,7 @@ export class GameScene extends Phaser.Scene {
       this.timeText,
       this.questText,
       this.wantedChipText,
+      this.depositChipText,
       this.bikeChipText,
       this.cargoChipText,
       this.promptText,
@@ -2415,11 +2445,21 @@ export class GameScene extends Phaser.Scene {
   private applyTrafficHit(source: TrafficBikeRuntime): void {
     this.trafficHitCooldown = TRAFFIC_HIT_COOLDOWN_MS;
     const activeDelivery = this.world.life.hustle.activeDelivery;
-    if (activeDelivery?.stage === "picked_up" && this.playerState.onBike) {
+    const act0Step = this.world.life.actProgress.act0Step;
+    const act0FailForwardTransit =
+      isAct0StoryDelivery(activeDelivery?.deliveryId) ||
+      act0Step === "landlord_ultimatum" ||
+      act0Step === "villa_order_ping" ||
+      act0Step === "pickup_villa_delivery" ||
+      act0Step === "dropoff_villa_delivery" ||
+      act0Step === "pay_kos_deposit";
+    if ((activeDelivery?.stage === "picked_up" || act0FailForwardTransit) && this.playerState.onBike) {
       const contact = applyDeliveryHazardContact();
       const cargoDamage = this.damageActiveDeliveryCargo(contact.cargoReason);
-      activeDelivery.rideRun ??= { elapsedMs: 0, hazardsSpawned: 0, hazardsAvoided: 0, nearMisses: 0, contacts: 0 };
-      activeDelivery.rideRun.contacts += 1;
+      if (activeDelivery) {
+        activeDelivery.rideRun ??= { elapsedMs: 0, hazardsSpawned: 0, hazardsAvoided: 0, nearMisses: 0, contacts: 0 };
+        activeDelivery.rideRun.contacts += 1;
+      }
       this.applyDeliverySpeedStumble(contact.speedMultiplier);
       this.applyTrafficKnockback(source);
       this.cameras.main.shake(140, 0.004);
@@ -2428,7 +2468,7 @@ export class GameScene extends Phaser.Scene {
         this.spawnFloatingText(`Cargo -${cargoDamage.amount}%`, this.player.x, this.player.y - scaleDistance(34), "#f4b860");
       }
       saveWorldState(this.world);
-      this.showToast(`Scooter clip — soft hit, keep riding. Cargo ${cargoDamage?.after ?? activeDelivery.cargoIntegrity ?? 100}%.`);
+      this.showToast(`Scooter clip — soft hit, keep riding. Cargo ${cargoDamage?.after ?? activeDelivery?.cargoIntegrity ?? 100}%.`);
       return;
     }
     const moneyLoss = Math.min(this.playerState.money, TRAFFIC_HIT_MONEY_LOSS);
@@ -2577,8 +2617,10 @@ export class GameScene extends Phaser.Scene {
     this.finishPayoutCelebration();
     const panelWidth = spec.rentMilestone ? 246 : 218;
     const panelHeight = spec.rentMilestone ? 86 : 66;
-    const x = Phaser.Math.Clamp(this.scale.width - panelWidth - 18, 16, Math.max(16, this.scale.width - panelWidth - 18));
-    const y = 92;
+    const x = spec.tier === "great"
+      ? Math.max(16, Math.round((this.scale.width - panelWidth) / 2))
+      : Phaser.Math.Clamp(this.scale.width - panelWidth - 18, 16, Math.max(16, this.scale.width - panelWidth - 18));
+    const y = spec.tier === "great" ? 118 : 92;
     const container = this.add.container(x, y).setAlpha(1);
     const bg = this.add.graphics();
     bg.fillStyle(0x101820, 0.9);
@@ -2710,6 +2752,33 @@ export class GameScene extends Phaser.Scene {
 
     const zone = BIKE_MUD_ZONES.find((candidate) => this.isPointInZone(this.player.x, this.player.y, candidate));
     if (!zone) {
+      return;
+    }
+
+    const act0Step = this.world.life.actProgress.act0Step;
+    const storyDeliveryId = this.world.life.hustle.activeDelivery?.deliveryId;
+    const act0FailForwardRide =
+      isAct0StoryDelivery(storyDeliveryId) ||
+      act0Step === "dropoff_storm_delivery" ||
+      act0Step === "landlord_ultimatum" ||
+      act0Step === "villa_order_ping" ||
+      act0Step === "pickup_villa_delivery" ||
+      act0Step === "dropoff_villa_delivery" ||
+      act0Step === "pay_kos_deposit";
+    if (act0FailForwardRide) {
+      const flag = `act0_mud_fail_forward_${storyDeliveryId ?? act0Step}`;
+      if (!this.world.questFlags[flag]) {
+        this.world.questFlags[flag] = true;
+        this.playerState.bikeCondition = Math.max(20, this.playerState.bikeCondition - 6);
+        const cargoDamage = this.damageActiveDeliveryCargo("hard_collision");
+        this.applyDeliverySpeedStumble(0.72);
+        saveWorldState(this.world);
+        this.showToast(
+          cargoDamage?.damaged
+            ? `${zone.label}: cargo -${cargoDamage.amount}%, but the story ride keeps moving.`
+            : `${zone.label}: the scooter fishtails, but the kos run keeps moving.`
+        );
+      }
       return;
     }
 
@@ -3308,6 +3377,16 @@ export class GameScene extends Phaser.Scene {
       warningY += this.wantedChipText.height + 8;
     } else {
       this.wantedChipText.setText("").setVisible(false);
+    }
+    const deposit = getAct0DepositState(this.world);
+    if (deposit.visible) {
+      this.depositChipText
+        .setText(`DEPOSIT Rp ${deposit.target} · WALLET Rp ${deposit.wallet} · GAP Rp ${deposit.gap}`)
+        .setPosition(16, warningY)
+        .setVisible(true);
+      warningY += this.depositChipText.height + 8;
+    } else {
+      this.depositChipText.setText("").setVisible(false);
     }
     if (this.playerState.onBike && this.playerState.bikeCondition < 50) {
       this.bikeChipText.setText(`Scooter ${this.playerState.bikeCondition}%`).setPosition(16, warningY).setVisible(true);
@@ -4177,6 +4256,7 @@ export class GameScene extends Phaser.Scene {
   private resolveAct0OpeningChoice(option: RelationshipChoiceOption): void {
     this.world.questFlags.firstRunHintSeen = true;
     this.world.questFlags.act0_v4_opening_complete = true;
+    this.world.questFlags.act0_back_half_version = 2;
     this.world.questFlags.act0_negotiated_fee = option.actionId === "negotiate_act0_fee";
     this.playerState.hasBike = true;
     this.playerState.bikeStuck = false;
@@ -4276,7 +4356,164 @@ export class GameScene extends Phaser.Scene {
       this.interiorTransitioning = false;
       this.cameras.main.fadeIn(400, 0, 0, 0);
       this.showToast(`Entered ${interior.name}.`);
+      this.maybeStartAct0InteriorBeat();
     });
+  }
+
+  private maybeStartAct0InteriorBeat(): void {
+    if (this.activeInteriorId === "milk_madu_interior" && this.world.life.actProgress.act0Step === "buy_meal_and_coffee") {
+      this.startAct0CafeScene();
+      return;
+    }
+    if (this.activeInteriorId === "cheap_kos_interior" && this.world.life.actProgress.act0Step === "pay_kos_deposit") {
+      this.startAct0KosResolve();
+    }
+  }
+
+  private startAct0CafeScene(): void {
+    if (this.activeCutscene || this.world.life.actProgress.act0Step !== "buy_meal_and_coffee") {
+      return;
+    }
+    const interior = interiorDefinitions.milk_madu_interior;
+    this.world.questFlags.act0_cafe_scene_started = true;
+    this.setTimePhaseForBeat("noon");
+    this.setAmbientScene("cafeInterior");
+    this.placePlayerSprite({ x: interior.origin.x + TILE_SIZE * 6.2, y: interior.origin.y + TILE_SIZE * 5.45 }, false);
+
+    const vance = this.add.container(interior.origin.x + TILE_SIZE * 6.9, interior.origin.y + TILE_SIZE * 2.35).setDepth(260);
+    vance.add(this.add.sprite(0, 0, npcDefinitions.pak_bagus.spriteKey).setScale(CHARACTER_SPRITE_SCALE));
+    const tableBusiness = this.add.container(interior.origin.x + TILE_SIZE * 6.2, interior.origin.y + TILE_SIZE * 4.95).setDepth(255);
+    tableBusiness.add([
+      this.add.ellipse(-18, 2, 38, 20, 0xfff0bd).setStrokeStyle(2, 0x73543a, 0.8),
+      this.add.circle(22, -1, 10, 0xf7f0df).setStrokeStyle(2, 0x73543a, 0.8),
+      this.add.circle(22, -1, 5, 0x543323)
+    ]);
+    const actors = new Map<string, Phaser.GameObjects.Container>([
+      ["julian_vance", vance],
+      ["plate_and_coffee", tableBusiness]
+    ]);
+
+    this.startCutscene(buildAct0CafeScene(), () => {
+      if (this.world.life.actProgress.act0Step !== "buy_meal_and_coffee") return;
+      const sceneCost = Math.min(ACT0_CAFE_SCENE_COST, this.playerState.money);
+      this.playerState.money -= sceneCost;
+      adjustPlayerMeters(this.world, { energy: 12, wellbeing: 7, focus: 4 });
+      this.world.questFlags.act0_meal_done = true;
+      this.world.questFlags.act0_coffee_done = true;
+      this.world.questFlags.act0_cafe_scene_complete = true;
+      completeAct0Step(this.world, "buy_meal_and_coffee");
+      this.setAmbientScene(null);
+      saveWorldState(this.world);
+      this.mode = "phone";
+      this.phone?.openAct0Signup(() => this.completeAct0NusaDropSignup());
+    }, actors);
+  }
+
+  private completeAct0NusaDropSignup(): void {
+    if (this.world.life.actProgress.act0Step !== "nusadrop_signup") return;
+    const accepted = acceptDelivery(this.world, ACT0_STORM_DELIVERY_ID, this.getAbsoluteMinute());
+    if (!accepted.ok) {
+      this.showToast(accepted.message);
+      return;
+    }
+    pickupDelivery(this.world, this.getAbsoluteMinute());
+    completeAct0Step(this.world, "nusadrop_signup");
+    saveWorldState(this.world);
+    this.showToast("NusaDrop run live — sealed bag loaded. Ride to the beach service shelter.");
+    if (this.activeInteriorId) {
+      this.exitInterior();
+    }
+  }
+
+  private startAct0LandlordUltimatum(): void {
+    if (this.activeCutscene || this.world.life.actProgress.act0Step !== "landlord_ultimatum") {
+      return;
+    }
+    this.world.questFlags.act0_landlord_ultimatum_started = true;
+    const deposit = revealAct0Deposit(this.world);
+    saveWorldState(this.world);
+    this.startCutscene(buildAct0LandlordUltimatumScene(deposit.target, deposit.wallet), () => {
+      if (this.world.life.actProgress.act0Step !== "landlord_ultimatum") return;
+      completeAct0Step(this.world, "landlord_ultimatum");
+      this.setTimePhaseForBeat("night");
+      this.startWeather("rain");
+      saveWorldState(this.world);
+      this.openAct0VillaOrder();
+    });
+  }
+
+  private openAct0VillaOrder(): void {
+    if (this.world.life.actProgress.act0Step !== "villa_order_ping") return;
+    const definition = getDeliveryDefinition(ACT0_VILLA_DELIVERY_ID);
+    if (!definition) return;
+    const condition = definition.conditions?.[0];
+    const cleanPayout = calculateDeliveryPayout(getEffectiveDeliveryTerms(definition, condition, this.world).payout, 5);
+    const deposit = getAct0DepositState(this.world);
+    // A mud fishtail can happen while the dropoff alert owns the screen; the critical path must still accept and ride.
+    this.playerState.bikeStuck = false;
+    this.playerState.bikeCondition = Math.max(30, this.playerState.bikeCondition);
+    this.mode = "phone";
+    this.phone?.openAct0VillaOrder(deposit.gap, cleanPayout, () => {
+      if (this.world.life.actProgress.act0Step !== "villa_order_ping") return;
+      const accepted = acceptDelivery(this.world, ACT0_VILLA_DELIVERY_ID, this.getAbsoluteMinute());
+      if (!accepted.ok) {
+        this.showToast(accepted.message);
+        return;
+      }
+      completeAct0Step(this.world, "villa_order_ping");
+      saveWorldState(this.world);
+      this.showToast(`SURGE ACCEPTED — clean Rp ${cleanPayout}. Pickup at BAKED.`);
+    });
+  }
+
+  private startAct0KosResolve(): void {
+    if (this.activeCutscene || this.world.life.actProgress.act0Step !== "pay_kos_deposit") {
+      return;
+    }
+    this.world.questFlags.act0_kos_resolve_started = true;
+    const resolution = resolveAct0Deposit(this.world);
+    this.stopWeather();
+    this.setAmbientScene("interior");
+    saveWorldState(this.world);
+    this.startCutscene(buildAct0KosResolveScene(resolution), () => {
+      if (this.world.life.actProgress.act0Step !== "pay_kos_deposit") return;
+      completeAct0Step(this.world, "pay_kos_deposit");
+      saveWorldState(this.world);
+      this.startCutscene(buildAct0CollapseScene(), () => {
+        this.setAmbientScene(null);
+        if (this.world.life.actProgress.act0Step === "sleep_first_night") {
+          this.sleepToMorning();
+        }
+      });
+    });
+  }
+
+  private resumeAct0BackHalfIfNeeded(): void {
+    const step = this.world.life.actProgress.act0Step;
+    if (step === "nusadrop_signup") {
+      this.mode = "phone";
+      this.phone?.openAct0Signup(() => this.completeAct0NusaDropSignup());
+      return;
+    }
+    if (step === "dropoff_storm_delivery" && getAct0StormTriggerCount(this.world) > 0) {
+      this.setTimePhaseForBeat("stormDusk");
+      this.startWeather("storm");
+      return;
+    }
+    if (step === "landlord_ultimatum") {
+      this.startAct0LandlordUltimatum();
+      return;
+    }
+    if (step === "villa_order_ping") {
+      this.setTimePhaseForBeat("night");
+      this.startWeather("rain");
+      this.openAct0VillaOrder();
+      return;
+    }
+    if (step === "pickup_villa_delivery" || step === "dropoff_villa_delivery" || step === "pay_kos_deposit") {
+      this.setTimePhaseForBeat("night");
+      this.startWeather("rain");
+    }
   }
 
   private exitInterior(): void {
@@ -4913,6 +5150,7 @@ export class GameScene extends Phaser.Scene {
     availability: ActivityAvailability[],
     shop: ShopDefinition | undefined
   ): void {
+    recordAct0CriticalPathMenuOpen(this.world);
     this.destroyActivityMenuOverlay();
     if (typeof document === "undefined") {
       return;
@@ -5898,6 +6136,16 @@ export class GameScene extends Phaser.Scene {
       active.rideRun ??= { elapsedMs: 0, hazardsSpawned: this.deliveryHazards.length, hazardsAvoided: 0, nearMisses: 0, contacts: 0 };
       active.rideRun.elapsedMs += delta;
       active.rideRun.hazardsSpawned = Math.max(active.rideRun.hazardsSpawned, this.deliveryHazards.length);
+      if (
+        active.deliveryId === ACT0_STORM_DELIVERY_ID &&
+        active.rideRun.elapsedMs >= ACT0_STORM_TRIGGER_MS &&
+        markAct0StormTriggered(this.world)
+      ) {
+        this.setTimePhaseForBeat("stormDusk");
+        this.startWeather("storm");
+        this.showToast("The storm breaks mid-run — keep the cargo upright.");
+        saveWorldState(this.world);
+      }
     }
     if (this.mode !== "world" || !this.playerState.onBike) return;
 
@@ -8364,18 +8612,30 @@ export class GameScene extends Phaser.Scene {
         : completeDelivery(this.world, now, performanceScore);
     if (result.ok && wasPickup) {
       this.ensureDeliveryHazards(active.deliveryId);
-      completeAct0Step(this.world, "pickup_first_delivery");
+      if (active.deliveryId === "act0_ibu_milk_madu_catering") {
+        completeAct0Step(this.world, "pickup_first_delivery");
+      } else if (active.deliveryId === ACT0_VILLA_DELIVERY_ID) {
+        completeAct0Step(this.world, "pickup_villa_delivery");
+      }
       this.spawnInteractionFlourish("pickup", this.player.x, this.player.y, "Picked up");
     } else if (result.ok && !this.world.life.hustle.activeDelivery) {
       this.clearDeliveryHazards();
-      const negotiatedFee = applyAct0NegotiatedCompletionFee(this.world, active.deliveryId);
+      const negotiatedFee = active.deliveryId === "act0_ibu_milk_madu_catering"
+        ? applyAct0NegotiatedCompletionFee(this.world, active.deliveryId)
+        : 0;
       if (negotiatedFee > 0) {
         result.payout = (result.payout ?? 0) + negotiatedFee;
         result.message += ` Negotiated fee +Rp ${negotiatedFee}.`;
       }
-      completeAct0Step(this.world, "dropoff_first_delivery");
+      if (active.deliveryId === "act0_ibu_milk_madu_catering") {
+        completeAct0Step(this.world, "dropoff_first_delivery");
+      } else if (active.deliveryId === ACT0_STORM_DELIVERY_ID) {
+        completeAct0Step(this.world, "dropoff_storm_delivery");
+      } else if (active.deliveryId === ACT0_VILLA_DELIVERY_ID) {
+        completeAct0Step(this.world, "dropoff_villa_delivery");
+      }
       this.refreshSettlingInGoals(false);
-      const celebration = buildPayoutCelebrationSpec({
+      const baseCelebration = buildPayoutCelebrationSpec({
         payout: result.payout ?? 0,
         starRating: result.starRating ?? this.world.life.hustle.driverRating,
         previousDriverRating,
@@ -8385,6 +8645,14 @@ export class GameScene extends Phaser.Scene {
         rentAmount,
         performanceScore
       });
+      const celebration = active.deliveryId === ACT0_VILLA_DELIVERY_ID
+        ? {
+            ...baseCelebration,
+            tier: "great" as const,
+            scalePunch: baseCelebration.scalePunch * 1.22,
+            totalDurationMs: baseCelebration.totalDurationMs + 700
+          }
+        : baseCelebration;
       chapterCutsceneDelayMs = getChapterCutsceneDelayMs(
         previousAct,
         this.world.life.actProgress.currentAct,
@@ -8400,11 +8668,23 @@ export class GameScene extends Phaser.Scene {
             : "Ibu Sari texts: ‘On time. Keep the keys — and keep your word.’"
           : "Ibu Sari texts: ‘Late. No bonus. But you finished — bring the scooter back in one piece.’";
         this.time.delayedCall(900, () => this.showToast(line));
+        this.time.delayedCall(1100, () => {
+          if (this.world.life.actProgress.act0Step === "buy_meal_and_coffee" && !this.activeInteriorId) {
+            this.enterInterior("milk_madu_interior");
+          }
+        });
+      } else if (active.deliveryId === ACT0_STORM_DELIVERY_ID) {
+        this.time.delayedCall(Math.min(1800, celebration.totalDurationMs), () => this.startAct0LandlordUltimatum());
+      } else if (active.deliveryId === ACT0_VILLA_DELIVERY_ID) {
+        this.world.questFlags.act0_villa_five_star = (result.starRating ?? 0) >= 5;
+        this.setTimePhaseForBeat("night");
+        this.startWeather("rain");
+        this.time.delayedCall(800, () => this.showToast("5.0★ — biggest payout yet. Get the deposit home."));
       }
     }
     saveWorldState(this.world);
     this.showToast(result.message);
-    if (result.ok && !wasPickup) {
+    if (result.ok && !wasPickup && !isAct0StoryDelivery(active.deliveryId) && active.deliveryId !== "act0_ibu_milk_madu_catering") {
       if (chapterCutsceneDelayMs > 0) {
         this.time.delayedCall(chapterCutsceneDelayMs, () => {
           if (!shouldAdvanceGameplayBehindMenu(this.mode)) {
@@ -9157,6 +9437,7 @@ export class GameScene extends Phaser.Scene {
     this.drawHudChipBackplate(this.timeText);
     this.drawHudChipBackplate(this.questText);
     this.drawHudChipBackplate(this.wantedChipText);
+    this.drawHudChipBackplate(this.depositChipText);
     this.drawHudChipBackplate(this.bikeChipText);
     this.drawHudChipBackplate(this.cargoChipText);
     this.drawHudChipBackplate(this.promptText);
@@ -9303,6 +9584,11 @@ export class GameScene extends Phaser.Scene {
       lifestyleTags: [...this.world.profile.lifestyleTags],
       portal: `${this.world.portal.current}:${this.world.portal.multiplayerStatus}`,
       act0Step: this.world.life.actProgress.act0Step,
+      phoneStoryMoment: this.phone?.activeStoryMomentId ?? null,
+      phoneStoryStep: this.phone?.activeStoryMomentStep ?? null,
+      deposit: getAct0DepositState(this.world),
+      act0CriticalPathMenuOpens: getAct0CriticalPathMenuOpenCount(this.world),
+      act0StormTriggerCount: getAct0StormTriggerCount(this.world),
       driverRating: this.world.life.hustle.driverRating,
       activeDelivery: this.world.life.hustle.activeDelivery?.deliveryId ?? null,
       activeDeliveryStage: this.world.life.hustle.activeDelivery?.stage ?? null,

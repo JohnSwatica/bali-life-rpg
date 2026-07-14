@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getDeliveryDefinition } from "../data/deliveries";
-import { applyActivity, getVenueActivityContext } from "../systems/life/ActivityEngine";
-import { completeAct0Step, getAct0MealProgressKindForActivity, markAct0MealProgress } from "../systems/life/ActProgression";
+import { completeAct0Step } from "../systems/life/ActProgression";
+import { sleepAtHomeUntilMorning } from "../systems/life/SleepCycle";
 import { getAct2GoalStates, getAct2NextStep, getAct2PayoffOpportunityState } from "../systems/life/Act2Goals";
 import { getFieldObjective } from "../systems/guidance/FieldObjective";
 import { joinSocialGroup } from "../systems/groups/GroupRegistry";
@@ -17,6 +17,13 @@ import { getAbsoluteMinute, getOpportunityTemplate, resolveOpportunity, spawnOpp
 import { bumpRelationshipAffinity } from "../systems/relationships/RelationshipMemory";
 import { completeNextRelationshipArcBeat } from "../systems/relationships/RelationshipArcs";
 import { createInitialWorldState } from "../systems/WorldState";
+import {
+  ACT0_CAFE_SCENE_COST,
+  ACT0_STORM_DELIVERY_ID,
+  ACT0_VILLA_DELIVERY_ID,
+  resolveAct0Deposit,
+  revealAct0Deposit
+} from "../systems/story/Act0BackHalf";
 import type { WorldState } from "../types";
 
 describe("first-hour proof path", () => {
@@ -28,7 +35,7 @@ describe("first-hour proof path", () => {
 
     completeAct0DeliveryAndMeal(world);
     expect(world.life.actProgress).toMatchObject({ currentAct: 1, firstDayComplete: true, act0Step: "complete" });
-    expect(player.money).toBeGreaterThan(100);
+    expect(player.money).toBeGreaterThanOrEqual(0);
     expect(getFieldObjective(world)).toMatchObject({ source: "hustle", title: "Build delivery rhythm" });
 
     completeBoardDelivery(world, "milk_madu_brunch_bag", 2 * 1440 + 9 * 60);
@@ -88,15 +95,29 @@ describe("first-hour proof path", () => {
 function completeAct0DeliveryAndMeal(world: WorldState): void {
   const now = 8 * 60;
   expect(completeAct0Step(world, "meet_ibu_sari")).toBe(true);
-  expect(acceptDelivery(world, "first_baked_villa_delivery", now)).toMatchObject({ ok: true });
+  expect(acceptDelivery(world, "act0_ibu_milk_madu_catering", now)).toMatchObject({ ok: true });
   expect(pickupDelivery(world, now + 10)).toMatchObject({ ok: true });
-  expect(completeDelivery(world, now + 35, 1)).toMatchObject({ ok: true });
+  expect(completeDelivery(world, now + 14, 1)).toMatchObject({ ok: true });
   expect(completeAct0Step(world, "pickup_first_delivery")).toBe(true);
   expect(completeAct0Step(world, "dropoff_first_delivery")).toBe(true);
-  expect(applyActivity(world, getVenueActivityContext("milk_madu_berawa")!, "cafe_quick_caffeine")).toMatchObject({ ok: true });
-  expect(markAct0MealProgress(world, getAct0MealProgressKindForActivity("cafe_quick_caffeine")!)).toBe(false);
-  expect(applyActivity(world, getVenueActivityContext("milk_madu_berawa")!, "cafe_brunch_table")).toMatchObject({ ok: true });
-  expect(markAct0MealProgress(world, getAct0MealProgressKindForActivity("cafe_brunch_table")!)).toBe(true);
+  world.players[world.localPlayerId].money -= ACT0_CAFE_SCENE_COST;
+  expect(completeAct0Step(world, "buy_meal_and_coffee")).toBe(true);
+  expect(acceptDelivery(world, ACT0_STORM_DELIVERY_ID, now + 40)).toMatchObject({ ok: true });
+  expect(pickupDelivery(world, now + 40)).toMatchObject({ ok: true });
+  expect(completeAct0Step(world, "nusadrop_signup")).toBe(true);
+  expect(completeDelivery(world, now + 62, 1)).toMatchObject({ ok: true });
+  expect(completeAct0Step(world, "dropoff_storm_delivery")).toBe(true);
+  revealAct0Deposit(world);
+  expect(completeAct0Step(world, "landlord_ultimatum")).toBe(true);
+  expect(acceptDelivery(world, ACT0_VILLA_DELIVERY_ID, now + 64)).toMatchObject({ ok: true });
+  expect(completeAct0Step(world, "villa_order_ping")).toBe(true);
+  expect(pickupDelivery(world, now + 72)).toMatchObject({ ok: true });
+  expect(completeAct0Step(world, "pickup_villa_delivery")).toBe(true);
+  expect(completeDelivery(world, now + 95, 1)).toMatchObject({ ok: true });
+  expect(completeAct0Step(world, "dropoff_villa_delivery")).toBe(true);
+  resolveAct0Deposit(world);
+  expect(completeAct0Step(world, "pay_kos_deposit")).toBe(true);
+  sleepAtHomeUntilMorning(world);
   expect(completeAct0Step(world, "sleep_first_night")).toBe(true);
 }
 
