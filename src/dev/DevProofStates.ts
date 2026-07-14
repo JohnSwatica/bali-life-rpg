@@ -1,0 +1,130 @@
+import { appendOpportunityMessage } from "../systems/opportunities/OpportunityEngine";
+import { createInitialWorldState } from "../systems/WorldState";
+import { applyAct0NegotiatedCompletionFee, completeAct0Step } from "../systems/life/ActProgression";
+import { sleepAtHomeUntilMorning } from "../systems/life/SleepCycle";
+import { repairScooter } from "../systems/hustle/HustleEconomy";
+import { acceptDelivery, completeDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
+import {
+  ACT0_STORM_DELIVERY_ID,
+  ACT0_VILLA_DELIVERY_ID,
+  completeAct0CafeScene,
+  prepareAct0VillaOrder,
+  resolveAct0Deposit,
+  revealAct0Deposit
+} from "../systems/story/Act0BackHalf";
+import { startAct0FirstDelivery } from "../systems/story/Act0Opening";
+import {
+  completeAct1LeoEncounter,
+  triggerAct1RateCut
+} from "../systems/story/Act1IncitingHook";
+import {
+  buildKadekRushOfferMessage,
+  KADEK_RUSH_DELIVERY_ID
+} from "../systems/story/Act1KadekPriority";
+import type { WorldState } from "../types";
+
+export const DEV_PROOF_BOOT_STATE_NAMES = [
+  "act0_complete",
+  "act1_leo_resolved",
+  "act1_steady_runner"
+] as const;
+
+export type DevProofBootStateName = (typeof DEV_PROOF_BOOT_STATE_NAMES)[number];
+export type DevProofBootStateBuilder = () => WorldState;
+
+function buildAct0Complete(): WorldState {
+  const world = createInitialWorldState();
+  let now = 8 * 60;
+
+  requireOk(startAct0FirstDelivery(world, true, now), "start Act 0 first delivery");
+  requireOk(completeDelivery(world, now + 14, 1), "complete Act 0 catering delivery");
+  applyAct0NegotiatedCompletionFee(world, "act0_ibu_milk_madu_catering");
+  requireStep(world, "dropoff_first_delivery");
+  requireMutation(completeAct0CafeScene(world), "complete Act 0 cafe scene");
+
+  now += 40;
+  requireOk(acceptDelivery(world, ACT0_STORM_DELIVERY_ID, now), "accept Act 0 storm delivery");
+  requireOk(pickupDelivery(world, now), "pick up Act 0 storm delivery");
+  requireStep(world, "nusadrop_signup");
+  requireOk(completeDelivery(world, now + 22, 1), "complete Act 0 storm delivery");
+  requireStep(world, "dropoff_storm_delivery");
+
+  revealAct0Deposit(world);
+  requireStep(world, "landlord_ultimatum");
+  prepareAct0VillaOrder(world);
+  now += 24;
+  requireOk(acceptDelivery(world, ACT0_VILLA_DELIVERY_ID, now), "accept Act 0 villa delivery");
+  requireStep(world, "villa_order_ping");
+  requireOk(pickupDelivery(world, now + 8), "pick up Act 0 villa delivery");
+  requireStep(world, "pickup_villa_delivery");
+  requireOk(completeDelivery(world, now + 31, 1), "complete Act 0 villa delivery");
+  requireStep(world, "dropoff_villa_delivery");
+
+  resolveAct0Deposit(world);
+  requireStep(world, "pay_kos_deposit");
+  sleepAtHomeUntilMorning(world);
+  requireStep(world, "sleep_first_night");
+  const rateCut = triggerAct1RateCut(world, absoluteMinute(world));
+  requireMutation(rateCut.fired, "trigger Act 1 rate cut");
+  if (rateCut.message) appendOpportunityMessage(world.opportunities, rateCut.message);
+  return world;
+}
+
+function buildAct1LeoResolved(): WorldState {
+  const world = buildAct0Complete();
+  const now = absoluteMinute(world) + 1;
+  requireMutation(completeAct1LeoEncounter(world, now), "complete Leo rate-cut encounter");
+  const message = buildKadekRushOfferMessage(world, now + 1);
+  if (message) appendOpportunityMessage(world.opportunities, message);
+  return world;
+}
+
+function buildAct1SteadyRunner(): WorldState {
+  const world = buildAct1LeoResolved();
+  let now = absoluteMinute(world) + 10;
+  requireOk(acceptDelivery(world, KADEK_RUSH_DELIVERY_ID, now), "accept Kadek rush delivery");
+  requireOk(pickupDelivery(world, now + 8), "pick up Kadek rush delivery");
+  requireOk(completeDelivery(world, now + 30, 1), "complete Kadek rush delivery");
+
+  now += 36;
+  requireOk(repairScooter(world, now, 1), "repair scooter after Kadek rush");
+  now += 4;
+  completeCountedDelivery(world, "milk_madu_brunch_bag", now);
+  return world;
+}
+
+export const DEV_PROOF_BOOT_STATE_BUILDERS: Readonly<Record<DevProofBootStateName, DevProofBootStateBuilder>> = {
+  act0_complete: buildAct0Complete,
+  act1_leo_resolved: buildAct1LeoResolved,
+  act1_steady_runner: buildAct1SteadyRunner
+};
+
+export function buildDevProofBootState(name: DevProofBootStateName): WorldState {
+  return DEV_PROOF_BOOT_STATE_BUILDERS[name]();
+}
+
+export function isDevProofBootStateName(value: string): value is DevProofBootStateName {
+  return Object.prototype.hasOwnProperty.call(DEV_PROOF_BOOT_STATE_BUILDERS, value);
+}
+
+function completeCountedDelivery(world: WorldState, deliveryId: string, now: number): void {
+  requireOk(acceptDelivery(world, deliveryId, now), `accept ${deliveryId}`);
+  requireOk(pickupDelivery(world, now + 8), `pick up ${deliveryId}`);
+  requireOk(completeDelivery(world, now + 30, 1), `complete ${deliveryId}`);
+}
+
+function requireStep(world: WorldState, step: Parameters<typeof completeAct0Step>[1]): void {
+  requireMutation(completeAct0Step(world, step), `complete Act 0 step ${step}`);
+}
+
+function requireOk(result: { ok: boolean; message: string }, label: string): void {
+  if (!result.ok) throw new Error(`Could not ${label}: ${result.message}`);
+}
+
+function requireMutation(ok: boolean, label: string): void {
+  if (!ok) throw new Error(`Could not ${label}.`);
+}
+
+function absoluteMinute(world: WorldState): number {
+  return Math.floor((Math.max(1, world.clock.day) - 1) * 1440 + world.clock.minuteOfDay);
+}

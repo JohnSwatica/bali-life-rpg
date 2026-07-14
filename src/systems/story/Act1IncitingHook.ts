@@ -40,6 +40,14 @@ export function isAct1LeoEncounterPending(world: WorldState): boolean {
   return Boolean(world.collectedPickups[ACT1_RATE_CUT_FLAG]) && !world.collectedPickups[ACT1_LEO_ENCOUNTER_FLAG];
 }
 
+export function completeAct1LeoEncounter(world: WorldState, now: number): boolean {
+  if (!isAct1LeoEncounterPending(world)) {
+    return false;
+  }
+  world.collectedPickups[ACT1_LEO_ENCOUNTER_FLAG] = Math.max(1, now);
+  return true;
+}
+
 export function getAct1LeoEncounterHookLine(world: WorldState): string {
   if (world.collectedPickups[RIO_RACE_WON_FLAG]) {
     return '"You beat my line once. Do it when every run pays less, then I will be impressed."';
