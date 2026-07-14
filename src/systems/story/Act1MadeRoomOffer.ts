@@ -7,15 +7,17 @@ const ACT1_BREAKDOWN_PREMIUM_RATING = 3.5;
 
 export const MADE_ROOM_OFFER_SCENE_FLAG = "act1_made_hidden_room_offer_seen";
 export const MADE_ROOM_OFFER_FEED_MESSAGE_ID = "story:act1:made-room-offer";
+export const MADE_RECOMMENDATION_LETTER_FLAG = "act1_made_recommendation_letter_ready";
+export const MADE_ROOM_KEY_FLAG = "act1_made_room_key_received";
 
 export interface MadeRoomGoalState {
   id: "mades_room";
   title: "Made's room";
   description: string;
-  progress: "Standing offer";
-  complete: false;
+  progress: "Standing offer" | "Key received";
+  complete: boolean;
   rentRecordClean: boolean;
-  recommendationLetterReady: false;
+  recommendationLetterReady: boolean;
   ratingCondition?: boolean;
 }
 
@@ -76,20 +78,25 @@ export function getMadeRoomGoalState(world: WorldState): MadeRoomGoalState | und
   const ratingCopy = breakdownFired
     ? ` · premium rating ${world.life.hustle.driverRating.toFixed(1)}/${ACT1_BREAKDOWN_PREMIUM_RATING.toFixed(1)}★ ${ratingCondition ? "✓" : "✗"}`
     : "";
+  const recommendationLetterReady = Boolean(world.collectedPickups[MADE_RECOMMENDATION_LETTER_FLAG]);
+  const keyReceived = Boolean(world.collectedPickups[MADE_ROOM_KEY_FLAG]);
   return {
     id: "mades_room",
     title: "Made's room",
-    description: `rent record clean ${rentRecordClean ? "✓" : "✗"}${ratingCopy} · recommendation letter ✗`,
-    progress: "Standing offer",
-    complete: false,
+    description: `rent record clean ${rentRecordClean ? "✓" : "✗"}${ratingCopy} · recommendation letter ${recommendationLetterReady ? "✓" : "✗"}`,
+    progress: keyReceived ? "Key received" : "Standing offer",
+    complete: keyReceived,
     rentRecordClean,
-    recommendationLetterReady: false,
+    recommendationLetterReady,
     ratingCondition: breakdownFired ? ratingCondition : undefined
   };
 }
 
 export function getMadeRoomOfferAmbientLine(world: WorldState): string | undefined {
-  return world.collectedPickups[MADE_ROOM_OFFER_SCENE_FLAG]
-    ? '"The room remains available. Clean rent record. Business-owner letter. Bring both."'
-    : undefined;
+  if (!world.collectedPickups[MADE_ROOM_OFFER_SCENE_FLAG]) return undefined;
+  if (world.collectedPickups[MADE_ROOM_KEY_FLAG]) return '"The key is yours. Keep the room modest and the rent punctual."';
+  if (world.collectedPickups[MADE_RECOMMENDATION_LETTER_FLAG]) {
+    return '"Ibu\'s signature settles the second condition. Bring the letter inside."';
+  }
+  return '"The room remains available. Clean rent record. Business-owner letter. Bring both."';
 }

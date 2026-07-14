@@ -24,6 +24,15 @@ import {
   resolveAct0Deposit,
   revealAct0Deposit
 } from "../systems/story/Act0BackHalf";
+import { completeMadeRoomOfferScene } from "../systems/story/Act1MadeRoomOffer";
+import {
+  acceptMadeFinale,
+  completeAct1MoveOut,
+  completeIbuGuaranteeScene,
+  markMoveOutMontageStarted,
+  signWeeklyScooterContract,
+  startAct2AfterFinale
+} from "../systems/story/Act1Finale";
 import type { WorldState } from "../types";
 
 describe("first-hour proof path", () => {
@@ -46,6 +55,7 @@ describe("first-hour proof path", () => {
     expect(upgradeToDailyScooter(world, 2 * 1440 + 11 * 60)).toMatchObject({ ok: true });
 
     completeBoardDelivery(world, "nude_cold_bag_run", 2 * 1440 + 12 * 60);
+    expect(completeMadeRoomOfferScene(world, 2 * 1440 + 12 * 60 + 1)).toMatchObject({ fired: true });
     completeBoardDelivery(world, "beach_wristband_pouch", 2 * 1440 + 13 * 60);
     expect(world.life.hustle).toMatchObject({
       completedDeliveryCount: 5,
@@ -56,8 +66,15 @@ describe("first-hour proof path", () => {
 
     const rent = payHustleRent(world, 2 * 1440 + 14 * 60);
     expect(rent).toMatchObject({ ok: true });
-    expect(rent.message).toContain("Act 2 begins");
+    expect(rent.message).toContain("move-out numbers are ready");
     expect(world.life.hustle.moveOutReady).toBe(true);
+    expect(world.life.actProgress.currentAct).toBe(1);
+    expect(completeIbuGuaranteeScene(world, 2 * 1440 + 14 * 60 + 1)).toMatchObject({ ok: true });
+    expect(acceptMadeFinale(world, 2 * 1440 + 14 * 60 + 2)).toMatchObject({ ok: true });
+    expect(markMoveOutMontageStarted(world, 2 * 1440 + 14 * 60 + 3)).toBe(true);
+    expect(completeAct1MoveOut(world, 2 * 1440 + 14 * 60 + 4)).toBe(true);
+    expect(signWeeklyScooterContract(world, 2 * 1440 + 14 * 60 + 5)).toMatchObject({ ok: true });
+    expect(startAct2AfterFinale(world, 2 * 1440 + 14 * 60 + 6)).toBe(true);
     expect(world.life.actProgress.currentAct).toBe(2);
     expect(getFieldObjective(world)).toMatchObject({ source: "act2", title: "Join a first crew" });
 

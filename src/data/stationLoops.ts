@@ -75,9 +75,9 @@ export const gameplayStationLoops: GameplayStationLoop[] = [
   },
   {
     id: "home",
-    title: "Cheap kos room",
-    venueIds: ["cheap_kos"],
-    fantasy: "The tiny room that turns Bali from a trip into a life you can manage.",
+    title: "Home room",
+    venueIds: ["cheap_kos", "shared_room"],
+    fantasy: "The room that turns Bali from a trip into a life you can manage.",
     primaryMechanic: "Sleep, prepare, or plan without leaving the core field loop.",
     rewardShape: "Recovery, focus setup, and light item prep.",
     riskTradeoff: "Safe, but it can consume the day if used as avoidance.",

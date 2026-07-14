@@ -4,6 +4,7 @@ import { getDeliveryDefinition } from "../../data/deliveries";
 import { getActiveNpcRoute } from "../npcs/NpcRoutineRoutes";
 import { getVenueActivityContext, type VenueActivityContext } from "../life/ActivityEngine";
 import { isMadeRoomOfferPending } from "../story/Act1MadeRoomOffer";
+import { canMadeAcceptFinale, canStartIbuGuaranteeScene } from "../story/Act1Finale";
 import type { FieldObjectiveTargetRef } from "../guidance/FieldObjective";
 import { scaleDistance } from "../map/WorldScale";
 import type { InteriorDefinition, InteriorNpcSlotDefinition, InteriorStationDefinition, WorldState } from "../../types";
@@ -46,6 +47,12 @@ export function isInteriorPointInsideRoom(interior: InteriorDefinition, point: {
 }
 
 export function isNpcScheduledForInterior(world: WorldState, interior: InteriorDefinition, npcId: string): boolean {
+  if (npcId === "ibu_sari" && interior.id === "warung_sari_interior" && canStartIbuGuaranteeScene(world)) {
+    return true;
+  }
+  if (npcId === "made" && interior.id === "bungalow_living_interior" && canMadeAcceptFinale(world)) {
+    return true;
+  }
   if (npcId === "made" && interior.venueId === "bungalow_living" && isMadeRoomOfferPending(world)) {
     return true;
   }

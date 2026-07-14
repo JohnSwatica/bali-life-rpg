@@ -16,7 +16,7 @@ export const METER_PRESENTATION: Record<Meter, MeterPresentation> = {
 };
 
 export function areAdvancedMetersVisible(world: WorldState): boolean {
-  return world.life.actProgress.currentAct >= 2 || world.life.hustle.moveOutReady;
+  return world.life.actProgress.currentAct >= 2;
 }
 
 export function getVisibleMeters(world: WorldState): Meter[] {

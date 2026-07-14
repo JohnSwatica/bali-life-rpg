@@ -218,17 +218,14 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
   world.life.hustle.activeDelivery = null;
   const readiness = getAct1MoveOutReadiness(world);
   world.life.hustle.moveOutReady = readiness.complete;
-  if (!wasMoveOutReady && world.life.hustle.moveOutReady && world.life.actProgress.currentAct < 2) {
-    world.life.actProgress.currentAct = 2;
-  }
   const moveOutCopy =
     !wasMoveOutReady && world.life.hustle.moveOutReady
-      ? " Move-out ready: Ibu Sari says you can start looking for a proper room. Act 2 begins: find your people."
+      ? " Move-out numbers ready: talk to Ibu Sari at the warung before anything else changes."
       : !wasMoveOutReady &&
           !world.life.hustle.moveOutReady &&
           readiness.deliveriesComplete &&
           readiness.earningsComplete &&
-          readiness.ratingComplete
+          readiness.ratingOrGuaranteeComplete
         ? " First rent still needs covering before Ibu Sari helps you move out."
       : "";
   const wearCopy = scooterWear > 0 ? ` Scooter -${scooterWear}% (${player.bikeCondition}%).` : "";

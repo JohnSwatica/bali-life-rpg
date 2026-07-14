@@ -142,7 +142,7 @@ export function getAct2NextStep(world: WorldState): Act2NextStepState | null {
 }
 
 export function isAct2Unlocked(world: WorldState): boolean {
-  return world.life.actProgress.currentAct >= 2 || world.life.hustle.moveOutReady;
+  return world.life.actProgress.currentAct >= 2;
 }
 
 export function areAct2GoalsComplete(world: WorldState): boolean {

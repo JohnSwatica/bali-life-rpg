@@ -89,12 +89,9 @@ export function payHustleRent(world: WorldState, now: number): HustleActionResul
   adjustReputation(world.reputation, 1, "Paid local rent on time", now);
   const wasMoveOutReady = world.life.hustle.moveOutReady;
   world.life.hustle.moveOutReady = isAct1MoveOutReady(world);
-  if (!wasMoveOutReady && world.life.hustle.moveOutReady && world.life.actProgress.currentAct < 2) {
-    world.life.actProgress.currentAct = 2;
-  }
   const moveOutCopy =
     !wasMoveOutReady && world.life.hustle.moveOutReady
-      ? " Found your feet: first rent covered, rating steady, and Act 2 begins."
+      ? " Found your feet: the move-out numbers are ready. Talk to Ibu Sari before anything else changes."
       : "";
   return {
     ok: true,

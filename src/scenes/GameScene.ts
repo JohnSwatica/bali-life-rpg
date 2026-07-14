@@ -15,7 +15,7 @@ import { activityDefinitions, interestGroupDefinitions } from "../data/community
 import type { Activity } from "../data/activities";
 import { itemDefinitions } from "../data/items";
 import { authoredPlayableBounds } from "../data/playableBounds";
-import { playerHomeBase } from "../data/homeBase";
+import { getPlayerHomeBase } from "../data/homeBase";
 import { getGameplayStationLoop } from "../data/stationLoops";
 import { interiorDefinitions } from "../data/interiors";
 import { collisionRects, pickupDefinitions, WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
@@ -34,6 +34,7 @@ import { ScriptedDialogueProvider, type DialogueProvider } from "../systems/dial
 import { getAmbientNpcLine, getNpcDialogueSurface } from "../systems/dialogue/DialoguePresentation";
 import { getPortraitDataUrl, getPortraitDefinition, portraitVariantForTier } from "../systems/dialogue/PortraitArt";
 import { buildAct1IntroCutscene, buildAct2IntroCutscene } from "../systems/cutscene/ActCardScripts";
+import { buildAct1MoveOutMontage } from "../systems/cutscene/Act1FinaleScripts";
 import { buildAct0OpeningCutscene } from "../systems/cutscene/Act0OpeningScript";
 import {
   buildAct0CafeScene,
@@ -254,6 +255,21 @@ import {
   getVillaRegularAmbientLine,
   resolveAct1LuxuryTipChoice
 } from "../systems/story/Act1LuxuryTip";
+import {
+  ACT1_MADE_KEY_FLAG,
+  ACT1_WEEKLY_SCOOTER_CONTRACT_FLAG,
+  acceptMadeFinale,
+  canMadeAcceptFinale,
+  canSignWeeklyScooterContract,
+  canStartIbuGuaranteeScene,
+  completeAct1MoveOut,
+  completeIbuGuaranteeScene,
+  getAct1FinaleAmbientLine,
+  isAct1MoveOutComplete,
+  markMoveOutMontageStarted,
+  signWeeklyScooterContract,
+  startAct2AfterFinale
+} from "../systems/story/Act1Finale";
 import {
   ACT0_STORM_DELIVERY_ID,
   ACT0_STORM_TRIGGER_MS,
@@ -496,6 +512,7 @@ interface BaliLifeDebugSnapshot {
   trafficHitCooldown: number;
   npcRoutines: Record<string, string>;
   objectiveTargets: { x: number; y: number }[];
+  activeInteriorId: string | null;
   interiorExit: { x: number; y: number } | null;
   interiorTransitioning: boolean;
   ride: RideTelemetry | null;
@@ -843,7 +860,9 @@ export class GameScene extends Phaser.Scene {
   private hudObjectiveTitle = "";
   private hudObjectiveDetailUntil = 0;
   private panel?: Phaser.GameObjects.Container;
+  private homeBaseMarker?: Phaser.GameObjects.Container;
   private dialogueOverlay?: HTMLElement;
+  private pendingDialogueContinuation?: () => void;
   private activityMenuOverlay?: HTMLElement;
   private committedActivity?: ActiveActivityState;
   private committedActivityOverlay?: HTMLElement;
@@ -1088,9 +1107,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawHomeBaseStationMarker(): void {
-    const g = this.add.graphics().setDepth(playerHomeBase.y - 4);
-    const x = playerHomeBase.x;
-    const y = playerHomeBase.y;
+    this.homeBaseMarker?.destroy(true);
+    const home = getPlayerHomeBase(this.world);
+    const container = this.add.container(home.x, home.y).setDepth(home.y + 2);
+    const g = this.add.graphics();
+    const x = 0;
+    const y = 0;
     g.fillStyle(0x000000, 0.18);
     g.fillEllipse(x, y + scaleDistance(34), scaleDistance(92), scaleDistance(24), 28);
     g.fillStyle(0xf2dfb8, 1);
@@ -1108,8 +1130,8 @@ export class GameScene extends Phaser.Scene {
     g.fillCircle(x + scaleDistance(6), y + scaleDistance(20), scaleDistance(2));
     g.lineStyle(scaleDistance(2), 0x6b3f2a, 0.8);
     g.strokeRoundedRect(x - scaleDistance(33), y + scaleDistance(12), scaleDistance(18), scaleDistance(16), scaleDistance(3));
-    this.add
-      .text(x, y - scaleDistance(18), "KOS", {
+    const label = this.add
+      .text(x, y - scaleDistance(18), home.id === "shared_room" ? "HOME" : "KOS", {
         fontFamily: "Inter, Arial, sans-serif",
         fontSize: `${Math.max(10, scaleDistance(10))}px`,
         fontStyle: "900",
@@ -1118,8 +1140,9 @@ export class GameScene extends Phaser.Scene {
         padding: { x: 4, y: 2 }
       })
       .setOrigin(0.5)
-      .setDepth(playerHomeBase.y + 2)
       .setResolution(2);
+    container.add([g, label]);
+    this.homeBaseMarker = container;
   }
 
   private getStaticMapBakeScale(): number {
@@ -1987,6 +2010,19 @@ export class GameScene extends Phaser.Scene {
         this.sessionStartedAt ??= Date.now();
         return;
       }
+    }
+    if (this.world.collectedPickups[ACT1_MADE_KEY_FLAG] && !isAct1MoveOutComplete(this.world)) {
+      this.startAct1MoveOutMontage();
+      this.sessionStartedAt ??= Date.now();
+      return;
+    }
+    if (
+      this.world.collectedPickups[ACT1_WEEKLY_SCOOTER_CONTRACT_FLAG] &&
+      this.world.life.actProgress.currentAct < 2
+    ) {
+      this.startAct2FinaleCard();
+      this.sessionStartedAt ??= Date.now();
+      return;
     }
     if (this.pendingAct2CutscenePreviousAct != null) {
       const previousAct = this.pendingAct2CutscenePreviousAct;
@@ -3578,9 +3614,9 @@ export class GameScene extends Phaser.Scene {
     } else if (this.mode === "world" && isAct0FirstRunGateActive(this.world, this.act0FirstRunGateSessionActive)) {
       this.promptText.setText("Find Ibu Sari first - follow the arrow and press E / ACT.");
     } else if (this.mode === "world" && homeSleepReady) {
-      this.promptText.setText(`E — Enter ${playerHomeBase.name}`);
+      this.promptText.setText(`E — Enter ${getPlayerHomeBase(this.world).name}`);
     } else if (this.mode === "world" && isPlayerAtHomeBase(this.world)) {
-      this.promptText.setText(`E — Enter ${playerHomeBase.name}`);
+      this.promptText.setText(`E — Enter ${getPlayerHomeBase(this.world).name}`);
     } else if (this.mode === "world" && target) {
       this.promptText.setText(`E — ${target.label}`);
     } else if (this.mode === "world" && this.canSleepHere()) {
@@ -3870,7 +3906,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (isPlayerAtHomeBase(this.world)) {
-      const homeInterior = getInteriorByVenueId(playerHomeBase.id);
+      const homeInterior = getInteriorByVenueId(getPlayerHomeBase(this.world).id);
       if (homeInterior) {
         this.enterInterior(homeInterior.id);
         return;
@@ -3985,6 +4021,26 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    if (npcId === "ibu_sari" && canStartIbuGuaranteeScene(this.world)) {
+      const guarantee = completeIbuGuaranteeScene(this.world, this.getAbsoluteMinute());
+      if (guarantee.ok && guarantee.dialogue) {
+        saveWorldState(this.world);
+        this.phone?.refresh();
+        this.openDialogue(npc.name, guarantee.dialogue, npcId);
+        return;
+      }
+    }
+
+    if (npcId === "made" && canMadeAcceptFinale(this.world)) {
+      const acceptance = acceptMadeFinale(this.world, this.getAbsoluteMinute());
+      if (acceptance.ok && acceptance.dialogue) {
+        saveWorldState(this.world);
+        this.phone?.refresh();
+        this.openStoryDialogue(npc.name, acceptance.dialogue, npcId, () => this.startAct1MoveOutMontage());
+        return;
+      }
+    }
+
     if (this.shouldOpenIbuHustleBoard(npcId)) {
       this.openIbuHustleBoard();
       return;
@@ -4043,6 +4099,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private getNpcDialogueLine(npcId: string): string {
+    const finaleLine = getAct1FinaleAmbientLine(this.world, npcId);
+    if (finaleLine) return finaleLine;
     if (npcId === "ibu_sari" && this.world.life.hustle.completedDeliveryIds.includes("act0_ibu_milk_madu_catering")) {
       if (!this.world.questFlags.act0_catering_on_time) {
         return this.world.questFlags.act0_negotiated_fee
@@ -4064,6 +4122,11 @@ export class GameScene extends Phaser.Scene {
     this.closePanel();
     this.mode = "dialogue";
     this.createDialogueOverlay(title, body, npcId);
+  }
+
+  private openStoryDialogue(title: string, body: string, npcId: string | undefined, onContinue: () => void): void {
+    this.openDialogue(title, body, npcId);
+    this.pendingDialogueContinuation = onContinue;
   }
 
   private openRelationshipChoiceScene(scene: RelationshipChoiceScene): void {
@@ -4754,15 +4817,17 @@ export class GameScene extends Phaser.Scene {
     const doorLeft = interior.exitMat.x - doorGap / 2;
     const doorRight = interior.exitMat.x + doorGap / 2;
     const isBleakKos = interior.id === "cheap_kos_interior";
+    const isSharedRoom = interior.id === "shared_room_interior";
+    const isCompactHome = isBleakKos || isSharedRoom;
 
     g.fillStyle(0x101820, 1);
     g.fillRect(x - TILE_SIZE * 8, y - TILE_SIZE * 7, width + TILE_SIZE * 16, height + TILE_SIZE * 14);
-    g.fillStyle(isBleakKos ? 0x302b29 : 0xb9824f, 1);
+    g.fillStyle(isBleakKos ? 0x302b29 : isSharedRoom ? 0x496a67 : 0xb9824f, 1);
     g.fillRoundedRect(x, y, width, height, TILE_SIZE * 0.18);
-    g.fillStyle(isBleakKos ? 0x514b45 : 0xdab277, 1);
+    g.fillStyle(isBleakKos ? 0x514b45 : isSharedRoom ? 0xcab58d : 0xdab277, 1);
     g.fillRect(x + wall, y + wall, width - wall * 2, height - wall * 2);
 
-    g.lineStyle(1, isBleakKos ? 0x756c61 : 0xc99b62, isBleakKos ? 0.18 : 0.32);
+    g.lineStyle(1, isBleakKos ? 0x756c61 : isSharedRoom ? 0xa68f6f : 0xc99b62, isBleakKos ? 0.18 : 0.32);
     for (let row = 1; row < 8; row += 1) {
       g.lineBetween(x + wall, y + row * TILE_SIZE, x + width - wall, y + row * TILE_SIZE);
     }
@@ -4770,7 +4835,7 @@ export class GameScene extends Phaser.Scene {
       g.lineBetween(x + column * TILE_SIZE, y + wall, x + column * TILE_SIZE, y + height - wall);
     }
 
-    g.fillStyle(isBleakKos ? 0x211e1d : 0x5b3a29, 1);
+    g.fillStyle(isBleakKos ? 0x211e1d : isSharedRoom ? 0x2b4545 : 0x5b3a29, 1);
     g.fillRect(x, y, width, wall);
     g.fillRect(x, y, wall, height);
     g.fillRect(x + width - wall, y, wall, height);
@@ -4778,9 +4843,9 @@ export class GameScene extends Phaser.Scene {
     g.fillRect(doorRight, y + height - wall, Math.max(0, x + width - doorRight), wall);
 
     g.fillStyle(isBleakKos ? 0x625a50 : 0xf0d192, 1);
-    g.fillRoundedRect(x + TILE_SIZE * 1.1, y + TILE_SIZE * 0.8, TILE_SIZE * (isBleakKos ? 3.1 : 9.8), TILE_SIZE * 0.56, TILE_SIZE * 0.12);
-    g.fillStyle(isBleakKos ? 0x393431 : 0x7f4f35, 1);
-    g.fillRoundedRect(x + TILE_SIZE * 1.35, y + TILE_SIZE * 1.12, TILE_SIZE * (isBleakKos ? 2.6 : 9.3), TILE_SIZE * 0.28, TILE_SIZE * 0.08);
+    g.fillRoundedRect(x + TILE_SIZE * 1.1, y + TILE_SIZE * 0.8, TILE_SIZE * (isBleakKos ? 3.1 : isCompactHome ? 7.8 : 9.8), TILE_SIZE * 0.56, TILE_SIZE * 0.12);
+    g.fillStyle(isBleakKos ? 0x393431 : isSharedRoom ? 0x52706d : 0x7f4f35, 1);
+    g.fillRoundedRect(x + TILE_SIZE * 1.35, y + TILE_SIZE * 1.12, TILE_SIZE * (isBleakKos ? 2.6 : isCompactHome ? 7.3 : 9.3), TILE_SIZE * 0.28, TILE_SIZE * 0.08);
 
     g.fillStyle(0x253a35, 0.82);
     g.fillRoundedRect(interior.exitMat.x - TILE_SIZE * 0.55, interior.exitMat.y - TILE_SIZE * 0.26, TILE_SIZE * 1.1, TILE_SIZE * 0.52, TILE_SIZE * 0.08);
@@ -4926,6 +4991,35 @@ export class GameScene extends Phaser.Scene {
       g.fillCircle(bulbX, bulbY, TILE_SIZE * 0.17);
       g.fillStyle(0xfff0bd, 0.86);
       g.fillCircle(bulbX, bulbY - TILE_SIZE * 0.03, TILE_SIZE * 0.07);
+    } else if (interior.id === "shared_room_interior") {
+      // BUILD rung two: still modest, but two real mattresses, airflow, and daylight replace the bleak kos.
+      for (const bedX of [1.05, 6.05]) {
+        g.fillStyle(0x36504f, 0.38);
+        g.fillEllipse(x + TILE_SIZE * (bedX + 1.4), y + TILE_SIZE * 5.0, TILE_SIZE * 3.1, TILE_SIZE * 0.55);
+        g.fillStyle(0xd8c7a2, 1);
+        g.fillRoundedRect(x + TILE_SIZE * bedX, y + TILE_SIZE * 3.35, TILE_SIZE * 2.85, TILE_SIZE * 1.55, TILE_SIZE * 0.1);
+        g.fillStyle(bedX < 2 ? 0x91b7dd : 0xe5a58f, 0.94);
+        g.fillRoundedRect(x + TILE_SIZE * (bedX + 0.14), y + TILE_SIZE * 3.48, TILE_SIZE * 2.55, TILE_SIZE * 0.48, TILE_SIZE * 0.08);
+      }
+
+      // One bright window throws a soft rectangle of morning light across the floor.
+      g.fillStyle(0x8dd7ef, 0.9);
+      g.fillRoundedRect(x + TILE_SIZE * 3.92, y + TILE_SIZE * 1.58, TILE_SIZE * 2.15, TILE_SIZE * 1.2, TILE_SIZE * 0.08);
+      g.lineStyle(2, 0xfff0bd, 0.8);
+      g.strokeRoundedRect(x + TILE_SIZE * 3.92, y + TILE_SIZE * 1.58, TILE_SIZE * 2.15, TILE_SIZE * 1.2, TILE_SIZE * 0.08);
+      g.lineBetween(x + TILE_SIZE * 5, y + TILE_SIZE * 1.64, x + TILE_SIZE * 5, y + TILE_SIZE * 2.72);
+      g.fillStyle(0xffefbd, 0.12);
+      g.fillRoundedRect(x + TILE_SIZE * 3.35, y + TILE_SIZE * 2.8, TILE_SIZE * 3.3, TILE_SIZE * 2.55, TILE_SIZE * 0.2);
+
+      // A ceiling fan makes the improvement practical rather than luxurious.
+      const fanX = x + TILE_SIZE * 5;
+      const fanY = y + TILE_SIZE * 3.05;
+      g.fillStyle(0x253a35, 1);
+      g.fillCircle(fanX, fanY, TILE_SIZE * 0.14);
+      g.lineStyle(5, 0x52706d, 0.95);
+      g.lineBetween(fanX - TILE_SIZE * 0.85, fanY, fanX - TILE_SIZE * 0.12, fanY);
+      g.lineBetween(fanX + TILE_SIZE * 0.12, fanY, fanX + TILE_SIZE * 0.85, fanY);
+      g.lineBetween(fanX, fanY - TILE_SIZE * 0.12, fanX, fanY - TILE_SIZE * 0.72);
     } else if (interior.id === "scooter_rental_interior") {
       g.fillStyle(0x253a47, 1);
       g.fillRoundedRect(x + TILE_SIZE * 1.1, y + TILE_SIZE * 1.55, TILE_SIZE * 9.8, TILE_SIZE * 1.05, TILE_SIZE * 0.1);
@@ -5136,9 +5230,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private getExteriorDoorReturnPoint(interior: InteriorDefinition): { x: number; y: number } {
+    const home = getPlayerHomeBase(this.world);
     const node = venueMapNodes.find((candidate) => candidate.venueId === interior.venueId);
-    if (!node && interior.venueId === playerHomeBase.id) {
-      return { x: playerHomeBase.x, y: playerHomeBase.y };
+    if (!node && interior.venueId === home.id) {
+      return { x: home.x, y: home.y };
     }
     return node ? { x: node.x, y: node.y + Math.min(node.radius, scaleDistance(52)) } : { x: this.playerState.x, y: this.playerState.y };
   }
@@ -5179,7 +5274,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private openHomeActivityMenu(): void {
-    const context = getVenueActivityContext(playerHomeBase.id);
+    const home = getPlayerHomeBase(this.world);
+    const context = getVenueActivityContext(home.id);
     if (!context) {
       this.showToast("Home base is not available yet.");
       return;
@@ -5187,7 +5283,7 @@ export class GameScene extends Phaser.Scene {
     this.closePanel(false);
     this.mode = "activity";
     const availability = getActivityAvailability(this.world, context);
-    this.createActivityMenuOverlay(playerHomeBase.id, context, availability, undefined);
+    this.createActivityMenuOverlay(home.id, context, availability, undefined);
   }
 
   private shouldOpenIbuHustleBoard(npcId: string): boolean {
@@ -5466,7 +5562,7 @@ export class GameScene extends Phaser.Scene {
       });
     }
 
-    if (context.venueId === playerHomeBase.id) {
+    if (context.venueId === getPlayerHomeBase(this.world).id) {
       this.appendHomeStationActions(content);
     }
 
@@ -5657,6 +5753,25 @@ export class GameScene extends Phaser.Scene {
     const repairStatus = getScooterRepairStatus(this.world);
     const upgradeStatus = getScooterUpgradeStatus(this.world);
     this.appendActivityMenuSection(parent, "Scooter counter");
+    if (canSignWeeklyScooterContract(this.world)) {
+      this.appendActivityMenuRow(parent, {
+        title: "Weekly rental contract",
+        body: "Retire the borrowed rattletrap and sign for a maintained weekly scooter. No rating reset; no extra payout.",
+        actionLabel: "Sign contract",
+        variant: "special",
+        onAction: () => {
+          const contract = signWeeklyScooterContract(this.world, this.getAbsoluteMinute());
+          if (!contract.ok || !contract.dialogue) {
+            this.showToast("The weekly contract is already settled.");
+            return;
+          }
+          saveWorldState(this.world);
+          this.phone?.refresh();
+          this.updatePlayerBikeVisual();
+          this.openStoryDialogue("Rental Counter", contract.dialogue, undefined, () => this.startAct2FinaleCard());
+        }
+      });
+    }
     this.appendActivityMenuRow(parent, {
       title: repairStatus.available ? "Patch scooter" : "Repair status",
       body: repairStatus.available
@@ -7565,6 +7680,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private closePanel(setWorldMode = true): void {
+    const continuation = this.pendingDialogueContinuation;
+    this.pendingDialogueContinuation = undefined;
     this.panel?.destroy(true);
     this.panel = undefined;
     this.awaitingRelationshipChoice = false;
@@ -7574,6 +7691,7 @@ export class GameScene extends Phaser.Scene {
     if (setWorldMode) {
       this.mode = this.activeInteriorId ? "interior" : "world";
     }
+    continuation?.();
   }
 
   private openFirstRunHint(): void {
@@ -8609,9 +8727,6 @@ export class GameScene extends Phaser.Scene {
 
   private refreshHustleMoveOutReady(): void {
     this.world.life.hustle.moveOutReady = isAct1MoveOutReady(this.world);
-    if (this.world.life.hustle.moveOutReady && this.world.life.actProgress.currentAct < 2) {
-      this.world.life.actProgress.currentAct = 2;
-    }
   }
 
   private refreshGodmodePanel(): void {
@@ -9213,7 +9328,8 @@ export class GameScene extends Phaser.Scene {
       return { id: target.id, label: target.label, x: node.x, y: node.y, radius: Math.min(node.radius, scaleDistance(118)), type: target.type };
     }
     if (target.type === "home") {
-      return { id: target.id, label: target.label, x: playerHomeBase.x, y: playerHomeBase.y, radius: playerHomeBase.radius, type: target.type };
+      const home = getPlayerHomeBase(this.world);
+      return { id: target.id, label: target.label, x: home.x, y: home.y, radius: home.radius, type: target.type };
     }
     return target;
   }
@@ -9234,13 +9350,14 @@ export class GameScene extends Phaser.Scene {
         .filter((target): target is { id: string; label: string; x: number; y: number; radius: number } => Boolean(target));
     }
     if (this.world.life.actProgress.act0Step === "sleep_first_night") {
+      const home = getPlayerHomeBase(this.world);
       return [
         {
-          id: playerHomeBase.id,
-          label: playerHomeBase.name,
-          x: playerHomeBase.x,
-          y: playerHomeBase.y,
-          radius: playerHomeBase.radius
+          id: home.id,
+          label: home.name,
+          x: home.x,
+          y: home.y,
+          radius: home.radius
         }
       ];
     }
@@ -9466,6 +9583,40 @@ export class GameScene extends Phaser.Scene {
     const target = beach ? { x: beach.x, y: beach.y } : { x: this.player.x, y: this.player.y + scaleDistance(420) };
     this.startCutscene(buildAct2IntroCutscene(target), onComplete);
     return true;
+  }
+
+  private startAct1MoveOutMontage(): void {
+    if (isAct1MoveOutComplete(this.world) || this.activeCutscene) return;
+    if (!markMoveOutMontageStarted(this.world, this.getAbsoluteMinute())) return;
+    saveWorldState(this.world);
+    this.startCutscene(buildAct1MoveOutMontage(), () => {
+      completeAct1MoveOut(this.world, this.getAbsoluteMinute());
+      this.enterSharedRoomAfterMoveOut();
+    });
+  }
+
+  private enterSharedRoomAfterMoveOut(): void {
+    const interior = interiorDefinitions.shared_room_interior;
+    const home = getPlayerHomeBase(this.world);
+    this.renderInteriorIfNeeded(interior);
+    this.activeInteriorId = interior.id;
+    this.interiorReturnPoint = { x: home.x, y: home.y };
+    this.mode = "interior";
+    this.applyInteriorCameraBounds(interior);
+    this.layoutForViewport();
+    this.hudController.setMinimapHidden(true);
+    this.placePlayerSprite(interior.entrance, false);
+    this.drawHomeBaseStationMarker();
+    this.syncAmbientBed();
+    saveWorldState(this.world);
+    this.showToast("New home: Bungalow Shared Room. Next: sign the weekly scooter contract.");
+  }
+
+  private startAct2FinaleCard(): void {
+    const previousAct = this.world.life.actProgress.currentAct;
+    if (!startAct2AfterFinale(this.world, this.getAbsoluteMinute())) return;
+    saveWorldState(this.world);
+    this.maybeStartAct2Cutscene(previousAct);
   }
 
   private canSleepHere(): boolean {
@@ -10046,6 +10197,7 @@ export class GameScene extends Phaser.Scene {
         x: Math.round(t.x),
         y: Math.round(t.y)
       })),
+      activeInteriorId: this.activeInteriorId,
       interiorExit: (() => {
         const interior = this.getActiveInterior();
         return interior ? { x: Math.round(interior.exitMat.x), y: Math.round(interior.exitMat.y) } : null;
