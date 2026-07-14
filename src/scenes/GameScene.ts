@@ -444,7 +444,6 @@ interface BaliLifeDebugSnapshot {
   rateCutFired: boolean;
   kadekPriority: boolean;
   driverRating: number;
-  deliveryEarnings: number;
   activeDelivery: string | null;
   activeDeliveryStage: "accepted" | "picked_up" | null;
   activeDeliveryDueAt: number | null;
@@ -9768,7 +9767,6 @@ export class GameScene extends Phaser.Scene {
       rateCutFired: Boolean(this.world.collectedPickups.act1_nusadrop_rate_cut_fired),
       kadekPriority: Boolean(this.world.collectedPickups.act1_kadek_priority_driver),
       driverRating: this.world.life.hustle.driverRating,
-      deliveryEarnings: this.world.life.hustle.deliveryEarnings,
       activeDelivery: this.world.life.hustle.activeDelivery?.deliveryId ?? null,
       activeDeliveryStage: this.world.life.hustle.activeDelivery?.stage ?? null,
       activeDeliveryDueAt: this.world.life.hustle.activeDelivery?.dueAt ?? null,

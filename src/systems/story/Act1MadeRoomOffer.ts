@@ -54,13 +54,10 @@ export function completeMadeRoomOfferScene(world: WorldState, now: number): Made
   return {
     fired: true,
     dialogue: [
-      'Made closes the showroom ledger, takes a key from beneath it, and leads you past the fabric racks. Behind a hanging storage wall is a narrow shared room: clean mattress, fan, one window, no display tag.',
-      '"It is not advertised. That keeps the conversation short." He checks the room once, then you. "The rent is manageable. The conditions are not negotiable."',
-      '"First: a clean financial track record. Rent never missed. I read the due day, not excuses."',
-      '"Second: a recommendation letter from a local business owner. Original, specific, and written by someone whose name answers calls."',
-      '"Everyone pays somebody. The interesting question is who I pay." He does not explain.',
-      'He puts the key away. "Meet both conditions. Return here. The room stays on my sheet until it does not."',
-      "MADE'S ROOM TRACKED · Keep rent current · Secure a business-owner recommendation"
+      'Made takes a key and leads you past the fabric racks. Behind a hanging storage wall: a clean, narrow shared room — mattress, fan, one window.',
+      '"Not advertised. Rent is manageable; conditions are not. Rent never missed. I read due days, not excuses."',
+      '"A recommendation letter from a local business owner. Original and specific." He pauses. "Everyone pays somebody. The interesting question is who I pay."',
+      'He pockets the key. "Meet both. Return. The room stays on my sheet until it does not."'
     ].join("\n\n")
   };
 }

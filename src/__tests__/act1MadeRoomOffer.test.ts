@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getHustleGoalStates } from "../systems/hustle/HustleGoals";
+import { interiorDefinitions } from "../data/interiors";
+import { getOccupiedInteriorNpcSlots } from "../systems/interiors/InteriorState";
 import {
   ACT1_MOVE_OUT_DELIVERIES,
   ACT1_MOVE_OUT_DELIVERY_EARNINGS,
@@ -50,6 +52,10 @@ describe("Act 1 TP2 — Made's hidden room offer", () => {
     expect(isMadeRoomOfferPending(world)).toBe(true);
     expect(getMadeRoomOfferWorldScenes(world)).toMatchObject([
       { venueId: "bungalow_living", cue: "MADE", actors: [{ npcId: "made" }] }
+    ]);
+    world.clock.minuteOfDay = 17 * 60;
+    expect(getOccupiedInteriorNpcSlots(world, interiorDefinitions.bungalow_living_interior)).toEqual([
+      expect.objectContaining({ npcId: "made" })
     ]);
   });
 

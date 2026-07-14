@@ -1,5 +1,9 @@
 # Decisions
 
+## 2026-07-14 - Made's Room Offer Is A Persistent Steady-Runner Goal, Not A Housing System
+
+RPG-20260714-03 implements only Act 1 TP2: after the existing three-delivery Steady Runner threshold, Made sends one persistent Bungalow Living Feed invitation and remains staged in that venue's existing interior slot until the player takes the one-time portrait scene. The scene uses the existing `collectedPickups` flag map and the existing rent due-day state; its visible room goal reports rent-record clean ✓/✗ and permanently reports recommendation letter ✗. The letter path, Ibu guarantee, move-out montage, and all milestone changes remain Beat 5 work. No rent, deposit, payout, delivery, or rating value changes here; save schema stays v11. Made's one secret plant is limited to the oblique question of who he pays.
+
 ## 2026-07-13 - Act 0 Back Half Is A Scene/Phone/Ride Arc, Not A Venue-Menu Tutorial
 
 RPG-20260713-04 keeps the stable `buy_meal_and_coffee` save id but changes its fresh-flow meaning to a staged Milk & Madu interior scene whose plate, coffee, meter gains, and Rp 30 cost resolve as scene business. The critical path then uses two authored moments inside the existing phone shell, two existing delivery runs, three cutscene-kit scenes, the existing deposit-style HUD chip pattern, and the existing payout celebration. Activity, station, shop, and home menus remain optional/off-path and open normally after Act 0; the smoke debug counter proves the authored critical path opens none.
