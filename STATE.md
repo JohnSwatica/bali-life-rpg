@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-14 (RPG-20260714-02 Act 1 Kadek TP1 complete locally)
+Last updated: 2026-07-14 (RPG-20260714-04 dev proof harness complete locally)
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -11,6 +11,8 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 `CLAUDE_PROJECT_REVIEW_2026-07-06.md` is Claude's full project review (bottlenecks, gap analysis, sequencing recommendation). It is a supervisory assessment, not a canonical design source — `GAME_DESIGN.md`/`STORY_BIBLE.md` still win on narrative/systems conflicts — but its top recommendation (no recorded human playtest yet; a `PLAYTEST_01.md` should exist before more systems work) should be treated as live until the user says otherwise.
 
 Current durable truth:
+
+- **RPG-20260714-04 complete locally on `feat/rpg-20260714-04-dev-proof-harness`:** dev builds now expose three authored boot states (`act0_complete`, `act1_leo_resolved`, `act1_steady_runner`) constructed only by composing the same public Act 0, delivery, deposit, sleep, repair, rate-cut, Leo, and Kadek mutations used by gameplay. A dev-only interaction API accepts delivery IDs, opens named phone tabs, reports board availability, and selects dialogue options through real handlers. `scripts/beatProof.mjs` consumes a boot state plus JSON steps without changing the full smoke. The Kadek fallback demo from `act1_leo_resolved` completed in 28.34s with screenshots; 45 files / 290 tests and production build pass; dev hook/state markers are absent from `dist`. Schema remains v11. Proof: `docs/RPG-20260714-04_DEV_PROOF_HARNESS_PROOF.md`.
 
 - **RPG-20260714-02 complete locally on `feat/rpg-20260714-02-kadek-priority`:** after Leo's rate-cut encounter, a fixed feed message exposes a persistent one-time BAKED. rush-hour ingredient run from Canggu Station back to the existing bakery counter. It reuses steering/cargo care and fails forward into one Kadek portrait scene; clean/rough box lines both grant priority-list membership and an automatically consumed 180-minute Focus Buffer pastry. The flag unlocks a recurring, always-fragile BAKED. premium line and Kadek ambient acknowledgement, while the scene never repeats. Post-cut terms are Rp 132 (story rush) and Rp 142 (priority line); their clean caps preserve a five-run minimum to Rp 600. The act-card overlay now renders above all world sprites. Schema remains v11; proof: `docs/RPG-20260714-02_KADEK_PRIORITY_PROOF.md`; verification: 44 files / 283 tests and production build green, packet headless proof green with zero browser errors. Beats 2–6 remain pending.
 
