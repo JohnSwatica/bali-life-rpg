@@ -146,6 +146,11 @@ async function runStep(step, index) {
       console.log(`[STEP ${index}] accepted ${step.id}`);
       return;
     }
+    case "payRent": {
+      const result = await page.evaluate(() => window.__BALI_LIFE_DEV_PROOF__?.payRent());
+      if (!result?.ok) throw new Error(result?.message ?? "Could not pay rent");
+      return;
+    }
     case "clickDialogueOption":
       await requireApiResult("clickDialogueOption", step.index);
       return;

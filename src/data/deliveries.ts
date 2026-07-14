@@ -74,7 +74,8 @@ export const deliveryDefinitions: DeliveryDefinition[] = [
     ratingWeight: 1,
     tutorialDelivery: true,
     boardAvailable: false,
-    repeatable: false
+    repeatable: false,
+    countsTowardHustleProgress: false
   },
   {
     id: "first_baked_villa_delivery",

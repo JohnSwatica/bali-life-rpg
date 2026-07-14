@@ -1,0 +1,8 @@
+{
+  "name": "leo-cadence-breakdown",
+  "steps": [
+    { "action": "openPhoneTab", "tab": "Feed" },
+    { "action": "waitMs", "ms": 300 },
+    { "action": "screenshot", "name": "02-breakdown" }
+  ]
+}

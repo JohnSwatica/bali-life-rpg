@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-15 (RPG-20260714-09 complete locally; RPG-20260714-07 and -11 merged)
+Last updated: 2026-07-15 (RPG-20260714-10 complete locally on stacked -09 base; Wave 1 implementation closed)
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -11,6 +11,8 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 `CLAUDE_PROJECT_REVIEW_2026-07-06.md` is Claude's full project review (bottlenecks, gap analysis, sequencing recommendation). It is a supervisory assessment, not a canonical design source — `GAME_DESIGN.md`/`STORY_BIBLE.md` still win on narrative/systems conflicts — but its top recommendation (no recorded human playtest yet; a `PLAYTEST_01.md` should exist before more systems work) should be treated as live until the user says otherwise.
 
 Current durable truth:
+
+- **RPG-20260714-10 complete locally on `feat/rpg-20260714-10-leo-glue-economy`, stacked on -09 commit `33cd990`:** Leo now sends exactly three ordered milestone texts—Kadek's artisan detour, the single existing breakdown slot, and race-state-aware finale respect—while an existing-flag queue ensures no more than one unread Leo message at once. The Wave 1 reconciliation suite fixes one audited one-line data drift (Act 0 catering no longer counts as an Act 1 run), proves five real runs / Rp 600, preserves premium 142 > normal 141 and four-run Rp 598, and proves the Rp 500 KEEP tip is wallet-only. A deterministic post-Leo Act 1 fast path reaches the Act 2 boundary in 136.74s; the explicit first-read model is 59.7 minutes, inside the 45–75 minute audit band, with human timing still required. Schema remains v11; proof: `docs/RPG-20260714-10_LEO_GLUE_RECONCILIATION_PROOF.md`; verification: 50 files / 329 tests and production build green, four browser proofs green.
 
 - **RPG-20260714-09 complete locally on `feat/rpg-20260714-09-act1-finale`:** Act 1 now closes through authored scenes instead of a numeric auto-transition. Five deliveries, Rp 600 delivery earnings, first rent, and either 4.2★ or Ibu's completed guarantee establish readiness; Ibu writes the only valid letter, Made accepts it and hands over the key, a three-card montage swaps every home/sleep reference to a persisted modest shared-room interior, the rental counter signs the weekly scooter tier without resetting rating, and only then does the existing Act 2 card advance the act. Schema stays v11; no street geometry changed. Proof: `docs/RPG-20260714-09_ACT1_FINALE_PROOF.md`; verification: 49 files / 323 tests and production build green, browser proof green with ten screenshots and zero browser errors.
 

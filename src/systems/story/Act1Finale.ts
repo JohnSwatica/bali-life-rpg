@@ -1,19 +1,20 @@
-import type { OpportunityMessage, WorldState } from "../../types";
+import type { WorldState } from "../../types";
 import { addItem, getQuantity } from "../Inventory";
 import { getAct1MoveOutReadiness } from "../hustle/HustleMilestones";
-import { appendOpportunityMessage } from "../opportunities/OpportunityEngine";
 import {
   MADE_RECOMMENDATION_LETTER_FLAG,
   MADE_ROOM_KEY_FLAG,
   MADE_ROOM_OFFER_SCENE_FLAG
 } from "./Act1MadeRoomOffer";
+import { queueAct1LeoCadenceMilestone } from "./Act1LeoCadence";
+
+export { ACT1_FINALE_LEO_MESSAGE_ID } from "./Act1LeoCadence";
 
 export const ACT1_MADE_KEY_FLAG = MADE_ROOM_KEY_FLAG;
 export const ACT1_MOVE_OUT_MONTAGE_STARTED_FLAG = "act1_move_out_montage_started";
 export const ACT1_MOVE_OUT_COMPLETE_FLAG = "act1_move_out_complete";
 export const ACT1_WEEKLY_SCOOTER_CONTRACT_FLAG = "act1_weekly_scooter_contract_signed";
 export const ACT2_INTRO_CARD_FLAG = "act2_intro_card_seen";
-export const ACT1_FINALE_LEO_MESSAGE_ID = "story:act1:leo-finale-respect";
 
 const SCOOTER_KEY_ITEM_ID = "scooter_key";
 
@@ -103,7 +104,7 @@ export function signWeeklyScooterContract(world: WorldState, now: number): Act1F
   player.bikeStuck = false;
   player.bikeCondition = 100;
   if (getQuantity(player, SCOOTER_KEY_ITEM_ID) === 0) addItem(player, SCOOTER_KEY_ITEM_ID, 1);
-  appendOpportunityMessage(world.opportunities, buildFinaleLeoMessage(now + 1));
+  queueAct1LeoCadenceMilestone(world, "finale", now + 1);
   return {
     ok: true,
     dialogue:
@@ -130,14 +131,4 @@ export function getAct1FinaleAmbientLine(world: WorldState, npcId: string): stri
   if (npcId === "made") return '"The key works. The fan works. Keep both that way."';
   if (npcId === "kadek") return '"Shared room, weekly scooter. Good. Stability is an ingredient too."';
   return undefined;
-}
-
-function buildFinaleLeoMessage(now: number): OpportunityMessage {
-  return {
-    id: ACT1_FINALE_LEO_MESSAGE_ID,
-    at: now,
-    from: "Leo · NusaDrop",
-    body: "A room and a weekly scooter after a 3.2 day. Annoyingly durable. We are not done racing.",
-    read: false
-  };
 }

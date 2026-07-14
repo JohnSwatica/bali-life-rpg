@@ -27,7 +27,7 @@
     {
       "action": "waitForState",
       "state": {
-        "completedDeliveryCount": 2,
+        "completedDeliveryCount": 1,
         "kadekPriority": true
       }
     },

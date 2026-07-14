@@ -1,15 +1,16 @@
 import { getDeliveryDefinition } from "../../data/deliveries";
-import type { OpportunityMessage, WorldState } from "../../types";
-import { appendOpportunityMessage } from "../opportunities/OpportunityEngine";
+import type { WorldState } from "../../types";
 import { KADEK_PRIORITY_DELIVERY_ID, KADEK_PRIORITY_FLAG } from "./Act1KadekPriority";
 import { MADE_ROOM_OFFER_SCENE_FLAG } from "./Act1MadeRoomOffer";
+import { queueAct1LeoCadenceMilestone } from "./Act1LeoCadence";
+
+export { ACT1_BREAKDOWN_LEO_MESSAGE_ID } from "./Act1LeoCadence";
 
 export const ACT1_BREAKDOWN_FLAG = "act1_transmission_breakdown_fired";
 export const ACT1_BREAKDOWN_RESOLVED_FLAG = "act1_transmission_breakdown_delivery_resolved";
 export const ACT1_BREAKDOWN_ARMED_DELIVERY_FLAG = "act1_transmission_breakdown_armed_delivery";
 export const ACT1_BREAKDOWN_PUSH_ACTIVE_FLAG = "act1_transmission_breakdown_push_active";
 export const ACT1_BREAKDOWN_SCOOTER_BLOWN_FLAG = "act1_transmission_breakdown_scooter_blown";
-export const ACT1_BREAKDOWN_LEO_MESSAGE_ID = "story:act1:leo-breakdown";
 export const ACT1_BREAKDOWN_DRIVER_RATING = 3.2;
 export const ACT1_BREAKDOWN_PREMIUM_RATING = 3.5;
 
@@ -112,7 +113,7 @@ export function triggerAct1Breakdown(
   player.onBike = false;
   player.bikeStuck = true;
   player.bikeCondition = 0;
-  appendOpportunityMessage(world.opportunities, buildLeoBreakdownMessage(input.now));
+  queueAct1LeoCadenceMilestone(world, "breakdown", input.now);
   return {
     fired: true,
     message: "TRANSMISSION GONE — push it in. The cargo is ruined, but the delivery still finishes."
@@ -200,14 +201,4 @@ export function getKadekBreakdownAmbientLine(world: WorldState): string | undefi
   return world.collectedPickups[ACT1_BREAKDOWN_FLAG]
     ? '"The list holds. Ratings are the app\'s opinion, not mine."'
     : undefined;
-}
-
-function buildLeoBreakdownMessage(now: number): OpportunityMessage {
-  return {
-    id: ACT1_BREAKDOWN_LEO_MESSAGE_ID,
-    at: now,
-    from: "Leo · #1 NusaDrop",
-    body: "3.2? Your transmission just optimized you out of premium. Push it in, rookie — a completed disaster still beats a DNF.",
-    read: false
-  };
 }
