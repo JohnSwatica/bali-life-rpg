@@ -4,7 +4,7 @@ import type { WeatherKind } from "../weather/WorldWeather";
 
 export const AUDIO_MUTED_STORAGE_KEY = "bali-life-rpg.audio-muted";
 
-export const SOUND_CUES = ["pickup", "payout", "uiClick", "toast", "sleep", "ambientLoop", "nearMiss", "thunder"] as const;
+export const SOUND_CUES = ["pickup", "payout", "uiClick", "toast", "sleep", "ambientLoop", "nearMiss", "thunder", "breakdown"] as const;
 export type SoundCue = (typeof SOUND_CUES)[number];
 
 export const AMBIENT_BEDS = ["morningStreet", "cafeInterior", "rain", "nightQuiet"] as const;
@@ -175,6 +175,11 @@ export class SoundManager {
     if (cue === "thunder") {
       this.playTone(context, 58, 0.72, AUDIO_FEEL_TUNING.thunderLowGain, "sawtooth");
       this.playTone(context, 91, 0.42, AUDIO_FEEL_TUNING.thunderCrackGain, "square", 0.025);
+      return;
+    }
+    if (cue === "breakdown") {
+      this.playTone(context, 132, 0.32, AUDIO_FEEL_TUNING.thunderCrackGain, "sawtooth");
+      this.playTone(context, 74, 0.58, AUDIO_FEEL_TUNING.thunderLowGain, "square", 0.08);
     }
   }
 

@@ -12,7 +12,7 @@ describe("sound manager", () => {
   installMemoryLocalStorage();
 
   it("exposes the procedural cue keys used by the game", () => {
-    expect(SOUND_CUES).toEqual(["pickup", "payout", "uiClick", "toast", "sleep", "ambientLoop", "nearMiss", "thunder"]);
+    expect(SOUND_CUES).toEqual(["pickup", "payout", "uiClick", "toast", "sleep", "ambientLoop", "nearMiss", "thunder", "breakdown"]);
     expect(AMBIENT_BEDS).toEqual(["morningStreet", "cafeInterior", "rain", "nightQuiet"]);
   });
 

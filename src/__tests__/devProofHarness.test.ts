@@ -18,6 +18,8 @@ import {
   KADEK_RUSH_DELIVERY_ID
 } from "../systems/story/Act1KadekPriority";
 import { installMemoryLocalStorage } from "./testUtils";
+import { MADE_ROOM_OFFER_SCENE_FLAG } from "../systems/story/Act1MadeRoomOffer";
+import { areAct1BreakdownTurningPointsComplete } from "../systems/story/Act1Breakdown";
 
 installMemoryLocalStorage();
 
@@ -63,6 +65,15 @@ describe("dev proof harness authored boot states", () => {
     expect(player.money).toBeLessThan(1_000);
     expect(world.life.hustle.driverRating).toBeGreaterThanOrEqual(1);
     expect(world.life.hustle.driverRating).toBeLessThanOrEqual(5);
+  });
+
+  it("constructs the Beat 3 gate through both real turning-point mutations", () => {
+    const world = buildDevProofBootState("act1_both_tps");
+
+    expect(world.life.hustle.completedDeliveryCount).toBe(3);
+    expect(world.collectedPickups[KADEK_PRIORITY_FLAG]).toBeTruthy();
+    expect(world.collectedPickups[MADE_ROOM_OFFER_SCENE_FLAG]).toBeTruthy();
+    expect(areAct1BreakdownTurningPointsComplete(world)).toBe(true);
   });
 
   it.each(DEV_PROOF_BOOT_STATE_NAMES)("persists and reloads %s through schema v11", (name) => {

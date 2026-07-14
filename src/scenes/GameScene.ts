@@ -242,6 +242,12 @@ import {
   isMadeRoomOfferPending
 } from "../systems/story/Act1MadeRoomOffer";
 import {
+  ACT1_BREAKDOWN_FLAG,
+  isAct1BreakdownPushActive,
+  isAct1ScooterBlown,
+  triggerAct1Breakdown
+} from "../systems/story/Act1Breakdown";
+import {
   ACT0_STORM_DELIVERY_ID,
   ACT0_STORM_TRIGGER_MS,
   ACT0_VILLA_DELIVERY_ID,
@@ -444,6 +450,9 @@ interface BaliLifeDebugSnapshot {
   completedDeliveryCount: number;
   rateCutFired: boolean;
   kadekPriority: boolean;
+  breakdownFired: boolean;
+  breakdownPushActive: boolean;
+  scooterBlown: boolean;
   driverRating: number;
   activeDelivery: string | null;
   activeDeliveryStage: "accepted" | "picked_up" | null;
@@ -619,6 +628,7 @@ interface MinimapLayout {
 }
 
 const WALK_SPEED = scaleDistance(78);
+const BIKE_PUSH_SPEED = scaleDistance(48);
 const BIKE_SPEED = scaleDistance(RIDE_FEEL_TUNING.baseBikeSpeed);
 const GROUP_WALK_SPEED = scaleDistance(92);
 const GROUP_BIKE_SPEED = scaleDistance(255);
@@ -2137,7 +2147,7 @@ export class GameScene extends Phaser.Scene {
       this.rideModelOutput = null;
       this.updateRideCameraLookahead();
       movement.normalize();
-      const speed = WALK_SPEED * this.movementSpeedMultiplier;
+      const speed = (isAct1BreakdownPushActive(this.world) ? BIKE_PUSH_SPEED : WALK_SPEED) * this.movementSpeedMultiplier;
       this.player.setVelocity(movement.x * speed, movement.y * speed);
       this.playerState.direction = this.directionFromVector(movement);
     } else {
@@ -2827,6 +2837,27 @@ export class GameScene extends Phaser.Scene {
   private playActivityCommitFlourish(x: number, y: number, label: string): void {
     this.spawnInteractionFlourish("activity", x, y, label);
     this.cameras.main.flash(120, 244, 213, 141, false);
+  }
+
+  private spawnBreakdownSmokePuff(): void {
+    const smoke = this.add.graphics().setPosition(this.player.x, this.player.y).setDepth(this.player.y + 4);
+    smoke.fillStyle(0x4f5558, 0.78);
+    smoke.fillCircle(-scaleDistance(8), -scaleDistance(4), scaleDistance(12));
+    smoke.fillStyle(0x74797a, 0.68);
+    smoke.fillCircle(scaleDistance(5), -scaleDistance(14), scaleDistance(16));
+    smoke.fillStyle(0xa1a19a, 0.48);
+    smoke.fillCircle(scaleDistance(17), -scaleDistance(24), scaleDistance(11));
+    this.tweens.add({
+      targets: smoke,
+      y: smoke.y - scaleDistance(54),
+      x: smoke.x + scaleDistance(18),
+      alpha: 0,
+      scale: 1.8,
+      duration: 1_250,
+      ease: "Cubic.easeOut",
+      onComplete: () => smoke.destroy()
+    });
+    this.spawnFloatingText("KRRK—CHUNK", this.player.x, this.player.y - scaleDistance(46), "#ffb8a6");
   }
 
   private checkBikeTerrain(): void {
@@ -3519,8 +3550,14 @@ export class GameScene extends Phaser.Scene {
       this.promptText.setText(
         `Race Leo: ${next ? `hit ${next.label}` : "finish the lap"}. ${this.getRaceConcedeHint()}`
       );
+    } else if (this.mode === "world" && isAct1BreakdownPushActive(this.world)) {
+      this.promptText.setText("TRANSMISSION GONE — walk the scooter to the dropoff, then press E / ACT");
     } else if (this.mode === "world" && this.playerState.bikeStuck) {
-      this.promptText.setText(`E / ACT: ask ${REQUIRED_BIKE_HELPERS} helpers to drag the bike out`);
+      this.promptText.setText(
+        isAct1ScooterBlown(this.world)
+          ? "Transmission blown — repair at the scooter counter"
+          : `E / ACT: ask ${REQUIRED_BIKE_HELPERS} helpers to drag the bike out`
+      );
     } else if (this.mode === "world" && isAct0FirstRunGateActive(this.world, this.act0FirstRunGateSessionActive)) {
       this.promptText.setText("Find Ibu Sari first - follow the arrow and press E / ACT.");
     } else if (this.mode === "world" && homeSleepReady) {
@@ -3785,6 +3822,19 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.playerState.bikeStuck) {
+      if (isAct1BreakdownPushActive(this.world)) {
+        const pushTarget = this.getNearestInteraction();
+        if (pushTarget?.type === "delivery") {
+          this.handleDeliveryInteraction(pushTarget.id);
+        } else {
+          this.showToast("TRANSMISSION GONE — push it to the marked dropoff. This run cannot time out.");
+        }
+        return;
+      }
+      if (isAct1ScooterBlown(this.world)) {
+        this.showToast("The transmission is blown. The scooter counter repair restores riding; helpers cannot.");
+        return;
+      }
       this.tryFreeBike();
       return;
     }
@@ -3875,7 +3925,11 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     if (this.playerState.bikeStuck) {
-      this.showToast(`The bike is stuck. Bring ${REQUIRED_BIKE_HELPERS} group helpers and press E.`);
+      this.showToast(
+        isAct1ScooterBlown(this.world)
+          ? "The transmission is blown. Repair it at the scooter counter before riding again."
+          : `The bike is stuck. Bring ${REQUIRED_BIKE_HELPERS} group helpers and press E.`
+      );
       return;
     }
 
@@ -6317,7 +6371,9 @@ export class GameScene extends Phaser.Scene {
     this.ensureDeliveryHazards(rideId);
     if (active?.stage === "picked_up") {
       active.rideRun ??= { elapsedMs: 0, hazardsSpawned: this.deliveryHazards.length, hazardsAvoided: 0, nearMisses: 0, contacts: 0 };
-      active.rideRun.elapsedMs += delta;
+      if (this.mode === "world" && this.playerState.onBike) {
+        active.rideRun.elapsedMs += delta;
+      }
       active.rideRun.hazardsSpawned = Math.max(active.rideRun.hazardsSpawned, this.deliveryHazards.length);
       if (
         active.deliveryId === ACT0_STORM_DELIVERY_ID &&
@@ -6328,6 +6384,25 @@ export class GameScene extends Phaser.Scene {
         this.startWeather("storm");
         this.showToast("The storm breaks mid-run — keep the cargo upright.");
         saveWorldState(this.world);
+      }
+      const breakdown = triggerAct1Breakdown(this.world, {
+        x: this.player.x,
+        y: this.player.y,
+        now: this.getAbsoluteMinute()
+      });
+      if (breakdown.fired) {
+        this.toastQueue = [];
+        this.toastTimer = 0;
+        this.toastText.setAlpha(0);
+        this.rideModelState = createRideModelState();
+        this.player.setVelocity(0, 0);
+        this.clearDeliveryHazards();
+        this.spawnBreakdownSmokePuff();
+        this.cameras.main.shake(420, 0.008);
+        this.playSound("breakdown");
+        saveWorldState(this.world);
+        this.phone?.refresh();
+        this.showToast(breakdown.message ?? "TRANSMISSION GONE — push it in.");
       }
     }
     if (this.mode !== "world" || !this.playerState.onBike) return;
@@ -7246,6 +7321,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private tryFreeBike(): void {
+    if (isAct1ScooterBlown(this.world)) {
+      this.showToast("Helpers cannot fix a blown transmission. Use the scooter counter repair.");
+      return;
+    }
     const helpers = this.countGroupHelpers();
     if (helpers < REQUIRED_BIKE_HELPERS) {
       this.showToast(`Need ${REQUIRED_BIKE_HELPERS} group helpers to drag it out. You have ${helpers}. Join a group first.`);
@@ -8878,6 +8957,9 @@ export class GameScene extends Phaser.Scene {
     if (result.storyScene?.fired && result.storyScene.dialogue) {
       this.openDialogue("Kadek", result.storyScene.dialogue, "kadek");
     }
+    if (result.breakdownScene?.fired && result.breakdownScene.dialogue) {
+      this.openDialogue("Dropoff", result.breakdownScene.dialogue);
+    }
     if (result.ok && !wasPickup && !isAct0StoryDelivery(active.deliveryId) && active.deliveryId !== "act0_ibu_milk_madu_catering") {
       if (chapterCutsceneDelayMs > 0) {
         this.time.delayedCall(chapterCutsceneDelayMs, () => {
@@ -8894,6 +8976,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private showCargoCareDeliveryReaction(deliveryId: string, result: ReturnType<typeof completeDelivery>): void {
+    if (result.breakdownScene?.fired) {
+      this.showNpcAmbientLine(
+        "kadek",
+        getAmbientNpcLine(this.world, "kadek", '"The list holds. Ratings are the app\'s opinion, not mine."')
+      );
+      return;
+    }
     const cargo = result.cargoCare;
     if (!cargo || !cargo.eligible || cargo.originalBonus <= 0) {
       return;
@@ -9864,6 +9953,9 @@ export class GameScene extends Phaser.Scene {
       completedDeliveryCount: this.world.life.hustle.completedDeliveryCount,
       rateCutFired: Boolean(this.world.collectedPickups.act1_nusadrop_rate_cut_fired),
       kadekPriority: Boolean(this.world.collectedPickups.act1_kadek_priority_driver),
+      breakdownFired: Boolean(this.world.collectedPickups[ACT1_BREAKDOWN_FLAG]),
+      breakdownPushActive: isAct1BreakdownPushActive(this.world),
+      scooterBlown: isAct1ScooterBlown(this.world),
       driverRating: this.world.life.hustle.driverRating,
       activeDelivery: this.world.life.hustle.activeDelivery?.deliveryId ?? null,
       activeDeliveryStage: this.world.life.hustle.activeDelivery?.stage ?? null,
