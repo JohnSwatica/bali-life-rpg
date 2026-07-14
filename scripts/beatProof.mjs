@@ -103,6 +103,15 @@ async function runStep(step, index) {
     case "openPhoneTab":
       await requireApiResult("openPhoneTab", step.tab);
       return;
+    case "setViewport":
+      await page.setViewport({
+        width: step.width,
+        height: step.height,
+        deviceScaleFactor: step.deviceScaleFactor ?? 1
+      });
+      await delay(240);
+      console.log(`[STEP ${index}] viewport ${step.width}x${step.height}`);
+      return;
     case "acceptDeliveryById": {
       const result = await page.evaluate((id) => window.__BALI_LIFE_DEV_PROOF__?.acceptDeliveryById(id), step.id);
       if (!result?.ok) throw new Error(result?.message ?? `Could not accept ${step.id}`);

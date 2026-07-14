@@ -24,16 +24,72 @@ import { getDeliveryDefinition } from "../../data/deliveries";
 import { getDeliveryOfferAvailability, getEffectiveDeliveryTerms, previewDeliveryCondition } from "../../systems/hustle/DeliverySystem";
 import { getRentPressureState, getScooterRepairStatus, getScooterUpgradeStatus } from "../../systems/hustle/HustleEconomy";
 import { getHustleGoalStates, getHustleNextStep } from "../../systems/hustle/HustleGoals";
-import type { GameEvent, RelationshipMemory, Venue, WorldState } from "../../types";
+import type { GameEvent, LiveOpportunity, OpportunityMessage, RelationshipMemory, Venue, WorldState } from "../../types";
 import { getPhoneCameraScale, getPhonePanelLayout, PHONE_CONTENT_INSET_PX } from "./PhoneLayout";
 
 const PHONE_DEPTH = 1500;
-const TABS = ["Feed", "Map", "Contacts", "Threads", "Quests", "Calendar", "Profile", "Events", "Venues", "Community"] as const;
-export type PhoneTab = (typeof TABS)[number];
+const PHONE_TABS = [
+  "Feed",
+  "Map",
+  "Goals",
+  "Profile",
+  "Contacts",
+  "Threads",
+  "Quests",
+  "Calendar",
+  "Events",
+  "Venues",
+  "Community"
+] as const;
+export const PHONE_VISIBLE_TABS = ["Feed", "Map", "Goals", "Profile"] as const;
+export type PhoneTab = (typeof PHONE_TABS)[number];
+
+export interface PhoneFeedModel {
+  priorityMessages: OpportunityMessage[];
+  payingOpportunities: LiveOpportunity[];
+  otherOpportunities: LiveOpportunity[];
+  otherMessages: OpportunityMessage[];
+}
+
+export function getPhoneFeedModel(world: WorldState): PhoneFeedModel {
+  const priorityMessages = world.opportunities.messages
+    .filter(isPriorityPhoneMessage)
+    .sort((a, b) => b.at - a.at);
+  const live = world.opportunities.live
+    .filter((opportunity) => opportunity.status === "live" || opportunity.status === "accepted")
+    .sort((a, b) => {
+      if (a.status !== b.status) return a.status === "accepted" ? -1 : 1;
+      return a.expiresAt - b.expiresAt;
+    });
+  const payingOpportunities = live.filter((opportunity) => {
+    const template = getOpportunityTemplate(opportunity.templateId);
+    return (template?.reward.money ?? 0) > 0;
+  });
+  const payingIds = new Set(payingOpportunities.map((opportunity) => opportunity.id));
+  return {
+    priorityMessages,
+    payingOpportunities,
+    otherOpportunities: live.filter((opportunity) => !payingIds.has(opportunity.id)),
+    otherMessages: world.opportunities.messages
+      .filter((message) => !isPriorityPhoneMessage(message))
+      .sort((a, b) => b.at - a.at)
+  };
+}
+
+function isPriorityPhoneMessage(message: OpportunityMessage): boolean {
+  return (
+    message.id.startsWith("story:") ||
+    message.id.startsWith("rent-reminder:") ||
+    message.id.startsWith("hustle-board:") ||
+    message.id.startsWith("act2-invite:") ||
+    message.from.toLowerCase().includes("landlord") ||
+    message.from === "NusaDrop Update"
+  );
+}
 
 export function parsePhoneTab(value: string): PhoneTab | undefined {
   const normalized = value.trim().toLowerCase();
-  return TABS.find((tab) => tab.toLowerCase() === normalized);
+  return PHONE_TABS.find((tab) => tab.toLowerCase() === normalized);
 }
 
 type Act0StoryPhoneMoment =
@@ -139,6 +195,14 @@ export class PhoneShell {
     }
   }
 
+  syncToCamera(): void {
+    if (!this.container) return;
+    const camera = this.options.scene.cameras.main;
+    this.container
+      .setPosition(camera.worldView.x, camera.worldView.y)
+      .setScale(getPhoneCameraScale(camera.zoom || 1));
+  }
+
   private render(): void {
     this.container?.destroy(true);
     const { scene } = this.options;
@@ -161,9 +225,10 @@ export class PhoneShell {
     if (this.act0StoryMoment) {
       this.renderAct0StoryMoment(container, x, y, panelWidth, panelHeight, bodyX, bodyWidth);
     } else {
+      const compact = panelWidth < 560;
       this.renderPortalHeader(container, x, y, panelWidth);
-      this.renderTabs(container, x, y + 74, panelWidth);
-      this.renderActiveTab(container, bodyX, y + 148, bodyWidth, panelHeight - 198);
+      this.renderTabs(container, x, y + (compact ? 112 : 74), panelWidth);
+      this.renderActiveTab(container, bodyX, y + (compact ? 160 : 148), bodyWidth, panelHeight - (compact ? 210 : 198));
       this.addButton(container, x + panelWidth - 116, y + panelHeight - 42, 92, 30, "Close", () => this.close(), 0x4a3331);
     }
     this.container = container;
@@ -248,24 +313,31 @@ export class PhoneShell {
 
   private renderPortalHeader(container: Phaser.GameObjects.Container, x: number, y: number, panelWidth: number): void {
     const world = this.options.getWorld();
+    const compact = panelWidth < 560;
     container.add(this.options.scene.add.text(x + PHONE_CONTENT_INSET_PX, y + 16, "Bali Life Phone", this.titleStyle()));
     container.add(
       this.options.scene.add.text(
         x + PHONE_CONTENT_INSET_PX,
-        y + 46,
+        y + (compact ? 82 : 46),
         `Portal: ${world.portal.current === "single" ? "Single Player" : "Multiplayer"}  |  Multiplayer ${world.portal.multiplayerStatus}`,
         this.bodyStyle(13)
       )
     );
-    this.addButton(container, x + panelWidth - 278, y + 18, 112, 30, "Single", () => this.dispatchAndRefresh({ kind: "SwitchPortal", mode: "single" }), 0x253a35);
-    this.addButton(container, x + panelWidth - 158, y + 18, 134, 30, "Multiplayer Locked", () => this.dispatchAndRefresh({ kind: "SwitchPortal", mode: "multiplayer" }), 0x2d3036);
+    if (compact) {
+      const actionWidth = (panelWidth - PHONE_CONTENT_INSET_PX * 2 - 8) / 2;
+      this.addButton(container, x + PHONE_CONTENT_INSET_PX, y + 46, actionWidth, 28, "Single", () => this.dispatchAndRefresh({ kind: "SwitchPortal", mode: "single" }), 0x253a35);
+      this.addButton(container, x + PHONE_CONTENT_INSET_PX + actionWidth + 8, y + 46, actionWidth, 28, "Multiplayer Locked", () => this.dispatchAndRefresh({ kind: "SwitchPortal", mode: "multiplayer" }), 0x2d3036);
+    } else {
+      this.addButton(container, x + panelWidth - 278, y + 18, 112, 30, "Single", () => this.dispatchAndRefresh({ kind: "SwitchPortal", mode: "single" }), 0x253a35);
+      this.addButton(container, x + panelWidth - 158, y + 18, 134, 30, "Multiplayer Locked", () => this.dispatchAndRefresh({ kind: "SwitchPortal", mode: "multiplayer" }), 0x2d3036);
+    }
   }
 
   private renderTabs(container: Phaser.GameObjects.Container, x: number, y: number, panelWidth: number): void {
     const gap = 6;
     const columns = panelWidth < 560 ? 4 : 8;
     const tabWidth = (panelWidth - PHONE_CONTENT_INSET_PX * 2 - gap * (columns - 1)) / columns;
-    TABS.forEach((tab, index) => {
+    PHONE_VISIBLE_TABS.forEach((tab, index) => {
       const row = Math.floor(index / columns);
       const column = index % columns;
       const tabX = x + PHONE_CONTENT_INSET_PX + column * (tabWidth + gap);
@@ -304,7 +376,7 @@ export class PhoneShell {
       this.renderTextList(container, bodyX, textY, bodyWidth, this.contactLines());
     } else if (this.activeTab === "Threads") {
       this.renderTextList(container, bodyX, textY, bodyWidth, this.threadLines());
-    } else if (this.activeTab === "Quests") {
+    } else if (this.activeTab === "Goals" || this.activeTab === "Quests") {
       this.renderTextList(container, bodyX, textY, bodyWidth, this.questLines());
     } else if (this.activeTab === "Calendar") {
       this.renderTextList(container, bodyX, textY, bodyWidth, this.calendarLines());
@@ -342,25 +414,25 @@ export class PhoneShell {
   private renderFeed(container: Phaser.GameObjects.Container, x: number, y: number, width: number): void {
     const world = this.options.getWorld();
     const state = world.opportunities;
+    const model = getPhoneFeedModel(world);
+    const nextGoal = getHustleNextStep(world);
     let rowY = y;
-    const storyMessages = [...state.messages]
-      .filter((message) => message.id.startsWith("story:"))
-      .sort((a, b) => b.at - a.at)
-      .slice(0, 1);
-    if (storyMessages.length) {
-      this.renderTextList(container, x, rowY, width, [
-        "Story ping",
-        ...storyMessages.map((message) => `${message.read ? "" : "* "}${message.from}: ${message.body}`)
-      ]);
-      rowY += 76;
-    }
+    const priorityMessages = model.priorityMessages
+      .filter((message) => !message.id.startsWith("hustle-board:"))
+      .slice(0, width < 460 ? 1 : 2);
+    const priorityText = this.renderTextList(container, x, rowY, width, [
+      "NOW · GOAL / STORY",
+      `${nextGoal.title}: ${nextGoal.detail}`,
+      ...priorityMessages.map((message) => `${message.read ? "" : "* "}${message.from}: ${message.body}`)
+    ]);
+    rowY += priorityText.height + 16;
     rowY = this.renderHustleBoard(container, x, rowY, width);
     rowY += 8;
-    const live = [...state.live].sort((a, b) => a.expiresAt - b.expiresAt);
+    const live = [...model.payingOpportunities, ...model.otherOpportunities];
     if (live.length === 0) {
       this.renderTextList(container, x, rowY, width, [
-        "No live pings right now.",
-        "The phone will buzz when a gig, social invite, help-out, rumor, trade, or simulated deal opens."
+        "No other live work right now.",
+        "Story offers and NusaDrop jobs will appear when their conditions are ready."
       ]);
       rowY += 72;
     } else {
@@ -369,7 +441,7 @@ export class PhoneShell {
         const venue = getVenue(opportunity.locationVenueId);
         const countdown = this.formatCountdown(getLiveOpportunityCountdown(opportunity, world.clock));
         const tracked = state.trackedOpportunityId === opportunity.id;
-        this.renderTextList(container, x, rowY, width - 196, [
+        const opportunityText = this.renderTextList(container, x, rowY, width - 196, [
           `${template?.title ?? opportunity.templateId} (${template?.type.replace(/_/g, " ") ?? "opportunity"})`,
           `${venue?.name ?? opportunity.locationVenueId} | ${opportunity.status} | expires in ${countdown}`,
           template?.blurb ?? "Go to the venue before the timer runs out."
@@ -400,17 +472,14 @@ export class PhoneShell {
           },
           tracked ? 0x2d3036 : 0x2c4650
         );
-        rowY += 86;
+        rowY += Math.max(86, opportunityText.height + 12);
         if (rowY > y + 320) break;
       }
     }
 
-    const messages = [...state.messages]
-      .filter((message) => !message.id.startsWith("story:"))
-      .sort((a, b) => b.at - a.at)
-      .slice(0, 5);
+    const messages = model.otherMessages.slice(0, 5);
     this.renderTextList(container, x, rowY + 6, width, [
-      "Messages",
+      "Other messages",
       ...(messages.length
         ? messages.map((message) => `${message.read ? "" : "* "}${message.from}: ${message.body}`)
         : ["No messages yet."])
@@ -423,11 +492,11 @@ export class PhoneShell {
     const activeDelivery = world.life.hustle.activeDelivery;
     const rentPressure = getRentPressureState(world);
     const player = world.players[world.localPlayerId];
-    this.renderTextList(container, x, y, width, [
-      `NusaDrop Board: ${world.life.hustle.completedDeliveryCount} runs | Rp ${world.life.hustle.deliveryEarnings} earned | ${world.life.hustle.driverRating.toFixed(1)}★`,
+    const boardHeader = this.renderTextList(container, x, y, width, [
+      `PAYING JOBS · NusaDrop Board: ${world.life.hustle.completedDeliveryCount} runs | Rp ${world.life.hustle.deliveryEarnings} earned | ${world.life.hustle.driverRating.toFixed(1)}★`,
       `Rent target: Rp ${world.life.hustle.rentAmount} by Day ${world.life.hustle.rentDueDay} (${rentPressure.shortLabel}) | Scooter: ${world.life.hustle.scooterTier.replace(/_/g, " ")} ${player.bikeCondition}%`
     ]);
-    let rowY = y + 50;
+    let rowY = y + boardHeader.height + 12;
     const rentReady = player.money >= world.life.hustle.rentAmount;
     const repairStatus = getScooterRepairStatus(world);
     const scooterUpgrade = getScooterUpgradeStatus(world);
@@ -510,14 +579,15 @@ export class PhoneShell {
       return rowY + 42;
     }
 
-    for (const offer of offers.slice(0, 5)) {
+    const visibleOfferCount = width < 460 ? 1 : 5;
+    for (const offer of offers.slice(0, visibleOfferCount)) {
       const delivery = offer.delivery;
       const condition = offer.available ? previewDeliveryCondition(world, delivery, this.options.getNow()) : undefined;
       const terms = getEffectiveDeliveryTerms(delivery, condition, world);
       const gate = offer.available
         ? `Rp ${terms.payout} | ${terms.timeLimitMin} min${condition ? ` | ${condition.label}` : ""}`
         : offer.reason ?? "Locked";
-      this.renderTextList(container, x, rowY, width - 150, [
+      const offerText = this.renderTextList(container, x, rowY, width - 150, [
         `${delivery.title}${offer.available ? "" : " (locked)"}`,
         `${gate}. ${condition?.description ?? delivery.description}`
       ]);
@@ -544,7 +614,13 @@ export class PhoneShell {
               ? 0x5c4b25
               : 0x253a35
       );
-      rowY += 64;
+      rowY += Math.max(64, offerText.height + 12);
+    }
+    if (offers.length > visibleOfferCount) {
+      this.renderTextList(container, x, rowY, width, [
+        `+${offers.length - visibleOfferCount} more NusaDrop jobs at Ibu Sari's board.`
+      ]);
+      rowY += 34;
     }
     return rowY;
   }
@@ -600,10 +676,17 @@ export class PhoneShell {
     const complete = player.completedQuestIds.map((id) => `Done: ${questDefinitions[id]?.title ?? id}`);
     const quests = [...active, ...complete].length ? [...active, ...complete] : ["No active quests. Talk to Ibu Sari or Kadek."];
     const goals = getSettlingInGoalStates(world).map((goal) => `${goal.complete ? "Done" : "Goal"}: ${goal.title} - ${goal.description}`);
-    const hustleGoals = getHustleGoalStates(world).map((goal) => {
+    const hustleGoals = [...getHustleGoalStates(world)]
+      .sort((a, b) => {
+        if (a.id === "mades_room") return -1;
+        if (b.id === "mades_room") return 1;
+        if (a.complete !== b.complete) return a.complete ? 1 : -1;
+        return 0;
+      })
+      .map((goal) => {
       const progress = goal.complete ? goal.progress : `${goal.description} (${goal.progress})`;
       return `${goal.complete ? "Done" : "NusaDrop"}: ${goal.title} - ${progress}`;
-    });
+      });
     const hustleNext = getHustleNextStep(world);
     const act2Next = getAct2NextStep(world);
     const act2Goals = getAct2GoalStates(world).map((goal) => {

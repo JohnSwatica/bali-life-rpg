@@ -1,5 +1,24 @@
 import type { OpportunityTemplate } from "../types";
 
+/**
+ * Workstream A keeps the opportunity engine available for authored story and
+ * goal consumers, but stops the generic menu-errand pool from repopulating the
+ * phone. Definitions stay below so legacy saves can still hydrate safely and
+ * cut ideas can be restaged as real scenes later.
+ */
+export const generatedOpportunityTemplateIds: ReadonlySet<string> = new Set([
+  "no_questions_package",
+  "focus_table_client_referral",
+  "run_crew_breakfast_shift",
+  "brunch_builders_paid_intro",
+  "surf_circle_board_repair",
+  "sari_warung_seed_errand"
+]);
+
+export function isOpportunityTemplateGenerationEnabled(templateId: string): boolean {
+  return generatedOpportunityTemplateIds.has(templateId);
+}
+
 export const opportunityTemplates: OpportunityTemplate[] = [
   {
     id: "milk_madu_lunch_rush_shift",

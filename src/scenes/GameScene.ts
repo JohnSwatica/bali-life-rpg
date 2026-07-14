@@ -1032,6 +1032,7 @@ export class GameScene extends Phaser.Scene {
     this.updateLighting();
     this.updateWeather(delta);
     this.updateDynamicObjectCulling();
+    this.phone?.syncToCamera();
   }
 
   destroy(): void {

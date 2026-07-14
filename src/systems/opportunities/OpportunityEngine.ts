@@ -1,4 +1,7 @@
-import { opportunityTemplates } from "../../data/opportunities";
+import {
+  isOpportunityTemplateGenerationEnabled,
+  opportunityTemplates
+} from "../../data/opportunities";
 import { addItem } from "../Inventory";
 import { adjustPlayerMeters } from "../meters/PlayerMeters";
 import {
@@ -226,6 +229,7 @@ export function maintainOpportunityPool(
 
   for (let index = 0; index < spawnCount; index += 1) {
     const candidates = getEligibleOpportunityTemplates(world, state, templates)
+      .filter((template) => isOpportunityTemplateGenerationEnabled(template.id))
       .filter((template) => !state.live.some((entry) => entry.templateId === template.id))
       .sort((a, b) => rankTemplate(b, now, index) - rankTemplate(a, now, index));
     const next = candidates[0];
@@ -363,7 +367,7 @@ export function resolveOpportunity(
   });
 
   let spawnedChain: LiveOpportunity | undefined;
-  if (template.chainTo) {
+  if (template.chainTo && isOpportunityTemplateGenerationEnabled(template.chainTo)) {
     const nextTemplate = opportunityTemplates.find((candidate) => candidate.id === template.chainTo);
     if (nextTemplate) {
       spawnedChain = spawnOpportunity(state, nextTemplate, getAbsoluteMinute(world.clock));
