@@ -1,15 +1,15 @@
 ```
-PACKET ID: RPG-DRAFT-W1-B3 (assign RPG-YYYYMMDD-NN + pin PREREQ SHA at issue)
-STATUS:    DRAFT — do not ferry until issued
+PACKET ID: RPG-20260714-07
+STATUS:    ISSUED 2026-07-14
 PROJECT:   Bali Life RPG
 TARGET:    Codex
 CODEX:     Sol · High — authored downfall touching rating, premium gating, and ride state; behavioral correctness throughout
-PREREQ:    merged main after RPG-20260714-06 + Wave 1.5 gate (SHA at issue)
+PREREQ:    branch from main at 3954d33 or later (RPG-20260714-06 merged; Wave 1.5 gate passed)
 TITLE:     Act 1 Beat 3 — the breakdown reversal (transmission blowout, push the bike)
 MAP DELTA: none — staged on the existing street's far end
-PR TAG: [<assigned ID>]
+PR TAG: [RPG-20260714-07]
 
-===== BEGIN PACKET RPG-DRAFT-W1-B3 =====
+===== BEGIN PACKET RPG-20260714-07 =====
 
 ROLE & SCOPE
 docs/ACT1_BACKBONE_2026-07-14.md Beat 3. Bible: "Your scooter's
@@ -68,5 +68,5 @@ DO NOT
 - No new minigame for the push; no game-over; no randomized breakdowns
   ever (this is a story beat, not a mechanic).
 
-===== END PACKET RPG-DRAFT-W1-B3 =====
+===== END PACKET RPG-20260714-07 =====
 ```

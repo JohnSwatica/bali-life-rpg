@@ -1,15 +1,15 @@
 ```
-PACKET ID: RPG-DRAFT-W1-B4 (assign RPG-YYYYMMDD-NN + pin PREREQ SHA at issue)
-STATUS:    DRAFT — do not ferry until issued
+PACKET ID: RPG-20260714-08
+STATUS:    ISSUED 2026-07-14
 PROJECT:   Bali Life RPG
 TARGET:    Codex
 CODEX:     Sol · Medium — one choice scene, but it writes to the reputation axes the ending reads; behavioral correctness
-PREREQ:    merged main after Beat 3 (SHA at issue)
+PREREQ:    the previous packet's merge commit MUST be in origin/main first — run `git fetch origin && git log origin/main --oneline | head -5` and confirm the [RPG-20260714-07] merge; branch from origin/main; if absent, STOP and report instead of building on an unmerged branch
 TITLE:     Act 1 Beat 4 — the Luxury Tip Dilemma (bible moral choice #1)
 MAP DELTA: none — attaches to an existing villa-dropoff board delivery
-PR TAG: [<assigned ID>]
+PR TAG: [RPG-20260714-08]
 
-===== BEGIN PACKET RPG-DRAFT-W1-B4 =====
+===== BEGIN PACKET RPG-20260714-08 =====
 
 ROLE & SCOPE
 docs/ACT1_BACKBONE_2026-07-14.md Beat 4; STORY_BIBLE §G choice 1. Timing is
@@ -55,5 +55,5 @@ DO NOT
 - No moralizing UI (no "good/bad" labels, no karma meter surfacing).
 - No second dilemma, no villa-guest arc beyond the plant.
 
-===== END PACKET RPG-DRAFT-W1-B4 =====
+===== END PACKET RPG-20260714-08 =====
 ```

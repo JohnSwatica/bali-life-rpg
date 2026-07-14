@@ -1,15 +1,15 @@
 ```
-PACKET ID: RPG-DRAFT-W1-B6 (assign RPG-YYYYMMDD-NN + pin PREREQ SHA at issue)
-STATUS:    DRAFT — do not ferry until issued
+PACKET ID: RPG-20260714-10
+STATUS:    ISSUED 2026-07-14
 PROJECT:   Bali Life RPG
 TARGET:    Codex
 CODEX:     Terra · Medium — authored texts + a reconciliation test pass; small surface, no new systems
-PREREQ:    merged main after Beat 5 (SHA at issue)
+PREREQ:    the previous packet's merge commit MUST be in origin/main first — run `git fetch origin && git log origin/main --oneline | head -5` and confirm the [RPG-20260714-09] merge; branch from origin/main; if absent, STOP and report instead of building on an unmerged branch
 TITLE:     Act 1 Beat 6 — Leo cadence glue + Wave 1 economy/pacing reconciliation
 MAP DELTA: none
-PR TAG: [<assigned ID>]
+PR TAG: [RPG-20260714-10]
 
-===== BEGIN PACKET RPG-DRAFT-W1-B6 =====
+===== BEGIN PACKET RPG-20260714-10 =====
 
 ROLE & SCOPE
 docs/ACT1_BACKBONE_2026-07-14.md Beat 6 — the connective tissue, then a
@@ -57,5 +57,5 @@ DO NOT
 - No new Leo scenes (texts only — his next staged beat is Act 2/Season 2).
 - No race changes.
 
-===== END PACKET RPG-DRAFT-W1-B6 =====
+===== END PACKET RPG-20260714-10 =====
 ```

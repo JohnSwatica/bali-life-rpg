@@ -1,15 +1,15 @@
 ```
-PACKET ID: RPG-DRAFT-W1-B5 (assign RPG-YYYYMMDD-NN + pin PREREQ SHA at issue)
-STATUS:    DRAFT — do not ferry until issued
+PACKET ID: RPG-20260714-09
+STATUS:    ISSUED 2026-07-14
 PROJECT:   Bali Life RPG
 TARGET:    Codex
 CODEX:     Sol · High — Act 1's closing milestone: milestone-math change, home-base swap, act transition; the heaviest story packet in Wave 1
-PREREQ:    merged main after Beat 4 (SHA at issue)
+PREREQ:    the previous packet's merge commit MUST be in origin/main first — run `git fetch origin && git log origin/main --oneline | head -5` and confirm the [RPG-20260714-08] merge; branch from origin/main; if absent, STOP and report instead of building on an unmerged branch
 TITLE:     Act 1 Beat 5 — the finale: Ibu vouches, move-out, ACT 2 card
 MAP DELTA: none on the street; adds ONE new interior (the shared room) — interior scenes are not street geometry, but record it in the proof
-PR TAG: [<assigned ID>]
+PR TAG: [RPG-20260714-09]
 
-===== BEGIN PACKET RPG-DRAFT-W1-B5 =====
+===== BEGIN PACKET RPG-20260714-09 =====
 
 ROLE & SCOPE
 docs/ACT1_BACKBONE_2026-07-14.md Beat 5 + the milestone adjustment it owns.
@@ -72,5 +72,5 @@ DO NOT
 - No Act 2 systems, no furniture placement (BUILD comes later), no rating
   reset, no new street geometry.
 
-===== END PACKET RPG-DRAFT-W1-B5 =====
+===== END PACKET RPG-20260714-09 =====
 ```

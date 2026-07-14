@@ -68,10 +68,10 @@ wrong and is retired.)
 - RPG-20260714-04 — dev proof harness (authored boot states + stable
   interaction API) — inserted after the -03 stall; pays for itself across
   every remaining Season 1 packet
-- RPG-20260714-05 — Beat 3, the breakdown reversal
-- RPG-2026071x-0x — Beat 4, tip dilemma
-- RPG-2026071x-0x — Beat 5, finale + milestone adjustment + Act 2 card
-- RPG-2026071x-0x — Beat 6, Leo glue + Wave-1 economy/pacing reconciliation
+- RPG-20260714-07 — Beat 3, the breakdown reversal (ISSUED)
+- RPG-20260714-08 — Beat 4, tip dilemma (ISSUED, chained on -07)
+- RPG-20260714-09 — Beat 5, finale + milestone adjustment + Act 2 card (ISSUED, chained on -08)
+- RPG-20260714-10 — Beat 6, Leo glue + economy reconciliation (ISSUED, chained on -09)
 
 Wave 1 gate: full AI playthrough Act 0 → Act 2 card, rubric-scored, before
 Wave 2 opens. Target close: Jul 20–21 (one-day slip risk absorbed by the
