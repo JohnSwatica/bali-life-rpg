@@ -5,6 +5,7 @@ import { getActiveEvents } from "../events/EventScheduler";
 import { getOpportunityTemplate } from "../opportunities/OpportunityEngine";
 import { getRioRaceEligibility, RIO_RACE } from "../ride/RivalRace";
 import { isAct1LeoEncounterPending } from "../story/Act1IncitingHook";
+import { isMadeRoomOfferPending } from "../story/Act1MadeRoomOffer";
 import type { GameEvent, OpportunityType, WorldState } from "../../types";
 
 export type OpportunityWorldSceneKind =
@@ -180,8 +181,46 @@ export function getAct1IncitingHookWorldScenes(world: WorldState): OpportunityWo
   ];
 }
 
+export function getMadeRoomOfferWorldScenes(world: WorldState): OpportunityWorldScene[] {
+  if (!isMadeRoomOfferPending(world) || !resolveWorldSceneVenueAnchor("bungalow_living")) {
+    return [];
+  }
+  return [
+    {
+      source: "opportunity",
+      id: "story:act1:made-room-offer",
+      opportunityId: "act1_made_hidden_room_offer",
+      templateId: "act1_made_hidden_room_offer",
+      venueId: "bungalow_living",
+      title: "Made is waiting inside",
+      opportunityType: "gig",
+      sceneKind: "gig_help_wanted",
+      cue: "MADE",
+      accepted: false,
+      actors: [
+        {
+          id: "made-room-offer",
+          npcId: "made",
+          spriteKey: npcDefinitions.made?.spriteKey ?? "npc-made",
+          role: "working",
+          offsetX: 0,
+          offsetY: 0,
+          approachOffsetX: -38,
+          approachOffsetY: -46
+        }
+      ]
+    }
+  ];
+}
+
 export function getVisibleWorldScenes(world: WorldState): WorldScene[] {
-  return [...getOpportunityWorldScenes(world), ...getRivalRaceWorldScenes(world), ...getEventWorldScenes(world)];
+  return [
+    ...getOpportunityWorldScenes(world),
+    ...getRivalRaceWorldScenes(world),
+    ...getAct1IncitingHookWorldScenes(world),
+    ...getMadeRoomOfferWorldScenes(world),
+    ...getEventWorldScenes(world)
+  ];
 }
 
 export interface FieldFirstDiscoveryAudit {

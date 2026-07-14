@@ -34,6 +34,16 @@ const PORTRAITS: Record<string, PortraitDefinition> = {
     background: "#273f5f",
     shape: "cap"
   },
+  made: {
+    npcId: "made",
+    alt: "Made portrait",
+    skin: "#a86f4d",
+    hair: "#241f1c",
+    shirt: "#8bd17c",
+    accent: "#fff0bd",
+    background: "#314b40",
+    shape: "kerchief"
+  },
   rio: {
     npcId: "rio",
     alt: "Leo portrait",

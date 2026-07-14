@@ -6,8 +6,8 @@ describe("dialogue portrait art", () => {
     expect(getPortraitDefinition("ibu_sari")).toMatchObject({ alt: "Ibu Sari portrait" });
     expect(getPortraitDefinition("kadek")).toMatchObject({ alt: "Kadek portrait" });
     expect(getPortraitDefinition("rio")).toMatchObject({ alt: "Leo portrait" });
+    expect(getPortraitDefinition("made")).toMatchObject({ alt: "Made portrait" });
     expect(getPortraitDefinition("ari")).toBeNull();
-    expect(getPortraitDefinition("made")).toBeNull();
     expect(getPortraitDefinition("unknown")).toBeNull();
   });
 

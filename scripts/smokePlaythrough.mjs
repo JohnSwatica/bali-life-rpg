@@ -192,6 +192,7 @@ async function main() {
     await waitForSelector("#bali-life-activity-menu", 8_000);
   }
   await capture("16-act1-morning-hand");
+  await verifyMadeRoomOfferProof();
   await verifyMobileTouchSurface();
 }
 
@@ -398,6 +399,141 @@ async function verifyMobileTouchSurface() {
   if (outOfBounds.length > 0) throw new Error(`390x844 controls out of bounds: ${JSON.stringify(outOfBounds)}`);
   console.log(`[TOUCH] 390x844 joystickVisible=${state.touchControlsVisible} buttons=${bounds.length} allInBounds=true`);
   await capture("14-touch-390x844");
+}
+
+async function verifyMadeRoomOfferProof() {
+  activeBeat = "17-made-room-offer";
+  await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
+  await ensureWorldForProof();
+  await driveToSteadyRunner();
+  // Let the regular five-second phone-feed cadence publish Made's ping.
+  await delay(5_400);
+  await press("p");
+  await delay(240);
+  await capture("17-made-feed-invitation");
+  await press("Escape");
+  await waitForDebug((state) => state.mode === "world", "phone closed before Made proof", 2_000);
+
+  await page.evaluate(() => window.__BALI_LIFE_DEV_SENSATION__?.teleport(1648, 256));
+  await delay(260);
+  await ensureOnFoot();
+  await capture("18-made-bungalow-cue");
+  await press("e");
+  let afterBungalowEntry = await getDebug();
+  if (afterBungalowEntry.mode !== "dialogue") {
+    afterBungalowEntry = await waitForDebug(
+      (state) => state.mode === "interior" && !state.interiorTransitioning,
+      "Bungalow interior entry",
+      3_000
+    );
+  }
+  if (afterBungalowEntry.mode === "interior") {
+    await moveToInteriorPoint({ x: 20230, y: 3188 });
+    for (let attempt = 0; attempt < 3 && !(await page.$(".bali-life-dialogue")); attempt += 1) {
+      await press("e");
+      await delay(180);
+    }
+  }
+  await waitForSelector(".bali-life-dialogue", 3_000);
+  await capture("19-made-hidden-room-dialogue");
+  await closeDialogueIfPresent();
+
+  await press("p");
+  await delay(180);
+  // Desktop phone tabs are a fixed 8-column row; Quests is the fifth tab.
+  await page.mouse.click(692, 129);
+  await delay(240);
+  await capture("20-made-room-tracked-goal");
+  console.log(`[MADE] invitation, Bungalow cue, one-time dialogue, and tracked rent/letter goal captured`);
+}
+
+async function driveToSteadyRunner() {
+  let state = await getDebug();
+  while (state.completedDeliveryCount < 3) {
+    console.log(`[MADE GATE] ${state.completedDeliveryCount}/3 counted runs; taking a board delivery`);
+    await acceptFirstAvailableBoardDelivery();
+    await completeActiveBoardDelivery();
+    await repairScooterForBoardIfNeeded();
+    state = await waitForDebug(
+      (next) => !next.activeDelivery,
+      "board delivery settlement before Made gate",
+      8_000
+    );
+  }
+  console.log(`[MADE GATE] Steady Runner reached at ${state.completedDeliveryCount}/3 runs`);
+}
+
+async function acceptFirstAvailableBoardDelivery() {
+  await ensureWorldForProof();
+  await press("p");
+  await waitForDebug((state) => state.mode === "phone", "NusaDrop board opened", 2_000);
+  await delay(350);
+  // At the desktop proof viewport, the board's first five action rows begin here.
+  // Try each row because locked offers can precede the first available one.
+  for (const y of [423, 487, 551, 615, 679]) {
+    for (const x of [940, 970, 1_000]) {
+      await page.mouse.move(x, y);
+      await delay(70);
+      await page.mouse.down();
+      await delay(40);
+      await page.mouse.up();
+      await delay(180);
+      const state = await getDebug();
+      if (state.activeDelivery) {
+        await press("Escape");
+        await waitForDebug((next) => next.mode === "world", "board closed after delivery acceptance", 2_000);
+        return;
+      }
+    }
+  }
+  throw new Error("No available NusaDrop board offer accepted while driving to Steady Runner");
+}
+
+async function completeActiveBoardDelivery() {
+  const accepted = await getDebug();
+  if (!accepted.activeDelivery || accepted.activeDeliveryStage !== "accepted") {
+    throw new Error(`Expected an accepted board delivery, got ${JSON.stringify(accepted.activeDelivery)}`);
+  }
+  await followObjectiveIntoInterior();
+  await moveToObjective();
+  await press("e");
+  await waitForDebug((state) => state.activeDeliveryStage === "picked_up", "board cargo collected", 5_000);
+  await leaveInteriorByObjective();
+  await ensureMounted();
+  await moveToObjective();
+  await press("e");
+  await waitForDebug((state) => state.activeDelivery === null, "board delivery completed", 8_000);
+  await ensureWorldForProof();
+}
+
+async function repairScooterForBoardIfNeeded() {
+  const before = await getDebug();
+  if (before.player.bikeCondition >= 18) return;
+  await press("p");
+  await waitForDebug((state) => state.mode === "phone", "phone opened for scooter repair", 2_000);
+  // Desktop Feed layout, including the persistent story-ping row: repair is the third board action.
+  // Use several points in the same canvas control because the live camera can settle a few pixels
+  // after a long auto-routed delivery.
+  let repaired = false;
+  for (const point of [{ x: 560, y: 370 }, { x: 604, y: 374 }, { x: 650, y: 380 }]) {
+    await page.mouse.move(point.x, point.y);
+    await delay(70);
+    await page.mouse.down();
+    await delay(40);
+    await page.mouse.up();
+    try {
+      await waitForDebug((state) => state.player.bikeCondition >= 18, "scooter repair applied", 700);
+      repaired = true;
+      break;
+    } catch {
+      // Try another point within the same rendered button.
+    }
+  }
+  if (!repaired) throw new Error("Phone repair control did not respond while driving to Steady Runner");
+  await delay(500);
+  await press("Escape");
+  await waitForDebug((state) => state.mode === "world", "phone closed after scooter repair", 2_000);
+  await delay(1_000);
 }
 
 async function moveToward(player, target, distance, sampleWhileMoving) {

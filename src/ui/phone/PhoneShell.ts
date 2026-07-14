@@ -343,6 +343,17 @@ export class PhoneShell {
     const world = this.options.getWorld();
     const state = world.opportunities;
     let rowY = y;
+    const storyMessages = [...state.messages]
+      .filter((message) => message.id.startsWith("story:"))
+      .sort((a, b) => b.at - a.at)
+      .slice(0, 1);
+    if (storyMessages.length) {
+      this.renderTextList(container, x, rowY, width, [
+        "Story ping",
+        ...storyMessages.map((message) => `${message.read ? "" : "* "}${message.from}: ${message.body}`)
+      ]);
+      rowY += 76;
+    }
     rowY = this.renderHustleBoard(container, x, rowY, width);
     rowY += 8;
     const live = [...state.live].sort((a, b) => a.expiresAt - b.expiresAt);
@@ -394,7 +405,10 @@ export class PhoneShell {
       }
     }
 
-    const messages = [...state.messages].sort((a, b) => b.at - a.at).slice(0, 5);
+    const messages = [...state.messages]
+      .filter((message) => !message.id.startsWith("story:"))
+      .sort((a, b) => b.at - a.at)
+      .slice(0, 5);
     this.renderTextList(container, x, rowY + 6, width, [
       "Messages",
       ...(messages.length

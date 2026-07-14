@@ -77,6 +77,7 @@ import {
   getEventWorldScenes,
   getAct1IncitingHookWorldScenes,
   getFieldFirstDiscoveryAudit,
+  getMadeRoomOfferWorldScenes,
   getOpportunityWorldScenes,
   getRivalRaceWorldScenes,
   resolveWorldSceneVenueAnchor,
@@ -234,6 +235,11 @@ import {
   triggerAct1RateCut
 } from "../systems/story/Act1IncitingHook";
 import { buildKadekRushOfferMessage } from "../systems/story/Act1KadekPriority";
+import {
+  buildMadeRoomOfferMessage,
+  completeMadeRoomOfferScene,
+  isMadeRoomOfferPending
+} from "../systems/story/Act1MadeRoomOffer";
 import {
   ACT0_STORM_DELIVERY_ID,
   ACT0_STORM_TRIGGER_MS,
@@ -438,6 +444,7 @@ interface BaliLifeDebugSnapshot {
   rateCutFired: boolean;
   kadekPriority: boolean;
   driverRating: number;
+  deliveryEarnings: number;
   activeDelivery: string | null;
   activeDeliveryStage: "accepted" | "picked_up" | null;
   activeDeliveryDueAt: number | null;
@@ -3905,6 +3912,16 @@ export class GameScene extends Phaser.Scene {
     if (this.shouldOpenIbuHustleBoard(npcId)) {
       this.openIbuHustleBoard();
       return;
+    }
+
+    if (npcId === "made" && isMadeRoomOfferPending(this.world)) {
+      const roomOffer = completeMadeRoomOfferScene(this.world, this.getAbsoluteMinute());
+      if (roomOffer.fired && roomOffer.dialogue) {
+        saveWorldState(this.world);
+        this.phone?.refresh();
+        this.openDialogue(npc.name, roomOffer.dialogue, npcId);
+        return;
+      }
     }
 
     const questInteraction = resolveNpcQuestInteraction(this.playerState, npcId);
@@ -7672,6 +7689,11 @@ export class GameScene extends Phaser.Scene {
       if (!node) continue;
       this.drawOpportunityWorldScene(scene, node.x, node.y - scaleDistance(58), phase, activeLabelIds);
     }
+    for (const scene of getMadeRoomOfferWorldScenes(this.world)) {
+      const node = resolveWorldSceneVenueAnchor(scene.venueId);
+      if (!node) continue;
+      this.drawOpportunityWorldScene(scene, node.x, node.y - scaleDistance(58), phase, activeLabelIds);
+    }
 
     for (const scene of getEventWorldScenes(this.world)) {
       const node = resolveWorldSceneVenueAnchor(scene.venueId);
@@ -9325,6 +9347,12 @@ export class GameScene extends Phaser.Scene {
     const kadekRushMessageAdded = kadekRushMessage
       ? appendOpportunityMessage(this.world.opportunities, kadekRushMessage)
       : false;
+    const madeRoomOfferMessage = tutorialActive
+      ? undefined
+      : buildMadeRoomOfferMessage(this.world, this.getAbsoluteMinute());
+    const madeRoomOfferMessageAdded = madeRoomOfferMessage
+      ? appendOpportunityMessage(this.world.opportunities, madeRoomOfferMessage)
+      : false;
     const eventMessages = tutorialActive ? 0 : this.appendActiveEventMessages();
     const afterUnread = getUnreadOpportunityMessageCount(this.world.opportunities);
     const changed =
@@ -9332,6 +9360,7 @@ export class GameScene extends Phaser.Scene {
       maintenance.expired.length > 0 ||
       authoredTexts.length > 0 ||
       kadekRushMessageAdded ||
+      madeRoomOfferMessageAdded ||
       eventMessages > 0;
 
     if (afterUnread > beforeUnread) {
@@ -9739,6 +9768,7 @@ export class GameScene extends Phaser.Scene {
       rateCutFired: Boolean(this.world.collectedPickups.act1_nusadrop_rate_cut_fired),
       kadekPriority: Boolean(this.world.collectedPickups.act1_kadek_priority_driver),
       driverRating: this.world.life.hustle.driverRating,
+      deliveryEarnings: this.world.life.hustle.deliveryEarnings,
       activeDelivery: this.world.life.hustle.activeDelivery?.deliveryId ?? null,
       activeDeliveryStage: this.world.life.hustle.activeDelivery?.stage ?? null,
       activeDeliveryDueAt: this.world.life.hustle.activeDelivery?.dueAt ?? null,
