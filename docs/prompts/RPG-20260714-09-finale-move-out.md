@@ -4,7 +4,7 @@ STATUS:    ISSUED 2026-07-14
 PROJECT:   Bali Life RPG
 TARGET:    Codex
 CODEX:     Sol · High — Act 1's closing milestone: milestone-math change, home-base swap, act transition; the heaviest story packet in Wave 1
-PREREQ:    the previous packet's merge commit MUST be in origin/main first — run `git fetch origin && git log origin/main --oneline | head -5` and confirm the [RPG-20260714-08] merge; branch from origin/main; if absent, STOP and report instead of building on an unmerged branch
+PREREQ:    branch from main at 23e53bb or later (RPG-20260714-08 merged)
 TITLE:     Act 1 Beat 5 — the finale: Ibu vouches, move-out, ACT 2 card
 MAP DELTA: none on the street; adds ONE new interior (the shared room) — interior scenes are not street geometry, but record it in the proof
 PR TAG: [RPG-20260714-09]

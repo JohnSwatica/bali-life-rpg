@@ -73,6 +73,15 @@ wrong and is retired.)
 - RPG-20260714-09 — Beat 5, finale + milestone adjustment + Act 2 card (ISSUED, chained on -08)
 - RPG-20260714-10 — Beat 6, Leo glue + economy reconciliation (ISSUED, chained on -09)
 
+**Queue mode (amended 2026-07-15 after CEO feedback):** packets in a story
+chain use STACKED CONTINUATION — each branches from the previous packet's
+branch head if its merge hasn't landed yet, so Codex never idles waiting
+for review. Claude reviews every PR (Standing Rule 9 unchanged) in
+parallel and merges the stack in order; a review fix to an earlier packet
+means the later branch rebases before merge. Trade-off accepted: a defect
+found late may cost rework in already-built beats — speed over rework
+insurance, by CEO instruction.
+
 Wave 1 gate: full AI playthrough Act 0 → Act 2 card, rubric-scored, before
 Wave 2 opens. Target close: Jul 20–21 (one-day slip risk absorbed by the
 harness investment).

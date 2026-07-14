@@ -4,7 +4,7 @@ STATUS:    ISSUED 2026-07-14
 PROJECT:   Bali Life RPG
 TARGET:    Codex
 CODEX:     Terra · Medium — authored texts + a reconciliation test pass; small surface, no new systems
-PREREQ:    the previous packet's merge commit MUST be in origin/main first — run `git fetch origin && git log origin/main --oneline | head -5` and confirm the [RPG-20260714-09] merge; branch from origin/main; if absent, STOP and report instead of building on an unmerged branch
+PREREQ:    STACKED CONTINUATION (do not wait for a merge): if origin/main already contains the [RPG-20260714-09] merge, branch from origin/main; otherwise branch from the head of feat branch for RPG-20260714-09 (git fetch origin; git checkout -b <this branch> origin/<the -09 branch>) and note the stacked base in the PR body. Claude reviews/merges both in order; if review changes -09, rebase this branch on the fix before merge.
 TITLE:     Act 1 Beat 6 — Leo cadence glue + Wave 1 economy/pacing reconciliation
 MAP DELTA: none
 PR TAG: [RPG-20260714-10]
