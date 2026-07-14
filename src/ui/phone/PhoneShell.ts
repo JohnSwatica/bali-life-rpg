@@ -35,6 +35,19 @@ type Act0StoryPhoneMoment =
   | { id: "nusadrop_signup"; step: 0 | 1 | 2; onComplete: () => void }
   | { id: "villa_order_ping"; step: 0; depositGap: number; cleanPayout: number; onComplete: () => void };
 
+export interface Act0SignupLeaderboardRow {
+  rank: string;
+  driver: string;
+  rating: string;
+  deliveries: string;
+}
+
+export const ACT0_SIGNUP_LEADERBOARD_ROWS: readonly Act0SignupLeaderboardRow[] = [
+  { rank: "#1", driver: "LEO", rating: "4.9★", deliveries: "184 deliveries" },
+  { rank: "#2", driver: "DEDE", rating: "4.8★", deliveries: "161 deliveries" },
+  { rank: "#--", driver: "NEW DRIVER", rating: "3.2★", deliveries: "0 deliveries" }
+];
+
 interface PhoneShellOptions {
   scene: Phaser.Scene;
   getWorld: () => WorldState;
@@ -180,10 +193,8 @@ export class PhoneShell {
             ? ["NusaDrop installed.", "Create a driver ID from the cracked phone already in your hand."]
             : [
                 "DRIVER PROFILE LIVE",
-                "LOCAL LEADERBOARD",
-                "#1  LEO        4.9★",
-                "#2  DEDE       4.8★",
-                "#-- NEW DRIVER 3.2★",
+                "LOCAL LEADERBOARD · TODAY",
+                ...ACT0_SIGNUP_LEADERBOARD_ROWS.map((row) => `${row.rank}  ${row.driver}  ${row.rating} · ${row.deliveries}`),
                 "",
                 "PING: sealed lunch bag · weather bonus active"
               ];

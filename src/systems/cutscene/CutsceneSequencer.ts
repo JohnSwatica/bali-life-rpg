@@ -44,8 +44,27 @@ export function getCutsceneDuration(script: CutsceneScript): number {
   return script.steps.reduce((total, step) => total + Math.max(0, step.durationMs), 0);
 }
 
-export function shouldPauseQueuedFeedback(cutsceneActive: boolean): boolean {
-  return cutsceneActive;
+export function shouldPauseQueuedFeedback(cutsceneActive: boolean, storyPhoneMomentOpen = false): boolean {
+  return cutsceneActive || storyPhoneMomentOpen;
+}
+
+export function getCutsceneLetterboxProgress(state: CutsceneStepState): number {
+  const step = state.step;
+  if (step?.kind === "letterbox_in") {
+    return state.stepProgress;
+  }
+  if (step?.kind === "letterbox_out") {
+    return 1 - state.stepProgress;
+  }
+  return state.complete ? 0 : 1;
+}
+
+export function getStoryHudTopOffset(state: CutsceneStepState | null, viewportHeight: number, baseOffset = 12): number {
+  if (!state) {
+    return baseOffset;
+  }
+  const maxBarHeight = Math.min(98, Math.max(62, viewportHeight * 0.13));
+  return Math.max(baseOffset, Math.ceil(maxBarHeight * getCutsceneLetterboxProgress(state)) + baseOffset);
 }
 
 export function getCutsceneStepState(script: CutsceneScript, elapsedMs: number): CutsceneStepState {

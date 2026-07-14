@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildAct1IntroCutscene, buildAct2IntroCutscene } from "../systems/cutscene/ActCardScripts";
 import {
   getCutsceneDuration,
+  getStoryHudTopOffset,
   getCutsceneStepState,
   shouldPauseQueuedFeedback,
   skipCutscene,
@@ -41,9 +42,20 @@ describe("cutscene sequencer", () => {
     });
   });
 
-  it("holds queued toast feedback until the letterbox sequence is over", () => {
+  it("holds queued toast feedback until a cutscene or authored phone moment is over", () => {
     expect(shouldPauseQueuedFeedback(true)).toBe(true);
     expect(shouldPauseQueuedFeedback(false)).toBe(false);
+    expect(shouldPauseQueuedFeedback(false, true)).toBe(true);
+  });
+
+  it("moves top-left HUD chips below the active letterbox band", () => {
+    const script = sampleScript();
+    const cardState = getCutsceneStepState(script, 350);
+    const enteringState = getCutsceneStepState(script, 150);
+
+    expect(getStoryHudTopOffset(cardState, 800)).toBeGreaterThan(74);
+    expect(getStoryHudTopOffset(enteringState, 800)).toBeGreaterThan(12);
+    expect(getStoryHudTopOffset(null, 800)).toBe(12);
   });
 
   it("hard-times out even if authored duration is longer", () => {
