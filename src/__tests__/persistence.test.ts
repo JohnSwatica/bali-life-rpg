@@ -174,7 +174,7 @@ describe("Persistence migration", () => {
     });
   });
 
-  it("migrates v4, v6, v7, v8, and v10 saves into the v11 life/opportunity shape", () => {
+  it("migrates older saves and preserves legacy culled feed records in the v11 shape", () => {
     const cases = [
       {
         version: 4,

@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-14 (RPG-20260714-04 dev proof harness complete locally)
+Last updated: 2026-07-14 (RPG-20260714-05 phone diet complete locally)
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -11,6 +11,8 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 `CLAUDE_PROJECT_REVIEW_2026-07-06.md` is Claude's full project review (bottlenecks, gap analysis, sequencing recommendation). It is a supervisory assessment, not a canonical design source — `GAME_DESIGN.md`/`STORY_BIBLE.md` still win on narrative/systems conflicts — but its top recommendation (no recorded human playtest yet; a `PLAYTEST_01.md` should exist before more systems work) should be treated as live until the user says otherwise.
 
 Current durable truth:
+
+- **RPG-20260714-05 complete locally on `feat/rpg-20260714-05-phone-diet`:** the generic opportunity pool now generates only six explicitly protected choice/goal-wired templates; 14 filler definitions remain load-safe but no longer spawn. Feed renders current goal/story first, NusaDrop paying jobs next, then other content. The visible phone strip is Feed / Map / Goals / Profile; legacy hidden tabs and their code paths remain intact, while Made's room is promoted to the top of Goals and reputation/rating stays in Profile. Legacy v11 saves retain stale messages and accepted cut opportunities harmlessly until resolve/expiry. The `act1_steady_runner` proof covers desktop and 390×844 Feed/Goals views; 46 files / 297 tests and production build pass. Proof: `docs/RPG-20260714-05_PHONE_DIET_PROOF.md`.
 
 - **RPG-20260714-03 complete locally on `feat/rpg-20260714-03-made-room-offer`:** Made's one-time Bungalow Living room offer now unlocks at Steady Runner (3 deliveries) as a persistent Feed invitation and `MADE` world cue. Made is held in the existing Bungalow interior while the offer is pending; his portrait scene describes the hidden room and states the two conditions: rent never missed (existing rent state) and a local-business-owner letter (intentionally unsatisfiable until Beat 5). It leaves a Phone > Quests goal with live rent ✓/✗ and fixed letter ✗ states, plus ambient standing-offer residue. The scene uses existing flag maps, preserves schema v11, and does not change economy or milestones. The new `act1_steady_runner` harness proof captures invitation, cue, dialogue, and tracked goal in 17.45s; 46 files / 293 tests and build pass. Proof: `docs/RPG-20260714-03_MADE_ROOM_OFFER_PROOF.md`.
 

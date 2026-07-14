@@ -5,7 +5,13 @@ vi.mock("phaser", () => ({
 }));
 
 import { createInitialWorldState } from "../systems/WorldState";
-import { ACT0_SIGNUP_LEADERBOARD_ROWS, PhoneShell } from "../ui/phone/PhoneShell";
+import { completeMadeRoomOfferScene } from "../systems/story/Act1MadeRoomOffer";
+import {
+  ACT0_SIGNUP_LEADERBOARD_ROWS,
+  getPhoneFeedModel,
+  PHONE_VISIBLE_TABS,
+  PhoneShell
+} from "../ui/phone/PhoneShell";
 import { getPhoneCameraScale, getPhonePanelLayout } from "../ui/phone/PhoneLayout";
 
 describe("phone shell layout", () => {
@@ -64,6 +70,80 @@ describe("phone shell layout", () => {
     expect(() => shellInternals.renderActiveTab({ add: () => undefined }, 0, 0, 420, 320)).not.toThrow();
     expect(renderedText).toContain("Threads");
     expect(renderedText).toContain("Nothing here yet. Keep exploring Berawa.");
+  });
+
+  it("exposes only Feed, Map, Goals, and Profile in the tab strip", () => {
+    expect(PHONE_VISIBLE_TABS).toEqual(["Feed", "Map", "Goals", "Profile"]);
+    expect(PHONE_VISIBLE_TABS).not.toContain("Contacts");
+    expect(PHONE_VISIBLE_TABS).not.toContain("Threads");
+    expect(PHONE_VISIBLE_TABS).not.toContain("Calendar");
+    expect(PHONE_VISIBLE_TABS).not.toContain("Events");
+    expect(PHONE_VISIBLE_TABS).not.toContain("Venues");
+    expect(PHONE_VISIBLE_TABS).not.toContain("Community");
+  });
+
+  it("orders story and goal messages before paying jobs, then ambient content", () => {
+    const world = createInitialWorldState();
+    world.opportunities.messages.push(
+      { id: "ambient:1", at: 300, from: "Ari", body: "Beach later?", read: false },
+      { id: "story:act1:test", at: 100, from: "Made", body: "Come talk.", read: false }
+    );
+    world.opportunities.live.push(
+      {
+        id: "ambient-live",
+        templateId: "beach_tide_tip",
+        status: "live",
+        spawnedAt: 20,
+        expiresAt: 90,
+        locationVenueId: "berawa_beach"
+      },
+      {
+        id: "paying-live",
+        templateId: "no_questions_package",
+        status: "live",
+        spawnedAt: 30,
+        expiresAt: 120,
+        locationVenueId: "bali_family_rental_scooter"
+      }
+    );
+
+    const model = getPhoneFeedModel(world);
+    expect(model.priorityMessages.map((message) => message.id)).toEqual(["story:act1:test"]);
+    expect(model.payingOpportunities.map((opportunity) => opportunity.id)).toEqual(["paying-live"]);
+    expect(model.otherOpportunities.map((opportunity) => opportunity.id)).toEqual(["ambient-live"]);
+    expect(model.otherMessages.map((message) => message.id)).toEqual(["ambient:1"]);
+  });
+
+  it("renders Made's tracked room goal in the Goals tab", () => {
+    const world = createInitialWorldState();
+    world.life.actProgress.currentAct = 1;
+    world.life.actProgress.firstDayComplete = true;
+    world.life.hustle.completedDeliveryCount = 3;
+    completeMadeRoomOfferScene(world, 900);
+    const renderedText: string[] = [];
+    const fakeScene = {
+      add: {
+        text: (_x: number, _y: number, value: string) => {
+          renderedText.push(value);
+          return {};
+        }
+      }
+    };
+    const shell = new PhoneShell({
+      scene: fakeScene,
+      getWorld: () => world
+    } as unknown as ConstructorParameters<typeof PhoneShell>[0]);
+    const shellInternals = shell as unknown as {
+      activeTab: string;
+      renderActiveTab(container: { add: (child: unknown) => void }, x: number, y: number, panelWidth: number, contentHeight: number): void;
+    };
+
+    shellInternals.activeTab = "Goals";
+    shellInternals.renderActiveTab({ add: () => undefined }, 0, 0, 420, 320);
+
+    expect(renderedText).toContain("Goals");
+    expect(renderedText.join("\n")).toContain("Made's room");
+    expect(renderedText.join("\n")).toContain("recommendation letter ✗");
   });
 
   it("ships every Act 0 signup leaderboard row with real, labeled content", () => {

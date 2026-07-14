@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { opportunityTemplates } from "../data/opportunities";
+import {
+  generatedOpportunityTemplateIds,
+  isOpportunityTemplateGenerationEnabled,
+  opportunityTemplates
+} from "../data/opportunities";
 import { getQuantity } from "../systems/Inventory";
 import { updateSettlingInGoals } from "../systems/life/SettlingInGoals";
 import {
@@ -27,6 +31,25 @@ function setHour(world: WorldState, hour: number): void {
 }
 
 describe("opportunity engine", () => {
+  it("generates only choice- or goal-wired templates after the phone diet", () => {
+    expect([...generatedOpportunityTemplateIds]).toEqual([
+      "no_questions_package",
+      "focus_table_client_referral",
+      "run_crew_breakfast_shift",
+      "brunch_builders_paid_intro",
+      "surf_circle_board_repair",
+      "sari_warung_seed_errand"
+    ]);
+    expect(opportunityTemplates.filter((candidate) => !isOpportunityTemplateGenerationEnabled(candidate.id))).toHaveLength(14);
+
+    const world = createInitialWorldState();
+    const state = createDefaultOpportunityState();
+    setHour(world, 10.5);
+
+    expect(maintainOpportunityPool(state, world, opportunityTemplates, { minLive: 2, maxLive: 4 }).spawned).toEqual([]);
+    expect(state.live).toEqual([]);
+  });
+
   it("filters opportunity templates by time, reputation, club, and affinity gates", () => {
     const world = createInitialWorldState();
     const state = createDefaultOpportunityState();
@@ -118,17 +141,20 @@ describe("opportunity engine", () => {
     const world = createInitialWorldState();
     const state = createDefaultOpportunityState();
     setHour(world, 10.5);
+    world.players[world.localPlayerId].money = 40;
+    world.life.hustle.completedDeliveryCount = 3;
 
-    const spawned = maintainOpportunityPool(state, world, opportunityTemplates, { minLive: 2, maxLive: 4 }).spawned;
+    const spawned = maintainOpportunityPool(state, world, opportunityTemplates, { minLive: 1, maxLive: 4 }).spawned;
 
-    expect(spawned.length).toBeGreaterThanOrEqual(2);
-    expect(state.live.length).toBeGreaterThanOrEqual(2);
+    expect(spawned).toHaveLength(1);
+    expect(spawned[0].templateId).toBe("no_questions_package");
+    expect(state.live.length).toBe(1);
     expect(state.live.length).toBeLessThanOrEqual(4);
     expect(new Set(state.live.map((opportunity) => opportunity.templateId)).size).toBe(state.live.length);
     expect(state.messages.length).toBeGreaterThanOrEqual(state.live.length);
 
-    setHour(world, 13);
-    const expired = maintainOpportunityPool(state, world, opportunityTemplates, { minLive: 2, maxLive: 4 }).expired;
+    setHour(world, 15);
+    const expired = maintainOpportunityPool(state, world, opportunityTemplates, { minLive: 1, maxLive: 4 }).expired;
 
     expect(expired.length).toBeGreaterThan(0);
     expect(state.missedTemplateIds.length).toBeGreaterThan(0);
@@ -137,7 +163,7 @@ describe("opportunity engine", () => {
     }
   });
 
-  it("accepts and resolves an opportunity, applies rewards, and spawns chained momentum", () => {
+  it("accepts and resolves a legacy cut opportunity without spawning its cut chain", () => {
     const world = createInitialWorldState();
     const state = createDefaultOpportunityState();
     setHour(world, 10.75);
@@ -153,7 +179,8 @@ describe("opportunity engine", () => {
     expect(world.relationships.find((memory) => memory.subjectId === "made")?.affinity).toBeGreaterThan(0);
     expect(world.clock.minuteOfDay).toBe(11 * 60 + 55);
     expect(state.completedTemplateIds).toContain("milk_madu_lunch_rush_shift");
-    expect(state.live.some((opportunity) => opportunity.templateId === "milk_madu_after_shift_intro")).toBe(true);
+    expect(result.spawnedChain).toBeUndefined();
+    expect(state.live.some((opportunity) => opportunity.templateId === "milk_madu_after_shift_intro")).toBe(false);
   });
 
   it("applies help-out rewards to money, items, reputation, relationships, and goals", () => {
