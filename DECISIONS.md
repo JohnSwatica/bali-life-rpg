@@ -851,3 +851,13 @@ Ambient sound remains procedural WebAudio and behind the existing unlock/mute se
 RPG-20260714-01 establishes a centered, translucent dark panel behind the title and subtitle of **every** `act_card` step. It is part of the existing cutscene overlay, not a per-card exception: opening, landlord, resolve, rate-cut, Act 1, Act 2, and future cards inherit it automatically. The live world/interior remains visible around the panel and the existing letterbox bars remain the only full-width black treatment.
 
 Story-facing HUD chips must clear the active letterbox band. During authored phone moments, essential target chips may use the existing HUD chip in a safe screen position rather than rendering under the phone shell. Ambient toasts are queued while a cutscene or authored phone moment owns the screen, then resume normally; they are never dropped.
+
+## 2026-07-14 - Act 1 TP1 Makes Kadek's Trust A Persistent Delivery Economy Line
+
+RPG-20260714-02 implements only Beat 1 of `docs/ACT1_BACKBONE_2026-07-14.md`. The one-time rush offer is a board delivery with a fixed feed flag, not a generic expiring opportunity: it appears after Leo's resolved rate-cut encounter, persists until taken, uses Canggu Station → existing BAKED. interior/counter, and reuses steering, cargo care, conditions, rate-cut math, portrait dialogue, and v11's existing flag maps. Rough cargo changes Kadek's first line but never blocks completion. The scene has exactly one corporate-moonlighting plant and opens no other Kadek arc.
+
+Focus Buffer is a simple 180-in-game-minute `questFlags` expiry because the project has no general buff registry or passive Focus-decay loop. The existing meter-adjustment seam reads the flag and suppresses negative Focus changes while active; positive Focus and every other meter still behave normally. Kadek's pastry is granted and automatically consumed as part of the scene, and the HUD shows remaining buffer minutes. No schema bump is needed.
+
+Priority membership reveals one recurring, always-fragile BAKED. line. Post-cut terms are Rp 142 versus the highest Rp 141 normal condition available when it unlocks, below the Act 0 villa setpiece's Rp 260 effective terms. Both Kadek lines reuse condition rating modifiers to top clean runs at 4.5★; the one-time rush caps at Rp 142 and the recurring line at Rp 152: `142 + 3×152 = 598`, so the player still needs a fifth run to cross Rp 600. Existing board jobs and move-out math remain untouched.
+
+The carry-over act-card fix raises the existing cutscene overlay above all world-sprite y-depths; it changes no card layout or world rendering. Beats 2–6 (Made's offer, breakdown, tip dilemma, finale/milestone adjustment, and Leo glue) remain pending and are not pre-implemented here.

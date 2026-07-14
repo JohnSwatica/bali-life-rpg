@@ -134,6 +134,9 @@ function getHustleObjectiveTargets(world: WorldState): FieldObjectiveTargetRef[]
     if (active.stage === "accepted") {
       return [{ type: "venue", id: `${delivery.id}_pickup`, label: delivery.pickupLabel, venueId: delivery.pickupVenueId }];
     }
+    if (delivery.dropoffVenueId) {
+      return [{ type: "venue", id: `${delivery.id}_dropoff`, label: delivery.dropoffLabel, venueId: delivery.dropoffVenueId }];
+    }
     return [{ type: "point", id: delivery.dropoffId, label: delivery.dropoffLabel, ...delivery.dropoffPoint }];
   }
 

@@ -1,4 +1,5 @@
 import type { PlayerEntityState, PlayerMeters, WorldState } from "../../types";
+import { isFocusBufferActive } from "./FocusBuffer";
 
 export const DEFAULT_PLAYER_METERS: PlayerMeters = {
   energy: 78,
@@ -29,10 +30,11 @@ export function migratePlayerMeters(rawMeters: unknown, legacyPlayer?: RawLegacy
 }
 
 export function adjustPlayerMeters(world: WorldState, deltas: Partial<Record<keyof PlayerMeters, number>>): PlayerMeters {
+  const focusDelta = deltas.focus ?? 0;
   world.meters = {
     energy: clampMeter(world.meters.energy + (deltas.energy ?? 0)),
     wellbeing: clampMeter(world.meters.wellbeing + (deltas.wellbeing ?? 0)),
-    focus: clampMeter(world.meters.focus + (deltas.focus ?? 0)),
+    focus: clampMeter(world.meters.focus + (focusDelta < 0 && isFocusBufferActive(world) ? 0 : focusDelta)),
     social: clampMeter(world.meters.social + (deltas.social ?? 0))
   };
   syncLegacyPlayerMeterMirrors(world);

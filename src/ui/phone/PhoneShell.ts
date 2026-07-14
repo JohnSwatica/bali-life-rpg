@@ -517,7 +517,13 @@ export class PhoneShell {
             this.options.toast(offer.reason ?? "That delivery is locked.");
           }
         },
-        offer.available ? 0x253a35 : 0x2d3036
+        !offer.available
+          ? 0x2d3036
+          : delivery.boardStyle === "story_special"
+            ? 0x762b30
+            : delivery.boardStyle === "priority_premium"
+              ? 0x5c4b25
+              : 0x253a35
       );
       rowY += 64;
     }

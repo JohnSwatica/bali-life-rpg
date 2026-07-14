@@ -36,6 +36,20 @@ export const itemDefinitions: Record<string, ItemDefinition> = {
     buyPrice: 32,
     sellPrice: 12
   },
+  focus_buffer_pastry: {
+    id: "focus_buffer_pastry",
+    name: "Focus Buffer Pastry",
+    description: "Kadek's warm priority-list pastry. Eating it freezes Focus loss for three in-game hours.",
+    buyPrice: 0,
+    sellPrice: 0
+  },
+  baked_ingredient_crate: {
+    id: "baked_ingredient_crate",
+    name: "BAKED. Ingredient Crate",
+    description: "A high-fragility rush-hour crate for Kadek's ovens. Every corner matters.",
+    buyPrice: 0,
+    sellPrice: 0
+  },
   delivery_pastry_box: {
     id: "delivery_pastry_box",
     name: "Pastry Delivery Box",

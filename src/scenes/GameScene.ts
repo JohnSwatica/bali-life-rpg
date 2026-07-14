@@ -124,6 +124,7 @@ import {
   type NpcProximityReaction
 } from "../systems/npcs/NpcProximityReactions";
 import { adjustPlayerMeters } from "../systems/meters/PlayerMeters";
+import { getFocusBufferRemainingMinutes } from "../systems/meters/FocusBuffer";
 import {
   createActiveMinigame,
   getActivityMinigameDefinition,
@@ -231,6 +232,7 @@ import {
   isAct1LeoEncounterPending,
   triggerAct1RateCut
 } from "../systems/story/Act1IncitingHook";
+import { buildKadekRushOfferMessage } from "../systems/story/Act1KadekPriority";
 import {
   ACT0_CAFE_SCENE_COST,
   ACT0_STORM_DELIVERY_ID,
@@ -3367,8 +3369,9 @@ export class GameScene extends Phaser.Scene {
     const mailSuffix = unreadCount > 0 ? `   ✉ ${unreadCount}` : "";
     const cutsceneState = this.activeCutscene ? getCutsceneStepState(this.activeCutscene.script, this.activeCutscene.elapsedMs) : null;
     const hudTopOffset = getStoryHudTopOffset(cutsceneState, this.scale.height);
+    const focusBufferMinutes = getFocusBufferRemainingMinutes(this.world);
     this.timeText.setPosition(16, hudTopOffset).setText(
-      `${formatClock(this.world)}   Rp ${this.playerState.money}   ★ ${this.world.life.hustle.driverRating.toFixed(1)}${mailSuffix}`
+      `${formatClock(this.world)}   Rp ${this.playerState.money}   ★ ${this.world.life.hustle.driverRating.toFixed(1)}${focusBufferMinutes > 0 ? `   ◇ Focus Buffer ${focusBufferMinutes}m` : ""}${mailSuffix}`
     );
     this.hudController.updateMeterReadout({
       money: this.playerState.money,
@@ -4036,6 +4039,10 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     if (option.actionId === "complete_act1_leo_encounter") {
+      const kadekRushMessage = buildKadekRushOfferMessage(this.world, this.getAbsoluteMinute());
+      if (kadekRushMessage) {
+        appendOpportunityMessage(this.world.opportunities, kadekRushMessage);
+      }
       saveWorldState(this.world);
       this.openDialogue(
         npcDefinitions[scene.npcId]?.name ?? scene.npcId,
@@ -5511,7 +5518,13 @@ export class GameScene extends Phaser.Scene {
         title: delivery.title,
         body: `${delivery.description}\n${status}`,
         actionLabel: offer.available ? "Accept" : "Locked",
-        variant: offer.available ? "primary" : "blocked",
+        variant: !offer.available
+          ? "blocked"
+          : delivery.boardStyle === "story_special"
+            ? "special"
+            : delivery.boardStyle === "priority_premium"
+              ? "premium"
+              : "primary",
         onAction: () => {
           if (!offer.available) {
             this.showToast(offer.reason ?? "That job is locked.");
@@ -5770,11 +5783,11 @@ export class GameScene extends Phaser.Scene {
       body: string;
       actionLabel: string;
       onAction: () => void;
-      variant?: "primary" | "blocked";
+      variant?: "primary" | "blocked" | "special" | "premium";
     }
   ): void {
     const row = document.createElement("article");
-    row.className = `bali-life-activity-menu-row${config.variant === "blocked" ? " is-blocked" : ""}`;
+    row.className = `bali-life-activity-menu-row${config.variant === "blocked" ? " is-blocked" : ""}${config.variant === "special" ? " is-special" : ""}${config.variant === "premium" ? " is-premium" : ""}`;
 
     const copy = document.createElement("div");
     copy.className = "bali-life-activity-menu-copy";
@@ -5788,7 +5801,7 @@ export class GameScene extends Phaser.Scene {
 
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `bali-life-activity-menu-button${config.variant === "blocked" ? " is-blocked" : ""}`;
+    button.className = `bali-life-activity-menu-button${config.variant === "blocked" ? " is-blocked" : ""}${config.variant === "special" ? " is-special" : ""}${config.variant === "premium" ? " is-premium" : ""}`;
     button.textContent = config.actionLabel;
     if (config.variant === "blocked") {
       button.setAttribute("aria-disabled", "true");
@@ -8622,6 +8635,9 @@ export class GameScene extends Phaser.Scene {
       };
       return;
     }
+    if (delivery.dropoffVenueId && getInteriorByVenueId(delivery.dropoffVenueId)) {
+      return;
+    }
     yield {
       id: active.deliveryId,
       label: delivery.dropoffLabel,
@@ -8723,6 +8739,9 @@ export class GameScene extends Phaser.Scene {
     }
     saveWorldState(this.world);
     this.showToast(result.message);
+    if (result.storyScene?.fired && result.storyScene.dialogue) {
+      this.openDialogue("Kadek", result.storyScene.dialogue, "kadek");
+    }
     if (result.ok && !wasPickup && !isAct0StoryDelivery(active.deliveryId) && active.deliveryId !== "act0_ibu_milk_madu_catering") {
       if (chapterCutsceneDelayMs > 0) {
         this.time.delayedCall(chapterCutsceneDelayMs, () => {
@@ -9071,7 +9090,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createCutsceneOverlay(): CutsceneOverlay {
-    const container = this.createZoomCompensatedContainer(UI_DEPTH + 40);
+    const container = this.createZoomCompensatedContainer(UI_DEPTH * 10);
     const { width, height } = this.scale;
     const dim = this.add.rectangle(0, 0, width, height, 0x000000, 0).setOrigin(0, 0);
     const topBar = this.add.rectangle(0, 0, width, 0, 0x05070a, 1).setOrigin(0, 0);
@@ -9261,12 +9280,19 @@ export class GameScene extends Phaser.Scene {
       ? { spawned: [], expired: [] }
       : maintainOpportunityPool(this.world.opportunities, this.world);
     const authoredTexts = tutorialActive ? [] : generateOpportunityPhoneTexts(this.world.opportunities, this.world);
+    const kadekRushMessage = tutorialActive
+      ? undefined
+      : buildKadekRushOfferMessage(this.world, this.getAbsoluteMinute());
+    const kadekRushMessageAdded = kadekRushMessage
+      ? appendOpportunityMessage(this.world.opportunities, kadekRushMessage)
+      : false;
     const eventMessages = tutorialActive ? 0 : this.appendActiveEventMessages();
     const afterUnread = getUnreadOpportunityMessageCount(this.world.opportunities);
     const changed =
       maintenance.spawned.length > 0 ||
       maintenance.expired.length > 0 ||
       authoredTexts.length > 0 ||
+      kadekRushMessageAdded ||
       eventMessages > 0;
 
     if (afterUnread > beforeUnread) {
