@@ -35,8 +35,36 @@ const STEP_COPY: Record<Act0Step, { title: string; objective: string }> = {
     objective: "Get the loaded box to the marked door before the visible timer expires."
   },
   buy_meal_and_coffee: {
-    title: "Get onto NusaDrop",
-    objective: "At Milk & Madu, finish NusaDrop signup over a quick coffee and a proper plate."
+    title: "Inside Milk & Madu",
+    objective: "Step inside. A plate, a coffee, and somebody else's version of paradise are waiting."
+  },
+  nusadrop_signup: {
+    title: "Install NusaDrop",
+    objective: "Finish the short driver signup on your phone."
+  },
+  dropoff_storm_delivery: {
+    title: "First NusaDrop run",
+    objective: "Ride the first app order to the marked drop. Weather never cancels the job."
+  },
+  landlord_ultimatum: {
+    title: "MIDNIGHT DEPOSIT",
+    objective: "Read the landlord alert at the dropoff."
+  },
+  villa_order_ping: {
+    title: "Villa surge order",
+    objective: "One high-fragility run can cover the deposit gap. Accept it on the phone."
+  },
+  pickup_villa_delivery: {
+    title: "Fragile villa pickup",
+    objective: "Ride to BAKED. and collect the villa order from the counter."
+  },
+  dropoff_villa_delivery: {
+    title: "Five-star villa run",
+    objective: "Take the fragile order through the lantern-lit street to the villa gate."
+  },
+  pay_kos_deposit: {
+    title: "Make it home",
+    objective: "Ride to the cheap kos before midnight. The landlord is waiting."
   },
   sleep_first_night: {
     title: "Sleep it off",
@@ -52,7 +80,14 @@ const NEXT_STEP: Record<Act0Step, Act0Step> = {
   meet_ibu_sari: "pickup_first_delivery",
   pickup_first_delivery: "dropoff_first_delivery",
   dropoff_first_delivery: "buy_meal_and_coffee",
-  buy_meal_and_coffee: "sleep_first_night",
+  buy_meal_and_coffee: "nusadrop_signup",
+  nusadrop_signup: "dropoff_storm_delivery",
+  dropoff_storm_delivery: "landlord_ultimatum",
+  landlord_ultimatum: "villa_order_ping",
+  villa_order_ping: "pickup_villa_delivery",
+  pickup_villa_delivery: "dropoff_villa_delivery",
+  dropoff_villa_delivery: "pay_kos_deposit",
+  pay_kos_deposit: "sleep_first_night",
   sleep_first_night: "complete",
   complete: "complete"
 };

@@ -102,10 +102,21 @@ function getAct0ObjectiveTargets(world: WorldState): FieldObjectiveTargetRef[] {
     return delivery ? [{ type: "point", id: delivery.dropoffId, label: delivery.dropoffLabel, ...delivery.dropoffPoint }] : [];
   }
   if (step === "buy_meal_and_coffee") {
-    return [
-      { type: "venue", id: "act0_meal_coffee_milk_madu", label: "Brunch and coffee", venueId: "milk_madu_berawa" },
-      { type: "venue", id: "act0_meal_coffee_baked", label: "Bakery coffee", venueId: "baked_berawa" }
-    ];
+    return [{ type: "venue", id: "act0_milk_madu_scene", label: "Enter Milk & Madu", venueId: "milk_madu_berawa" }];
+  }
+  if (step === "nusadrop_signup" || step === "landlord_ultimatum" || step === "villa_order_ping") {
+    return [];
+  }
+  if (step === "dropoff_storm_delivery" || step === "pickup_villa_delivery" || step === "dropoff_villa_delivery") {
+    const delivery = getDeliveryDefinition(world.life.hustle.activeDelivery?.deliveryId ?? "");
+    if (!delivery) return [];
+    if (world.life.hustle.activeDelivery?.stage === "accepted") {
+      return [{ type: "venue", id: `${delivery.id}_pickup`, label: delivery.pickupLabel, venueId: delivery.pickupVenueId }];
+    }
+    return [{ type: "point", id: delivery.dropoffId, label: delivery.dropoffLabel, ...delivery.dropoffPoint }];
+  }
+  if (step === "pay_kos_deposit") {
+    return [{ type: "home", id: playerHomeBase.id, label: "Return to the kos" }];
   }
   if (step === "sleep_first_night") {
     return [{ type: "home", id: playerHomeBase.id, label: playerHomeBase.name }];

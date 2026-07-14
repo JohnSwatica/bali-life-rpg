@@ -5,9 +5,22 @@ const ACT0_STEPS: Act0Step[] = [
   "pickup_first_delivery",
   "dropoff_first_delivery",
   "buy_meal_and_coffee",
+  "nusadrop_signup",
+  "dropoff_storm_delivery",
+  "landlord_ultimatum",
+  "villa_order_ping",
+  "pickup_villa_delivery",
+  "dropoff_villa_delivery",
+  "pay_kos_deposit",
   "sleep_first_night",
   "complete"
 ];
+
+const LEGACY_ACT0_STEP_MAP: Record<string, Act0Step> = {
+  get_onto_nusadrop: "nusadrop_signup",
+  first_nusadrop_delivery: "dropoff_storm_delivery",
+  return_to_kos: "pay_kos_deposit"
+};
 
 export function createDefaultLifeLoopState(): LifeLoopState {
   return {
@@ -132,11 +145,14 @@ function migrateActProgressState(raw: unknown, legacyLifeProgress = false, settl
     return base;
   }
   const value = raw as Partial<ActProgressState>;
-  const act0Step = isAct0Step(value.act0Step) ? value.act0Step : base.act0Step;
+  const act0Step = mapLegacyAct0Step(value.act0Step) ?? base.act0Step;
+  const completedAct0StepIds = Array.isArray(value.completedAct0StepIds)
+    ? [...new Set(value.completedAct0StepIds.map(mapLegacyAct0Step).filter((step): step is Act0Step => Boolean(step)))]
+    : [];
   return {
     currentAct: readAct(value.currentAct, base.currentAct),
     act0Step,
-    completedAct0StepIds: Array.isArray(value.completedAct0StepIds) ? value.completedAct0StepIds.filter(isAct0Step) : [],
+    completedAct0StepIds,
     firstDayComplete: value.firstDayComplete ?? act0Step === "complete"
   };
 }
@@ -222,6 +238,11 @@ function migrateDeliveryRideRun(raw: unknown): ActiveDeliveryState["rideRun"] {
 
 function isAct0Step(value: unknown): value is Act0Step {
   return typeof value === "string" && ACT0_STEPS.includes(value as Act0Step);
+}
+
+export function mapLegacyAct0Step(value: unknown): Act0Step | null {
+  if (isAct0Step(value)) return value;
+  return typeof value === "string" ? LEGACY_ACT0_STEP_MAP[value] ?? null : null;
 }
 
 function readAct(value: unknown, fallback: ActProgressState["currentAct"]): ActProgressState["currentAct"] {

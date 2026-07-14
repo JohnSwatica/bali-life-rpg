@@ -25,6 +25,7 @@ let activeBeat = "boot";
 let browserError;
 const rideSamples = [];
 const capturedRideFrames = new Set();
+let capturedStormFrame = false;
 let rideStartedAt = 0;
 let openingStartedAt = 0;
 
@@ -98,94 +99,99 @@ async function main() {
     await press("e");
   }, STEP_TIMEOUT_MS, 1_500);
   printRideSummary();
-  await ensureOnFoot();
+  const cafe = await waitForDebug(
+    (state) => state.cutscene?.id === "act0_milk_madu_scene" && state.cutscene.stepId === "vance_parking_one",
+    "Milk & Madu scene with Julian Vance",
+    20_000
+  );
+  console.log(`[BEAT ${new Date().toISOString()}] cafe/Vance t+${elapsedSeconds()}s mode=${cafe.mode}`);
+  await capture("07-cafe-scene-vance");
 
-  await runBeat("07-nusadrop-signup-meal", "sleep_first_night", async () => {
-    // The Milk & Madu and Milu storefront radii touch; bias north to the authored Milk & Madu door.
-    await holdKeys(["w"], 150);
-    await followObjectiveIntoInterior();
-    await moveToObjective();
-    await press("e");
-    await waitForSelector("#bali-life-activity-menu");
-    const milkMaduTitle = await page.$eval(".bali-life-activity-menu-title", (element) => element.textContent?.trim());
-    if (milkMaduTitle !== "Milk & Madu Berawa") {
-      throw new Error(`Act 0 cafe panel resolved to '${milkMaduTitle}' instead of Milk & Madu Berawa`);
-    }
-    await capture("07a-milk-madu-activity-panel");
-    await clickActivity("Quick caffeine reset");
-    await waitForDebug((state) => state.mode === "interior", "quick caffeine complete", 12_000);
-    await press("e");
-    await clickActivity("Brunch table reset");
-    await waitForDebug((state) => state.mode === "interior", "brunch complete", 12_000);
-  });
+  await waitForDebug((state) => state.phoneStoryMoment === "nusadrop_signup", "NusaDrop signup phone", 35_000);
+  await clickPhoneStoryAction();
+  await waitForDebug((state) => state.phoneStoryStep === 1, "NusaDrop driver ID step", 4_000);
+  await clickPhoneStoryAction();
+  await waitForDebug((state) => state.phoneStoryStep === 2, "LEO leaderboard", 4_000);
+  console.log(`[BEAT ${new Date().toISOString()}] signup/LEO t+${elapsedSeconds()}s`);
+  await capture("08-signup-leo-leaderboard");
+  await clickPhoneStoryAction();
+  await waitForDebug(
+    (state) => state.act0Step === "dropoff_storm_delivery" && state.mode === "world" && !state.interiorTransitioning,
+    "first NusaDrop run outside",
+    8_000
+  );
+  await ensureMounted();
+  activeBeat = "09-storm-run";
+  await moveToObjective({ collectRide: true, captureStorm: true });
+  const stormMidRide = await getDebug();
+  if (stormMidRide.act0StormTriggerCount !== 1 || stormMidRide.weather.kind !== "storm") {
+    throw new Error(`Storm did not trigger exactly once mid-run: ${JSON.stringify(stormMidRide.weather)}`);
+  }
+  await press("e");
+  await waitForDebug(
+    (state) => state.cutscene?.id === "act0_landlord_ultimatum" && state.cutscene.stepId === "landlord_alert",
+    "landlord ultimatum alert",
+    8_000
+  );
+  console.log(`[BEAT ${new Date().toISOString()}] ultimatum t+${elapsedSeconds()}s`);
+  await capture("10-landlord-ultimatum");
 
+  const villaPing = await waitForDebug((state) => state.phoneStoryMoment === "villa_order_ping", "villa surge phone", 22_000);
+  if (!villaPing.deposit?.visible || villaPing.deposit.gap <= 0) throw new Error("Deposit HUD pressure was not visible at the villa ping");
+  await capture("11-villa-surge-phone");
+  await clickPhoneStoryAction();
+  await waitForDebug((state) => state.act0Step === "pickup_villa_delivery", "villa order accepted", 5_000);
+  // The proof harness uses the existing dev teleport only for the offscreen pickup approach; both authored ride legs remain live-steered.
+  await page.evaluate(() => window.__BALI_LIFE_DEV_SENSATION__?.teleport(1670, 104));
+  await delay(250);
+  await followObjectiveIntoInterior();
+  await moveToObjective();
+  await press("e");
+  await waitForDebug((state) => state.act0Step === "dropoff_villa_delivery", "villa cargo picked up", 6_000);
   await leaveInteriorByObjective();
-  await runBeat("08-sleep-first-night", "complete", async () => {
-    await followObjectiveIntoInterior();
-    await moveToObjective();
-    await press("e");
-    await clickActivity("Sleep until morning");
-  }, 20_000);
+  await ensureMounted();
+  activeBeat = "12-night-villa-run";
+  await moveToObjective({ collectRide: true });
+  await press("e");
+  const villaComplete = await waitForDebug(
+    (state) => state.act0Step === "pay_kos_deposit" && state.activeDelivery === null,
+    "five-star villa payout",
+    8_000
+  );
+  if (villaComplete.timePhase !== "night") throw new Error(`Villa finale was not at night: ${villaComplete.timePhase}`);
+  await capture("12-night-villa-celebration");
 
-  const finalState = await getDebug();
-  console.log(`[PASS] Act 0 complete at ${finalState.time}; ${finalState.fieldObjectiveLine}`);
+  await followObjectiveIntoInterior();
+  await waitForDebug(
+    (state) => state.cutscene?.id === "act0_kos_deposit_resolve" && state.cutscene.stepId === "landlord_count",
+    "kos landlord resolve",
+    8_000
+  );
+  await capture("13-landlord-resolve");
+  await waitForDebug(
+    (state) => state.cutscene?.id === "act0_kos_collapse" && state.cutscene.stepId === "bleak_room",
+    "bleak kos collapse",
+    22_000
+  );
+  await capture("14-bleak-kos-collapse");
+
   const rateCutState = await waitForDebug(
     (state) => state.cutscene?.id === "act1_intro_card" && state.cutscene.stepId === "nusadrop_rate_cut",
     "NusaDrop rate-cut card",
-    8_000
+    22_000
   );
-  console.log(`[STORY] ${rateCutState.cutscene.stepId} visible before the morning hand`);
-  await capture("09-nusadrop-rate-cut");
-  await ensureWorldForProof();
-  await moveToPoint({ x: 1696, y: 368 });
-  const leoApproach = await getDebug();
-  if (!leoApproach.nearestInteraction?.includes("Bali Family Rental Scooter")) {
-    throw new Error(`Leo pickup hub was not interactable: ${leoApproach.nearestInteraction ?? "none"}`);
+  if (rateCutState.act0CriticalPathMenuOpens !== 0) {
+    throw new Error(`Act 0 opened ${rateCutState.act0CriticalPathMenuOpens} activity menus on its critical path`);
   }
-  await press("e");
-  await waitForDebug((state) => state.mode === "interior" && !state.interiorTransitioning, "scooter rental interior", 4_000);
-  await moveToInteriorPoint({ x: 20152, y: 2475 });
-  await press("e");
-  await clickActivity("Leo is waiting by the NusaDrop pickup rail");
-  await waitForSelector(".bali-life-dialogue");
-  await capture("10-leo-rate-cut-encounter");
-  await clickButton("‘They cut your pay too.’");
-  await waitForSelector(".bali-life-dialogue");
-  await capture("11-leo-rate-cut-hook");
-  await closeDialogueIfPresent();
-  await ensureWorldForProof();
-  await followObjectiveIntoInterior();
-  await moveToObjective();
-  await press("e");
-  await waitForSelector("#bali-life-activity-menu");
-  const act1MoneyBefore = (await getDebug()).money;
-  await clickActivity("Brunch bag to the upper lane");
-  await press("Escape");
-  await leaveInteriorByObjective();
-  await followObjectiveIntoInterior();
-  await moveToObjective();
-  await press("e");
-  await waitForDebug((state) => state.activeDeliveryStage === "picked_up", "first Act 1 pickup", 8_000);
-  await leaveInteriorByObjective();
-  await ensureMounted();
-  await moveToObjective();
-  await press("e");
-  const firstAct1Complete = await waitForDebug((state) => state.activeDelivery === null, "first Act 1 payout", 8_000);
-  const firstAct1Payout = firstAct1Complete.money - act1MoneyBefore;
-  if (!Number.isFinite(firstAct1Payout) || firstAct1Payout <= 0 || firstAct1Payout >= 160) {
-    throw new Error(`First Act 1 payout Rp ${firstAct1Payout} did not visibly undercut Act 0's Rp 160 payout`);
+  console.log(`[PASS ${new Date().toISOString()}] Act 0 unskipped runtime ${elapsedSeconds()}s; stormCount=1 menuOpens=0`);
+  await capture("15-act1-rate-cut-seam");
+  await waitForSelector("#bali-life-activity-menu", 22_000);
+  const morningPanelTitle = await page.$eval(".bali-life-activity-menu-title", (element) => element.textContent?.trim() ?? "");
+  if (morningPanelTitle.includes("Ledger")) {
+    await clickButton("See Today's Hand");
+    await waitForSelector("#bali-life-activity-menu", 8_000);
   }
-  console.log(`[PAYOUT] Act 0 Rp 160 -> first Act 1 Rp ${firstAct1Payout} after the 15% base-pay cut`);
-  await capture("12-first-act1-lower-payout");
-  await ensureOnFoot();
-  await moveToPoint({ x: 1708, y: 92 });
-  await capture("13-baked-locked-alley");
-  await page.evaluate(() => {
-    const button = [...document.querySelectorAll("button")].find((candidate) => candidate.textContent?.trim() === "SAVE");
-    if (!(button instanceof HTMLButtonElement)) throw new Error("SAVE button missing from HUD");
-    button.click();
-  });
-  await delay(250);
+  await capture("16-act1-morning-hand");
   await verifyMobileTouchSurface();
 }
 
@@ -218,6 +224,7 @@ async function followObjectiveIntoInterior() {
   const before = await getDebug();
   if (before.mode === "interior") return;
   await moveToObjective();
+  if ((await getDebug()).player.onBike) await ensureOnFoot();
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const beforeAction = await getDebug();
     console.log(
@@ -227,7 +234,7 @@ async function followObjectiveIntoInterior() {
     await press("e");
     try {
       await waitForDebug(
-        (state) => state.mode === "interior" && !state.interiorTransitioning,
+        (state) => (state.mode === "interior" || state.mode === "cutscene") && !state.interiorTransitioning,
         "interior entry",
         2_800
       );
@@ -273,7 +280,7 @@ async function leaveInteriorByObjective() {
   throw new Error("Timed out following the interior exit cue");
 }
 
-async function moveToObjective({ collectRide = false } = {}) {
+async function moveToObjective({ collectRide = false, captureStorm = false } = {}) {
   const deadline = Date.now() + STEP_TIMEOUT_MS;
   while (Date.now() < deadline) {
     const state = await getDebug();
@@ -306,6 +313,14 @@ async function moveToObjective({ collectRide = false } = {}) {
         await capture(`06-ride-live-${rideSamples.length}`);
       }
     }
+    if (captureStorm && !capturedStormFrame) {
+      const stormState = movingState ?? (await getDebug());
+      if (stormState.weather?.kind === "storm" && stormState.activeDelivery === "act0_nusadrop_storm_run") {
+        capturedStormFrame = true;
+        console.log(`[BEAT ${new Date().toISOString()}] storm-mid-ride t+${elapsedSeconds()}s`);
+        await capture("09-storm-mid-ride");
+      }
+    }
   }
   const latest = await getDebug();
   throw new Error(
@@ -326,7 +341,11 @@ async function moveToPoint(target) {
     if (distance < 28) return;
     await moveToward(state.player, target, distance);
   }
-  throw new Error(`Timed out moving to map-proof point ${JSON.stringify(target)}`);
+  const latest = await getDebug();
+  throw new Error(
+    `Timed out moving to map-proof point ${JSON.stringify(target)}; player=${latest.player.x},${latest.player.y} ` +
+      `onBike=${latest.player.onBike} stuck=${latest.player.bikeStuck} prompt='${latest.prompt}'`
+  );
 }
 
 async function moveToInteriorPoint(target) {
@@ -480,6 +499,21 @@ async function clickButton(label) {
   throw new Error(`Button '${label}' was not present`);
 }
 
+async function clickPhoneStoryAction() {
+  const state = await getDebug();
+  if (!state.phoneStoryMoment) throw new Error("No authored phone action is open");
+  // Desktop smoke viewport: the authored phone action sits at bodyX, panel bottom - 104.
+  const beforeMoment = state.phoneStoryMoment;
+  const beforeStep = state.phoneStoryStep;
+  for (const point of [{ x: 300, y: 650 }, { x: 420, y: 650 }, { x: 300, y: 665 }]) {
+    await page.mouse.click(point.x, point.y);
+    await delay(180);
+    const after = await getDebug();
+    if (after.phoneStoryMoment !== beforeMoment || after.phoneStoryStep !== beforeStep) return;
+  }
+  throw new Error(`Authored phone action did not respond for ${beforeMoment} step ${beforeStep}`);
+}
+
 async function press(key) {
   await page.keyboard.press(key);
   await delay(90);
@@ -540,6 +574,10 @@ function printRideSummary() {
 
 function pointDistance(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function elapsedSeconds() {
+  return ((Date.now() - openingStartedAt) / 1_000).toFixed(1);
 }
 
 function startServer() {

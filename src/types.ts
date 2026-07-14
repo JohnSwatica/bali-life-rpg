@@ -9,6 +9,13 @@ export type Act0Step =
   | "pickup_first_delivery"
   | "dropoff_first_delivery"
   | "buy_meal_and_coffee"
+  | "nusadrop_signup"
+  | "dropoff_storm_delivery"
+  | "landlord_ultimatum"
+  | "villa_order_ping"
+  | "pickup_villa_delivery"
+  | "dropoff_villa_delivery"
+  | "pay_kos_deposit"
   | "sleep_first_night"
   | "complete";
 export type DiscoveryLedgerEntryKind = "investigation" | "codex_note";

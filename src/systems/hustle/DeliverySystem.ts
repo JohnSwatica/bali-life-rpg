@@ -133,7 +133,7 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
 
   const condition = getDeliveryCondition(definition, active.conditionId);
   const terms = getEffectiveDeliveryTerms(definition, condition, world);
-  const starRating = calculateDeliveryStarRating(active, now, performanceScore, condition);
+  const starRating = definition.forcedStarRating ?? calculateDeliveryStarRating(active, now, performanceScore, condition);
   const onTime = now <= active.dueAt;
   const cargoEligible =
     isCargoCareEligible(world.life.actProgress.currentAct, definition, condition) &&
@@ -175,9 +175,11 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
   if (!world.life.hustle.completedDeliveryIds.includes(definition.id)) {
     world.life.hustle.completedDeliveryIds.push(definition.id);
   }
-  world.life.hustle.completedDeliveryCount += 1;
-  world.life.hustle.deliveryEarnings += payout;
-  world.life.hustle.driverRating = updateDriverRating(world.life.hustle.driverRating, starRating, definition.ratingWeight);
+  if (definition.countsTowardHustleProgress !== false) {
+    world.life.hustle.completedDeliveryCount += 1;
+    world.life.hustle.deliveryEarnings += payout;
+    world.life.hustle.driverRating = updateDriverRating(world.life.hustle.driverRating, starRating, definition.ratingWeight);
+  }
   const readiness = getAct1MoveOutReadiness(world);
   world.life.hustle.moveOutReady = readiness.complete;
   if (!wasMoveOutReady && world.life.hustle.moveOutReady && world.life.actProgress.currentAct < 2) {

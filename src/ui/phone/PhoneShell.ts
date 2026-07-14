@@ -31,6 +31,10 @@ const PHONE_DEPTH = 1500;
 const TABS = ["Feed", "Map", "Contacts", "Threads", "Quests", "Calendar", "Profile", "Events", "Venues", "Community"] as const;
 type PhoneTab = (typeof TABS)[number];
 
+type Act0StoryPhoneMoment =
+  | { id: "nusadrop_signup"; step: 0 | 1 | 2; onComplete: () => void }
+  | { id: "villa_order_ping"; step: 0; depositGap: number; cleanPayout: number; onComplete: () => void };
+
 interface PhoneShellOptions {
   scene: Phaser.Scene;
   getWorld: () => WorldState;
@@ -56,11 +60,20 @@ export class PhoneShell {
   private container?: Phaser.GameObjects.Container;
   private activeTab: PhoneTab = "Feed";
   private selectedVenueId?: string;
+  private act0StoryMoment?: Act0StoryPhoneMoment;
 
   constructor(private readonly options: PhoneShellOptions) {}
 
   get isOpen(): boolean {
     return Boolean(this.container);
+  }
+
+  get activeStoryMomentId(): Act0StoryPhoneMoment["id"] | null {
+    return this.act0StoryMoment?.id ?? null;
+  }
+
+  get activeStoryMomentStep(): number | null {
+    return this.act0StoryMoment?.step ?? null;
   }
 
   toggle(): void {
@@ -72,14 +85,34 @@ export class PhoneShell {
   }
 
   open(tab: PhoneTab = this.activeTab): void {
+    this.act0StoryMoment = undefined;
     this.activeTab = tab;
     this.render();
   }
 
+  openAct0Signup(onComplete: () => void): void {
+    this.act0StoryMoment = { id: "nusadrop_signup", step: 0, onComplete };
+    this.render();
+  }
+
+  openAct0VillaOrder(depositGap: number, cleanPayout: number, onComplete: () => void): void {
+    this.act0StoryMoment = {
+      id: "villa_order_ping",
+      step: 0,
+      depositGap: Math.max(0, Math.round(depositGap)),
+      cleanPayout: Math.max(0, Math.round(cleanPayout)),
+      onComplete
+    };
+    this.render();
+  }
+
   close(): void {
+    const defaultForward = this.act0StoryMoment?.onComplete;
+    this.act0StoryMoment = undefined;
     this.container?.destroy(true);
     this.container = undefined;
     this.options.onClose();
+    defaultForward?.();
   }
 
   refresh(): void {
@@ -107,11 +140,94 @@ export class PhoneShell {
     bg.strokeRoundedRect(x, y, panelWidth, panelHeight, 10);
     container.add(bg);
 
-    this.renderPortalHeader(container, x, y, panelWidth);
-    this.renderTabs(container, x, y + 74, panelWidth);
-    this.renderActiveTab(container, bodyX, y + 148, bodyWidth, panelHeight - 198);
-    this.addButton(container, x + panelWidth - 116, y + panelHeight - 42, 92, 30, "Close", () => this.close(), 0x4a3331);
+    if (this.act0StoryMoment) {
+      this.renderAct0StoryMoment(container, x, y, panelWidth, panelHeight, bodyX, bodyWidth);
+    } else {
+      this.renderPortalHeader(container, x, y, panelWidth);
+      this.renderTabs(container, x, y + 74, panelWidth);
+      this.renderActiveTab(container, bodyX, y + 148, bodyWidth, panelHeight - 198);
+      this.addButton(container, x + panelWidth - 116, y + panelHeight - 42, 92, 30, "Close", () => this.close(), 0x4a3331);
+    }
     this.container = container;
+  }
+
+  private renderAct0StoryMoment(
+    container: Phaser.GameObjects.Container,
+    x: number,
+    y: number,
+    panelWidth: number,
+    panelHeight: number,
+    bodyX: number,
+    bodyWidth: number
+  ): void {
+    const moment = this.act0StoryMoment;
+    if (!moment) return;
+    container.add(this.options.scene.add.text(x + PHONE_CONTENT_INSET_PX, y + 18, "Bali Life Phone · NusaDrop", this.titleStyle()));
+    container.add(
+      this.options.scene.add.text(
+        x + PHONE_CONTENT_INSET_PX,
+        y + 52,
+        moment.id === "nusadrop_signup" ? "DRIVER SETUP" : "SURGE ORDER · ONE TAP",
+        this.sectionStyle()
+      )
+    );
+
+    if (moment.id === "nusadrop_signup") {
+      const lines =
+        moment.step === 0
+          ? ["Instant local delivery work.", "No contract required. Earnings land after every completed run."]
+          : moment.step === 1
+            ? ["NusaDrop installed.", "Create a driver ID from the cracked phone already in your hand."]
+            : [
+                "DRIVER PROFILE LIVE",
+                "LOCAL LEADERBOARD",
+                "#1  LEO        4.9★",
+                "#2  DEDE       4.8★",
+                "#-- NEW DRIVER 3.2★",
+                "",
+                "PING: sealed lunch bag · weather bonus active"
+              ];
+      this.renderTextList(container, bodyX, y + 112, bodyWidth, lines);
+      const actionLabel = moment.step === 0 ? "Install NusaDrop" : moment.step === 1 ? "Create Driver ID" : "Take First Run";
+      this.addButton(container, bodyX, y + panelHeight - 104, Math.min(260, bodyWidth), 42, actionLabel, () => {
+        if (!this.act0StoryMoment || this.act0StoryMoment.id !== "nusadrop_signup") return;
+        if (this.act0StoryMoment.step < 2) {
+          this.act0StoryMoment = { ...this.act0StoryMoment, step: (this.act0StoryMoment.step + 1) as 1 | 2 };
+          this.render();
+          return;
+        }
+        this.completeAct0StoryMoment();
+      }, 0x35533f);
+    } else {
+      this.renderTextList(container, bodyX, y + 112, bodyWidth, [
+        "LANTERN VILLA · HIGH FRAGILITY",
+        `Clean payout: Rp ${moment.cleanPayout}`,
+        `Deposit gap: Rp ${moment.depositGap}`,
+        "Base fare is guaranteed. Cargo hits cut only the surge margin.",
+        "Pickup: BAKED. · Drop: Lantern Villa Gate"
+      ]);
+      this.addButton(container, bodyX, y + panelHeight - 104, Math.min(260, bodyWidth), 42, "Accept Villa Order", () => {
+        this.completeAct0StoryMoment();
+      }, 0x35533f);
+    }
+
+    container.add(
+      this.options.scene.add.text(
+        bodyX,
+        y + panelHeight - 46,
+        "ESC advances the default-forward path. No signup choice can strand the story.",
+        this.bodyStyle(12)
+      ).setWordWrapWidth(bodyWidth)
+    );
+  }
+
+  private completeAct0StoryMoment(): void {
+    const onComplete = this.act0StoryMoment?.onComplete;
+    this.act0StoryMoment = undefined;
+    this.container?.destroy(true);
+    this.container = undefined;
+    this.options.onClose();
+    onComplete?.();
   }
 
   private renderPortalHeader(container: Phaser.GameObjects.Container, x: number, y: number, panelWidth: number): void {

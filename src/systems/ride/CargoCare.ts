@@ -28,7 +28,8 @@ export function isCargoCareEligible(
 ): boolean {
   const act0CateringHook =
     currentAct === 0 && delivery.id === "act0_ibu_milk_madu_catering" && (delivery.onTimeBonus ?? 0) > 0;
-  return act0CateringHook || (currentAct >= 1 && !delivery.tutorialDelivery && (condition?.payoutBonus ?? 0) > 0);
+  const act0StoryHook = currentAct === 0 && delivery.countsTowardHustleProgress === false && (condition?.payoutBonus ?? 0) > 0;
+  return act0CateringHook || act0StoryHook || (currentAct >= 1 && !delivery.tutorialDelivery && (condition?.payoutBonus ?? 0) > 0);
 }
 
 export function getCargoIntegrity(activeDelivery: ActiveDeliveryState | null | undefined): number {

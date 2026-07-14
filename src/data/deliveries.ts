@@ -1,5 +1,6 @@
 import { offsetVenuePoint } from "./layoutLookup";
 import type { Meter, ReputationTag } from "../types";
+import { ACT0_STORM_DELIVERY_ID, ACT0_VILLA_DELIVERY_ID } from "../systems/story/Act0BackHalf";
 
 export interface DeliveryCondition {
   id: string;
@@ -32,6 +33,9 @@ export interface DeliveryDefinition {
   tutorialDelivery?: boolean;
   boardAvailable?: boolean;
   repeatable?: boolean;
+  /** False keeps authored Act 0 story runs out of Act 1's five-run/Rp 600 milestone math. */
+  countsTowardHustleProgress?: boolean;
+  forcedStarRating?: number;
   minDriverRating?: number;
   minCompletedDeliveries?: number;
   conditions?: DeliveryCondition[];
@@ -89,6 +93,78 @@ export const deliveryDefinitions: DeliveryDefinition[] = [
     tutorialDelivery: true,
     boardAvailable: false,
     repeatable: false
+  },
+  {
+    id: ACT0_STORM_DELIVERY_ID,
+    title: "NusaDrop: wet lunch bag",
+    description: "Your first app run. The route stays live when the tropical storm breaks.",
+    pickupVenueId: "milk_madu_berawa",
+    pickupLabel: "Take the sealed lunch bag from Milk & Madu.",
+    dropoffId: "act0_storm_beach_drop",
+    dropoffName: "Beach Service Drop",
+    dropoffLabel: "Deliver the lunch bag to the service shelter near FINNS.",
+    dropoffPoint: {
+      ...offsetVenuePoint("finns_beach_club", { x: 1120, y: 1680 }, 94, 92),
+      radius: 82
+    },
+    itemId: "pantry_bag",
+    timeLimitMin: 68,
+    payout: 80,
+    meterDeltas: { energy: -11, wellbeing: -1, focus: 4, social: 1 },
+    affinityBumps: [{ npcId: "ari", amount: 1 }],
+    reputation: { delta: 1, tag: "reliable", reason: "Finished the first NusaDrop storm run" },
+    ratingWeight: 0,
+    tutorialDelivery: true,
+    boardAvailable: false,
+    repeatable: false,
+    countsTowardHustleProgress: false,
+    conditions: [
+      {
+        id: "act0_storm_fragile",
+        label: "Storm care bonus",
+        description: "Rain and traffic can cut the care bonus, never the base fare.",
+        payoutBonus: 60,
+        meterDeltas: { focus: 2 },
+        ratingModifier: 0
+      }
+    ]
+  },
+  {
+    id: ACT0_VILLA_DELIVERY_ID,
+    title: "SURGE: lantern villa order",
+    description: "The night's highest-value fragile order. Clean pay visibly covers the deposit gap.",
+    pickupVenueId: "baked_berawa",
+    pickupLabel: "Collect the high-fragility villa order at BAKED.",
+    dropoffId: "act0_lantern_estate_gate",
+    dropoffName: "Lantern Estate Gate",
+    dropoffLabel: "Deliver the fragile order to the lantern-lit villa gate.",
+    dropoffPoint: {
+      // Reuses the existing upper-lane villa gate dressing; this packet adds no map geometry.
+      ...offsetVenuePoint("finns_recreation_club", { x: 1660, y: 360 }, -210, 92),
+      radius: 84
+    },
+    itemId: "delivery_pastry_box",
+    timeLimitMin: 92,
+    payout: 110,
+    meterDeltas: { energy: -16, wellbeing: 2, focus: 6, social: 3 },
+    affinityBumps: [{ npcId: "kadek", amount: 2 }],
+    reputation: { delta: 2, tag: "reliable", reason: "Landed the first five-star villa order" },
+    ratingWeight: 0,
+    tutorialDelivery: true,
+    boardAvailable: false,
+    repeatable: false,
+    countsTowardHustleProgress: false,
+    forcedStarRating: 5,
+    conditions: [
+      {
+        id: "act0_villa_fragile_surge",
+        label: "High-fragility surge",
+        description: "The base fare is safe; every cargo hit eats into the surge margin.",
+        payoutBonus: 150,
+        meterDeltas: { focus: 3 },
+        ratingModifier: 0
+      }
+    ]
   },
   {
     id: "milk_madu_brunch_bag",

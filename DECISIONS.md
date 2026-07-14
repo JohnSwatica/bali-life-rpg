@@ -1,5 +1,15 @@
 # Decisions
 
+## 2026-07-13 - Act 0 Back Half Is A Scene/Phone/Ride Arc, Not A Venue-Menu Tutorial
+
+RPG-20260713-04 keeps the stable `buy_meal_and_coffee` save id but changes its fresh-flow meaning to a staged Milk & Madu interior scene whose plate, coffee, meter gains, and Rp 30 cost resolve as scene business. The critical path then uses two authored moments inside the existing phone shell, two existing delivery runs, three cutscene-kit scenes, the existing deposit-style HUD chip pattern, and the existing payout celebration. Activity, station, shop, and home menus remain optional/off-path and open normally after Act 0; the smoke debug counter proves the authored critical path opens none.
+
+The deposit target is Rp 560. The storm order is Rp 80 base + Rp 60 care margin (Rp 154 clean at 5★); the villa order is Rp 110 base + Rp 150 fragile-surge margin and forced 5★ (Rp 286 clean). A fully clean route reaches Rp 640 before deposit and starts Act 1 at Rp 80. Damage removes only authored margin; if the wallet is short, the player pays what remains and Ibu Sari guarantees the exact difference. The two new story runs deliberately do not increment Act 1 hustle count/earnings, preserving the post-rate-cut five-run/Rp 600 milestone contract.
+
+Schema v11 remains unchanged. Old surviving ids load directly; removed prototype ids normalize to the nearest new beat. Authored storm/weather is restored from story flags after load. During Act 0's storm/villa/deposit transit, traffic and mud still degrade cargo or stumble the scooter but cannot invoke the five-helper stuck recovery, because that would violate the packet's no-soft-lock rule. The BAKED pickup and villa drop reuse existing interiors/dropoffs and existing upper-lane villa dressing; no geometry was added.
+
+Not implemented here: Made's room offer/arc, Kadek's priority-driver beat/arc, further Leo escalation, the Act 1 midpoint breakdown or closing milestone, Julian's campaign beyond the cafe plant, Surge Zone mechanics, the hidden-metric reveal, furniture/BUILD systems, or Act 2+ story content.
+
 ## 2026-07-13 - Authored Venue Interaction Footprints Must Not Overlap
 
 Milk & Madu and Milu by Nook are separate OSM-resolved venues, not duplicate or estimated catalog entries. Their bug was caused by compressing distinct storefronts to adjacent 128px authored slots while retaining larger OSM-era interaction radii. Every authored venue footprint is now capped to half its nearest-neighbour distance with an 8px gap, and shop interactions consume that same radius. A pairwise invariant protects the entire current street; the sibling audit reports zero remaining overlaps. Geometry, venue identities, and the dedicated catering dropoff remain unchanged.
