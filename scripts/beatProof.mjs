@@ -116,6 +116,28 @@ async function runStep(step, index) {
       await press("Escape");
       await waitForDebug((state) => state.mode === "world" || state.mode === "interior", "overlay closed", 4_000);
       return;
+    case "teleport":
+      await page.evaluate(
+        (point) => window.__BALI_LIFE_DEV_SENSATION__?.teleport(point.x, point.y),
+        { x: step.x, y: step.y }
+      );
+      await delay(180);
+      return;
+    case "ensureOnFoot":
+      await ensureOnFoot();
+      return;
+    case "pressKey":
+      await press(step.key);
+      return;
+    case "moveTo":
+      await moveToPoint({ x: step.x, y: step.y });
+      return;
+    case "leaveInterior": {
+      const state = await getDebug();
+      if (!state.interiorExit) throw new Error("Cannot leave: no active interior exit.");
+      await moveToPoint(state.interiorExit, "interior");
+      return;
+    }
     case "completeActiveDelivery":
       await completeActiveDelivery();
       return;
@@ -212,6 +234,18 @@ async function moveToward(player, target, distance) {
     for (const key of [...keys].reverse()) await page.keyboard.up(key);
   }
   await delay(16);
+}
+
+async function moveToPoint(target, expectedMode) {
+  const deadline = Date.now() + STEP_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const state = await getDebug();
+    if (expectedMode && state.mode !== expectedMode) return;
+    const distance = pointDistance(state.player, target);
+    if (distance <= 18) return;
+    await moveToward(state.player, target, distance);
+  }
+  throw new Error(`Timed out moving to ${JSON.stringify(target)}; last=${JSON.stringify(await getDebug())}`);
 }
 
 async function press(key) {

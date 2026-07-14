@@ -1,5 +1,6 @@
 import type { WorldState } from "../../types";
 import { getKadekPriorityAmbientLine } from "../story/Act1KadekPriority";
+import { getMadeRoomOfferAmbientLine } from "../story/Act1MadeRoomOffer";
 
 export type DialogueSurface = "panel" | "ambient";
 export type DialogueSurfaceReason = "act0" | "quest" | "relationship" | "minor";
@@ -43,6 +44,12 @@ export function getAmbientNpcLine(world: WorldState, npcId: string, fallbackLine
     const priorityLine = getKadekPriorityAmbientLine(world);
     if (priorityLine) {
       return priorityLine;
+    }
+  }
+  if (npcId === "made") {
+    const roomLine = getMadeRoomOfferAmbientLine(world);
+    if (roomLine) {
+      return roomLine;
     }
   }
   if (npcId === "rio") {

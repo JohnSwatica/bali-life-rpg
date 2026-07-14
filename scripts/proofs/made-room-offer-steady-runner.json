@@ -1,0 +1,77 @@
+{
+  "name": "made-room-offer-steady-runner",
+  "steps": [
+    {
+      "action": "openPhoneTab",
+      "tab": "Feed"
+    },
+    {
+      "action": "screenshot",
+      "name": "01-made-invitation"
+    },
+    {
+      "action": "closeOverlay"
+    },
+    {
+      "action": "teleport",
+      "x": 1648,
+      "y": 256
+    },
+    {
+      "action": "ensureOnFoot"
+    },
+    {
+      "action": "screenshot",
+      "name": "02-bungalow-living-cue"
+    },
+    {
+      "action": "pressKey",
+      "key": "e"
+    },
+    {
+      "action": "waitForState",
+      "state": {
+        "mode": "interior",
+        "interiorTransitioning": false
+      }
+    },
+    {
+      "action": "moveTo",
+      "x": 20230,
+      "y": 3188
+    },
+    {
+      "action": "pressKey",
+      "key": "e"
+    },
+    {
+      "action": "waitForSelector",
+      "selector": ".bali-life-dialogue"
+    },
+    {
+      "action": "screenshot",
+      "name": "03-made-hidden-room-dialogue"
+    },
+    {
+      "action": "closeOverlay"
+    },
+    {
+      "action": "leaveInterior"
+    },
+    {
+      "action": "waitForState",
+      "state": {
+        "mode": "world",
+        "interiorTransitioning": false
+      }
+    },
+    {
+      "action": "openPhoneTab",
+      "tab": "Quests"
+    },
+    {
+      "action": "screenshot",
+      "name": "04-made-room-goal"
+    }
+  ]
+}

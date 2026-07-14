@@ -3,6 +3,7 @@ import { npcDefinitions } from "../../data/npcs";
 import { getDeliveryDefinition } from "../../data/deliveries";
 import { getActiveNpcRoute } from "../npcs/NpcRoutineRoutes";
 import { getVenueActivityContext, type VenueActivityContext } from "../life/ActivityEngine";
+import { isMadeRoomOfferPending } from "../story/Act1MadeRoomOffer";
 import type { FieldObjectiveTargetRef } from "../guidance/FieldObjective";
 import { scaleDistance } from "../map/WorldScale";
 import type { InteriorDefinition, InteriorNpcSlotDefinition, InteriorStationDefinition, WorldState } from "../../types";
@@ -45,6 +46,9 @@ export function isInteriorPointInsideRoom(interior: InteriorDefinition, point: {
 }
 
 export function isNpcScheduledForInterior(world: WorldState, interior: InteriorDefinition, npcId: string): boolean {
+  if (npcId === "made" && interior.venueId === "bungalow_living" && isMadeRoomOfferPending(world)) {
+    return true;
+  }
   const npc = npcDefinitions[npcId];
   if (!npc) {
     return false;

@@ -9,10 +9,11 @@ import {
   hasCoveredFirstRent
 } from "./HustleMilestones";
 import { getStationRecoveryNudge } from "../life/StationRecovery";
+import { getMadeRoomGoalState } from "../story/Act1MadeRoomOffer";
 import type { WorldState } from "../../types";
 
 export interface HustleGoalState {
-  id: "first_delivery" | "steady_runner" | "daily_scooter" | "cover_first_rent" | "move_out_ready";
+  id: "first_delivery" | "steady_runner" | "daily_scooter" | "cover_first_rent" | "move_out_ready" | "mades_room";
   title: string;
   description: string;
   progress: string;
@@ -31,7 +32,7 @@ export function getHustleGoalStates(world: WorldState): HustleGoalState[] {
   const scooterUpgrade = getScooterUpgradeStatus(world);
   const rentPressure = getRentPressureState(world);
   const moveOutReadiness = getAct1MoveOutReadiness(world);
-  return [
+  const goals: HustleGoalState[] = [
     {
       id: "first_delivery",
       title: "First run",
@@ -71,6 +72,11 @@ export function getHustleGoalStates(world: WorldState): HustleGoalState[] {
       complete: hustle.moveOutReady
     }
   ];
+  const madeRoomGoal = getMadeRoomGoalState(world);
+  if (madeRoomGoal) {
+    goals.push(madeRoomGoal);
+  }
+  return goals;
 }
 
 export function getHustleNextStep(world: WorldState): HustleNextStepState {
