@@ -103,6 +103,12 @@ async function runStep(step, index) {
     case "openPhoneTab":
       await requireApiResult("openPhoneTab", step.tab);
       return;
+    case "openVenuePanel":
+      await requireApiResult("openVenuePanel", step.venueId);
+      return;
+    case "enterInterior":
+      await requireApiResult("enterInterior", step.interiorId);
+      return;
     case "setViewport":
       await page.setViewport({
         width: step.width,
@@ -112,6 +118,28 @@ async function runStep(step, index) {
       await delay(240);
       console.log(`[STEP ${index}] viewport ${step.width}x${step.height}`);
       return;
+    case "measureFps": {
+      const fps = await page.evaluate(
+        (durationMs) =>
+          new Promise((resolve) => {
+            let frames = 0;
+            let started = 0;
+            const tick = (now) => {
+              if (!started) started = now;
+              frames += 1;
+              if (now - started >= durationMs) {
+                resolve((frames * 1000) / Math.max(1, now - started));
+                return;
+              }
+              requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+          }),
+        step.durationMs ?? 2200
+      );
+      console.log(`[STEP ${index}] FPS ${step.name ?? "sample"}: ${Number(fps).toFixed(2)}`);
+      return;
+    }
     case "acceptDeliveryById": {
       const result = await page.evaluate((id) => window.__BALI_LIFE_DEV_PROOF__?.acceptDeliveryById(id), step.id);
       if (!result?.ok) throw new Error(result?.message ?? `Could not accept ${step.id}`);

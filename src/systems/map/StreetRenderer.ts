@@ -94,6 +94,7 @@ export function renderStreetTemplate(scene: Phaser.Scene, template: StreetTempla
 
   const props = scene.add.graphics().setDepth(-95);
   drawStreetProps(props, template);
+  renderBakedStreetTextureProps(scene);
   createLockedAlleyCue(scene, template);
 
   const buildings = scene.add.graphics().setDepth(-90);
@@ -699,8 +700,21 @@ function drawStreetProps(g: Phaser.GameObjects.Graphics, template: StreetTemplat
   drawWalkableParcels(g, template);
   drawVillaDropoffGates(g, template);
   drawCorridorAmbientProps(g, template);
-  drawStreetTextureProps(g);
   drawBeachAmbientProps(g, template);
+}
+
+/**
+ * Place-telling props never change after map creation. Bake their pooled Graphics
+ * into one compact render texture so street density does not add per-frame draw work.
+ */
+function renderBakedStreetTextureProps(scene: Phaser.Scene): void {
+  const bounds = { x: 1440, y: 64, width: 760, height: 2360 };
+  const source = scene.add.graphics();
+  drawStreetTextureProps(source);
+  const baked = scene.add.renderTexture(bounds.x, bounds.y, bounds.width, bounds.height).setOrigin(0).setDepth(-94);
+  baked.clear();
+  baked.draw(source, -bounds.x, -bounds.y);
+  source.destroy();
 }
 
 function drawWalkableParcels(g: Phaser.GameObjects.Graphics, template: StreetTemplate): void {
@@ -920,12 +934,18 @@ function drawStreetTextureProps(g: Phaser.GameObjects.Graphics): void {
   for (const prop of streetTextureProps) {
     if (prop.kind === "canang") {
       drawCanangSari(g, prop.x, prop.y);
-    } else if (prop.kind === "sleeping_dog") {
-      drawSleepingDog(g, prop.x, prop.y, prop.direction ?? 1);
     } else if (prop.kind === "laundry") {
       drawLaundryLine(g, prop.x, prop.y, prop.direction ?? 1);
     } else if (prop.kind === "parked_scooter") {
       drawParkedScooter(g, prop.x, prop.y, prop.direction ?? 1, prop.color ?? 0x4e9fd6);
+    } else if (prop.kind === "warung_steam") {
+      drawWarungSteam(g, prop.x, prop.y, AMBIENT_STREET_PALETTE);
+    } else if (prop.kind === "produce_crates") {
+      drawCrates(g, prop.x, prop.y, AMBIENT_STREET_PALETTE);
+    } else if (prop.kind === "beach_gear") {
+      drawBeachGear(g, prop.x, prop.y, prop.direction ?? 1);
+    } else if (prop.kind === "kerb_drainage") {
+      drawKerbDrainage(g, prop.x, prop.y);
     }
   }
 }
@@ -1004,21 +1024,6 @@ function drawCanangSari(g: Phaser.GameObjects.Graphics, x: number, y: number): v
   g.fillCircle(x + 5, y + 5, 3);
 }
 
-function drawSleepingDog(g: Phaser.GameObjects.Graphics, x: number, y: number, direction: number): void {
-  g.fillStyle(0x000000, 0.12);
-  g.fillEllipse(x, y + 13, 50, 13, 20);
-  g.fillStyle(0xb88752, 1);
-  g.fillEllipse(x, y, 38, 18, 20);
-  g.fillCircle(x + direction * 21, y - 3, 9);
-  g.fillStyle(0x7b5b3a, 1);
-  g.fillCircle(x + direction * 24, y - 8, 3);
-  g.fillRoundedRect(x - direction * 18, y + 1, 18, 5, 3);
-  g.lineStyle(2, 0x5b3c2c, 0.7);
-  g.beginPath();
-  g.arc(x - direction * 24, y - 1, 8, Math.PI * 0.1, Math.PI * 0.82);
-  g.strokePath();
-}
-
 function drawLaundryLine(g: Phaser.GameObjects.Graphics, x: number, y: number, direction: number): void {
   const width = 92;
   g.lineStyle(3, 0x6b4b2d, 0.9);
@@ -1034,6 +1039,25 @@ function drawLaundryLine(g: Phaser.GameObjects.Graphics, x: number, y: number, d
     g.fillStyle(0x5b3c2c, 0.8);
     g.fillCircle(clothX + 2 * direction, y - 17, 1.7);
   });
+}
+
+function drawBeachGear(g: Phaser.GameObjects.Graphics, x: number, y: number, direction: number): void {
+  drawSurfboards(g, x - direction * 8, y, AMBIENT_STREET_PALETTE);
+  g.fillStyle(0x8b5f2f, 1);
+  g.fillRoundedRect(x + direction * 16, y - 4, 21, 18, 3);
+  g.fillStyle(0x40a7b2, 0.96);
+  g.fillRoundedRect(x + direction * 19, y - 12, 16, 11, 3);
+  g.fillStyle(0xf2c35d, 0.9);
+  g.fillCircle(x + direction * 26, y + 5, 4);
+}
+
+function drawKerbDrainage(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
+  g.fillStyle(0x34494a, 0.78);
+  g.fillRoundedRect(x - 5, y - 34, 10, 68, 2);
+  g.lineStyle(1, 0x9bb0a3, 0.62);
+  for (let offset = -25; offset <= 25; offset += 10) {
+    g.lineBetween(x - 4, y + offset, x + 4, y + offset);
+  }
 }
 
 function drawBench(g: Phaser.GameObjects.Graphics, x: number, y: number, direction: number): void {

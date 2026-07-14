@@ -4,7 +4,7 @@ import { deliveryDefinitions } from "../data/deliveries";
 import { interiorDefinitions } from "../data/interiors";
 import { authoredPlayableBounds, authoredPlayablePoints } from "../data/playableBounds";
 import { collisionRects, WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
-import { paddyFieldPatches, streetLandmarks, villaGateDressings, walkableStreetParcels } from "../data/worldDressing";
+import { paddyFieldPatches, streetLandmarks, streetTextureProps, villaGateDressings, walkableStreetParcels } from "../data/worldDressing";
 import { stationVisualDefinitions } from "../data/stationVisuals";
 import { getVenuePoint } from "../data/layoutLookup";
 import { paddyFieldState } from "../systems/map/PaddyFields";
@@ -175,6 +175,29 @@ describe("authored street layout invariants", () => {
       for (let x = roadLeft; x <= roadRight; x += 1) {
         expect(data[y][x], `road band ${x},${y}`).not.toBe(TILE_IDS.sidewalk);
       }
+    }
+  });
+
+  it("uses only place-telling street dressing and keeps it off the rideable road band", () => {
+    const kinds = new Set(streetTextureProps.map((prop) => prop.kind));
+    const requiredKinds: Array<(typeof streetTextureProps)[number]["kind"]> = [
+      "canang",
+      "laundry",
+      "parked_scooter",
+      "warung_steam",
+      "produce_crates",
+      "beach_gear",
+      "kerb_drainage"
+    ];
+    for (const kind of requiredKinds) {
+      expect(kinds.has(kind)).toBe(true);
+    }
+    expect(kinds.size).toBe(requiredKinds.length);
+
+    const roadLeft = activeStreetTemplate.roadLeftTile * TILE_SIZE;
+    const roadRight = (roadRightTile(activeStreetTemplate) + 1) * TILE_SIZE;
+    for (const prop of streetTextureProps) {
+      expect(prop.x < roadLeft || prop.x > roadRight, `${prop.id} sits off the rideable road`).toBe(true);
     }
   });
 

@@ -20,6 +20,7 @@ import {
   upgradeToDailyScooter
 } from "../systems/hustle/HustleEconomy";
 import { getHustleGoalStates, getHustleNextStep } from "../systems/hustle/HustleGoals";
+import { ACT1_MOVE_OUT_DELIVERY_EARNINGS } from "../systems/hustle/HustleMilestones";
 import { shouldOpenIbuHustleBoard } from "../systems/hustle/IbuHustleBoard";
 import {
   applyAct0NegotiatedCompletionFee,
@@ -574,6 +575,14 @@ describe("Act 0 hustle and deliveries", () => {
       cover_first_rent: true,
       move_out_ready: true
     });
+  });
+
+  it("renders the move-out earnings requirement from the shared milestone constant", () => {
+    const world = createInitialWorldState();
+    const moveOutGoal = getHustleGoalStates(world).find((goal) => goal.id === "move_out_ready");
+
+    expect(moveOutGoal?.description).toContain(`Rp ${ACT1_MOVE_OUT_DELIVERY_EARNINGS}`);
+    expect(moveOutGoal?.description).not.toContain("Rp 700");
   });
 
   it("derives the next Act 1 hustle action from current pressure", () => {

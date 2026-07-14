@@ -25,10 +25,10 @@ describe("activity minigames", () => {
   });
 
   it("scores choice minigames from authored choices", () => {
-    const definition = getActivityMinigameDefinition("relax_hangout");
+    const definition = getActivityMinigameDefinition("beach_club_sunset_table");
     const active = createActiveMinigame(definition);
-    const best = scoreChoice(active?.choices, "listen");
-    const weak = scoreChoice(active?.choices, "drift");
+    const best = scoreChoice(active?.choices, "ask");
+    const weak = scoreChoice(active?.choices, "flex");
 
     expect(best?.score).toBe(1);
     expect(weak?.score).toBeLessThan(best!.score);

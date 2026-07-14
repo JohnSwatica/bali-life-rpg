@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { getQuantity } from "../systems/Inventory";
 import {
   applyActivity,
   applyPendingMorningPenalties,
@@ -71,14 +70,14 @@ describe("daily life meters and activities", () => {
     });
 
     world.players[world.localPlayerId].money = 70;
-    expect(applyActivity(world, context("berawa_beach"), "surf_beach_time").ok).toBe(true);
-    expect(option(world, "berawa_beach", "surf_beach_time")).toMatchObject({
+    expect(applyActivity(world, context("berawa_beach"), "beach_surf_session").ok).toBe(true);
+    expect(option(world, "berawa_beach", "beach_surf_session")).toMatchObject({
       available: false,
       reason: "Already done today."
     });
   });
 
-  it("surfaces authored station choices before generic fallback activities", () => {
+  it("surfaces no more than three venue-specific actions and never revives generic fallback rows", () => {
     const world = createInitialWorldState();
     const stations = [
       ["satu_satu_coffee", "cafe"],
@@ -96,9 +95,19 @@ describe("daily life meters and activities", () => {
       expect(availability[0].activity.stationId).toBe(stationId);
     }
 
-    expect(getActivityAvailability(world, context("satu_satu_coffee")).some((candidate) => candidate.activity.id === "remote_work_session")).toBe(
-      true
-    );
+    const satuSatuActions = getActivityAvailability(world, context("satu_satu_coffee"));
+    expect(satuSatuActions).toHaveLength(3);
+    expect(satuSatuActions.map((candidate) => candidate.activity.id)).toEqual([
+      "cafe_deep_work",
+      "cafe_brunch_table",
+      "cafe_quick_caffeine"
+    ]);
+    const genericFallbackIds = new Set(["shop_for_day", "surf_beach_time", "night_out", "relax_hangout"]);
+    for (const venueId of ["canggu_station", "milk_madu_berawa", "baked_berawa", "satu_satu_coffee", "berawa_beach", "finns_beach_club"]) {
+      expect(getActivityAvailability(world, context(venueId)).map((candidate) => candidate.activity.id)).not.toEqual(
+        expect.arrayContaining([...genericFallbackIds])
+      );
+    }
     expect(getActivityAvailability(world, context("cheap_kos")).every((candidate) => candidate.activity.stationId === "home")).toBe(true);
   });
 
@@ -201,11 +210,10 @@ describe("daily life meters and activities", () => {
       earnedMoney: 125
     });
 
-    const shop = applyActivity(world, context("canggu_station"), "shop_for_day");
-    expect(shop.ok).toBe(true);
-    expect(player.money).toBe(160);
-    expect(getQuantity(player, "coconut")).toBe(2);
-    expect(world.life.activityHistory["canggu_station:shop_for_day"]).toMatchObject({
+    const coffee = applyActivity(world, context("milk_madu_berawa"), "grab_coffee");
+    expect(coffee.ok).toBe(true);
+    expect(player.money).toBe(165);
+    expect(world.life.activityHistory["milk_madu_berawa:grab_coffee"]).toMatchObject({
       count: 1,
       totalCount: 1,
       earnedMoney: 0
@@ -223,11 +231,11 @@ describe("daily life meters and activities", () => {
     expect(applyActivity(routeWorld, context("milk_madu_berawa"), "remote_work_session").ok).toBe(true);
     expect(applyActivity(routeWorld, context("milk_madu_berawa"), "grab_coffee").ok).toBe(true);
     expect(applyActivity(routeWorld, context("milk_madu_berawa"), "eat_properly").ok).toBe(true);
-    expect(applyActivity(routeWorld, context("berawa_beach"), "surf_beach_time").ok).toBe(true);
+    expect(applyActivity(routeWorld, context("berawa_beach"), "beach_surf_session").ok).toBe(true);
     routeWorld.clock.minuteOfDay = 18 * 60;
-    const party = applyActivity(routeWorld, context("finns_beach_club"), "night_out");
+    const party = applyActivity(routeWorld, context("finns_beach_club"), "beach_club_big_night");
     expect(routeWorld.players[routeWorld.localPlayerId].money).toBe(100);
-    expect(party).toMatchObject({ ok: false, message: "Need Rp 180." });
+    expect(party).toMatchObject({ ok: false, message: "Need Rp 220." });
   });
 
   it("advances the day clock to the next morning when sleeping is allowed", () => {

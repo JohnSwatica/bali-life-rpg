@@ -14,7 +14,7 @@ export interface PaddyFieldPatch {
 
 export interface StreetTextureProp {
   id: string;
-  kind: "canang" | "sleeping_dog" | "laundry" | "parked_scooter";
+  kind: "canang" | "laundry" | "parked_scooter" | "warung_steam" | "produce_crates" | "beach_gear" | "kerb_drainage";
   x: number;
   y: number;
   direction?: -1 | 1;
@@ -93,15 +93,28 @@ export const paddyFieldPatches: PaddyFieldPatch[] = [
 export const streetTextureProps: StreetTextureProp[] = [
   { id: "canang_canggu_station", kind: "canang", x: 2068, y: 124 },
   { id: "canang_sari_kitchen", kind: "canang", x: 2068, y: 1006 },
+  { id: "canang_milk_madu_threshold", kind: "canang", x: 2068, y: 740 },
+  { id: "canang_satu_satu_threshold", kind: "canang", x: 2068, y: 388 },
   { id: "canang_beach_warung", kind: "canang", x: 1774, y: 2304 },
-  { id: "dog_bungalow_lane", kind: "sleeping_dog", x: 1510, y: 260, direction: 1 },
-  { id: "dog_cafe_strip", kind: "sleeping_dog", x: 2054, y: 916, direction: -1 },
-  { id: "dog_beach_approach", kind: "sleeping_dog", x: 1494, y: 1830, direction: 1 },
   { id: "laundry_baked_bungalow", kind: "laundry", x: 1544, y: 174, direction: 1 },
   { id: "laundry_cafe_strip", kind: "laundry", x: 2048, y: 848, direction: -1 },
+  { id: "laundry_kos_lane", kind: "laundry", x: 1538, y: 1030, direction: 1 },
+  { id: "station_warung_steam", kind: "warung_steam", x: 2076, y: 166 },
+  { id: "station_produce_crates", kind: "produce_crates", x: 2078, y: 222 },
   { id: "parked_scooter_satu_satu", kind: "parked_scooter", x: 2068, y: 390, direction: -1, color: 0x4e9fd6 },
+  { id: "parked_scooter_satu_satu_2", kind: "parked_scooter", x: 2102, y: 414, direction: -1, color: 0xf2c35d },
+  { id: "parked_scooter_satu_satu_3", kind: "parked_scooter", x: 2070, y: 440, direction: -1, color: 0x4f8f66 },
   { id: "parked_scooter_milk_madu", kind: "parked_scooter", x: 2070, y: 742, direction: -1, color: 0xe35d4f },
-  { id: "parked_scooter_beach_club", kind: "parked_scooter", x: 1492, y: 2046, direction: 1, color: 0xf2c35d }
+  { id: "parked_scooter_milk_madu_2", kind: "parked_scooter", x: 2104, y: 766, direction: -1, color: 0x4e9fd6 },
+  { id: "parked_scooter_rental", kind: "parked_scooter", x: 1768, y: 302, direction: 1, color: 0xd95b43 },
+  { id: "parked_scooter_rental_2", kind: "parked_scooter", x: 1734, y: 330, direction: 1, color: 0x4f8f66 },
+  { id: "parked_scooter_beach_club", kind: "parked_scooter", x: 1492, y: 2046, direction: 1, color: 0xf2c35d },
+  { id: "beach_gear_approach", kind: "beach_gear", x: 1766, y: 2204, direction: 1 },
+  { id: "beach_gear_sand", kind: "beach_gear", x: 1698, y: 2312, direction: 1 },
+  { id: "kerb_station_east", kind: "kerb_drainage", x: 2044, y: 220 },
+  { id: "kerb_mid_east", kind: "kerb_drainage", x: 2044, y: 960 },
+  { id: "kerb_mid_west", kind: "kerb_drainage", x: 1796, y: 1370 },
+  { id: "kerb_beach_west", kind: "kerb_drainage", x: 1796, y: 2050 }
 ];
 
 export const villaGateDressings: VillaGateDressing[] = [

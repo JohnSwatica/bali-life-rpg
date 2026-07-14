@@ -187,6 +187,7 @@ import {
   applyActivity,
   formatActivityPreview,
   getActivityAvailability,
+  getVenuePurposeLine,
   getStationRhythmState,
   getVenueActivityContext,
   type ActivityAvailability,
@@ -511,6 +512,8 @@ declare global {
       bootState: (name: string) => DevProofInteractionResult;
       acceptDeliveryById: (id: string) => ReturnType<typeof acceptDelivery>;
       openPhoneTab: (tab: string) => DevProofInteractionResult;
+      openVenuePanel: (venueId: string) => DevProofInteractionResult;
+      enterInterior: (interiorId: string) => DevProofInteractionResult;
       getBoardOffers: () => DevProofBoardOffer[];
       clickDialogueOption: (index: number) => DevProofInteractionResult;
     };
@@ -959,6 +962,8 @@ export class GameScene extends Phaser.Scene {
           },
           acceptDeliveryById: (id) => this.acceptPhoneDelivery(id),
           openPhoneTab: (tab) => this.devOpenPhoneTab(tab),
+          openVenuePanel: (venueId) => this.devOpenVenuePanel(venueId),
+          enterInterior: (interiorId) => this.devEnterInterior(interiorId),
           getBoardOffers: () => this.devGetBoardOffers(),
           clickDialogueOption: (index) => this.devClickDialogueOption(index)
         };
@@ -4716,6 +4721,21 @@ export class GameScene extends Phaser.Scene {
         g.fillStyle(0xfff0bd, 0.9);
         g.fillCircle(table.x, table.y - TILE_SIZE * 0.02, TILE_SIZE * 0.12);
       }
+      // Working kitchen: pans, stools, and the condiment caddy make this Ibu's warung, not a generic cafe.
+      g.fillStyle(0x253a35, 0.95);
+      g.fillCircle(x + TILE_SIZE * 8.8, y + TILE_SIZE * 2.15, TILE_SIZE * 0.24);
+      g.fillCircle(x + TILE_SIZE * 9.45, y + TILE_SIZE * 2.15, TILE_SIZE * 0.2);
+      g.lineStyle(2, 0x101820, 0.9);
+      g.lineBetween(x + TILE_SIZE * 9.02, y + TILE_SIZE * 2.15, x + TILE_SIZE * 9.24, y + TILE_SIZE * 1.86);
+      for (const stoolX of [4.1, 5.2, 6.3]) {
+        g.fillStyle(0x7f4f35, 1);
+        g.fillCircle(x + TILE_SIZE * stoolX, y + TILE_SIZE * 3.38, TILE_SIZE * 0.18);
+        g.fillRect(x + TILE_SIZE * stoolX - 2, y + TILE_SIZE * 3.55, 4, TILE_SIZE * 0.32);
+      }
+      for (const [index, color] of [0xd95b43, 0xf2c35d, 0x4f8f66].entries()) {
+        g.fillStyle(color, 0.96);
+        g.fillRoundedRect(x + TILE_SIZE * (7.8 + index * 0.32), y + TILE_SIZE * 2.86, TILE_SIZE * 0.18, TILE_SIZE * 0.34, 2);
+      }
     } else if (interior.id === "baked_berawa_interior") {
       g.fillStyle(0xf3e3c0, 1);
       g.fillRoundedRect(x + TILE_SIZE * 1.25, y + TILE_SIZE * 1.62, TILE_SIZE * 9.5, TILE_SIZE * 1.08, TILE_SIZE * 0.1);
@@ -4739,6 +4759,19 @@ export class GameScene extends Phaser.Scene {
       g.fillRoundedRect(x + TILE_SIZE * 2.1, y + TILE_SIZE * 4.8, TILE_SIZE * 2.3, TILE_SIZE * 0.72, TILE_SIZE * 0.12);
       g.fillStyle(0xfff0bd, 0.88);
       g.fillCircle(x + TILE_SIZE * 3.25, y + TILE_SIZE * 5.05, TILE_SIZE * 0.16);
+      // Bakery-specific back wall: cooling racks and flour sacks frame the existing oven.
+      g.lineStyle(2, 0x6f4a2f, 0.88);
+      for (const rackY of [3.18, 3.7, 4.22]) {
+        g.lineBetween(x + TILE_SIZE * 1.35, y + TILE_SIZE * rackY, x + TILE_SIZE * 3.7, y + TILE_SIZE * rackY);
+      }
+      g.lineBetween(x + TILE_SIZE * 1.45, y + TILE_SIZE * 3.02, x + TILE_SIZE * 1.45, y + TILE_SIZE * 4.45);
+      g.lineBetween(x + TILE_SIZE * 3.58, y + TILE_SIZE * 3.02, x + TILE_SIZE * 3.58, y + TILE_SIZE * 4.45);
+      for (const sack of [5.0, 5.75, 6.5]) {
+        g.fillStyle(0xe7d3a4, 1);
+        g.fillRoundedRect(x + TILE_SIZE * sack, y + TILE_SIZE * 4.58, TILE_SIZE * 0.52, TILE_SIZE * 0.68, TILE_SIZE * 0.12);
+        g.lineStyle(1, 0x8b5937, 0.72);
+        g.lineBetween(x + TILE_SIZE * (sack + 0.1), y + TILE_SIZE * 4.85, x + TILE_SIZE * (sack + 0.42), y + TILE_SIZE * 4.85);
+      }
     } else if (interior.id === "milk_madu_interior") {
       g.fillStyle(0xf4d58d, 1);
       g.fillRoundedRect(x + TILE_SIZE * 1.1, y + TILE_SIZE * 1.5, TILE_SIZE * 9.8, TILE_SIZE * 0.72, TILE_SIZE * 0.14);
@@ -4763,6 +4796,16 @@ export class GameScene extends Phaser.Scene {
       g.fillCircle(x + TILE_SIZE * 1.75, y + TILE_SIZE * 5.28, TILE_SIZE * 0.28);
       g.fillStyle(0x7f4f35, 1);
       g.fillRect(x + TILE_SIZE * 1.58, y + TILE_SIZE * 5.55, TILE_SIZE * 0.22, TILE_SIZE * 0.62);
+      // Espresso machine and menu board distinguish a working brunch counter from a generic room.
+      g.fillStyle(0x253a35, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 7.85, y + TILE_SIZE * 1.1, TILE_SIZE * 1.25, TILE_SIZE * 0.58, TILE_SIZE * 0.1);
+      g.fillStyle(0x6ab7ff, 0.78);
+      g.fillRoundedRect(x + TILE_SIZE * 8.05, y + TILE_SIZE * 1.24, TILE_SIZE * 0.56, TILE_SIZE * 0.18, TILE_SIZE * 0.04);
+      g.fillStyle(0xfff0bd, 0.9);
+      g.fillCircle(x + TILE_SIZE * 8.8, y + TILE_SIZE * 1.48, TILE_SIZE * 0.09);
+      g.fillStyle(0x345c54, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 9.58, y + TILE_SIZE * 3.08, TILE_SIZE * 0.72, TILE_SIZE * 1.34, TILE_SIZE * 0.08);
+      for (const menuY of [3.34, 3.64, 3.94]) g.fillRect(x + TILE_SIZE * 9.72, y + TILE_SIZE * menuY, TILE_SIZE * 0.42, 2);
     } else if (interior.id === "cheap_kos_interior") {
       // One tired mattress, one crate, one shelf: this room is the BUILD motivator.
       g.fillStyle(0x292524, 0.62);
@@ -4826,6 +4869,17 @@ export class GameScene extends Phaser.Scene {
       g.fillCircle(x + TILE_SIZE * 2.1, y + TILE_SIZE * 2.95, TILE_SIZE * 0.18);
       g.fillCircle(x + TILE_SIZE * 2.65, y + TILE_SIZE * 2.95, TILE_SIZE * 0.18);
       g.fillCircle(x + TILE_SIZE * 3.2, y + TILE_SIZE * 2.95, TILE_SIZE * 0.18);
+      // Parts wall and tool bench stay clear of the scooter-counter interaction radius.
+      g.fillStyle(0x5b3c2c, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 1.2, y + TILE_SIZE * 3.15, TILE_SIZE * 2.65, TILE_SIZE * 0.18, TILE_SIZE * 0.04);
+      for (const toolX of [1.5, 2.05, 2.62, 3.18]) {
+        g.lineStyle(2, 0xfff0bd, 0.82);
+        g.lineBetween(x + TILE_SIZE * toolX, y + TILE_SIZE * 3.3, x + TILE_SIZE * (toolX + 0.1), y + TILE_SIZE * 3.78);
+      }
+      g.fillStyle(0x7f4f35, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 6.55, y + TILE_SIZE * 4.62, TILE_SIZE * 1.35, TILE_SIZE * 0.45, TILE_SIZE * 0.08);
+      g.fillStyle(0x253a35, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 6.85, y + TILE_SIZE * 4.42, TILE_SIZE * 0.72, TILE_SIZE * 0.22, TILE_SIZE * 0.05);
     } else if (interior.id === "satu_satu_interior") {
       g.fillStyle(0x6f4a2f, 1);
       g.fillRoundedRect(x + TILE_SIZE * 1.1, y + TILE_SIZE * 1.42, TILE_SIZE * 9.8, TILE_SIZE * 0.82, TILE_SIZE * 0.12);
@@ -4856,6 +4910,19 @@ export class GameScene extends Phaser.Scene {
       g.fillCircle(x + TILE_SIZE * 1.74, y + TILE_SIZE * 5.02, TILE_SIZE * 0.24);
       g.fillStyle(0x7f4f35, 1);
       g.fillRect(x + TILE_SIZE * 1.54, y + TILE_SIZE * 5.25, TILE_SIZE * 0.2, TILE_SIZE * 0.58);
+      // Roaster and bean sacks make the room's coffee purpose visible before its label is read.
+      g.fillStyle(0x253a35, 1);
+      g.fillCircle(x + TILE_SIZE * 7.5, y + TILE_SIZE * 3.62, TILE_SIZE * 0.46);
+      g.fillStyle(0x6ab7ff, 0.8);
+      g.fillCircle(x + TILE_SIZE * 7.5, y + TILE_SIZE * 3.62, TILE_SIZE * 0.22);
+      g.lineStyle(2, 0x101820, 0.76);
+      g.lineBetween(x + TILE_SIZE * 7.92, y + TILE_SIZE * 3.62, x + TILE_SIZE * 8.2, y + TILE_SIZE * 3.62);
+      for (const beanX of [6.7, 7.3, 7.9]) {
+        g.fillStyle(0xc79a55, 1);
+        g.fillRoundedRect(x + TILE_SIZE * beanX, y + TILE_SIZE * 5.12, TILE_SIZE * 0.46, TILE_SIZE * 0.58, TILE_SIZE * 0.1);
+        g.lineStyle(1, 0x6f4a2f, 0.75);
+        g.lineBetween(x + TILE_SIZE * (beanX + 0.12), y + TILE_SIZE * 5.37, x + TILE_SIZE * (beanX + 0.35), y + TILE_SIZE * 5.37);
+      }
     } else if (interior.id === "bungalow_living_interior") {
       g.fillStyle(0x8b5937, 1);
       g.fillRoundedRect(x + TILE_SIZE * 1.05, y + TILE_SIZE * 1.48, TILE_SIZE * 9.9, TILE_SIZE * 1.02, TILE_SIZE * 0.12);
@@ -4881,6 +4948,20 @@ export class GameScene extends Phaser.Scene {
       ]) {
         g.fillStyle(cushion.color, 0.92);
         g.fillRoundedRect(cushion.x - TILE_SIZE * 0.28, cushion.y - TILE_SIZE * 0.18, TILE_SIZE * 0.56, TILE_SIZE * 0.36, TILE_SIZE * 0.08);
+      }
+      // Made's hidden room is now a readable doorway, while the counter and exit mat remain exactly where they were.
+      g.fillStyle(0x4c3027, 1);
+      g.fillRoundedRect(x + TILE_SIZE * 9.1, y + TILE_SIZE * 4.9, TILE_SIZE * 1.18, TILE_SIZE * 1.52, TILE_SIZE * 0.08);
+      g.fillStyle(0xf4d58d, 0.88);
+      g.fillRoundedRect(x + TILE_SIZE * 9.28, y + TILE_SIZE * 5.1, TILE_SIZE * 0.82, TILE_SIZE * 1.13, TILE_SIZE * 0.04);
+      g.fillStyle(0x253a35, 0.9);
+      g.fillCircle(x + TILE_SIZE * 9.92, y + TILE_SIZE * 5.7, TILE_SIZE * 0.06);
+      g.fillStyle(0x6f4a2f, 1);
+      for (const rackX of [2.0, 3.45, 4.9]) {
+        g.fillRoundedRect(x + TILE_SIZE * rackX, y + TILE_SIZE * 5.55, TILE_SIZE * 0.92, TILE_SIZE * 0.12, TILE_SIZE * 0.03);
+        g.lineStyle(1, 0x6f4a2f, 0.85);
+        g.lineBetween(x + TILE_SIZE * (rackX + 0.15), y + TILE_SIZE * 5.67, x + TILE_SIZE * (rackX + 0.15), y + TILE_SIZE * 6.12);
+        g.lineBetween(x + TILE_SIZE * (rackX + 0.77), y + TILE_SIZE * 5.67, x + TILE_SIZE * (rackX + 0.77), y + TILE_SIZE * 6.12);
       }
     }
 
@@ -5277,12 +5358,13 @@ export class GameScene extends Phaser.Scene {
 
     const meta = document.createElement("div");
     meta.className = "bali-life-activity-menu-meta";
+    const purpose = getVenuePurposeLine(context.venueId);
     const rhythm = getStationRhythmState(this.world, context);
     const rhythmCopy = rhythm && areAdvancedMetersVisible(this.world)
       ? `${rhythm.stationTitle} | Best: ${rhythm.bestTimeOfDay}${rhythm.activeModifierLabels.length ? ` | Active: ${rhythm.activeModifierLabels.join(", ")}` : ""}`
       : `${context.category.replace(/_/g, " ")} activities`;
     meta.textContent =
-      `${rhythmCopy} | ${formatClock(this.world)} | ` +
+      `${purpose ?? rhythmCopy}\n${formatClock(this.world)} | ` +
       `${formatVisibleMeterValues(this.world)}  Rp ${this.playerState.money}`;
 
     header.append(title, meta);
@@ -5428,18 +5510,11 @@ export class GameScene extends Phaser.Scene {
     }
 
     const stationOptions = availability.filter((option) => option.activity.stationId && option.activity.venueIds?.includes(context.venueId));
-    const fallbackOptions = availability.filter((option) => !stationOptions.includes(option));
     if (stationOptions.length > 0 && context.stationId) {
       const station = getGameplayStationLoop(context.stationId);
-      this.appendActivityMenuSection(content, `${station.title} choices`);
+      this.appendActivityMenuSection(content, `${station.title} actions`);
       for (const option of stationOptions.slice(0, 3)) {
         this.appendActivityOptionRow(content, context, option);
-      }
-      if (fallbackOptions.length > 0) {
-        this.appendActivityMenuSection(content, "Everyday fallback");
-        for (const option of fallbackOptions.slice(0, 3)) {
-          this.appendActivityOptionRow(content, context, option);
-        }
       }
     } else {
       for (const option of availability.slice(0, 6)) {
@@ -9431,6 +9506,28 @@ export class GameScene extends Phaser.Scene {
     this.mode = "phone";
     this.phone?.open(phoneTab);
     return { ok: true, message: `${phoneTab} opened.` };
+  }
+
+  private devOpenVenuePanel(venueId: string): DevProofInteractionResult {
+    if (!getVenueActivityContext(venueId)) {
+      return { ok: false, message: `Unknown venue activity context: ${venueId}.` };
+    }
+    if (this.mode !== "world" && this.mode !== "interior") {
+      return { ok: false, message: `Venue panel cannot open while mode=${this.mode}.` };
+    }
+    this.openVenueActivityMenu(venueId);
+    return { ok: true, message: `${venueId} venue panel opened.` };
+  }
+
+  private devEnterInterior(interiorId: string): DevProofInteractionResult {
+    if (!interiorDefinitions[interiorId]) {
+      return { ok: false, message: `Unknown interior: ${interiorId}.` };
+    }
+    if (this.mode !== "world") {
+      return { ok: false, message: `Interior cannot open while mode=${this.mode}.` };
+    }
+    this.enterInterior(interiorId);
+    return { ok: true, message: `${interiorId} entered.` };
   }
 
   private devGetBoardOffers(): DevProofBoardOffer[] {

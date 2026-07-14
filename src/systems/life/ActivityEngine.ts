@@ -25,6 +25,26 @@ export interface VenueActivityContext {
   npcIds: string[];
 }
 
+/** One sentence that tells the player why this stop exists before any action rows appear. */
+const VENUE_PURPOSE_LINES: Record<string, string> = {
+  canggu_station: "Stock up, eat with Ibu, or help carry the lunch rush.",
+  milk_madu_berawa: "Brunch, a useful coffee, and a table worth opening the laptop at.",
+  baked_berawa: "Pick up bakery fuel and meet Kadek around the ovens.",
+  bungalow_living: "Browse home pieces and follow Made's lead toward a room of your own.",
+  satu_satu_coffee: "Roasted coffee and a quiet table for work that actually gets done.",
+  bali_family_rental_scooter: "Keep the scooter rideable: repair it, upgrade it, then get back on the road.",
+  berawa_beach: "Surf, walk the shore, or leave the beach better than you found it.",
+  finns_beach_club: "Choose how much of the sunset crowd you want to join.",
+  ulekan_berawa: "Eat cheap, pack a meal, and catch the neighborhood rhythm.",
+  tropical_nomad_coworking_space: "Buy a structured work block instead of borrowing a cafe table.",
+  outpost_canggu_coworking: "Buy a structured work block instead of borrowing a cafe table.",
+  cheap_kos: "Sleep, plan tomorrow, and make this temporary room work for one more night."
+};
+
+export function getVenuePurposeLine(venueId: string): string | null {
+  return VENUE_PURPOSE_LINES[venueId] ?? null;
+}
+
 export interface ActivityAvailability {
   activity: Activity;
   available: boolean;

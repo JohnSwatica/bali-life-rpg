@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-14 (RPG-20260714-05 phone diet complete locally)
+Last updated: 2026-07-14 (RPG-20260714-06 venue/world overhaul complete locally)
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -11,6 +11,8 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 `CLAUDE_PROJECT_REVIEW_2026-07-06.md` is Claude's full project review (bottlenecks, gap analysis, sequencing recommendation). It is a supervisory assessment, not a canonical design source — `GAME_DESIGN.md`/`STORY_BIBLE.md` still win on narrative/systems conflicts — but its top recommendation (no recorded human playtest yet; a `PLAYTEST_01.md` should exist before more systems work) should be treated as live until the user says otherwise.
 
 Current durable truth:
+
+- **RPG-20260714-06 complete locally:** venue activity panels now state one venue purpose and expose at most three venue-specific actions; generic category fallback rows are gone while shop counters, Ibu's lunch rush, scooter repair/upgrade, story rails, and the Settling In three-activities goal remain intact. The authored street swaps purposeless sleeping dogs for baked static Bali cues (offerings, laundry, scooters, station produce/steam, beach gear, kerb drainage), and Warung/BAKED/Milk & Madu/rental/Satu-Satu/Bungalow interiors now read as their own rooms without moving a station, exit, counter, or interaction radius. Goals now render the Rp 600 move-out requirement from its constant and suppress the false empty-quest line. Proof: `docs/RPG-20260714-06_OVERHAUL_PROOF.md`; 46 files / 299 tests and production build pass.
 
 - **RPG-20260714-05 complete locally on `feat/rpg-20260714-05-phone-diet`:** the generic opportunity pool now generates only six explicitly protected choice/goal-wired templates; 14 filler definitions remain load-safe but no longer spawn. Feed renders current goal/story first, NusaDrop paying jobs next, then other content. The visible phone strip is Feed / Map / Goals / Profile; legacy hidden tabs and their code paths remain intact, while Made's room is promoted to the top of Goals and reputation/rating stays in Profile. Legacy v11 saves retain stale messages and accepted cut opportunities harmlessly until resolve/expiry. The `act1_steady_runner` proof covers desktop and 390×844 Feed/Goals views; 46 files / 297 tests and production build pass. Proof: `docs/RPG-20260714-05_PHONE_DIET_PROOF.md`.
 

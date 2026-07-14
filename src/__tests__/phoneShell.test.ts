@@ -144,6 +144,7 @@ describe("phone shell layout", () => {
     expect(renderedText).toContain("Goals");
     expect(renderedText.join("\n")).toContain("Made's room");
     expect(renderedText.join("\n")).toContain("recommendation letter ✗");
+    expect(renderedText.join("\n")).not.toContain("No active quests. Talk to Ibu Sari or Kadek.");
   });
 
   it("ships every Act 0 signup leaderboard row with real, labeled content", () => {
