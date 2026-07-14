@@ -66,6 +66,14 @@ Design contract doc first (ACT1_BACKBONE script), then per-beat packets:
   hook) + one economy-reconciliation packet (rent/move-out/rate-cut math
   across the new beats).
 
+### Wave 1.5 — Interface & world overhaul (inserted 2026-07-14; ~4 packets)
+CEO directive after Beats 1–2 merged (PLAYTEST_02.md verbatim): phone/shops
+interface diet and purposeful visual density before deeper plot work.
+Contract: docs/INTERFACE_WORLD_OVERHAUL_2026-07-14.md — phone feed cull +
+tab collapse, venue purpose pass, street density, interior identity. Wave 1
+Beats 3–6 resume after its gate. Schedule: Wave 1 close moves to ~Jul
+22–24; launch window unchanged.
+
 ### Wave 2 — Act 2 "Finding Your People" (~9 packets)
 Design contract doc first (ACT2 script), then:
 - Weekly calendar + crew system core (Ari's Berawa Surf & Run Crew; one more
