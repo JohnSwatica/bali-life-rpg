@@ -1,0 +1,43 @@
+{
+  "name": "kadek-priority-from-leo-resolved",
+  "steps": [
+    {
+      "action": "assertOffer",
+      "id": "act1_kadek_rush_ingredients",
+      "available": true
+    },
+    {
+      "action": "openPhoneTab",
+      "tab": "Feed"
+    },
+    {
+      "action": "screenshot",
+      "name": "01-kadek-offer"
+    },
+    {
+      "action": "acceptDeliveryById",
+      "id": "act1_kadek_rush_ingredients"
+    },
+    {
+      "action": "closeOverlay"
+    },
+    {
+      "action": "completeActiveDelivery"
+    },
+    {
+      "action": "waitForState",
+      "state": {
+        "completedDeliveryCount": 2,
+        "kadekPriority": true
+      }
+    },
+    {
+      "action": "waitForSelector",
+      "selector": ".bali-life-dialogue"
+    },
+    {
+      "action": "screenshot",
+      "name": "02-kadek-priority-dialogue"
+    }
+  ]
+}
