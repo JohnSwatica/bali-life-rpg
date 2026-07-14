@@ -1,0 +1,16 @@
+{
+  "name": "luxury-tip-return",
+  "steps": [
+    { "action": "assertOffer", "id": "milk_madu_brunch_bag", "available": true },
+    { "action": "acceptDeliveryById", "id": "milk_madu_brunch_bag" },
+    { "action": "completeActiveDelivery" },
+    { "action": "waitForSelector", "selector": ".bali-life-dialogue-choice" },
+    { "action": "screenshot", "name": "01-tip-dilemma" },
+    { "action": "clickDialogueOption", "index": 1 },
+    { "action": "waitForSelector", "selector": ".bali-life-dialogue" },
+    { "action": "screenshot", "name": "02-return-rp50" },
+    { "action": "closeOverlay" },
+    { "action": "openPhoneTab", "tab": "Feed" },
+    { "action": "screenshot", "name": "03-return-feed-echo" }
+  ]
+}

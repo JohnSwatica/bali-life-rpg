@@ -19,7 +19,12 @@ import {
 } from "../systems/story/Act1KadekPriority";
 import { installMemoryLocalStorage } from "./testUtils";
 import { MADE_ROOM_OFFER_SCENE_FLAG } from "../systems/story/Act1MadeRoomOffer";
-import { areAct1BreakdownTurningPointsComplete } from "../systems/story/Act1Breakdown";
+import {
+  ACT1_BREAKDOWN_DRIVER_RATING,
+  ACT1_BREAKDOWN_FLAG,
+  areAct1BreakdownTurningPointsComplete,
+  isAct1ScooterBlown
+} from "../systems/story/Act1Breakdown";
 
 installMemoryLocalStorage();
 
@@ -74,6 +79,17 @@ describe("dev proof harness authored boot states", () => {
     expect(world.collectedPickups[KADEK_PRIORITY_FLAG]).toBeTruthy();
     expect(world.collectedPickups[MADE_ROOM_OFFER_SCENE_FLAG]).toBeTruthy();
     expect(areAct1BreakdownTurningPointsComplete(world)).toBe(true);
+  });
+
+  it("constructs the Beat 4 gate after the real reversal and counter repair", () => {
+    const world = buildDevProofBootState("act1_post_reversal");
+    const player = world.players[world.localPlayerId];
+
+    expect(world.collectedPickups[ACT1_BREAKDOWN_FLAG]).toBeTruthy();
+    expect(world.life.hustle.driverRating).toBe(ACT1_BREAKDOWN_DRIVER_RATING);
+    expect(player.bikeStuck).toBe(false);
+    expect(player.bikeCondition).toBeGreaterThan(0);
+    expect(isAct1ScooterBlown(world)).toBe(false);
   });
 
   it.each(DEV_PROOF_BOOT_STATE_NAMES)("persists and reloads %s through schema v11", (name) => {

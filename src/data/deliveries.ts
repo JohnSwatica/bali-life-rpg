@@ -27,6 +27,8 @@ export interface DeliveryDefinition {
   dropoffName: string;
   dropoffLabel: string;
   dropoffVenueId?: string;
+  /** Authored villa-gate handoff; used by story beats without inferring from display copy. */
+  villaDropoff?: boolean;
   dropoffPoint: { x: number; y: number; radius: number };
   itemId: string;
   timeLimitMin: number;
@@ -83,6 +85,7 @@ export const deliveryDefinitions: DeliveryDefinition[] = [
     dropoffId: "intro_villa_lane",
     dropoffName: "Villa Lane Dropoff",
     dropoffLabel: "Drop the pastry box at the villa gate.",
+    villaDropoff: true,
     dropoffPoint: {
       ...offsetVenuePoint("bungalow_living", { x: 1500, y: 640 }, -160, -112),
       radius: 78
@@ -145,6 +148,7 @@ export const deliveryDefinitions: DeliveryDefinition[] = [
     dropoffId: "act0_lantern_estate_gate",
     dropoffName: "Lantern Estate Gate",
     dropoffLabel: "Deliver the fragile order to the lantern-lit villa gate.",
+    villaDropoff: true,
     dropoffPoint: {
       // Reuses the existing upper-lane villa gate dressing; this packet adds no map geometry.
       ...offsetVenuePoint("finns_recreation_club", { x: 1660, y: 360 }, -210, 92),
@@ -218,6 +222,7 @@ export const deliveryDefinitions: DeliveryDefinition[] = [
     dropoffId: "baked_priority_upper_lane",
     dropoffName: "Upper Lane Residence",
     dropoffLabel: "Deliver Kadek's fragile priority box to the upper-lane residence gate.",
+    villaDropoff: true,
     dropoffPoint: {
       ...offsetVenuePoint("finns_recreation_club", { x: 1660, y: 360 }, -210, 92),
       radius: 78
@@ -253,6 +258,7 @@ export const deliveryDefinitions: DeliveryDefinition[] = [
     dropoffId: "upper_lane_villa",
     dropoffName: "Upper Lane Villa",
     dropoffLabel: "Drop the brunch bag by the villa gate.",
+    villaDropoff: true,
     dropoffPoint: {
       ...offsetVenuePoint("finns_recreation_club", { x: 1660, y: 360 }, -210, 92),
       radius: 78

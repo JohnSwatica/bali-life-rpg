@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-15 (RPG-20260714-07 merged; RPG-20260714-11 launch asset pipeline merged)
+Last updated: 2026-07-15 (RPG-20260714-08 complete locally; RPG-20260714-07 and -11 merged)
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -11,6 +11,8 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 `CLAUDE_PROJECT_REVIEW_2026-07-06.md` is Claude's full project review (bottlenecks, gap analysis, sequencing recommendation). It is a supervisory assessment, not a canonical design source — `GAME_DESIGN.md`/`STORY_BIBLE.md` still win on narrative/systems conflicts — but its top recommendation (no recorded human playtest yet; a `PLAYTEST_01.md` should exist before more systems work) should be treated as live until the user says otherwise.
 
 Current durable truth:
+
+- **RPG-20260714-08 complete locally on `feat/rpg-20260714-08-luxury-tip-dilemma`:** the first villa-gate board delivery completed after the authored transmission reversal now opens one neutral `RelationshipChoiceScene`: KEEP posts Rp 500 and Platform-Efficiency/red-flag residue; RETURN posts the intended Rp 50, Community-Trust/green-flag residue, and a villa regular who remembers the player. Both paths set ending-readable one-time flags and one later Feed echo without changing rating or delivery earnings; ESC/skip explicitly resolves to RETURN, and a saved pending choice reopens after reload. New gameplay-reachable proof state: `act1_post_reversal`, built through the real breakdown, ruined dropoff, and counter repair mutations. Schema remains v11; proof: `docs/RPG-20260714-08_LUXURY_TIP_PROOF.md`; verification: 48 files / 316 tests and production build green, two packet browser proofs green with six screenshots and zero browser errors.
 
 - **RPG-20260714-07 complete locally on `feat/rpg-20260714-07-breakdown-reversal`:** the first board run accepted after both Act 1 turning points now arms one deterministic transmission failure. After mounted travel enters the authored dropoff-distance band, a procedural sting/smoke beat stops the scooter, ruins cargo, and reuses the stuck-bike visual at a dedicated push speed; the late dropoff still pays/counts, then sets driver rating exactly to 3.2. Kadek's recurring priority line and every >3.2★ offer show honest rating locks, normal 3.2★ work remains reachable after the counter repair, repair restores riding without restoring rating, Leo sends exactly one text, Kadek preserves his respect, and Made's goal exposes the failed 3.2/3.5★ condition. New gameplay-reachable proof state: `act1_both_tps`. Schema remains v11; proof: `docs/RPG-20260714-07_BREAKDOWN_REVERSAL_PROOF.md`; verification: 47 files / 306 tests and production build green, packet browser proof green with six screenshots and zero browser errors.
 
