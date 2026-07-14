@@ -223,4 +223,22 @@ describe("Act 1 Beat 3 — authored transmission breakdown", () => {
     expect(world.life.actProgress.currentAct).toBe(1);
     expect(world.life.hustle.driverRating).toBeGreaterThan(ACT1_BREAKDOWN_DRIVER_RATING);
   });
+
+  it("re-arms on the next board run when the armed delivery resolves without firing", () => {
+    const world = act1BoardWorld();
+    addBothTurningPoints(world);
+    expect(acceptDelivery(world, BREAKDOWN_DELIVERY_ID, 800)).toMatchObject({ ok: true });
+    expect(world.questFlags[ACT1_BREAKDOWN_ARMED_DELIVERY_FLAG]).toBe(BREAKDOWN_DELIVERY_ID);
+
+    // Walked delivery: the ride trigger never fires, the run still completes.
+    expect(pickupDelivery(world, 808)).toMatchObject({ ok: true });
+    expect(completeDelivery(world, 820, 1)).toMatchObject({ ok: true });
+    expect(world.collectedPickups[ACT1_BREAKDOWN_FLAG]).toBeUndefined();
+    expect(world.questFlags[ACT1_BREAKDOWN_ARMED_DELIVERY_FLAG]).toBeUndefined();
+
+    // The next accepted board run arms again, so the beat is never missable.
+    expect(acceptDelivery(world, "satu_satu_invoice_pouch", 900)).toMatchObject({ ok: true });
+    expect(world.questFlags[ACT1_BREAKDOWN_ARMED_DELIVERY_FLAG]).toBe("satu_satu_invoice_pouch");
+    expect(isAct1BreakdownArmed(world)).toBe(true);
+  });
 });

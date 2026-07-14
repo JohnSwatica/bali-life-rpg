@@ -151,6 +151,18 @@ export function completeAct1BreakdownDropoff(
   };
 }
 
+/** The beat must never be missable: if the armed run resolves without firing (e.g. walked in), re-arm on the next accepted board run. */
+export function rearmAct1BreakdownIfUnfired(world: WorldState, resolvedDeliveryId: string): boolean {
+  if (
+    world.collectedPickups[ACT1_BREAKDOWN_FLAG] ||
+    world.questFlags[ACT1_BREAKDOWN_ARMED_DELIVERY_FLAG] !== resolvedDeliveryId
+  ) {
+    return false;
+  }
+  delete world.questFlags[ACT1_BREAKDOWN_ARMED_DELIVERY_FLAG];
+  return true;
+}
+
 export function markAct1BreakdownScooterRepaired(world: WorldState): boolean {
   if (!isAct1ScooterBlown(world)) return false;
   world.questFlags[ACT1_BREAKDOWN_SCOOTER_BLOWN_FLAG] = false;

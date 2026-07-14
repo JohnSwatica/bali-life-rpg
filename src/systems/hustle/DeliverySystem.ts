@@ -35,6 +35,7 @@ import {
   getPostBreakdownRequiredRating,
   isAct1BreakdownPushActive,
   isAct1ScooterBlown,
+  rearmAct1BreakdownIfUnfired,
   type BreakdownDropoffResult
 } from "../story/Act1Breakdown";
 
@@ -207,6 +208,7 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
   const breakdownScene = authoredBreakdown
     ? completeAct1BreakdownDropoff(world, now)
     : undefined;
+  rearmAct1BreakdownIfUnfired(world, definition.id);
   world.life.hustle.activeDelivery = null;
   const readiness = getAct1MoveOutReadiness(world);
   world.life.hustle.moveOutReady = readiness.complete;
