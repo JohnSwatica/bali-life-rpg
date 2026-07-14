@@ -51,14 +51,28 @@ case) OR completing the Ibu-guarantee scene (the normal path). The finale
 packet owns this change; it must be explicit in DECISIONS.md, and Act 2
 gating must key off move-out completion, not rating.
 
+## Proof standard (amended 2026-07-14, after the -03 proof stall)
+
+Per-packet DoD proofs are BEAT-SCOPED: boot an authored dev proof state at
+the beat's gate (RPG-20260714-04's harness), exercise the beat, screenshot
+it. The full unskipped smoke runs at WAVE GATES only — never as a per-packet
+requirement. (The original -03 DoD's "drive to Steady Runner + full smoke
+green" forced ~4-minute cinematic replays per proof retry; that standard was
+wrong and is retired.)
+
 ## Packet map (issued sequentially, one at a time)
 
-- RPG-20260714-02 — Beat 1, Kadek (+ carry-over: player-sprite-over-card z-order fix)
-- RPG-20260714-03 — Beat 2, Made's room offer
-- RPG-20260714-04 — Beat 3, the breakdown reversal
-- RPG-20260715-0x — Beat 4, tip dilemma
-- RPG-20260715-0x — Beat 5, finale + milestone adjustment + Act 2 card
-- RPG-20260715-0x — Beat 6, Leo glue + Wave-1 economy/pacing reconciliation
+- RPG-20260714-02 — Beat 1, Kadek (+ z-order rider) — MERGED (PR #5)
+- RPG-20260714-03 — Beat 2, Made's room offer — feature+tests done on its
+  branch; proof finalizes after -04 merges
+- RPG-20260714-04 — dev proof harness (authored boot states + stable
+  interaction API) — inserted after the -03 stall; pays for itself across
+  every remaining Season 1 packet
+- RPG-20260714-05 — Beat 3, the breakdown reversal
+- RPG-2026071x-0x — Beat 4, tip dilemma
+- RPG-2026071x-0x — Beat 5, finale + milestone adjustment + Act 2 card
+- RPG-2026071x-0x — Beat 6, Leo glue + Wave-1 economy/pacing reconciliation
 
 Wave 1 gate: full AI playthrough Act 0 → Act 2 card, rubric-scored, before
-Wave 2 opens. Target close: Jul 20–21.
+Wave 2 opens. Target close: Jul 20–21 (one-day slip risk absorbed by the
+harness investment).
