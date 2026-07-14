@@ -43,6 +43,8 @@ import {
 } from "../systems/cutscene/Act0BackHalfScripts";
 import {
   getCutsceneStepState,
+  getCutsceneLetterboxProgress,
+  getStoryHudTopOffset,
   shouldPauseQueuedFeedback,
   skipCutscene,
   type CutsceneScript,
@@ -362,6 +364,7 @@ interface CutsceneOverlay {
   topBar: Phaser.GameObjects.Rectangle;
   bottomBar: Phaser.GameObjects.Rectangle;
   dim: Phaser.GameObjects.Rectangle;
+  cardScrim: Phaser.GameObjects.Rectangle;
   title: Phaser.GameObjects.Text;
   subtitle: Phaser.GameObjects.Text;
 }
@@ -2540,14 +2543,20 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private spawnFloatingText(text: string, x: number, y: number, color: string): void {
+  private spawnFloatingText(
+    text: string,
+    x: number,
+    y: number,
+    color: string,
+    options: { durationMs?: number; fontSize?: string; backgroundColor?: string } = {}
+  ): void {
     const label = this.add
       .text(x, y, text, {
         fontFamily: "Inter, Arial, sans-serif",
-        fontSize: "15px",
+        fontSize: options.fontSize ?? "15px",
         color,
         fontStyle: "700",
-        backgroundColor: "rgba(17, 24, 32, 0.62)",
+        backgroundColor: options.backgroundColor ?? "rgba(17, 24, 32, 0.62)",
         padding: { x: 7, y: 3 }
       })
       .setOrigin(0.5)
@@ -2556,7 +2565,7 @@ export class GameScene extends Phaser.Scene {
       targets: label,
       y: y - scaleDistance(34),
       alpha: 0,
-      duration: 900,
+      duration: options.durationMs ?? 900,
       ease: "Cubic.easeOut",
       onComplete: () => label.destroy()
     });
@@ -2578,7 +2587,15 @@ export class GameScene extends Phaser.Scene {
       onComplete: () => ring.destroy()
     });
     if (label) {
-      this.spawnFloatingText(label, x, y - scaleDistance(32), spec.textColor);
+      this.spawnFloatingText(
+        label,
+        x,
+        y - scaleDistance(32),
+        spec.textColor,
+        kind === "delivery"
+          ? { durationMs: 1800, fontSize: "18px", backgroundColor: "rgba(7, 11, 16, 0.92)" }
+          : undefined
+      );
     }
   }
 
@@ -3348,7 +3365,9 @@ export class GameScene extends Phaser.Scene {
     const wantedLevel = getWantedLevel(this.world.reputation);
     const bounty = getBounty(this.world.reputation);
     const mailSuffix = unreadCount > 0 ? `   ✉ ${unreadCount}` : "";
-    this.timeText.setText(
+    const cutsceneState = this.activeCutscene ? getCutsceneStepState(this.activeCutscene.script, this.activeCutscene.elapsedMs) : null;
+    const hudTopOffset = getStoryHudTopOffset(cutsceneState, this.scale.height);
+    this.timeText.setPosition(16, hudTopOffset).setText(
       `${formatClock(this.world)}   Rp ${this.playerState.money}   ★ ${this.world.life.hustle.driverRating.toFixed(1)}${mailSuffix}`
     );
     this.hudController.updateMeterReadout({
@@ -3367,7 +3386,9 @@ export class GameScene extends Phaser.Scene {
       this.hudObjectiveDetailUntil = this.time.now + 6000;
     }
     const showObjectiveDetail = this.time.now < this.hudObjectiveDetailUntil;
-    this.questText.setText(showObjectiveDetail ? `▸ ${fieldObjective.title}\n${fieldObjective.detail}` : `▸ ${fieldObjective.title}`);
+    this.questText
+      .setPosition(16, hudTopOffset + this.timeText.height + 8)
+      .setText(showObjectiveDetail ? `▸ ${fieldObjective.title}\n${fieldObjective.detail}` : `▸ ${fieldObjective.title}`);
     this.questText.setColor(this.objectiveColor(fieldObjective));
     this.questText.setWordWrapWidth(Math.min(420, this.scale.width - 40));
 
@@ -3379,11 +3400,17 @@ export class GameScene extends Phaser.Scene {
       this.wantedChipText.setText("").setVisible(false);
     }
     const deposit = getAct0DepositState(this.world);
+    const storyPhoneMomentOpen = Boolean(this.phone?.activeStoryMomentId);
     if (deposit.visible) {
-      this.depositChipText
-        .setText(`DEPOSIT Rp ${deposit.target} · WALLET Rp ${deposit.wallet} · GAP Rp ${deposit.gap}`)
-        .setPosition(16, warningY)
-        .setVisible(true);
+      const depositCopy = storyPhoneMomentOpen
+        ? `DEPOSIT TARGET Rp ${deposit.target} · GAP Rp ${deposit.gap}`
+        : `DEPOSIT Rp ${deposit.target} · WALLET Rp ${deposit.wallet} · GAP Rp ${deposit.gap}`;
+      this.depositChipText.setText(depositCopy).setVisible(true);
+      if (storyPhoneMomentOpen) {
+        this.depositChipText.setOrigin(0.5, 0).setPosition(this.scale.width / 2, 12);
+      } else {
+        this.depositChipText.setOrigin(0, 0).setPosition(16, warningY);
+      }
       warningY += this.depositChipText.height + 8;
     } else {
       this.depositChipText.setText("").setVisible(false);
@@ -4475,6 +4502,18 @@ export class GameScene extends Phaser.Scene {
     this.stopWeather();
     this.setAmbientScene("interior");
     saveWorldState(this.world);
+    const interior = interiorDefinitions.cheap_kos_interior;
+    const landlord = this.add
+      .container(interior.exitMat.x + TILE_SIZE * 1.05, interior.exitMat.y - TILE_SIZE * 0.28)
+      .setDepth(interior.exitMat.y + 12);
+    const landlordSprite = this.add
+      .sprite(0, 0, npcDefinitions.pak_bagus.spriteKey)
+      .setScale(CHARACTER_SPRITE_SCALE * 1.2)
+      .setTint(0x80675a);
+    landlord.add([
+      this.add.ellipse(0, TILE_SIZE * 0.36, TILE_SIZE * 0.78, TILE_SIZE * 0.22, 0x090807, 0.68),
+      landlordSprite
+    ]);
     this.startCutscene(buildAct0KosResolveScene(resolution), () => {
       if (this.world.life.actProgress.act0Step !== "pay_kos_deposit") return;
       completeAct0Step(this.world, "pay_kos_deposit");
@@ -4485,7 +4524,7 @@ export class GameScene extends Phaser.Scene {
           this.sleepToMorning();
         }
       });
-    });
+    }, new Map([["kos_landlord", landlord]]));
   }
 
   private resumeAct0BackHalfIfNeeded(): void {
@@ -9037,6 +9076,7 @@ export class GameScene extends Phaser.Scene {
     const dim = this.add.rectangle(0, 0, width, height, 0x000000, 0).setOrigin(0, 0);
     const topBar = this.add.rectangle(0, 0, width, 0, 0x05070a, 1).setOrigin(0, 0);
     const bottomBar = this.add.rectangle(0, height, width, 0, 0x05070a, 1).setOrigin(0, 1);
+    const cardScrim = this.add.rectangle(width / 2, height * 0.46, width - 32, 120, 0x070b10, 0.88).setOrigin(0.5).setAlpha(0);
     const title = this.add
       .text(width / 2, height * 0.42, "", {
         fontFamily: "Inter, Arial, sans-serif",
@@ -9058,8 +9098,8 @@ export class GameScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setAlpha(0);
-    container.add([dim, topBar, bottomBar, title, subtitle]);
-    return { container, topBar, bottomBar, dim, title, subtitle };
+    container.add([dim, topBar, bottomBar, cardScrim, title, subtitle]);
+    return { container, topBar, bottomBar, dim, cardScrim, title, subtitle };
   }
 
   private resizeCutsceneOverlay(overlay: CutsceneOverlay): void {
@@ -9069,6 +9109,7 @@ export class GameScene extends Phaser.Scene {
     overlay.bottomBar.setPosition(0, height).setSize(width, overlay.bottomBar.height);
     overlay.title.setPosition(width / 2, height * 0.42);
     overlay.subtitle.setPosition(width / 2, height * 0.5).setWordWrapWidth(Math.min(560, width - 48), true);
+    overlay.cardScrim.setSize(Math.min(660, width - 32), overlay.cardScrim.height);
   }
 
   private handleCutsceneStepStart(step: CutsceneStep): void {
@@ -9097,23 +9138,22 @@ export class GameScene extends Phaser.Scene {
     const { height } = this.scale;
     const maxBarHeight = Math.min(98, Math.max(62, height * 0.13));
     const step = state.step;
-    const barProgress =
-      step?.kind === "letterbox_in"
-        ? state.stepProgress
-        : step?.kind === "letterbox_out"
-          ? 1 - state.stepProgress
-          : state.complete
-            ? 0
-            : 1;
+    const barProgress = getCutsceneLetterboxProgress(state);
     const barHeight = maxBarHeight * barProgress;
     overlay.topBar.setSize(this.scale.width, barHeight);
     overlay.bottomBar.setPosition(0, height).setSize(this.scale.width, barHeight);
 
     const cardVisible = step?.kind === "act_card";
-    const cardAlpha = cardVisible ? Math.min(1, Math.min(state.stepProgress / 0.18, (1 - state.stepProgress) / 0.18)) : 0;
-    overlay.dim.setAlpha(cardVisible ? 0.42 * Math.max(0, cardAlpha) : 0);
+    const cardAlpha = cardVisible ? 1 : 0;
+    overlay.dim.setAlpha(0);
     overlay.title.setText(cardVisible ? step.title ?? "" : "").setAlpha(Math.max(0, cardAlpha));
     overlay.subtitle.setText(cardVisible ? step.subtitle ?? "" : "").setAlpha(Math.max(0, cardAlpha));
+    const cardTop = overlay.title.y - overlay.title.displayHeight / 2 - 16;
+    const cardBottom = overlay.subtitle.y + overlay.subtitle.displayHeight / 2 + 16;
+    overlay.cardScrim
+      .setPosition(this.scale.width / 2, (cardTop + cardBottom) / 2)
+      .setSize(Math.min(660, this.scale.width - 32), Math.max(104, cardBottom - cardTop))
+      .setAlpha(Math.max(0, cardAlpha));
   }
 
   private applyScriptedWalkStep(step: CutsceneStep, progress: number): void {
@@ -9497,7 +9537,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateToastVisual(delta: number): void {
-    if (shouldPauseQueuedFeedback(Boolean(this.activeCutscene))) {
+    if (shouldPauseQueuedFeedback(Boolean(this.activeCutscene), Boolean(this.phone?.activeStoryMomentId))) {
       this.toastText.setAlpha(0);
       return;
     }

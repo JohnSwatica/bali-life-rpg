@@ -98,6 +98,8 @@ describe("cheap animation policy", () => {
     expect(talk.durationMs).toBeLessThanOrEqual(400);
     expect(pickup.endScale).toBeGreaterThan(pickup.startScale);
     expect(delivery.durationMs).toBeGreaterThan(pickup.durationMs);
+    expect(delivery.textColor).toBe("#fff8df");
+    expect(delivery.ringColor).toBe(0xfff0bd);
     expect(activity.ringColor).not.toBe(delivery.ringColor);
     expect(nearMiss.durationMs).toBeLessThanOrEqual(340);
   });

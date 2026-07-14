@@ -5,7 +5,7 @@ vi.mock("phaser", () => ({
 }));
 
 import { createInitialWorldState } from "../systems/WorldState";
-import { PhoneShell } from "../ui/phone/PhoneShell";
+import { ACT0_SIGNUP_LEADERBOARD_ROWS, PhoneShell } from "../ui/phone/PhoneShell";
 import { getPhoneCameraScale, getPhonePanelLayout } from "../ui/phone/PhoneLayout";
 
 describe("phone shell layout", () => {
@@ -64,5 +64,15 @@ describe("phone shell layout", () => {
     expect(() => shellInternals.renderActiveTab({ add: () => undefined }, 0, 0, 420, 320)).not.toThrow();
     expect(renderedText).toContain("Threads");
     expect(renderedText).toContain("Nothing here yet. Keep exploring Berawa.");
+  });
+
+  it("ships every Act 0 signup leaderboard row with real, labeled content", () => {
+    expect(ACT0_SIGNUP_LEADERBOARD_ROWS).toHaveLength(3);
+    for (const row of ACT0_SIGNUP_LEADERBOARD_ROWS) {
+      expect(row.rank.trim()).not.toBe("");
+      expect(row.driver.trim()).not.toBe("");
+      expect(row.rating.trim()).not.toBe("");
+      expect(row.deliveries.trim()).not.toBe("");
+    }
   });
 });

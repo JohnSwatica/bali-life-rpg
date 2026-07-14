@@ -28,11 +28,11 @@ const INTERACTION_FLOURISHES: Record<InteractionFlourishKind, InteractionFlouris
   },
   delivery: {
     kind: "delivery",
-    durationMs: 560,
-    ringColor: 0x8ee6ff,
-    textColor: "#8ee6ff",
-    startScale: 0.72,
-    endScale: 1.7
+    durationMs: 680,
+    ringColor: 0xfff0bd,
+    textColor: "#fff8df",
+    startScale: 0.82,
+    endScale: 1.9
   },
   activity: {
     kind: "activity",
