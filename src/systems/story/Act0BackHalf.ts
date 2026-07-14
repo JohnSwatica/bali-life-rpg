@@ -1,3 +1,5 @@
+import { adjustPlayerMeters } from "../meters/PlayerMeters";
+import { completeAct0Step } from "../life/ActProgression";
 import type { WorldState } from "../../types";
 
 export const ACT0_STORM_DELIVERY_ID = "act0_nusadrop_storm_run";
@@ -25,6 +27,25 @@ export function revealAct0Deposit(world: WorldState): Act0DepositState {
   world.questFlags.act0_deposit_target = ACT0_DEPOSIT_TARGET;
   world.questFlags.act0_deposit_visible = true;
   return getAct0DepositState(world);
+}
+
+export function completeAct0CafeScene(world: WorldState): boolean {
+  if (world.life.actProgress.act0Step !== "buy_meal_and_coffee") {
+    return false;
+  }
+  const player = world.players[world.localPlayerId];
+  player.money -= Math.min(ACT0_CAFE_SCENE_COST, player.money);
+  adjustPlayerMeters(world, { energy: 12, wellbeing: 7, focus: 4 });
+  world.questFlags.act0_meal_done = true;
+  world.questFlags.act0_coffee_done = true;
+  world.questFlags.act0_cafe_scene_complete = true;
+  return completeAct0Step(world, "buy_meal_and_coffee");
+}
+
+export function prepareAct0VillaOrder(world: WorldState): void {
+  const player = world.players[world.localPlayerId];
+  player.bikeStuck = false;
+  player.bikeCondition = Math.max(30, player.bikeCondition);
 }
 
 export function getAct0DepositState(world: WorldState): Act0DepositState {

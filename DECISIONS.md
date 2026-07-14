@@ -861,3 +861,11 @@ Focus Buffer is a simple 180-in-game-minute `questFlags` expiry because the proj
 Priority membership reveals one recurring, always-fragile BAKED. line. Post-cut terms are Rp 142 versus the highest Rp 141 normal condition available when it unlocks, below the Act 0 villa setpiece's Rp 260 effective terms. Both Kadek lines reuse condition rating modifiers to top clean runs at 4.5★; the one-time rush caps at Rp 142 and the recurring line at Rp 152: `142 + 3×152 = 598`, so the player still needs a fifth run to cross Rp 600. Existing board jobs and move-out math remain untouched.
 
 The carry-over act-card fix raises the existing cutscene overlay above all world-sprite y-depths; it changes no card layout or world rendering. Beats 2–6 (Made's offer, breakdown, tip dilemma, finale/milestone adjustment, and Leo glue) remain pending and are not pre-implemented here.
+
+## 2026-07-14 - Beat Proofs Boot Only Gameplay-Reachable Authored States
+
+RPG-20260714-04 tools the Act 1 backbone's beat-scoped proof standard. Per-packet proofs use `scripts/beatProof.mjs` to boot at the beat's authored gate, exercise the beat, and capture evidence; `scripts/smokePlaythrough.mjs` remains the untouched, unskipped wave-gate instrument. This separates fast content evidence from periodic end-to-end regression coverage without weakening either contract.
+
+Proof boot states are executable histories, not fixtures. Each builder starts with `createInitialWorldState` and composes the same exported mutation functions called by `GameScene`; mutations embedded in the scene for the Act 0 opening, café resolution, villa preparation, and Leo encounter were extracted so gameplay and proof construction share one path. Builders fail immediately when any prerequisite rejects, are registered in one record, persist through `saveWorldState`, and do not introduce a second schema or state-writing vocabulary.
+
+The stable interaction API is likewise an adapter, not a cheat path: delivery acceptance and board availability use `DeliverySystem`, phone tabs use `PhoneShell`, and dialogue selection invokes the actual rendered option handler. The hook, authored-state module import, names, and resume marker are guarded by `import.meta.env.DEV` and eliminated from production bundles. Packet map delta is none because proof infrastructure does not justify player-facing geometry.

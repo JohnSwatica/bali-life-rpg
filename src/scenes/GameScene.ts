@@ -228,13 +228,13 @@ import {
 import { shouldOpenIbuHustleBoard as canOpenIbuHustleBoard } from "../systems/hustle/IbuHustleBoard";
 import { isAct1MoveOutReady } from "../systems/hustle/HustleMilestones";
 import {
+  completeAct1LeoEncounter,
   getAct1LeoEncounterHookLine,
   isAct1LeoEncounterPending,
   triggerAct1RateCut
 } from "../systems/story/Act1IncitingHook";
 import { buildKadekRushOfferMessage } from "../systems/story/Act1KadekPriority";
 import {
-  ACT0_CAFE_SCENE_COST,
   ACT0_STORM_DELIVERY_ID,
   ACT0_STORM_TRIGGER_MS,
   ACT0_VILLA_DELIVERY_ID,
@@ -245,8 +245,11 @@ import {
   markAct0StormTriggered,
   recordAct0CriticalPathMenuOpen,
   resolveAct0Deposit,
-  revealAct0Deposit
+  revealAct0Deposit,
+  completeAct0CafeScene,
+  prepareAct0VillaOrder
 } from "../systems/story/Act0BackHalf";
+import { startAct0FirstDelivery } from "../systems/story/Act0Opening";
 import { getMorningHandCards, shouldShowMorningHand, type MorningHandCard } from "../systems/hustle/MorningHand";
 import {
   buildDayLedgerSummary,
@@ -320,7 +323,7 @@ import {
 import { isQuestActive, isQuestComplete, startQuest } from "../systems/QuestSystem";
 import { resolveNpcQuestInteraction } from "../systems/quests/QuestRegistry";
 import { HudController } from "../ui/hud/HudController";
-import { PhoneShell } from "../ui/phone/PhoneShell";
+import { parsePhoneTab, PhoneShell } from "../ui/phone/PhoneShell";
 import { TitleScreen } from "../ui/title/TitleScreen";
 import { shouldAdvanceGameplayBehindMenu } from "../ui/title/TitleMenuState";
 import { getPhoneCameraScale } from "../ui/phone/PhoneLayout";
@@ -430,6 +433,10 @@ interface BaliLifeDebugSnapshot {
   deposit: ReturnType<typeof getAct0DepositState> | null;
   act0CriticalPathMenuOpens: number;
   act0StormTriggerCount: number;
+  currentAct: number;
+  completedDeliveryCount: number;
+  rateCutFired: boolean;
+  kadekPriority: boolean;
   driverRating: number;
   activeDelivery: string | null;
   activeDeliveryStage: "accepted" | "picked_up" | null;
@@ -472,6 +479,18 @@ interface BaliLifeDebugSnapshot {
   updatedAt: number;
 }
 
+interface DevProofInteractionResult {
+  ok: boolean;
+  message: string;
+}
+
+interface DevProofBoardOffer {
+  id: string;
+  label: string;
+  available: boolean;
+  reason: string | null;
+}
+
 declare global {
   interface Window {
     __BALI_LIFE_DEBUG__?: BaliLifeDebugSnapshot;
@@ -481,6 +500,13 @@ declare global {
       stopWeather: () => boolean;
       enterKos: () => void;
       teleport: (x: number, y: number) => void;
+    };
+    __BALI_LIFE_DEV_PROOF__?: {
+      bootState: (name: string) => DevProofInteractionResult;
+      acceptDeliveryById: (id: string) => ReturnType<typeof acceptDelivery>;
+      openPhoneTab: (tab: string) => DevProofInteractionResult;
+      getBoardOffers: () => DevProofBoardOffer[];
+      clickDialogueOption: (index: number) => DevProofInteractionResult;
     };
   }
 }
@@ -899,7 +925,7 @@ export class GameScene extends Phaser.Scene {
     this.updateMapDiscovery(true, !this.skipTitleScreenForFreshStart);
     this.updateOpportunityFeed(0, true);
 
-    if (this.isDevBuild() && typeof window !== "undefined") {
+    if (import.meta.env.DEV && typeof window !== "undefined") {
       window.__BALI_LIFE_DEV_SENSATION__ = {
         setTimePhaseForBeat: (beat) => this.setTimePhaseForBeat(beat),
         startWeather: (kind) => this.startWeather(kind),
@@ -907,6 +933,35 @@ export class GameScene extends Phaser.Scene {
         enterKos: () => this.enterInterior("cheap_kos_interior"),
         teleport: (x, y) => this.devTeleport(x, y)
       };
+    }
+    if (import.meta.env.DEV && typeof window !== "undefined") {
+      void import("../dev/DevProofStates").then(({ buildDevProofBootState, isDevProofBootStateName }) => {
+        window.__BALI_LIFE_DEV_PROOF__ = {
+          bootState: (name) => {
+            if (!isDevProofBootStateName(name)) {
+              return { ok: false, message: `Unknown proof boot state: ${name}.` };
+            }
+            try {
+              const authoredWorld = buildDevProofBootState(name);
+              saveWorldState(authoredWorld);
+              window.sessionStorage.setItem("bali-life-rpg.dev-proof-resume", name);
+              window.setTimeout(() => window.location.reload(), 0);
+              return { ok: true, message: `Booting ${name}.` };
+            } catch (error) {
+              return { ok: false, message: error instanceof Error ? error.message : String(error) };
+            }
+          },
+          acceptDeliveryById: (id) => this.acceptPhoneDelivery(id),
+          openPhoneTab: (tab) => this.devOpenPhoneTab(tab),
+          getBoardOffers: () => this.devGetBoardOffers(),
+          clickDialogueOption: (index) => this.devClickDialogueOption(index)
+        };
+        const resumeName = window.sessionStorage.getItem("bali-life-rpg.dev-proof-resume");
+        if (resumeName) {
+          window.sessionStorage.removeItem("bali-life-rpg.dev-proof-resume");
+          this.resumeFromMenu();
+        }
+      });
     }
 
     this.cameras.main.setBounds(
@@ -983,8 +1038,9 @@ export class GameScene extends Phaser.Scene {
     }
     this.activeCutscene = undefined;
     this.soundManager.destroy();
-    if (typeof window !== "undefined") {
+    if (import.meta.env.DEV && typeof window !== "undefined") {
       delete window.__BALI_LIFE_DEV_SENSATION__;
+      delete window.__BALI_LIFE_DEV_PROOF__;
     }
     this.unsubscribeNetwork?.();
     this.network.disconnect();
@@ -3988,7 +4044,10 @@ export class GameScene extends Phaser.Scene {
 
   private resolveRelationshipChoice(scene: RelationshipChoiceScene, option: RelationshipChoiceOption): void {
     this.awaitingRelationshipChoice = false;
-    const consumesScene = option.actionId !== "start_rio_race" && option.actionId !== "decline_rio_race";
+    const consumesScene =
+      option.actionId !== "start_rio_race" &&
+      option.actionId !== "decline_rio_race" &&
+      option.actionId !== "complete_act1_leo_encounter";
     if (consumesScene) {
       this.world.collectedPickups[scene.id] = (this.world.collectedPickups[scene.id] ?? 0) + 1;
     }
@@ -4039,6 +4098,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     if (option.actionId === "complete_act1_leo_encounter") {
+      completeAct1LeoEncounter(this.world, this.getAbsoluteMinute());
       const kadekRushMessage = buildKadekRushOfferMessage(this.world, this.getAbsoluteMinute());
       if (kadekRushMessage) {
         appendOpportunityMessage(this.world.opportunities, kadekRushMessage);
@@ -4288,26 +4348,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private resolveAct0OpeningChoice(option: RelationshipChoiceOption): void {
-    this.world.questFlags.firstRunHintSeen = true;
-    this.world.questFlags.act0_v4_opening_complete = true;
-    this.world.questFlags.act0_back_half_version = 2;
-    this.world.questFlags.act0_negotiated_fee = option.actionId === "negotiate_act0_fee";
-    this.playerState.hasBike = true;
-    this.playerState.bikeStuck = false;
-    this.playerState.bikeCondition = Math.min(this.playerState.bikeCondition, 48);
-    this.playerState.tutorialStep = "free_roam";
-    this.world.life.hustle.scooterTier = "borrowed_rattletrap";
-    if (getQuantity(this.playerState, SCOOTER_KEY_ITEM_ID) === 0) {
-      addItem(this.playerState, SCOOTER_KEY_ITEM_ID, 1);
-    }
-    const accepted = acceptDelivery(this.world, "act0_ibu_milk_madu_catering", this.getAbsoluteMinute());
+    const accepted = startAct0FirstDelivery(
+      this.world,
+      option.actionId === "negotiate_act0_fee",
+      this.getAbsoluteMinute()
+    );
     if (accepted.ok) {
-      pickupDelivery(this.world, this.getAbsoluteMinute());
-      if (this.world.life.hustle.activeDelivery) {
-        this.world.life.hustle.activeDelivery.dueAt = this.getAbsoluteMinute() + 15;
-      }
-      completeAct0Step(this.world, "meet_ibu_sari");
-      completeAct0Step(this.world, "pickup_first_delivery");
       this.setPlayerBikeMode(true);
     }
     this.pendingChoiceOpportunityId = undefined;
@@ -4429,13 +4475,7 @@ export class GameScene extends Phaser.Scene {
 
     this.startCutscene(buildAct0CafeScene(), () => {
       if (this.world.life.actProgress.act0Step !== "buy_meal_and_coffee") return;
-      const sceneCost = Math.min(ACT0_CAFE_SCENE_COST, this.playerState.money);
-      this.playerState.money -= sceneCost;
-      adjustPlayerMeters(this.world, { energy: 12, wellbeing: 7, focus: 4 });
-      this.world.questFlags.act0_meal_done = true;
-      this.world.questFlags.act0_coffee_done = true;
-      this.world.questFlags.act0_cafe_scene_complete = true;
-      completeAct0Step(this.world, "buy_meal_and_coffee");
+      completeAct0CafeScene(this.world);
       this.setAmbientScene(null);
       saveWorldState(this.world);
       this.mode = "phone";
@@ -4484,8 +4524,7 @@ export class GameScene extends Phaser.Scene {
     const cleanPayout = calculateDeliveryPayout(getEffectiveDeliveryTerms(definition, condition, this.world).payout, 5);
     const deposit = getAct0DepositState(this.world);
     // A mud fishtail can happen while the dropoff alert owns the screen; the critical path must still accept and ride.
-    this.playerState.bikeStuck = false;
-    this.playerState.bikeCondition = Math.max(30, this.playerState.bikeCondition);
+    prepareAct0VillaOrder(this.world);
     this.mode = "phone";
     this.phone?.openAct0VillaOrder(deposit.gap, cleanPayout, () => {
       if (this.world.life.actProgress.act0Step !== "villa_order_ping") return;
@@ -9341,10 +9380,50 @@ export class GameScene extends Phaser.Scene {
     saveWorldState(this.world);
   }
 
-  private acceptPhoneDelivery(deliveryId: string): void {
+  private acceptPhoneDelivery(deliveryId: string): ReturnType<typeof acceptDelivery> {
     const result = acceptDelivery(this.world, deliveryId, this.getAbsoluteMinute());
     this.showToast(result.ok ? `${result.message} Follow the delivery marker.` : result.message);
     saveWorldState(this.world);
+    return result;
+  }
+
+  private devOpenPhoneTab(tab: string): DevProofInteractionResult {
+    const phoneTab = parsePhoneTab(tab);
+    if (!phoneTab) {
+      return { ok: false, message: `Unknown phone tab: ${tab}.` };
+    }
+    if (this.phone?.isOpen) {
+      this.phone.open(phoneTab);
+      return { ok: true, message: `${phoneTab} opened.` };
+    }
+    if (this.mode !== "world") {
+      return { ok: false, message: `Phone cannot open while mode=${this.mode}.` };
+    }
+    this.mode = "phone";
+    this.phone?.open(phoneTab);
+    return { ok: true, message: `${phoneTab} opened.` };
+  }
+
+  private devGetBoardOffers(): DevProofBoardOffer[] {
+    return getDeliveryOfferAvailability(this.world).map((offer) => ({
+      id: offer.delivery.id,
+      label: offer.delivery.title,
+      available: offer.available,
+      reason: offer.reason
+    }));
+  }
+
+  private devClickDialogueOption(index: number): DevProofInteractionResult {
+    if (!Number.isInteger(index) || index < 0) {
+      return { ok: false, message: `Dialogue option index must be a non-negative integer.` };
+    }
+    const options = document.querySelectorAll<HTMLButtonElement>(".bali-life-dialogue-choice");
+    const option = options.item(index);
+    if (!option) {
+      return { ok: false, message: `Dialogue option ${index} is not available.` };
+    }
+    option.click();
+    return { ok: true, message: `Dialogue option ${index} selected.` };
   }
 
   private payPhoneRent(): void {
@@ -9655,6 +9734,10 @@ export class GameScene extends Phaser.Scene {
       deposit: getAct0DepositState(this.world),
       act0CriticalPathMenuOpens: getAct0CriticalPathMenuOpenCount(this.world),
       act0StormTriggerCount: getAct0StormTriggerCount(this.world),
+      currentAct: this.world.life.actProgress.currentAct,
+      completedDeliveryCount: this.world.life.hustle.completedDeliveryCount,
+      rateCutFired: Boolean(this.world.collectedPickups.act1_nusadrop_rate_cut_fired),
+      kadekPriority: Boolean(this.world.collectedPickups.act1_kadek_priority_driver),
       driverRating: this.world.life.hustle.driverRating,
       activeDelivery: this.world.life.hustle.activeDelivery?.deliveryId ?? null,
       activeDeliveryStage: this.world.life.hustle.activeDelivery?.stage ?? null,

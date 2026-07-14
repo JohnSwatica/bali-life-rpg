@@ -29,7 +29,12 @@ import { getPhoneCameraScale, getPhonePanelLayout, PHONE_CONTENT_INSET_PX } from
 
 const PHONE_DEPTH = 1500;
 const TABS = ["Feed", "Map", "Contacts", "Threads", "Quests", "Calendar", "Profile", "Events", "Venues", "Community"] as const;
-type PhoneTab = (typeof TABS)[number];
+export type PhoneTab = (typeof TABS)[number];
+
+export function parsePhoneTab(value: string): PhoneTab | undefined {
+  const normalized = value.trim().toLowerCase();
+  return TABS.find((tab) => tab.toLowerCase() === normalized);
+}
 
 type Act0StoryPhoneMoment =
   | { id: "nusadrop_signup"; step: 0 | 1 | 2; onComplete: () => void }
