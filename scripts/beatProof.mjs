@@ -178,6 +178,12 @@ async function runStep(step, index) {
     case "completeActiveDelivery":
       await completeActiveDelivery();
       return;
+    case "pickupActiveDelivery":
+      await pickupActiveDelivery();
+      return;
+    case "rideUntilBreakdown":
+      await rideUntilBreakdown();
+      return;
     case "waitForSelector":
       await page.waitForSelector(step.selector, { visible: true, timeout: step.timeoutMs ?? 8_000 });
       return;
@@ -239,6 +245,62 @@ async function completeActiveDelivery() {
     await delay(420);
   }
   throw new Error(`Timed out completing active delivery; last=${JSON.stringify(await getDebug())}`);
+}
+
+async function pickupActiveDelivery() {
+  const deadline = Date.now() + STEP_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const state = await getDebug();
+    if (state.activeDeliveryStage === "picked_up") {
+      if (state.mode === "interior") {
+        if (!state.interiorExit) throw new Error("Picked up delivery but interior exit is missing.");
+        await moveToPoint(state.interiorExit, "interior");
+        await waitForDebug((next) => next.mode === "world", "return to street after pickup", 5_000);
+      }
+      return;
+    }
+    if (state.interiorTransitioning) {
+      await delay(90);
+      continue;
+    }
+    const target = state.objectiveTargets[0];
+    if (!target) throw new Error(`No pickup target for ${state.fieldObjectiveLine}`);
+    const distance = pointDistance(state.player, target);
+    if (distance > (state.mode === "interior" ? 18 : 32)) {
+      if (state.mode === "world") {
+        await page.evaluate(
+          (point) => window.__BALI_LIFE_DEV_SENSATION__?.teleport(point.x, point.y),
+          target
+        );
+        await delay(180);
+      } else {
+        await moveToward(state.player, target, distance);
+      }
+      continue;
+    }
+    if (state.mode === "world" && state.player.onBike) await ensureOnFoot();
+    await press("e");
+    await delay(320);
+  }
+  throw new Error(`Timed out picking up active delivery; last=${JSON.stringify(await getDebug())}`);
+}
+
+async function rideUntilBreakdown() {
+  const deadline = Date.now() + STEP_TIMEOUT_MS;
+  const initial = await getDebug();
+  if (initial.breakdownPushActive) return;
+  await ensureMounted();
+  while (Date.now() < deadline) {
+    const state = await getDebug();
+    if (state.breakdownPushActive) return;
+    if (state.mode !== "world" || state.activeDeliveryStage !== "picked_up") {
+      throw new Error(`Breakdown ride is not active; state=${JSON.stringify(state)}`);
+    }
+    const target = state.objectiveTargets[0];
+    if (!target) throw new Error(`No breakdown dropoff target for ${state.fieldObjectiveLine}`);
+    await moveToward(state.player, target, pointDistance(state.player, target));
+  }
+  throw new Error(`Timed out waiting for transmission breakdown; last=${JSON.stringify(await getDebug())}`);
 }
 
 async function ensureMounted() {

@@ -1,0 +1,90 @@
+{
+  "name": "act1-breakdown-reversal",
+  "steps": [
+    {
+      "action": "assertOffer",
+      "id": "baked_priority_fragile_order",
+      "available": true
+    },
+    {
+      "action": "acceptDeliveryById",
+      "id": "milk_madu_brunch_bag"
+    },
+    {
+      "action": "pickupActiveDelivery"
+    },
+    {
+      "action": "rideUntilBreakdown"
+    },
+    {
+      "action": "waitForState",
+      "state": {
+        "breakdownFired": true,
+        "breakdownPushActive": true,
+        "scooterBlown": true,
+        "player": {
+          "bikeStuck": true,
+          "bikeCondition": 0
+        }
+      }
+    },
+    {
+      "action": "screenshot",
+      "name": "01-transmission-blowout"
+    },
+    {
+      "action": "moveTo",
+      "x": 2014,
+      "y": 604
+    },
+    {
+      "action": "screenshot",
+      "name": "02-push-objective"
+    },
+    {
+      "action": "completeActiveDelivery"
+    },
+    {
+      "action": "waitForSelector",
+      "selector": ".bali-life-dialogue"
+    },
+    {
+      "action": "screenshot",
+      "name": "03-ruined-late-dropoff"
+    },
+    {
+      "action": "closeOverlay"
+    },
+    {
+      "action": "waitForState",
+      "state": {
+        "driverRating": 3.2,
+        "breakdownPushActive": false,
+        "scooterBlown": true
+      }
+    },
+    {
+      "action": "screenshot",
+      "name": "04-rating-and-repair-objective"
+    },
+    {
+      "action": "openPhoneTab",
+      "tab": "Feed"
+    },
+    {
+      "action": "screenshot",
+      "name": "05-leo-text-and-locked-premium"
+    },
+    {
+      "action": "closeOverlay"
+    },
+    {
+      "action": "openPhoneTab",
+      "tab": "Goals"
+    },
+    {
+      "action": "screenshot",
+      "name": "06-made-rating-condition-fails"
+    }
+  ]
+}

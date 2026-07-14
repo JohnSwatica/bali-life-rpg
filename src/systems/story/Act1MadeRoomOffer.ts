@@ -2,6 +2,9 @@ import type { OpportunityMessage, WorldState } from "../../types";
 import { getRentPressureState } from "../hustle/HustleEconomy";
 import { ACT1_STEADY_RUNNER_DELIVERIES } from "../hustle/HustleMilestones";
 
+const ACT1_BREAKDOWN_FLAG = "act1_transmission_breakdown_fired";
+const ACT1_BREAKDOWN_PREMIUM_RATING = 3.5;
+
 export const MADE_ROOM_OFFER_SCENE_FLAG = "act1_made_hidden_room_offer_seen";
 export const MADE_ROOM_OFFER_FEED_MESSAGE_ID = "story:act1:made-room-offer";
 
@@ -13,6 +16,7 @@ export interface MadeRoomGoalState {
   complete: false;
   rentRecordClean: boolean;
   recommendationLetterReady: false;
+  ratingCondition?: boolean;
 }
 
 export interface MadeRoomOfferSceneResult {
@@ -67,14 +71,20 @@ export function getMadeRoomGoalState(world: WorldState): MadeRoomGoalState | und
     return undefined;
   }
   const rentRecordClean = getRentPressureState(world).status !== "overdue";
+  const breakdownFired = Boolean(world.collectedPickups[ACT1_BREAKDOWN_FLAG]);
+  const ratingCondition = world.life.hustle.driverRating >= ACT1_BREAKDOWN_PREMIUM_RATING;
+  const ratingCopy = breakdownFired
+    ? ` · premium rating ${world.life.hustle.driverRating.toFixed(1)}/${ACT1_BREAKDOWN_PREMIUM_RATING.toFixed(1)}★ ${ratingCondition ? "✓" : "✗"}`
+    : "";
   return {
     id: "mades_room",
     title: "Made's room",
-    description: `rent record clean ${rentRecordClean ? "✓" : "✗"} · recommendation letter ✗`,
+    description: `rent record clean ${rentRecordClean ? "✓" : "✗"}${ratingCopy} · recommendation letter ✗`,
     progress: "Standing offer",
     complete: false,
     rentRecordClean,
-    recommendationLetterReady: false
+    recommendationLetterReady: false,
+    ratingCondition: breakdownFired ? ratingCondition : undefined
   };
 }
 
