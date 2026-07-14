@@ -28,6 +28,16 @@ import {
   shouldListKadekDelivery,
   type KadekPrioritySceneResult
 } from "../story/Act1KadekPriority";
+import {
+  armAct1BreakdownForAcceptedBoardRun,
+  completeAct1BreakdownDropoff,
+  getBreakdownRatingLockReason,
+  getPostBreakdownRequiredRating,
+  isAct1BreakdownPushActive,
+  isAct1ScooterBlown,
+  rearmAct1BreakdownIfUnfired,
+  type BreakdownDropoffResult
+} from "../story/Act1Breakdown";
 
 export interface DeliveryResult {
   ok: boolean;
@@ -39,6 +49,7 @@ export interface DeliveryResult {
   onTime?: boolean;
   onTimeBonus?: number;
   storyScene?: KadekPrioritySceneResult;
+  breakdownScene?: BreakdownDropoffResult;
 }
 
 export interface DeliveryOfferAvailability {
@@ -93,6 +104,7 @@ export function acceptDelivery(world: WorldState, deliveryId: string, now: numbe
     conditionId: condition?.id
   };
   world.life.hustle.activeDelivery = activeDelivery;
+  armAct1BreakdownForAcceptedBoardRun(world, deliveryId);
   const conditionCopy = condition ? ` (${condition.label})` : "";
   return { ok: true, message: `${definition.title}${conditionCopy} accepted. Go to ${definition.pickupVenueId.replace(/_/g, " ")}.`, activeDelivery };
 }
@@ -141,7 +153,10 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
 
   const condition = getDeliveryCondition(definition, active.conditionId);
   const terms = getEffectiveDeliveryTerms(definition, condition, world);
-  const starRating = definition.forcedStarRating ?? calculateDeliveryStarRating(active, now, performanceScore, condition);
+  const authoredBreakdown = isAct1BreakdownPushActive(world);
+  const starRating = authoredBreakdown
+    ? 1
+    : definition.forcedStarRating ?? calculateDeliveryStarRating(active, now, performanceScore, condition);
   const onTime = now <= active.dueAt;
   const cargoEligible =
     isCargoCareEligible(world.life.actProgress.currentAct, definition, condition) &&
@@ -182,7 +197,6 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
   const storyScene = definition.id === KADEK_RUSH_DELIVERY_ID
     ? completeKadekPriorityScene(world, active.cargoIntegrity ?? 100, now)
     : undefined;
-  world.life.hustle.activeDelivery = null;
   if (!world.life.hustle.completedDeliveryIds.includes(definition.id)) {
     world.life.hustle.completedDeliveryIds.push(definition.id);
   }
@@ -191,6 +205,11 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
     world.life.hustle.deliveryEarnings += payout;
     world.life.hustle.driverRating = updateDriverRating(world.life.hustle.driverRating, starRating, definition.ratingWeight);
   }
+  const breakdownScene = authoredBreakdown
+    ? completeAct1BreakdownDropoff(world, now)
+    : undefined;
+  rearmAct1BreakdownIfUnfired(world, definition.id);
+  world.life.hustle.activeDelivery = null;
   const readiness = getAct1MoveOutReadiness(world);
   world.life.hustle.moveOutReady = readiness.complete;
   if (!wasMoveOutReady && world.life.hustle.moveOutReady && world.life.actProgress.currentAct < 2) {
@@ -209,17 +228,21 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
   const wearCopy = scooterWear > 0 ? ` Scooter -${scooterWear}% (${player.bikeCondition}%).` : "";
 
   const cargoCopy = describeCargoCareLoss(cargoCare);
+  const breakdownCopy = breakdownScene?.fired
+    ? " Authored breakdown: cargo ruined, run recorded late, driver rating set to 3.2★."
+    : "";
   return {
     ok: true,
     message: `Delivered ${definition.title}${condition ? ` (${condition.label})` : ""}. Rp +${payout}. Driver rating ${starRating.toFixed(1)}★.${
       definition.onTimeBonus ? (onTime ? ` On-time bonus included.` : ` Window missed — no Rp ${definition.onTimeBonus} bonus.`) : ""
-    }${cargoCopy}${wearCopy}${moveOutCopy}`,
+    }${cargoCopy}${wearCopy}${breakdownCopy}${moveOutCopy}`,
     starRating,
     payout,
     cargoCare: cargoCare.eligible ? cargoCare : undefined,
     onTime,
     onTimeBonus,
-    storyScene
+    storyScene,
+    breakdownScene
   };
 }
 
@@ -263,8 +286,27 @@ function evaluateDeliveryOffer(world: WorldState, delivery: DeliveryDefinition):
   if (!player.hasBike) {
     return { delivery, available: false, reason: "You need a scooter for delivery work." };
   }
+  const requiredRating = getPostBreakdownRequiredRating(
+    world,
+    delivery.id,
+    delivery.minDriverRating ?? 0
+  );
+  const breakdownRatingLock = getBreakdownRatingLockReason(world, requiredRating);
+  if (breakdownRatingLock) {
+    return {
+      delivery,
+      available: false,
+      reason: breakdownRatingLock
+    };
+  }
   if (player.bikeStuck) {
-    return { delivery, available: false, reason: "Free your scooter before taking delivery work." };
+    return {
+      delivery,
+      available: false,
+      reason: isAct1ScooterBlown(world)
+        ? "Repair blown transmission at the scooter counter."
+        : "Free your scooter before taking delivery work."
+    };
   }
   if (player.bikeCondition < MIN_DELIVERY_BIKE_CONDITION) {
     return { delivery, available: false, reason: `Repair scooter above ${MIN_DELIVERY_BIKE_CONDITION}% condition.` };
@@ -280,7 +322,6 @@ function evaluateDeliveryOffer(world: WorldState, delivery: DeliveryDefinition):
       reason: `Need ${requiredDeliveries} completed ${requiredDeliveries === 1 ? "delivery" : "deliveries"}.`
     };
   }
-  const requiredRating = delivery.minDriverRating ?? 0;
   if (requiredRating > world.life.hustle.driverRating) {
     return { delivery, available: false, reason: `Need ${requiredRating.toFixed(1)}★ driver rating.` };
   }

@@ -3,6 +3,10 @@ import { adjustPlayerMeters } from "../meters/PlayerMeters";
 import { adjustReputation } from "../reputation/ReputationState";
 import { isAct1MoveOutReady } from "./HustleMilestones";
 import type { WorldState } from "../../types";
+import {
+  isAct1ScooterBlown,
+  markAct1BreakdownScooterRepaired
+} from "../story/Act1Breakdown";
 
 const SCOOTER_KEY_ITEM_ID = "scooter_key";
 export const DAILY_SCOOTER_UPGRADE_COST = 260;
@@ -134,6 +138,14 @@ export function getScooterRepairStatus(world: WorldState): ScooterRepairStatus {
   if (!player.hasBike) {
     return { available: false, reason: "You need a scooter before repairs matter.", cost, targetCondition };
   }
+  if (isAct1ScooterBlown(world) && player.money < cost) {
+    return {
+      available: false,
+      reason: `Transmission blown — need Rp ${cost - player.money} more for the counter repair.`,
+      cost,
+      targetCondition
+    };
+  }
   if (player.bikeCondition >= targetCondition) {
     return { available: false, reason: "Scooter is as good as this tier gets.", cost: 0, targetCondition };
   }
@@ -154,6 +166,7 @@ export function repairScooter(world: WorldState, now: number, performanceScore?:
   player.bikeCondition = repairedCondition;
   player.bikeStuck = false;
   player.hasBike = true;
+  const restoredBlownTransmission = markAct1BreakdownScooterRepaired(world);
   adjustPlayerMeters(world, { wellbeing: 3, focus: 1 });
   adjustReputation(world.reputation, 1, "Kept the scooter maintained for delivery work", now);
   const qualityCopy =
@@ -166,7 +179,9 @@ export function repairScooter(world: WorldState, now: number, performanceScore?:
           : " Rough patch, but it rolls.";
   return {
     ok: true,
-    message: `Scooter patched up to ${repairedCondition}%. Rp -${status.cost}.${qualityCopy}`
+    message: restoredBlownTransmission
+      ? `Transmission repaired. Ride restored at ${repairedCondition}%. Rp -${status.cost}. Driver rating stays ${world.life.hustle.driverRating.toFixed(1)}★.${qualityCopy}`
+      : `Scooter patched up to ${repairedCondition}%. Rp -${status.cost}.${qualityCopy}`
   };
 }
 

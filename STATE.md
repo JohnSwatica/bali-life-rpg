@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-15 (RPG-20260714-11 launch asset pipeline complete locally)
+Last updated: 2026-07-15 (RPG-20260714-07 merged; RPG-20260714-11 launch asset pipeline merged)
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -11,6 +11,8 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 `CLAUDE_PROJECT_REVIEW_2026-07-06.md` is Claude's full project review (bottlenecks, gap analysis, sequencing recommendation). It is a supervisory assessment, not a canonical design source — `GAME_DESIGN.md`/`STORY_BIBLE.md` still win on narrative/systems conflicts — but its top recommendation (no recorded human playtest yet; a `PLAYTEST_01.md` should exist before more systems work) should be treated as live until the user says otherwise.
 
 Current durable truth:
+
+- **RPG-20260714-07 complete locally on `feat/rpg-20260714-07-breakdown-reversal`:** the first board run accepted after both Act 1 turning points now arms one deterministic transmission failure. After mounted travel enters the authored dropoff-distance band, a procedural sting/smoke beat stops the scooter, ruins cargo, and reuses the stuck-bike visual at a dedicated push speed; the late dropoff still pays/counts, then sets driver rating exactly to 3.2. Kadek's recurring priority line and every >3.2★ offer show honest rating locks, normal 3.2★ work remains reachable after the counter repair, repair restores riding without restoring rating, Leo sends exactly one text, Kadek preserves his respect, and Made's goal exposes the failed 3.2/3.5★ condition. New gameplay-reachable proof state: `act1_both_tps`. Schema remains v11; proof: `docs/RPG-20260714-07_BREAKDOWN_REVERSAL_PROOF.md`; verification: 47 files / 306 tests and production build green, packet browser proof green with six screenshots and zero browser errors.
 
 - **RPG-20260714-11 complete locally on `feat/rpg-20260714-11-launch-assets`:** `npm run capture:launch` now regenerates the launch still set at 1280×800 plus 390×844 storm/street variants and three 5–8 second frame-sequence clips (storm steering, payout celebration, Leo race). It composes the existing smoke and dev proof harnesses, assembles GIF/WebM with local ffmpeg or leaves an explicit frame assembly fallback, and writes only to git-ignored `tmp/launch-assets/`. Proof: `docs/RPG-20260714-11_LAUNCH_ASSET_PROOF.md`; 46 files / 299 tests and production build green; canonical smoke and a clean-exit capture rerun passed.
 

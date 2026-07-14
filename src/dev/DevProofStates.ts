@@ -21,12 +21,14 @@ import {
   buildKadekRushOfferMessage,
   KADEK_RUSH_DELIVERY_ID
 } from "../systems/story/Act1KadekPriority";
+import { completeMadeRoomOfferScene } from "../systems/story/Act1MadeRoomOffer";
 import type { WorldState } from "../types";
 
 export const DEV_PROOF_BOOT_STATE_NAMES = [
   "act0_complete",
   "act1_leo_resolved",
-  "act1_steady_runner"
+  "act1_steady_runner",
+  "act1_both_tps"
 ] as const;
 
 export type DevProofBootStateName = (typeof DEV_PROOF_BOOT_STATE_NAMES)[number];
@@ -93,10 +95,18 @@ function buildAct1SteadyRunner(): WorldState {
   return world;
 }
 
+function buildAct1BothTurningPoints(): WorldState {
+  const world = buildAct1SteadyRunner();
+  const roomOffer = completeMadeRoomOfferScene(world, absoluteMinute(world) + 1);
+  requireMutation(roomOffer.fired, "complete Made hidden-room scene");
+  return world;
+}
+
 export const DEV_PROOF_BOOT_STATE_BUILDERS: Readonly<Record<DevProofBootStateName, DevProofBootStateBuilder>> = {
   act0_complete: buildAct0Complete,
   act1_leo_resolved: buildAct1LeoResolved,
-  act1_steady_runner: buildAct1SteadyRunner
+  act1_steady_runner: buildAct1SteadyRunner,
+  act1_both_tps: buildAct1BothTurningPoints
 };
 
 export function buildDevProofBootState(name: DevProofBootStateName): WorldState {

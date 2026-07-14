@@ -10,6 +10,10 @@ import {
 } from "./HustleMilestones";
 import { getStationRecoveryNudge } from "../life/StationRecovery";
 import { getMadeRoomGoalState } from "../story/Act1MadeRoomOffer";
+import {
+  isAct1BreakdownPushActive,
+  isAct1ScooterBlown
+} from "../story/Act1Breakdown";
 import type { WorldState } from "../../types";
 
 export interface HustleGoalState {
@@ -94,6 +98,13 @@ export function getHustleNextStep(world: WorldState): HustleNextStepState {
 
   if (hustle.activeDelivery) {
     const delivery = getDeliveryDefinition(hustle.activeDelivery.deliveryId);
+    if (isAct1BreakdownPushActive(world)) {
+      return {
+        title: "TRANSMISSION GONE — push it in",
+        detail: `Walk the blown scooter to ${delivery?.dropoffName ?? "the dropoff"}. The cargo is ruined, but this run still completes late.`,
+        urgency: "urgent"
+      };
+    }
     const timeLeft = Math.max(0, Math.ceil(hustle.activeDelivery.dueAt - absoluteMinute(world)));
     return {
       title: hustle.activeDelivery.stage === "accepted" ? "Pick up active delivery" : "Drop off active delivery",
@@ -122,6 +133,13 @@ export function getHustleNextStep(world: WorldState): HustleNextStepState {
   }
 
   if (player.bikeStuck) {
+    if (isAct1ScooterBlown(world)) {
+      return {
+        title: "Repair blown transmission",
+        detail: "Push complete. Take the scooter to the rental counter; repair restores the ride, not the 3.2★ rating.",
+        urgency: "blocked"
+      };
+    }
     return {
       title: "Free the scooter",
       detail: "Ask nearby helpers to pull it out before taking another delivery.",

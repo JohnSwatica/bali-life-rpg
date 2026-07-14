@@ -1,6 +1,7 @@
 import type { WorldState } from "../../types";
 import { getKadekPriorityAmbientLine } from "../story/Act1KadekPriority";
 import { getMadeRoomOfferAmbientLine } from "../story/Act1MadeRoomOffer";
+import { getKadekBreakdownAmbientLine } from "../story/Act1Breakdown";
 
 export type DialogueSurface = "panel" | "ambient";
 export type DialogueSurfaceReason = "act0" | "quest" | "relationship" | "minor";
@@ -31,6 +32,10 @@ export function getNpcDialogueSurface(input: NpcDialogueSurfaceInput): NpcDialog
 
 export function getAmbientNpcLine(world: WorldState, npcId: string, fallbackLine: string, routineLabel?: string): string {
   const player = world.players[world.localPlayerId];
+  if (npcId === "kadek") {
+    const breakdownLine = getKadekBreakdownAmbientLine(world);
+    if (breakdownLine) return breakdownLine;
+  }
   if (player.bikeStuck) {
     return "That scooter is asking for a mercy repair.";
   }
