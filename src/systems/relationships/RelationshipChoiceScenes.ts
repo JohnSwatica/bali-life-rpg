@@ -6,6 +6,8 @@ export type RelationshipChoiceActionId =
   | "accept_no_questions"
   | "decline_no_questions"
   | "complete_act1_leo_encounter"
+  | "keep_act1_luxury_tip"
+  | "return_act1_luxury_tip"
   | "start_rio_race"
   | "decline_rio_race";
 
@@ -24,9 +26,11 @@ export interface RelationshipChoiceOption {
 export interface RelationshipChoiceScene {
   id: string;
   npcId: string;
+  speakerName?: string;
   npcOpeningLine: string;
   prompt: string;
   trigger?: "quest_turnin" | "manual";
+  skipOptionIndex?: 0 | 1;
   options: [RelationshipChoiceOption, RelationshipChoiceOption];
 }
 
@@ -35,6 +39,7 @@ export const RELATIONSHIP_CHOICE_SCENES: Record<string, RelationshipChoiceScene>
     id: "ibu_sari_act0_scooter_deal",
     npcId: "ibu_sari",
     trigger: "manual",
+    skipOptionIndex: 0,
     npcOpeningLine:
       'Ibu Sari rests one hand on the catering box. Behind her, the old scooter coughs smoke into the blue dawn. "Fifteen minutes. Milk & Madu. Then we talk about what you owe me."',
     prompt: "The road, the room, and the clock all start here. How do you take the deal?",
@@ -163,6 +168,32 @@ export const RELATIONSHIP_CHOICE_SCENES: Record<string, RelationshipChoiceScene>
         actionId: "decline_rio_race"
       }
     ]
+  },
+  act1_luxury_tip_dilemma: {
+    id: "act1_luxury_tip_dilemma",
+    npcId: "villa_guest",
+    speakerName: "Villa Guest",
+    trigger: "manual",
+    skipOptionIndex: 1,
+    npcOpeningLine:
+      'The guest is already looking past you when their phone chimes. "There. Fifty. Sorry — call starting." Your wallet receipt opens: TIP TRANSFER · Rp 500.',
+    prompt: "They think they sent Rp 50. The gate is closing. What do you do?",
+    options: [
+      {
+        id: "keep_tip",
+        label: "Keep the Rp 500.",
+        resultLine:
+          'Rp 500 posts to your wallet. You lock the phone. "The app rounds in silence. So can you."',
+        actionId: "keep_act1_luxury_tip"
+      },
+      {
+        id: "return_tip",
+        label: "Return Rp 450. Keep the intended Rp 50.",
+        resultLine:
+          'You stop the gate and show them the receipt. The guest actually looks at you. "Oh. Thank you. Next time, ask for me at the gate." Rp 50 posts to your wallet.',
+        actionId: "return_act1_luxury_tip"
+      }
+    ]
   }
 };
 
@@ -174,4 +205,10 @@ export function getRelationshipChoiceSceneForNpc(npcId: string): RelationshipCho
 
 export function getRelationshipChoiceScene(sceneId: string): RelationshipChoiceScene | undefined {
   return RELATIONSHIP_CHOICE_SCENES[sceneId];
+}
+
+export function getRelationshipChoiceSkipOption(
+  scene: RelationshipChoiceScene
+): RelationshipChoiceOption | undefined {
+  return scene.skipOptionIndex == null ? undefined : scene.options[scene.skipOptionIndex];
 }

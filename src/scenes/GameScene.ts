@@ -165,6 +165,7 @@ import {
 import {
   getRelationshipChoiceScene,
   getRelationshipChoiceSceneForNpc,
+  getRelationshipChoiceSkipOption,
   type RelationshipChoiceOption,
   type RelationshipChoiceScene
 } from "../systems/relationships/RelationshipChoiceScenes";
@@ -247,6 +248,12 @@ import {
   isAct1ScooterBlown,
   triggerAct1Breakdown
 } from "../systems/story/Act1Breakdown";
+import {
+  ACT1_LUXURY_TIP_PENDING_FLAG,
+  ACT1_LUXURY_TIP_SCENE_ID,
+  getVillaRegularAmbientLine,
+  resolveAct1LuxuryTipChoice
+} from "../systems/story/Act1LuxuryTip";
 import {
   ACT0_STORM_DELIVERY_ID,
   ACT0_STORM_TRIGGER_MS,
@@ -858,6 +865,7 @@ export class GameScene extends Phaser.Scene {
   private rideCameraOffsetY = 0;
   private nearMissFeedbackCooldown = 0;
   private awaitingRelationshipChoice = false;
+  private activeRelationshipChoiceScene?: RelationshipChoiceScene;
   private pendingChoiceOpportunityId?: string;
   private nightOverlayLayer!: Phaser.GameObjects.Container;
   private nightOverlay!: Phaser.GameObjects.Graphics;
@@ -1891,9 +1899,10 @@ export class GameScene extends Phaser.Scene {
         } else if (this.mode === "committedActivity" || this.mode === "warungRush") {
           this.cancelCommittedActivity();
         } else if (this.awaitingRelationshipChoice) {
-          const scene = getRelationshipChoiceScene("ibu_sari_act0_scooter_deal");
-          if (scene && this.world.life.actProgress.act0Step === "meet_ibu_sari" && !this.world.questFlags.act0_v4_opening_complete) {
-            this.resolveRelationshipChoice(scene, scene.options[0]);
+          const scene = this.activeRelationshipChoiceScene;
+          const defaultOption = scene ? getRelationshipChoiceSkipOption(scene) : undefined;
+          if (scene && defaultOption) {
+            this.resolveRelationshipChoice(scene, defaultOption);
           }
           return;
         } else if (this.phone?.isOpen) {
@@ -1971,6 +1980,14 @@ export class GameScene extends Phaser.Scene {
     this.closePauseMenu();
     this.resumeCommittedActivityIfNeeded();
     this.resumeAct0BackHalfIfNeeded();
+    if (this.world.questFlags[ACT1_LUXURY_TIP_PENDING_FLAG]) {
+      const scene = getRelationshipChoiceScene(ACT1_LUXURY_TIP_SCENE_ID);
+      if (scene) {
+        this.openRelationshipChoiceScene(scene);
+        this.sessionStartedAt ??= Date.now();
+        return;
+      }
+    }
     if (this.pendingAct2CutscenePreviousAct != null) {
       const previousAct = this.pendingAct2CutscenePreviousAct;
       this.pendingAct2CutscenePreviousAct = undefined;
@@ -4053,6 +4070,7 @@ export class GameScene extends Phaser.Scene {
     this.closePanel(false);
     this.mode = "dialogue";
     this.awaitingRelationshipChoice = true;
+    this.activeRelationshipChoiceScene = scene;
     this.createRelationshipChoiceOverlay(scene);
   }
 
@@ -4077,13 +4095,13 @@ export class GameScene extends Phaser.Scene {
     overlay.dataset.dialoguePanel = "true";
     overlay.dataset.uiSurface = "dialogue";
     overlay.setAttribute("role", "dialog");
-    overlay.setAttribute("aria-label", npc?.name ?? scene.npcId);
+    overlay.setAttribute("aria-label", scene.speakerName ?? npc?.name ?? scene.npcId);
     overlay.addEventListener("pointerdown", (event) => event.stopPropagation());
     overlay.addEventListener("click", (event) => event.stopPropagation());
 
     const titleEl = document.createElement("h2");
     titleEl.className = "bali-life-dialogue-title";
-    titleEl.textContent = npc?.name ?? scene.npcId;
+    titleEl.textContent = scene.speakerName ?? npc?.name ?? scene.npcId;
 
     const bodyEl = document.createElement("div");
     bodyEl.className = "bali-life-dialogue-body";
@@ -4119,7 +4137,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private resolveRelationshipChoice(scene: RelationshipChoiceScene, option: RelationshipChoiceOption): void {
+    if (!this.awaitingRelationshipChoice) return;
     this.awaitingRelationshipChoice = false;
+    this.activeRelationshipChoiceScene = undefined;
     const consumesScene =
       option.actionId !== "start_rio_race" &&
       option.actionId !== "decline_rio_race" &&
@@ -4184,6 +4204,17 @@ export class GameScene extends Phaser.Scene {
         npcDefinitions[scene.npcId]?.name ?? scene.npcId,
         `${option.resultLine}\n\n${getAct1LeoEncounterHookLine(this.world)}`,
         scene.npcId
+      );
+      return;
+    }
+    if (option.actionId === "keep_act1_luxury_tip" || option.actionId === "return_act1_luxury_tip") {
+      const choice = option.actionId === "keep_act1_luxury_tip" ? "keep" : "return";
+      const resolution = resolveAct1LuxuryTipChoice(this.world, choice, this.getAbsoluteMinute());
+      saveWorldState(this.world);
+      this.phone?.refresh();
+      this.openDialogue(
+        scene.speakerName ?? npcDefinitions[scene.npcId]?.name ?? scene.npcId,
+        resolution.ok ? option.resultLine : "The transfer has already been settled."
       );
       return;
     }
@@ -7537,6 +7568,7 @@ export class GameScene extends Phaser.Scene {
     this.panel?.destroy(true);
     this.panel = undefined;
     this.awaitingRelationshipChoice = false;
+    this.activeRelationshipChoiceScene = undefined;
     this.destroyDialogueOverlay();
     this.destroyActivityMenuOverlay();
     if (setWorldMode) {
@@ -8960,6 +8992,10 @@ export class GameScene extends Phaser.Scene {
     if (result.breakdownScene?.fired && result.breakdownScene.dialogue) {
       this.openDialogue("Dropoff", result.breakdownScene.dialogue);
     }
+    if (result.luxuryTipScene?.fired) {
+      const scene = getRelationshipChoiceScene(ACT1_LUXURY_TIP_SCENE_ID);
+      if (scene) this.openRelationshipChoiceScene(scene);
+    }
     if (result.ok && !wasPickup && !isAct0StoryDelivery(active.deliveryId) && active.deliveryId !== "act0_ibu_milk_madu_catering") {
       if (chapterCutsceneDelayMs > 0) {
         this.time.delayedCall(chapterCutsceneDelayMs, () => {
@@ -8981,6 +9017,11 @@ export class GameScene extends Phaser.Scene {
         "kadek",
         getAmbientNpcLine(this.world, "kadek", '"The list holds. Ratings are the app\'s opinion, not mine."')
       );
+      return;
+    }
+    const villaRegularLine = getVillaRegularAmbientLine(this.world, deliveryId);
+    if (villaRegularLine) {
+      this.spawnFloatingText(villaRegularLine, this.player.x, this.player.y - scaleDistance(52), "#fff0bd");
       return;
     }
     const cargo = result.cargoCare;
