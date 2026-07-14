@@ -3,7 +3,7 @@ PACKET ID: RPG-20260714-03
 PROJECT:   Bali Life RPG
 TARGET:    Codex
 CODEX:     Terra · Medium — one staged scene + gating + goal-tracking residue across several files; reuses proven patterns, touches no economy or milestone math
-PREREQ:    branch from main at 65b0de6 or later (RPG-20260714-02 merged)
+PREREQ:    continue on feat/rpg-20260714-03-made-room-offer, rebased onto main at e345b0a or later (RPG-20260714-04 merged)
 TITLE:     Act 1 TP2 — Made's hidden room offer at Bungalow Living
 MAP DELTA: none — staged at the existing Bungalow Living venue/interior
 PR TAG: [RPG-20260714-03]
@@ -60,15 +60,19 @@ HARD CONSTRAINTS
 - Voice discipline: Made is precise and transactional, never sleazy, never
   warm. If a line sounds like a mentor or a villain, rewrite it.
 
-DEFINITION OF DONE
+DEFINITION OF DONE (amended 2026-07-14 to the beat-scoped proof standard
+after RPG-20260714-04 merged — full smoke is NOT required for this packet)
+- Rebase/merge the existing feature branch onto main (e345b0a or later,
+  which includes the dev proof harness).
 - npm test -- --run + npm run build green. Tests: invitation gates on
   Steady Runner and persists; scene fires once; goal appears with correct
   per-condition state (rent-record read from existing state; letter always
   unmet here); no milestone/economy values changed.
-- Headless proof: drive to Steady Runner, screenshot the feed invitation,
-  Made's world-scene cue, the dialogue scene, and the tracked goal with
-  condition states. Full smoke green (if the villa-leg movement flake
-  recurs, note it and retry once — it passed on main at 65b0de6).
+- Beat proof via the harness: a scripts/proofs/ script from the
+  "act1_steady_runner" boot state exercising the beat — feed invitation,
+  Made's world-scene cue, the dialogue scene, the tracked goal with
+  condition states — with screenshots. No full-smoke run; the Wave 1 gate
+  covers that.
 - Proof doc docs/RPG-20260714-03_MADE_ROOM_OFFER_PROOF.md; STATE.md bullet;
   DECISIONS.md entry (TP2 in; Beats 3-6 pending per backbone doc).
 
