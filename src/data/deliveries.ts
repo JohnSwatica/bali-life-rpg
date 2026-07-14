@@ -1,6 +1,11 @@
 import { offsetVenuePoint } from "./layoutLookup";
 import type { Meter, ReputationTag } from "../types";
 import { ACT0_STORM_DELIVERY_ID, ACT0_VILLA_DELIVERY_ID } from "../systems/story/Act0BackHalf";
+import {
+  KADEK_PRIORITY_DELIVERY_ID,
+  KADEK_RUSH_DELIVERY_ID,
+  type KadekBoardStyle
+} from "../systems/story/Act1KadekPriority";
 
 export interface DeliveryCondition {
   id: string;
@@ -21,6 +26,7 @@ export interface DeliveryDefinition {
   dropoffId: string;
   dropoffName: string;
   dropoffLabel: string;
+  dropoffVenueId?: string;
   dropoffPoint: { x: number; y: number; radius: number };
   itemId: string;
   timeLimitMin: number;
@@ -39,6 +45,7 @@ export interface DeliveryDefinition {
   minDriverRating?: number;
   minCompletedDeliveries?: number;
   conditions?: DeliveryCondition[];
+  boardStyle?: KadekBoardStyle;
 }
 
 export const deliveryDefinitions: DeliveryDefinition[] = [
@@ -163,6 +170,77 @@ export const deliveryDefinitions: DeliveryDefinition[] = [
         payoutBonus: 150,
         meterDeltas: { focus: 3 },
         ratingModifier: 0
+      }
+    ]
+  },
+  {
+    id: KADEK_RUSH_DELIVERY_ID,
+    title: "SPECIAL · Kadek's rush-hour ingredients",
+    description: "A one-time BAKED. ingredient rescue: high fragility, a tight clock, and visibly better pay than the starter board.",
+    pickupVenueId: "canggu_station",
+    pickupLabel: "Collect Kadek's sealed ingredient crate at Canggu Station.",
+    dropoffId: "baked_priority_counter",
+    dropoffName: "BAKED. Berawa Counter",
+    dropoffLabel: "Carry the ingredient crate to Kadek at the BAKED. counter.",
+    dropoffVenueId: "baked_berawa",
+    dropoffPoint: {
+      ...offsetVenuePoint("baked_berawa", { x: 700, y: 470 }, 12, 70),
+      radius: 78
+    },
+    itemId: "baked_ingredient_crate",
+    timeLimitMin: 52,
+    payout: 130,
+    meterDeltas: { energy: -13, wellbeing: 1, focus: 4, social: 2 },
+    affinityBumps: [{ npcId: "kadek", amount: 4 }],
+    reputation: { delta: 2, tag: "reliable", reason: "Completed Kadek's rush-hour ingredient run" },
+    ratingWeight: 0.85,
+    boardAvailable: true,
+    repeatable: false,
+    boardStyle: "story_special",
+    conditions: [
+      {
+        id: "kadek_rush_high_fragility",
+        label: "SPECIAL · High fragility",
+        description: "Rush-hour traffic is dense. The base fare is safe; cargo hits cut only the care margin.",
+        payoutBonus: 21,
+        timeLimitDeltaMin: -8,
+        meterDeltas: { energy: -2, focus: 2 },
+        ratingModifier: -0.5
+      }
+    ]
+  },
+  {
+    id: KADEK_PRIORITY_DELIVERY_ID,
+    title: "PRIORITY · BAKED. fragile order",
+    description: "Kadek's recurring priority-driver line. Better starter-tier pay, always fragile, and never a casual ride.",
+    pickupVenueId: "baked_berawa",
+    pickupLabel: "Collect Kadek's priority pastry box at BAKED.",
+    dropoffId: "baked_priority_upper_lane",
+    dropoffName: "Upper Lane Residence",
+    dropoffLabel: "Deliver Kadek's fragile priority box to the upper-lane residence gate.",
+    dropoffPoint: {
+      ...offsetVenuePoint("finns_recreation_club", { x: 1660, y: 360 }, -210, 92),
+      radius: 78
+    },
+    itemId: "delivery_pastry_box",
+    timeLimitMin: 62,
+    payout: 145,
+    meterDeltas: { energy: -12, wellbeing: 1, focus: 4, social: 2 },
+    affinityBumps: [{ npcId: "kadek", amount: 2 }],
+    reputation: { delta: 1, tag: "reliable", reason: "Completed a BAKED. priority order" },
+    ratingWeight: 0.8,
+    boardAvailable: true,
+    repeatable: true,
+    boardStyle: "priority_premium",
+    conditions: [
+      {
+        id: "baked_priority_fragile",
+        label: "PRIORITY · Fragile",
+        description: "Kadek packed this himself. Smooth steering protects the full priority margin.",
+        payoutBonus: 19,
+        timeLimitDeltaMin: -6,
+        meterDeltas: { focus: 2 },
+        ratingModifier: -0.5
       }
     ]
   },

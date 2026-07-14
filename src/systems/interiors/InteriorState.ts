@@ -144,15 +144,16 @@ export function getInteriorDeliveryPickupForStation(
   station: InteriorStationDefinition
 ): InteriorDeliveryPickupTarget | undefined {
   const active = world.life.hustle.activeDelivery;
-  if (!active || active.stage !== "accepted") {
+  if (!active) {
     return undefined;
   }
   const delivery = getDeliveryDefinition(active.deliveryId);
-  if (!delivery || delivery.pickupVenueId !== station.activityVenueId) {
+  const venueId = active.stage === "accepted" ? delivery?.pickupVenueId : delivery?.dropoffVenueId;
+  if (!delivery || venueId !== station.activityVenueId) {
     return undefined;
   }
   return {
     deliveryId: active.deliveryId,
-    label: delivery.pickupLabel
+    label: active.stage === "accepted" ? delivery.pickupLabel : delivery.dropoffLabel
   };
 }

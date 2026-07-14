@@ -1,4 +1,5 @@
 import type { WorldState } from "../../types";
+import { getKadekPriorityAmbientLine } from "../story/Act1KadekPriority";
 
 export type DialogueSurface = "panel" | "ambient";
 export type DialogueSurfaceReason = "act0" | "quest" | "relationship" | "minor";
@@ -37,6 +38,12 @@ export function getAmbientNpcLine(world: WorldState, npcId: string, fallbackLine
   }
   if (world.life.hustle.driverRating < 3.4 && (npcId === "ibu_sari" || npcId === "kadek")) {
     return "Slow down. Ratings recover when deliveries arrive clean.";
+  }
+  if (npcId === "kadek") {
+    const priorityLine = getKadekPriorityAmbientLine(world);
+    if (priorityLine) {
+      return priorityLine;
+    }
   }
   if (npcId === "rio") {
     const rioMemory = world.relationships.find((memory) => memory.subjectType === "npc" && memory.subjectId === "rio");

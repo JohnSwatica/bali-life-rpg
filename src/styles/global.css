@@ -497,6 +497,18 @@ body.bali-life-overlay-open .bali-life-hud-meters {
   background: rgba(255, 248, 223, 0.04);
 }
 
+.bali-life-activity-menu-row.is-special {
+  border-color: rgba(255, 143, 128, 0.86);
+  background: linear-gradient(135deg, rgba(118, 43, 48, 0.76), rgba(255, 143, 128, 0.1));
+  box-shadow: inset 4px 0 0 #ff8f80;
+}
+
+.bali-life-activity-menu-row.is-premium {
+  border-color: rgba(244, 213, 141, 0.76);
+  background: linear-gradient(135deg, rgba(74, 62, 35, 0.76), rgba(244, 213, 141, 0.09));
+  box-shadow: inset 4px 0 0 #f4d58d;
+}
+
 .bali-life-activity-menu-copy {
   min-width: 0;
 }
@@ -528,6 +540,16 @@ body.bali-life-overlay-open .bali-life-hud-meters {
 .bali-life-activity-menu-button.is-blocked {
   background: rgba(74, 51, 49, 0.95);
   color: rgba(255, 248, 223, 0.78);
+}
+
+.bali-life-activity-menu-button.is-special {
+  border-color: rgba(255, 196, 166, 0.9);
+  background: rgba(118, 43, 48, 0.98);
+}
+
+.bali-life-activity-menu-button.is-premium {
+  border-color: rgba(255, 240, 189, 0.9);
+  background: rgba(92, 75, 37, 0.98);
 }
 
 .bali-life-activity-menu-button.is-close {

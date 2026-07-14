@@ -21,6 +21,13 @@ import { getAct1MoveOutReadiness } from "./HustleMilestones";
 import type { ActiveDeliveryState, WorldState } from "../../types";
 import { createDeliveryRideRun } from "../ride/DeliveryRideMode";
 import { getDeliveryBasePayoutAfterAct1Cut } from "../story/Act1IncitingHook";
+import {
+  completeKadekPriorityScene,
+  getKadekDeliveryGateReason,
+  KADEK_RUSH_DELIVERY_ID,
+  shouldListKadekDelivery,
+  type KadekPrioritySceneResult
+} from "../story/Act1KadekPriority";
 
 export interface DeliveryResult {
   ok: boolean;
@@ -31,6 +38,7 @@ export interface DeliveryResult {
   cargoCare?: CargoCareAdjustment;
   onTime?: boolean;
   onTimeBonus?: number;
+  storyScene?: KadekPrioritySceneResult;
 }
 
 export interface DeliveryOfferAvailability {
@@ -48,7 +56,7 @@ export interface EffectiveDeliveryTerms {
 
 export function getDeliveryOfferAvailability(world: WorldState): DeliveryOfferAvailability[] {
   return deliveryDefinitions
-    .filter((delivery) => delivery.boardAvailable)
+    .filter((delivery) => delivery.boardAvailable && shouldListKadekDelivery(world, delivery.id))
     .map((delivery) => evaluateDeliveryOffer(world, delivery));
 }
 
@@ -171,6 +179,9 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
   active.stage = "picked_up";
   active.completedAt = now;
   active.starRating = starRating;
+  const storyScene = definition.id === KADEK_RUSH_DELIVERY_ID
+    ? completeKadekPriorityScene(world, active.cargoIntegrity ?? 100, now)
+    : undefined;
   world.life.hustle.activeDelivery = null;
   if (!world.life.hustle.completedDeliveryIds.includes(definition.id)) {
     world.life.hustle.completedDeliveryIds.push(definition.id);
@@ -207,7 +218,8 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
     payout,
     cargoCare: cargoCare.eligible ? cargoCare : undefined,
     onTime,
-    onTimeBonus
+    onTimeBonus,
+    storyScene
   };
 }
 
@@ -240,6 +252,10 @@ function evaluateDeliveryOffer(world: WorldState, delivery: DeliveryDefinition):
   }
   if (world.activeActivity?.source === "rivalRace") {
     return { delivery, available: false, reason: "Finish Leo's race before taking a delivery." };
+  }
+  const storyGate = getKadekDeliveryGateReason(world, delivery.id);
+  if (storyGate) {
+    return { delivery, available: false, reason: storyGate };
   }
   if (!world.life.actProgress.firstDayComplete) {
     return { delivery, available: false, reason: "Finish Ibu Sari's first-day run first." };
