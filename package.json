@@ -9,6 +9,7 @@
     "generate:layout": "tsx scripts/generateLayoutFromOSM.ts",
     "smoke": "node scripts/smokePlaythrough.mjs",
     "beat-proof": "node scripts/beatProof.mjs",
+    "capture:launch": "node scripts/captureLaunchAssets.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run"
   },

@@ -20,6 +20,23 @@ Environment overrides:
 - `SMOKE_PORT=4180` changes the isolated Vite port.
 - `SMOKE_BASE_URL=http://127.0.0.1:5173/?debug=1` uses an already-running build instead of starting Vite.
 
+## Launch asset capture
+
+Run:
+
+```bash
+npm run capture:launch
+```
+
+This regenerates the launch stills and the three 5–8 second clips under
+`tmp/launch-assets/`. It runs the canonical smoke proof for the authored
+cold-open, storm, villa, and kos moments, then uses the dev-only proof boot
+states for the phone, Kadek, street, storm, payout, and Leo race captures.
+Each clip keeps its PNG frame sequence. When `ffmpeg` is available, GIF and
+WebM files are assembled automatically; otherwise the frame directory
+contains an `ASSEMBLE.txt` command for local assembly. The output is ignored
+by git so rerunning the command replaces assets instead of accumulating them.
+
 ## Debug snapshot contract
 
 `window.__BALI_LIFE_DEBUG__` is an automation/read-only surface published by `GameScene`:
