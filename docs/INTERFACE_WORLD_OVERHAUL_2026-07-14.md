@@ -67,10 +67,10 @@ you where you are.
 
 ## Packet map (Wave 1.5, sequential)
 
-- RPG-20260714-05 — Workstream A (phone diet: cull, hierarchy, tab collapse)
-- RPG-20260714-06 — Workstream B (venue purpose pass)
-- RPG-20260715-01 — Workstream C (street density)
-- RPG-20260715-02 — Workstream D (interior identity)
+- RPG-20260714-05 — Workstream A (phone diet) — MERGED (PR #8)
+- RPG-20260714-06 — Workstreams B + C + D bundled in one packet (CEO
+  instruction 2026-07-14: "give me the remaining three in one packet"),
+  plus two -05 review riders (stale Rp 700 goal copy; empty-state line)
 
 Wave 1.5 gate: before/after screenshot review of phone, three venue panels,
 three street stretches, five interiors — judged against this contract; then
