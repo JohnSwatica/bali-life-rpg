@@ -12,9 +12,8 @@ Format for new entries:
 <verbatim copy of the full triggering prompt/request/feedback — not a summary>
 ```
 
-## Three open CEO decisions from the 2026-07-06 review (added 2026-07-08; playtest half resolved 2026-07-12)
+## Remaining CEO decision from the 2026-07-06 review (added 2026-07-08; mostly resolved by 2026-07-14 launch directive)
 
-The personal-playtest half of this entry is RESOLVED — John played on 2026-07-12 and the feedback is logged in `PLAYTEST_01.md` (bored at minute 5; four problems; narrative pivot to STORY_BIBLE v4). Still outstanding:
+The playtest half was resolved 2026-07-12 (`PLAYTEST_01.md`). The identity question (hobby vs. audience asset) and time-budget question were effectively answered 2026-07-14 by the Season 1 launch directive (`LAUNCH_PLAN_SEASON1_2026-07-14.md`: public itch.io launch, 2–3 packets/day). The outsider-share item is deleted — CEO retired all testing gates 2026-07-14; first outside players arrive at launch. Still outstanding:
 
-- John answers the three decisions from `CLAUDE_PROJECT_REVIEW_2026-07-06.md` §6: project identity (hobby vs. audience asset), stakes ceiling, weekly time budget vs. NomadNest/match.co.
-- 3-5 outside players on the public URL — **now gated behind the first-ten-minutes rebuild** (RPG-20260713-03/04, per the 2026-07-13 CEO directive: John played the merged build and it "still felt the same"; don't burn one-shot first impressions on a build the founder himself wouldn't love). Share once -03/-04 land and John signs off on a fresh playthrough.
+- Stakes ceiling from `CLAUDE_PROJECT_REVIEW_2026-07-06.md` §6 (how much money/time this project is allowed to consume before it must justify itself).
