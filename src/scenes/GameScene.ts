@@ -201,6 +201,12 @@ import {
   getWarungInteriorAccessState,
   purchaseKadekFocusBufferPastry
 } from "../systems/story/Act2StructuralUnlocks";
+import {
+  buildPdaRevealMessage,
+  completePdaReveal,
+  getPdaReputationReadModel,
+  isPdaRevealPending
+} from "../systems/story/Act2PdaReveal";
 import { canSleepNow } from "../systems/time/DailyClock";
 import {
   createAuthoredDay1ClockState,
@@ -981,6 +987,7 @@ export class GameScene extends Phaser.Scene {
       onUpgradeScooter: () => this.upgradePhoneScooter(),
       onFeedViewed: () => this.markPhoneFeedRead(),
       onFeedback: () => this.sendFeedback(),
+      onBeforeProfileOpen: () => this.maybeOpenAct2PdaReveal(),
       onClose: () => {
         if (this.mode === "phone") {
           this.mode = this.activeInteriorId ? "interior" : "world";
@@ -10012,6 +10019,12 @@ export class GameScene extends Phaser.Scene {
     const maintenance = tutorialActive
       ? { spawned: [], expired: [] }
       : maintainOpportunityPool(this.world.opportunities, this.world);
+    const pdaRevealMessage = tutorialActive
+      ? undefined
+      : buildPdaRevealMessage(this.world, this.getAbsoluteMinute());
+    const pdaRevealMessageAdded = pdaRevealMessage
+      ? appendOpportunityMessage(this.world.opportunities, pdaRevealMessage)
+      : false;
     const authoredTexts = tutorialActive ? [] : generateOpportunityPhoneTexts(this.world.opportunities, this.world);
     const kadekRushMessage = tutorialActive
       ? undefined
@@ -10043,6 +10056,7 @@ export class GameScene extends Phaser.Scene {
     const changed =
       maintenance.spawned.length > 0 ||
       maintenance.expired.length > 0 ||
+      pdaRevealMessageAdded ||
       authoredTexts.length > 0 ||
       kadekRushMessageAdded ||
       madeRoomOfferMessageAdded ||
@@ -10129,6 +10143,16 @@ export class GameScene extends Phaser.Scene {
     this.mode = "phone";
     this.phone?.open(phoneTab);
     return { ok: true, message: `${phoneTab} opened.` };
+  }
+
+  private maybeOpenAct2PdaReveal(): boolean {
+    if (!isPdaRevealPending(this.world)) return false;
+    const model = getPdaReputationReadModel(this.world);
+    this.phone?.openAct2PdaReveal(model, () => {
+      if (!completePdaReveal(this.world)) return;
+      saveWorldState(this.world);
+    });
+    return true;
   }
 
   private devOpenVenuePanel(venueId: string): DevProofInteractionResult {

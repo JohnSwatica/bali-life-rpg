@@ -26,6 +26,10 @@ import { getRentPressureState, getScooterRepairStatus, getScooterUpgradeStatus }
 import { getHustleGoalStates, getHustleNextStep } from "../../systems/hustle/HustleGoals";
 import { getCrewCalendarEntries, getCrewCalendarWeekLabel } from "../../systems/crews/CrewCalendar";
 import { getStructuralUnlockProfileLines } from "../../systems/story/Act2StructuralUnlocks";
+import {
+  getPdaProfileLines,
+  type PdaReputationReadModel
+} from "../../systems/story/Act2PdaReveal";
 import type { GameEvent, LiveOpportunity, OpportunityMessage, RelationshipMemory, Venue, WorldState } from "../../types";
 import { getPhoneCameraScale, getPhonePanelLayout, PHONE_CONTENT_INSET_PX } from "./PhoneLayout";
 
@@ -100,9 +104,10 @@ export function parsePhoneTab(value: string): PhoneTab | undefined {
   return PHONE_TABS.find((tab) => tab.toLowerCase() === normalized);
 }
 
-type Act0StoryPhoneMoment =
+type PhoneStoryMoment =
   | { id: "nusadrop_signup"; step: 0 | 1 | 2; onComplete: () => void }
-  | { id: "villa_order_ping"; step: 0; depositGap: number; cleanPayout: number; onComplete: () => void };
+  | { id: "villa_order_ping"; step: 0; depositGap: number; cleanPayout: number; onComplete: () => void }
+  | { id: "act2_pda_reveal"; step: 0 | 1; model: PdaReputationReadModel; onComplete: () => void };
 
 export interface Act0SignupLeaderboardRow {
   rank: string;
@@ -135,6 +140,7 @@ interface PhoneShellOptions {
   onUpgradeScooter: () => void;
   onFeedViewed: () => void;
   onFeedback: () => void;
+  onBeforeProfileOpen?: () => boolean;
   onClose: () => void;
 }
 
@@ -142,7 +148,7 @@ export class PhoneShell {
   private container?: Phaser.GameObjects.Container;
   private activeTab: PhoneTab = "Feed";
   private selectedVenueId?: string;
-  private act0StoryMoment?: Act0StoryPhoneMoment;
+  private phoneStoryMoment?: PhoneStoryMoment;
 
   constructor(private readonly options: PhoneShellOptions) {}
 
@@ -150,12 +156,12 @@ export class PhoneShell {
     return Boolean(this.container);
   }
 
-  get activeStoryMomentId(): Act0StoryPhoneMoment["id"] | null {
-    return this.act0StoryMoment?.id ?? null;
+  get activeStoryMomentId(): PhoneStoryMoment["id"] | null {
+    return this.phoneStoryMoment?.id ?? null;
   }
 
   get activeStoryMomentStep(): number | null {
-    return this.act0StoryMoment?.step ?? null;
+    return this.phoneStoryMoment?.step ?? null;
   }
 
   toggle(): void {
@@ -167,18 +173,19 @@ export class PhoneShell {
   }
 
   open(tab: PhoneTab = this.activeTab): void {
-    this.act0StoryMoment = undefined;
+    this.phoneStoryMoment = undefined;
     this.activeTab = tab;
+    if (tab === "Profile" && this.options.onBeforeProfileOpen?.()) return;
     this.render();
   }
 
   openAct0Signup(onComplete: () => void): void {
-    this.act0StoryMoment = { id: "nusadrop_signup", step: 0, onComplete };
+    this.phoneStoryMoment = { id: "nusadrop_signup", step: 0, onComplete };
     this.render();
   }
 
   openAct0VillaOrder(depositGap: number, cleanPayout: number, onComplete: () => void): void {
-    this.act0StoryMoment = {
+    this.phoneStoryMoment = {
       id: "villa_order_ping",
       step: 0,
       depositGap: Math.max(0, Math.round(depositGap)),
@@ -188,9 +195,14 @@ export class PhoneShell {
     this.render();
   }
 
+  openAct2PdaReveal(model: PdaReputationReadModel, onComplete: () => void): void {
+    this.phoneStoryMoment = { id: "act2_pda_reveal", step: 0, model, onComplete };
+    this.render();
+  }
+
   close(): void {
-    const defaultForward = this.act0StoryMoment?.onComplete;
-    this.act0StoryMoment = undefined;
+    const defaultForward = this.phoneStoryMoment?.onComplete;
+    this.phoneStoryMoment = undefined;
     this.container?.destroy(true);
     this.container = undefined;
     this.options.onClose();
@@ -230,8 +242,8 @@ export class PhoneShell {
     bg.strokeRoundedRect(x, y, panelWidth, panelHeight, 10);
     container.add(bg);
 
-    if (this.act0StoryMoment) {
-      this.renderAct0StoryMoment(container, x, y, panelWidth, panelHeight, bodyX, bodyWidth);
+    if (this.phoneStoryMoment) {
+      this.renderPhoneStoryMoment(container, x, y, panelWidth, panelHeight, bodyX, bodyWidth);
     } else {
       const compact = panelWidth < 560;
       const tabRows = Math.ceil(getPhoneVisibleTabs(this.options.getWorld()).length / (compact ? 4 : 8));
@@ -250,7 +262,7 @@ export class PhoneShell {
     this.container = container;
   }
 
-  private renderAct0StoryMoment(
+  private renderPhoneStoryMoment(
     container: Phaser.GameObjects.Container,
     x: number,
     y: number,
@@ -259,8 +271,12 @@ export class PhoneShell {
     bodyX: number,
     bodyWidth: number
   ): void {
-    const moment = this.act0StoryMoment;
+    const moment = this.phoneStoryMoment;
     if (!moment) return;
+    if (moment.id === "act2_pda_reveal") {
+      this.renderAct2PdaRevealMoment(container, x, y, panelWidth, panelHeight, bodyX, bodyWidth, moment);
+      return;
+    }
     container.add(this.options.scene.add.text(x + PHONE_CONTENT_INSET_PX, y + 18, "Bali Life Phone · NusaDrop", this.titleStyle()));
     container.add(
       this.options.scene.add.text(
@@ -287,13 +303,13 @@ export class PhoneShell {
       this.renderTextList(container, bodyX, y + 112, bodyWidth, lines);
       const actionLabel = moment.step === 0 ? "Install NusaDrop" : moment.step === 1 ? "Create Driver ID" : "Take First Run";
       this.addButton(container, bodyX, y + panelHeight - 104, Math.min(260, bodyWidth), 42, actionLabel, () => {
-        if (!this.act0StoryMoment || this.act0StoryMoment.id !== "nusadrop_signup") return;
-        if (this.act0StoryMoment.step < 2) {
-          this.act0StoryMoment = { ...this.act0StoryMoment, step: (this.act0StoryMoment.step + 1) as 1 | 2 };
+        if (!this.phoneStoryMoment || this.phoneStoryMoment.id !== "nusadrop_signup") return;
+        if (this.phoneStoryMoment.step < 2) {
+          this.phoneStoryMoment = { ...this.phoneStoryMoment, step: (this.phoneStoryMoment.step + 1) as 1 | 2 };
           this.render();
           return;
         }
-        this.completeAct0StoryMoment();
+        this.completePhoneStoryMoment();
       }, 0x35533f);
     } else {
       this.renderTextList(container, bodyX, y + 112, bodyWidth, [
@@ -304,7 +320,7 @@ export class PhoneShell {
         "Pickup: BAKED. · Drop: Lantern Villa Gate"
       ]);
       this.addButton(container, bodyX, y + panelHeight - 104, Math.min(260, bodyWidth), 42, "Accept Villa Order", () => {
-        this.completeAct0StoryMoment();
+        this.completePhoneStoryMoment();
       }, 0x35533f);
     }
 
@@ -318,9 +334,81 @@ export class PhoneShell {
     );
   }
 
-  private completeAct0StoryMoment(): void {
-    const onComplete = this.act0StoryMoment?.onComplete;
-    this.act0StoryMoment = undefined;
+  private renderAct2PdaRevealMoment(
+    container: Phaser.GameObjects.Container,
+    x: number,
+    y: number,
+    _panelWidth: number,
+    panelHeight: number,
+    bodyX: number,
+    bodyWidth: number,
+    moment: Extract<PhoneStoryMoment, { id: "act2_pda_reveal" }>
+  ): void {
+    container.add(this.options.scene.add.text(x + PHONE_CONTENT_INSET_PX, y + 18, "Bali Life Phone · NusaDrop", this.titleStyle()));
+    container.add(
+      this.options.scene.add.text(
+        x + PHONE_CONTENT_INSET_PX,
+        y + 52,
+        moment.step === 0 ? "DRIVER TRANSPARENCY INITIATIVE" : "UNLABELED PROFILE FIELD",
+        this.sectionStyle()
+      )
+    );
+    const model = moment.model;
+    const lines = moment.step === 0
+      ? [
+          `PLATFORM EFFICIENCY SCORE  ${model.platformEfficiencyScore}/100`,
+          `Live signal ${formatSigned(-model.relationalAxis)}`,
+          "NusaDrop: Clearer performance metrics help top drivers optimize.",
+          "One additional field was included in the profile payload."
+        ]
+      : [
+          `metric_x  ${model.communityTrustScore}/100`,
+          `Live signal ${formatSigned(model.rootedAxis)}`,
+          `Ibu Sari: “${model.ibuAnnotation}”`,
+          "",
+          ...model.historyMarkers.map((marker) => `· ${marker.label}`),
+          "",
+          model.relationshipCopy
+        ];
+    this.renderTextList(container, bodyX, y + 112, bodyWidth, lines);
+    this.addButton(
+      container,
+      bodyX,
+      y + panelHeight - 104,
+      Math.min(260, bodyWidth),
+      42,
+      moment.step === 0 ? "Inspect included field" : "Keep in Profile",
+      () => {
+        if (!this.phoneStoryMoment || this.phoneStoryMoment.id !== "act2_pda_reveal") return;
+        if (this.phoneStoryMoment.step === 0) {
+          this.phoneStoryMoment = { ...this.phoneStoryMoment, step: 1 };
+          this.render();
+          return;
+        }
+        this.completePhoneStoryMoment();
+      },
+      0x35533f
+    );
+    container.add(
+      this.options.scene.add.text(
+        bodyX,
+        y + panelHeight - 46,
+        "ESC keeps the discovered fields in Profile. No score is changed here.",
+        this.bodyStyle(12)
+      ).setWordWrapWidth(bodyWidth)
+    );
+  }
+
+  private completePhoneStoryMoment(): void {
+    const moment = this.phoneStoryMoment;
+    const onComplete = moment?.onComplete;
+    this.phoneStoryMoment = undefined;
+    if (moment?.id === "act2_pda_reveal") {
+      onComplete?.();
+      this.activeTab = "Profile";
+      this.render();
+      return;
+    }
     this.container?.destroy(true);
     this.container = undefined;
     this.options.onClose();
@@ -778,6 +866,7 @@ export class PhoneShell {
     const profile = world.profile;
     const reputation = world.reputation;
     const unlockLines = getStructuralUnlockProfileLines(world);
+    const pdaLines = getPdaProfileLines(world);
     const profileText = this.renderTextList(container, x, y, width, [
       `${profile.displayName} @ ${profile.homeArea}`,
       `Avatar: ${profile.avatar.body}, ${profile.avatar.hair}, ${profile.avatar.outfit}${profile.avatar.accessory ? `, ${profile.avatar.accessory}` : ""}`,
@@ -785,14 +874,41 @@ export class PhoneShell {
       `Lifestyle tags: ${profile.lifestyleTags.length ? profile.lifestyleTags.join(", ") : "none"}`,
       `Reputation score: ${reputation.score}`,
       `Meters: ${formatVisibleMeterValues(world)}`,
-      `Visible reputation tags: ${reputation.tags.length ? reputation.tags.join(", ") : "none yet"}`,
-      ...(unlockLines.length ? ["Structural unlocks:", ...unlockLines.map((line) => `· ${line}`)] : []),
-      `Audio: ${this.options.isAudioMuted?.() ? "muted" : "on"}`,
-      "Tap tags below to edit local profile tags."
+      `Visible reputation tags: ${reputation.tags.length ? reputation.tags.join(", ") : "none yet"}`
     ]);
 
     const muted = this.options.isAudioMuted?.() ?? false;
-    const actionY = y + Math.max(174, profileText.height + 14);
+    const sectionY = y + profileText.height + 10;
+    let detailHeight = 0;
+    if (width >= 620 && unlockLines.length > 0 && pdaLines.length > 0) {
+      const columnGap = 18;
+      const columnWidth = (width - columnGap) / 2;
+      const unlockText = this.renderTextList(
+        container,
+        x,
+        sectionY,
+        columnWidth,
+        ["Structural unlocks:", ...unlockLines.map((line) => `· ${line}`)]
+      );
+      const pdaText = this.renderTextList(container, x + columnWidth + columnGap, sectionY, columnWidth, pdaLines);
+      detailHeight = Math.max(unlockText.height, pdaText.height);
+    } else {
+      if (unlockLines.length > 0) {
+        const unlockText = this.renderTextList(
+          container,
+          x,
+          sectionY,
+          width,
+          ["Structural unlocks:", ...unlockLines.map((line) => `· ${line}`)]
+        );
+        detailHeight += unlockText.height;
+      }
+      if (pdaLines.length > 0) {
+        const pdaText = this.renderTextList(container, x, sectionY + detailHeight + (detailHeight ? 8 : 0), width, pdaLines);
+        detailHeight += pdaText.height + (detailHeight ? 8 : 0);
+      }
+    }
+    const actionY = Math.max(y + 174, sectionY + detailHeight + 14);
     this.addButton(
       container,
       x,
@@ -1106,4 +1222,8 @@ export class PhoneShell {
       lineSpacing: 4
     };
   }
+}
+
+function formatSigned(value: number): string {
+  return value > 0 ? `+${value}` : String(value);
 }
