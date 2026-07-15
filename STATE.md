@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-15 (RPG-20260715-02 complete locally; Ari's first crew content staged)
+Last updated: 2026-07-15 (RPG-20260715-03 complete locally; Kitchen Circle and commission squeeze staged)
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -11,6 +11,8 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 `CLAUDE_PROJECT_REVIEW_2026-07-06.md` is Claude's full project review (bottlenecks, gap analysis, sequencing recommendation). It is a supervisory assessment, not a canonical design source — `GAME_DESIGN.md`/`STORY_BIBLE.md` still win on narrative/systems conflicts — but its top recommendation (no recorded human playtest yet; a `PLAYTEST_01.md` should exist before more systems work) should be treated as live until the user says otherwise.
 
 Current durable truth:
+
+- **RPG-20260715-03 complete locally on `feat/rpg-20260715-03-kitchen-circle`, stacked on W2-02 at `7e9fcb0`:** Crew B is the Warung Kitchen Circle at Ibu's existing warung, with ordinary Tue/Sat 18:00–20:00 crew events on W2-01's scheduler. Two completed Act 2 Ibu-board deliveries or the first successful Act 2 rent payment makes Ibu's non-expiring summons available; her portrait scene invites without auto-joining. The first live session joins through the core, stages steam/plates/crowded stools with Ibu and every-other-session Kadek, and counts only after a short SERVE continuation. The first attended session always carries the one-time overheard 30% commission squeeze; Ibu offers one proud deflection, then a quiet Rp 2 menu-price Feed residue appears two days later. Regular remains the core's exact attendance-three hook with no W2-04 benefit effect. Schema stays v11; map delta is none; no economy, commission, Kadek-choice, or Warung Rush mechanics were added. Proof: `docs/RPG-20260715-03_KITCHEN_CIRCLE_PROOF.md`; verification: 53 files / 355 tests, production build, and seven-shot browser proof green from `act2_ari_crew_complete`.
 
 - **RPG-20260715-02 complete locally on `feat/rpg-20260715-02-ari-surf-run`, stacked on W2-01 at `e8be586`:** the temporary crew fixture is now Ari's canonical Berawa Surf & Run Crew: Wed/Fri sunset circles and a Sunday morning beach-edge run, all ordinary events on the W2-01 scheduler. The first Act 2 beach-adjacent delivery opens an Ari portrait scene and a non-expiring invitation; the first attended session converts that invitation to membership. Sunset/run world scenes stage 4–5 people including Ari with fire/boards/closed-laptop or run-marker dressing. Attendance completes only after one rotating TALK beat; the first three beats do not repeat, and Ari's closed-laptop “Client calls” plant persists exactly once. The existing Act 2 rhythm gate now recognizes new-core crew event IDs, active deliveries outrank the Act 2 social nudge, and the two legacy Ari beach-club rows are suppressed in Act 2 so the venue presents one Ari crew. Schema stays v11; map delta is none; benefits remain W2-04. Proof: `docs/RPG-20260715-02_ARI_SURF_RUN_PROOF.md`; verification: 52 files / 345 tests, production build, and ten-shot browser proof green.
 
@@ -50,7 +52,7 @@ Current durable truth:
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test -- --run` = 52 files / 345 passing, 0 skipped; `npm run build` passes. The W2-02 `act2_entered` browser proof passes in 93.17s with ten screenshots and zero browser/runtime errors. Physical iOS/Android and first-read human timing verification remain pending.
+- Current verification: `npm test` = 53 files / 355 passing, 0 skipped; `npm run build` passes. The W2-03 `act2_ari_crew_complete` browser proof passes in 55.80s with seven screenshots and zero browser/runtime errors. Physical iOS/Android and first-read human timing verification remain pending.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Packet execution status (updated 2026-07-12):
