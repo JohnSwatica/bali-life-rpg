@@ -1,6 +1,7 @@
 import { activeStreetTemplate, venueMapNodes } from "../../data/authoredStreetLayout";
 import { npcDefinitions } from "../../data/npcs";
 import { socialGroupDefinitions } from "../../data/groups";
+import { ARI_SURF_RUN_CREW_ID, getCrewSessionSlot } from "../../data/crews";
 import { getActiveEvents } from "../events/EventScheduler";
 import { getOpportunityTemplate } from "../opportunities/OpportunityEngine";
 import { getRioRaceEligibility, RIO_RACE } from "../ride/RivalRace";
@@ -18,7 +19,14 @@ export type OpportunityWorldSceneKind =
   | "trade_swap"
   | "race_challenge";
 
-export type EventWorldSceneKind = "run_gathering" | "work_table" | "market_walk" | "party_pulse" | "club_circle";
+export type EventWorldSceneKind =
+  | "run_gathering"
+  | "work_table"
+  | "market_walk"
+  | "party_pulse"
+  | "club_circle"
+  | "crew_sunset_circle"
+  | "crew_beach_run";
 
 export interface WorldSceneActor {
   id: string;
@@ -54,6 +62,8 @@ export interface EventWorldScene {
   sceneKind: EventWorldSceneKind;
   cue: string;
   clubId?: string;
+  crewId?: string;
+  dressing?: ReadonlyArray<"fire" | "boards" | "closed_laptop" | "run_markers">;
   actors: WorldSceneActor[];
 }
 
@@ -102,16 +112,32 @@ export function getEventWorldScenes(world: WorldState): EventWorldScene[] {
       const clubId = event.host.type === "group" ? event.host.id : undefined;
       const group = clubId ? socialGroupDefinitions.find((candidate) => candidate.id === clubId) : undefined;
       const npcIds = uniqueNpcIds([...(event.participation.meetNpcs ?? []), ...(group?.memberIds ?? [])]);
+      const ariCrewSlot = event.crewSession?.crewId === ARI_SURF_RUN_CREW_ID
+        ? getCrewSessionSlot(event.crewSession.crewId, event.crewSession.sessionSlotId)
+        : undefined;
+      const isAriCrewSession = Boolean(ariCrewSlot);
       return {
         source: "event" as const,
         id: `event:${event.id}`,
         eventId: event.id,
         venueId: event.locationVenueId,
         title: event.title,
-        sceneKind: eventSceneKind(event),
-        cue: eventSceneCue(event, Boolean(group)),
+        sceneKind: ariCrewSlot?.kind === "sunset_circle"
+          ? ("crew_sunset_circle" as const)
+          : ariCrewSlot?.kind === "morning_run"
+            ? ("crew_beach_run" as const)
+            : eventSceneKind(event),
+        cue: ariCrewSlot?.kind === "sunset_circle" ? "CIRCLE" : ariCrewSlot?.kind === "morning_run" ? "RUN" : eventSceneCue(event, Boolean(group)),
         clubId,
-        actors: buildActors(npcIds.length ? npcIds : fallbackNpcIds(), group ? "social" : eventActorRole(event), 3)
+        crewId: event.crewSession?.crewId,
+        dressing: ariCrewSlot?.kind === "sunset_circle"
+          ? (["fire", "boards", "closed_laptop"] as const)
+          : ariCrewSlot?.kind === "morning_run"
+            ? (["run_markers"] as const)
+            : undefined,
+        actors: isAriCrewSession
+          ? buildAriCrewActors(ariCrewSlot?.kind === "morning_run" ? "morning_run" : "sunset_circle")
+          : buildActors(npcIds.length ? npcIds : fallbackNpcIds(), group ? "social" : eventActorRole(event), 3)
       };
     })
     .filter((scene) => Boolean(resolveWorldSceneVenueAnchor(scene.venueId)));
@@ -326,6 +352,23 @@ function buildActors(npcIds: string[], role: WorldSceneActor["role"], limit: num
       approachOffsetY: -66 - index * 12
     };
   });
+}
+
+function buildAriCrewActors(kind: "sunset_circle" | "morning_run"): WorldSceneActor[] {
+  const offsets = kind === "morning_run"
+    ? [[-48, 3], [-16, -8], [18, 4], [50, -7]]
+    : [[-52, -8], [-28, 15], [0, -20], [29, 14], [54, -7]];
+  const spriteKeys = [npcDefinitions.ari?.spriteKey ?? "npc-ari", "npc-made", "npc-kadek", "npc-sari", "npc-made"];
+  return offsets.map(([offsetX, offsetY], index) => ({
+    id: index === 0 ? `ari-${kind}` : `ari-crew-member-${kind}-${index}`,
+    npcId: index === 0 ? "ari" : undefined,
+    spriteKey: spriteKeys[index],
+    role: kind === "morning_run" ? "gathering" : "social",
+    offsetX,
+    offsetY,
+    approachOffsetX: offsetX + (index % 2 === 0 ? -54 : 54),
+    approachOffsetY: offsetY - 72 - index * 5
+  }));
 }
 
 function fallbackNpcIds(): string[] {

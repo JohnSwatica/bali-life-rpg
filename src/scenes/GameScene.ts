@@ -178,9 +178,11 @@ import {
   CREW_REGULAR_ATTENDANCE_COUNT,
   getKnownCrewStates,
   getCrewState,
+  hasCompletedCrewSessionOccurrence,
   inviteToCrew,
   joinCrew
 } from "../systems/crews/CrewSystem";
+import { prepareAriCrewSessionBeat } from "../systems/story/Act2AriCrew";
 import { canSleepNow } from "../systems/time/DailyClock";
 import {
   createAuthoredDay1ClockState,
@@ -431,6 +433,7 @@ interface RainDropRuntime {
 }
 
 const CAFE_AMBIENT_INTERIOR_IDS = new Set(["milk_madu_interior", "baked_berawa_interior", "satu_satu_interior"]);
+const LEGACY_ARI_BEACH_GROUP_IDS = new Set(["berawa_run_crew", "berawa_surf_circle"]);
 
 interface ActiveCutsceneRunner {
   script: CutsceneScript;
@@ -5651,7 +5654,8 @@ export class GameScene extends Phaser.Scene {
         const cost = event.participation.cost ?? 0;
         const canAfford = cost <= 0 || this.playerState.money >= cost;
         const crewState = event.crewSession ? getCrewState(this.world, event.crewSession.crewId) : undefined;
-        const canAttendCrew = !crewState || crewState.member;
+        const canJoinCrew = Boolean(crewState?.invited && !crewState.member);
+        const canAttendCrew = !crewState || crewState.member || canJoinCrew;
         const moneyCopy = cost < 0 ? `Earn Rp ${Math.abs(cost)}` : cost > 0 ? `Cost Rp ${cost}` : "Free";
         const meterCopy = formatMeterDeltaSummary(this.world, event.participation.meterDeltas);
         const crewStatusCopy = crewState
@@ -5660,10 +5664,19 @@ export class GameScene extends Phaser.Scene {
         this.appendActivityMenuRow(content, {
           title: event.title,
           body: `${event.description}\n${event.participation.timeCost} min | ${moneyCopy}${meterCopy ? ` | ${meterCopy}` : ""}${crewStatusCopy}`,
-          actionLabel: !canAttendCrew ? "Join crew first" : canAfford ? "Attend" : "Need Rp",
+          actionLabel: canJoinCrew ? "Join & talk" : !canAttendCrew ? "Join crew first" : canAfford ? "Talk & attend" : "Need Rp",
           variant: canAfford && canAttendCrew ? "primary" : "blocked",
           onAction: () => {
-            if (!canAttendCrew) {
+            if (canJoinCrew && event.crewSession) {
+              const joined = joinCrew(this.world, event.crewSession.crewId);
+              if (!joined.ok) {
+                this.showToast(joined.message);
+                return;
+              }
+              saveWorldState(this.world);
+              this.phone?.refresh();
+              this.attendVenueEvent(event);
+            } else if (!canAttendCrew) {
               this.showToast("This invitation is a promise. Join the crew before counting attendance.");
             } else if (canAfford) {
               this.attendVenueEvent(event);
@@ -5707,7 +5720,9 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    const venueGroups = getSocialGroupsForVenue(venueId);
+    const venueGroups = getSocialGroupsForVenue(venueId).filter(
+      (group) => this.world.life.actProgress.currentAct < 2 || !LEGACY_ARI_BEACH_GROUP_IDS.has(group.id)
+    );
     const joinableGroups = venueGroups.filter((group) => !isSocialGroupJoined(this.world, group.id));
     if (joinableGroups.length > 0) {
       this.appendActivityMenuSection(content, "Local clubs");
@@ -7037,12 +7052,33 @@ export class GameScene extends Phaser.Scene {
     }
 
     const occurrenceDay = this.world.clock.day;
+    if (event.crewSession && hasCompletedCrewSessionOccurrence(this.world, event, occurrenceDay)) {
+      this.showToast("This session already counted. Stay if you like; nothing else is owed.");
+      return;
+    }
     const cost = event.participation.cost ?? 0;
     if (cost > 0 && this.playerState.money < cost) {
       this.showToast(`Need Rp ${cost} for ${event.title}.`);
       return;
     }
 
+    const crewBeat = prepareAriCrewSessionBeat(this.world, event);
+    if (crewBeat) {
+      if (crewBeat.kind === "sunset_circle") {
+        this.soundManager.setAmbientBed("nightQuiet");
+      }
+      this.openStoryDialogue(crewBeat.speakerName, crewBeat.dialogue, undefined, () => {
+        this.syncAmbientBed();
+        this.completeVenueEventParticipation(event, occurrenceDay);
+      });
+      return;
+    }
+
+    this.completeVenueEventParticipation(event, occurrenceDay);
+  }
+
+  private completeVenueEventParticipation(event: GameEvent, occurrenceDay: number): void {
+    const cost = event.participation.cost ?? 0;
     const participation = applyEventParticipation(this.world, event, this.getAbsoluteMinute());
     if (!participation.ok) {
       this.showToast(participation.message);
@@ -8079,7 +8115,7 @@ export class GameScene extends Phaser.Scene {
       }
       const yOffset = Math.min(node.radius + scaleDistance(66), scaleDistance(136));
       const x = node.x + scaleDistance(44);
-      const y = node.y - yOffset;
+      const y = scene.crewId ? node.y - scaleDistance(6) : node.y - yOffset;
       this.drawEventWorldScene(scene, x, y, phase, activeLabelIds);
     }
 
@@ -8152,13 +8188,46 @@ export class GameScene extends Phaser.Scene {
 
   private drawEventWorldScene(scene: EventWorldScene, x: number, y: number, phase: number, activeLabelIds: Set<string>): void {
     const color = this.eventSceneColor(scene.sceneKind);
-    const pulse = 0.62 + Math.sin(phase * (scene.clubId ? 5.2 : 3.6)) * 0.18;
+    const pulse = 0.62 + Math.sin(phase * (scene.clubId || scene.crewId ? 5.2 : 3.6)) * 0.18;
     this.worldSceneLayer.fillStyle(0x101820, 0.24);
     this.worldSceneLayer.fillEllipse(x, y + scaleDistance(28), scaleDistance(104), scaleDistance(28));
-    this.worldSceneLayer.lineStyle(scaleDistance(scene.clubId ? 3 : 2), color, 0.34 + pulse * 0.26);
+    this.worldSceneLayer.lineStyle(scaleDistance(scene.clubId || scene.crewId ? 3 : 2), color, 0.34 + pulse * 0.26);
     this.worldSceneLayer.strokeEllipse(x, y + scaleDistance(28), scaleDistance(112), scaleDistance(36));
 
-    if (scene.sceneKind === "work_table") {
+    if (scene.sceneKind === "crew_sunset_circle") {
+      this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(4)), 0x89542f, 0.92);
+      this.worldSceneLayer.lineBetween(x - scaleDistance(12), y + scaleDistance(21), x + scaleDistance(12), y + scaleDistance(31));
+      this.worldSceneLayer.lineBetween(x + scaleDistance(12), y + scaleDistance(21), x - scaleDistance(12), y + scaleDistance(31));
+      this.worldSceneLayer.fillStyle(0xff8a3d, 0.82 + Math.sin(phase * 8) * 0.08);
+      this.worldSceneLayer.fillCircle(x, y + scaleDistance(19), scaleDistance(9));
+      this.worldSceneLayer.fillStyle(0xffd45c, 0.9);
+      this.worldSceneLayer.fillCircle(x, y + scaleDistance(16), scaleDistance(5));
+      this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(5)), 0x79b7c5, 0.86);
+      this.worldSceneLayer.lineBetween(x - scaleDistance(66), y - scaleDistance(10), x - scaleDistance(50), y + scaleDistance(29));
+      this.worldSceneLayer.lineBetween(x + scaleDistance(64), y - scaleDistance(11), x + scaleDistance(49), y + scaleDistance(29));
+      this.worldSceneLayer.fillStyle(0x26313c, 0.95);
+      this.worldSceneLayer.fillRoundedRect(x + scaleDistance(31), y + scaleDistance(20), scaleDistance(23), scaleDistance(8), scaleDistance(2));
+      this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(1)), 0x91b7dd, 0.76);
+      this.worldSceneLayer.lineBetween(x + scaleDistance(33), y + scaleDistance(20), x + scaleDistance(52), y + scaleDistance(20));
+    } else if (scene.sceneKind === "crew_beach_run") {
+      this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(3)), color, 0.78);
+      this.worldSceneLayer.beginPath();
+      this.worldSceneLayer.moveTo(x - scaleDistance(70), y + scaleDistance(28));
+      this.worldSceneLayer.lineTo(x - scaleDistance(20), y + scaleDistance(16));
+      this.worldSceneLayer.lineTo(x + scaleDistance(28), y + scaleDistance(29));
+      this.worldSceneLayer.lineTo(x + scaleDistance(72), y + scaleDistance(17));
+      this.worldSceneLayer.strokePath();
+      for (const markerX of [-72, 72]) {
+        this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(2)), 0xfff0bd, 0.9);
+        this.worldSceneLayer.lineBetween(x + scaleDistance(markerX), y + scaleDistance(7), x + scaleDistance(markerX), y + scaleDistance(31));
+        this.worldSceneLayer.fillStyle(0xff8a3d, 0.9);
+        this.worldSceneLayer.fillTriangle(
+          x + scaleDistance(markerX), y + scaleDistance(7),
+          x + scaleDistance(markerX + 12), y + scaleDistance(12),
+          x + scaleDistance(markerX), y + scaleDistance(16)
+        );
+      }
+    } else if (scene.sceneKind === "work_table") {
       this.worldSceneLayer.fillStyle(0x2b3d4f, 0.82);
       this.worldSceneLayer.fillRoundedRect(x - scaleDistance(28), y + scaleDistance(10), scaleDistance(56), scaleDistance(13), scaleDistance(4));
       this.worldSceneLayer.fillStyle(0xfff0bd, 0.86);
@@ -8331,7 +8400,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private eventSceneColor(kind: EventWorldScene["sceneKind"]): number {
-    if (kind === "run_gathering") return 0x8fe3b4;
+    if (kind === "run_gathering" || kind === "crew_beach_run") return 0x8fe3b4;
+    if (kind === "crew_sunset_circle") return 0xffb45f;
     if (kind === "work_table") return 0x91b7dd;
     if (kind === "market_walk") return 0xffd45c;
     if (kind === "party_pulse") return 0xd95c8a;
@@ -9183,6 +9253,12 @@ export class GameScene extends Phaser.Scene {
     if (result.luxuryTipScene?.fired) {
       const scene = getRelationshipChoiceScene(ACT1_LUXURY_TIP_SCENE_ID);
       if (scene) this.openRelationshipChoiceScene(scene);
+    }
+    if (result.ariCrewInvitation?.fired && result.ariCrewInvitation.dialogue) {
+      this.openStoryDialogue("Ari", result.ariCrewInvitation.dialogue, "ari", () => {
+        saveWorldState(this.world);
+        this.phone?.refresh();
+      });
     }
     if (result.ok && !wasPickup && !isAct0StoryDelivery(active.deliveryId) && active.deliveryId !== "act0_ibu_milk_madu_catering") {
       if (chapterCutsceneDelayMs > 0) {

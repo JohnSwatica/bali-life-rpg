@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ACT2_TEST_CREW_ID, crewDefinitions } from "../data/crews";
+import { ARI_SURF_RUN_CREW_ID, crewDefinitions } from "../data/crews";
 import { gameEventDefinitions } from "../data/events";
 import { getCrewCalendarEntries } from "../systems/crews/CrewCalendar";
 import {
@@ -18,7 +18,9 @@ import { installMemoryLocalStorage } from "./testUtils";
 
 installMemoryLocalStorage();
 
-const session = gameEventDefinitions.find((event) => event.crewSession?.crewId === ACT2_TEST_CREW_ID)!;
+const session = gameEventDefinitions.find(
+  (event) => event.crewSession?.crewId === ARI_SURF_RUN_CREW_ID && event.crewSession.sessionSlotId === "wednesday_sunset_circle"
+)!;
 
 function act2World() {
   const world = createInitialWorldState();
@@ -32,20 +34,20 @@ describe("Act 2 crew substrate", () => {
   it("moves through invited and member without exposing crews before Act 2", () => {
     const world = createInitialWorldState();
 
-    expect(inviteToCrew(world, ACT2_TEST_CREW_ID)).toMatchObject({ ok: false });
+    expect(inviteToCrew(world, ARI_SURF_RUN_CREW_ID)).toMatchObject({ ok: false });
     world.life.actProgress.currentAct = 2;
-    expect(joinCrew(world, ACT2_TEST_CREW_ID)).toMatchObject({ ok: false });
-    expect(inviteToCrew(world, ACT2_TEST_CREW_ID)).toMatchObject({ ok: true });
-    expect(getCrewState(world, ACT2_TEST_CREW_ID)).toMatchObject({ invited: true, member: false });
-    expect(joinCrew(world, ACT2_TEST_CREW_ID)).toMatchObject({ ok: true });
-    expect(joinCrew(world, ACT2_TEST_CREW_ID)).toMatchObject({ ok: true });
-    expect(world.life.joinedClubIds.filter((id) => id === ACT2_TEST_CREW_ID)).toHaveLength(1);
+    expect(joinCrew(world, ARI_SURF_RUN_CREW_ID)).toMatchObject({ ok: false });
+    expect(inviteToCrew(world, ARI_SURF_RUN_CREW_ID)).toMatchObject({ ok: true });
+    expect(getCrewState(world, ARI_SURF_RUN_CREW_ID)).toMatchObject({ invited: true, member: false });
+    expect(joinCrew(world, ARI_SURF_RUN_CREW_ID)).toMatchObject({ ok: true });
+    expect(joinCrew(world, ARI_SURF_RUN_CREW_ID)).toMatchObject({ ok: true });
+    expect(world.life.joinedClubIds.filter((id) => id === ARI_SURF_RUN_CREW_ID)).toHaveLength(1);
   });
 
   it("counts a completed participation beat once per occurrence and becomes regular exactly at three", () => {
     const world = act2World();
-    inviteToCrew(world, ACT2_TEST_CREW_ID);
-    joinCrew(world, ACT2_TEST_CREW_ID);
+    inviteToCrew(world, ARI_SURF_RUN_CREW_ID);
+    joinCrew(world, ARI_SURF_RUN_CREW_ID);
 
     const first = completeCrewSession(world, session, 3, 1_000);
     const duplicate = completeCrewSession(world, session, 3, 1_001);
@@ -63,7 +65,7 @@ describe("Act 2 crew substrate", () => {
       state: { attendanceCount: CREW_REGULAR_ATTENDANCE_COUNT, regular: true, regularBenefitActive: true }
     });
     expect(fourth).toMatchObject({ ok: true, becameRegular: false, regularBenefitActivated: false });
-    expect(getCrewState(world, ACT2_TEST_CREW_ID).attendanceCount).toBe(4);
+    expect(getCrewState(world, ARI_SURF_RUN_CREW_ID).attendanceCount).toBe(4);
   });
 
   it("shows only invited/member crew sessions for this week plus rent day", () => {
@@ -75,14 +77,15 @@ describe("Act 2 crew substrate", () => {
       expect.objectContaining({ kind: "rent_day", day: 4 })
     ]);
 
-    inviteToCrew(world, ACT2_TEST_CREW_ID);
+    inviteToCrew(world, ARI_SURF_RUN_CREW_ID);
     const invited = getCrewCalendarEntries(world);
-    expect(invited.map((entry) => entry.kind)).toEqual(["crew_session", "rent_day"]);
+    expect(invited.filter((entry) => entry.kind === "crew_session")).toHaveLength(3);
+    expect(invited.filter((entry) => entry.kind === "rent_day")).toHaveLength(1);
     expect(invited[0]).toMatchObject({ membership: "invited", bold: false });
     expect(invited.map((entry) => entry.title).join(" ")).not.toContain("FINNS");
     expect(invited.map((entry) => entry.title).join(" ")).not.toContain("Market Hour");
 
-    joinCrew(world, ACT2_TEST_CREW_ID);
+    joinCrew(world, ARI_SURF_RUN_CREW_ID);
     expect(getCrewCalendarEntries(world)[0]).toMatchObject({ membership: "member", bold: true });
   });
 
@@ -90,11 +93,11 @@ describe("Act 2 crew substrate", () => {
     const world = act2World();
     expect(getActiveEventsAtVenue(world.clock, "berawa_beach", world)).not.toContain(session);
 
-    inviteToCrew(world, ACT2_TEST_CREW_ID);
+    inviteToCrew(world, ARI_SURF_RUN_CREW_ID);
     expect(getActiveEventsAtVenue(world.clock, "berawa_beach", world)).toContain(session);
     expect(buildCrewSessionOpenMessage(world, session, 1_000, 3, "Berawa Beach")).toBeUndefined();
 
-    joinCrew(world, ACT2_TEST_CREW_ID);
+    joinCrew(world, ARI_SURF_RUN_CREW_ID);
     const message = buildCrewSessionOpenMessage(world, session, 1_000, 3, "Berawa Beach");
     expect(message).toMatchObject({ id: expect.stringContaining("day-3"), from: "Calendar", read: false });
     expect(appendOpportunityMessage(world.opportunities, message!)).toBe(true);
@@ -104,8 +107,8 @@ describe("Act 2 crew substrate", () => {
 
   it("round-trips invitation, membership, attendance, regular, and benefit hook in schema v11", () => {
     const world = act2World();
-    inviteToCrew(world, ACT2_TEST_CREW_ID);
-    joinCrew(world, ACT2_TEST_CREW_ID);
+    inviteToCrew(world, ARI_SURF_RUN_CREW_ID);
+    joinCrew(world, ARI_SURF_RUN_CREW_ID);
     completeCrewSession(world, session, 3, 1_000);
     completeCrewSession(world, session, 10, 2_000);
     completeCrewSession(world, session, 17, 3_000);
@@ -114,7 +117,7 @@ describe("Act 2 crew substrate", () => {
     const restored = loadWorldState();
 
     expect(restored.schemaVersion).toBe(11);
-    expect(getCrewState(restored, ACT2_TEST_CREW_ID)).toEqual(getCrewState(world, ACT2_TEST_CREW_ID));
+    expect(getCrewState(restored, ARI_SURF_RUN_CREW_ID)).toEqual(getCrewState(world, ARI_SURF_RUN_CREW_ID));
   });
 
   it("keeps every crew definition anchored and backed by scheduled event slots", () => {

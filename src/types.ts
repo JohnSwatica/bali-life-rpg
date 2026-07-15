@@ -193,6 +193,9 @@ export interface CrewSessionSlot {
   startHour: number;
   endHour: number;
   title: string;
+  kind?: "sunset_circle" | "morning_run";
+  description?: string;
+  timeCost?: number;
 }
 
 export interface CrewDefinition {

@@ -27,6 +27,8 @@ export interface DeliveryDefinition {
   dropoffName: string;
   dropoffLabel: string;
   dropoffVenueId?: string;
+  /** Authored tag for Act 2 beats that begin at a beach-side handoff. */
+  beachAdjacentDropoff?: boolean;
   /** Authored villa-gate handoff; used by story beats without inferring from display copy. */
   villaDropoff?: boolean;
   dropoffPoint: { x: number; y: number; radius: number };
@@ -392,6 +394,7 @@ export const deliveryDefinitions: DeliveryDefinition[] = [
     dropoffId: "finns_beach_wristband_gate",
     dropoffName: "FINNS Wristband Gate",
     dropoffLabel: "Drop the wristband pouch by the beach-club gate.",
+    beachAdjacentDropoff: true,
     dropoffPoint: {
       ...offsetVenuePoint("finns_beach_club", { x: 1120, y: 1680 }, -92, -54),
       radius: 80
@@ -436,6 +439,7 @@ export const deliveryDefinitions: DeliveryDefinition[] = [
     dropoffId: "beach_club_service_gate",
     dropoffName: "Beach Club Service Gate",
     dropoffLabel: "Drop the linen bundle at the beach-club service gate.",
+    beachAdjacentDropoff: true,
     dropoffPoint: {
       ...offsetVenuePoint("finns_beach_club", { x: 1120, y: 1680 }, 96, -82),
       radius: 82
