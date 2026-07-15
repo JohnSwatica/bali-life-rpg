@@ -52,6 +52,11 @@ export const interiorDefinitions: Record<string, InteriorDefinition> = {
         npcId: "ibu_sari",
         x: WARUNG_X + TILE_SIZE * 6.9,
         y: WARUNG_Y + TILE_SIZE * 2.35
+      },
+      {
+        npcId: "kadek",
+        x: WARUNG_X + TILE_SIZE * 3.4,
+        y: WARUNG_Y + TILE_SIZE * 4.3
       }
     ]
   },

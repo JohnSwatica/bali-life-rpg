@@ -31,6 +31,10 @@ import {
   triggerAct1Breakdown
 } from "../systems/story/Act1Breakdown";
 import { getDeliveryDefinition } from "../data/deliveries";
+import { ARI_SURF_RUN_CREW_ID } from "../data/crews";
+import { gameEventDefinitions } from "../data/events";
+import { completeCrewSession, inviteToCrew, joinCrew } from "../systems/crews/CrewSystem";
+import { prepareAriCrewSessionBeat } from "../systems/story/Act2AriCrew";
 import { resolveAct1LuxuryTipChoice } from "../systems/story/Act1LuxuryTip";
 import {
   acceptMadeFinale,
@@ -50,7 +54,8 @@ export const DEV_PROOF_BOOT_STATE_NAMES = [
   "act1_post_reversal",
   "act1_finale_ready",
   "act1_finale_complete",
-  "act2_entered"
+  "act2_entered",
+  "act2_ari_crew_complete"
 ] as const;
 
 export type DevProofBootStateName = (typeof DEV_PROOF_BOOT_STATE_NAMES)[number];
@@ -169,6 +174,33 @@ function buildAct1FinaleComplete(): WorldState {
   return world;
 }
 
+function buildAct2AriCrewComplete(): WorldState {
+  const world = buildAct1FinaleComplete();
+  requireOk(inviteToCrew(world, ARI_SURF_RUN_CREW_ID), "invite Ari crew");
+  requireOk(joinCrew(world, ARI_SURF_RUN_CREW_ID), "join Ari crew");
+  const sessions = [
+    { slotId: "wednesday_sunset_circle", day: 3 },
+    { slotId: "friday_sunset_circle", day: 5 },
+    { slotId: "sunday_morning_run", day: 7 }
+  ];
+  for (const [index, session] of sessions.entries()) {
+    const event = gameEventDefinitions.find(
+      (candidate) => candidate.crewSession?.crewId === ARI_SURF_RUN_CREW_ID &&
+        candidate.crewSession.sessionSlotId === session.slotId
+    );
+    if (!event) throw new Error(`Could not find Ari crew session ${session.slotId}.`);
+    world.clock.day = session.day;
+    prepareAriCrewSessionBeat(world, event);
+    requireOk(completeCrewSession(world, event, session.day, absoluteMinute(world) + index), `attend ${session.slotId}`);
+    if (!world.runtimeEvents.attendedEventIds.includes(event.id)) {
+      world.runtimeEvents.attendedEventIds.push(event.id);
+    }
+  }
+  world.clock.day = 8;
+  world.clock.minuteOfDay = 10 * 60;
+  return world;
+}
+
 export const DEV_PROOF_BOOT_STATE_BUILDERS: Readonly<Record<DevProofBootStateName, DevProofBootStateBuilder>> = {
   act0_complete: buildAct0Complete,
   act1_leo_resolved: buildAct1LeoResolved,
@@ -177,7 +209,8 @@ export const DEV_PROOF_BOOT_STATE_BUILDERS: Readonly<Record<DevProofBootStateNam
   act1_post_reversal: buildAct1PostReversal,
   act1_finale_ready: buildAct1FinaleReady,
   act1_finale_complete: buildAct1FinaleComplete,
-  act2_entered: buildAct1FinaleComplete
+  act2_entered: buildAct1FinaleComplete,
+  act2_ari_crew_complete: buildAct2AriCrewComplete
 };
 
 export function buildDevProofBootState(name: DevProofBootStateName): WorldState {

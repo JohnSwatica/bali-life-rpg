@@ -1,0 +1,46 @@
+{
+  "name": "act2-warung-kitchen-circle",
+  "steps": [
+    { "action": "acceptDeliveryById", "id": "milk_madu_brunch_bag" },
+    { "action": "pickupActiveDelivery" },
+    { "action": "completeActiveDelivery" },
+    { "action": "acceptDeliveryById", "id": "milk_madu_brunch_bag" },
+    { "action": "pickupActiveDelivery" },
+    { "action": "completeActiveDelivery" },
+
+    { "action": "enterInterior", "interiorId": "warung_sari_interior" },
+    { "action": "interactObjective" },
+    { "action": "waitForSelector", "selector": ".bali-life-dialogue" },
+    { "action": "screenshot", "name": "01-ibu-kitchen-circle-summons" },
+    { "action": "pressKey", "key": "Escape" },
+    { "action": "leaveInterior" },
+    { "action": "waitForState", "state": { "mode": "world" } },
+    { "action": "openPhoneTab", "tab": "Calendar" },
+    { "action": "screenshot", "name": "02-calendar-kitchen-circle-invited" },
+    { "action": "pressKey", "key": "Escape" },
+
+    { "action": "setClock", "day": 9, "minuteOfDay": 1110 },
+    { "action": "enterInterior", "interiorId": "warung_sari_interior" },
+    { "action": "waitMs", "ms": 500 },
+    { "action": "screenshot", "name": "03-tuesday-kitchen-circle-staging" },
+    { "action": "openVenuePanel", "venueId": "canggu_station" },
+    { "action": "clickButton", "text": "Join & serve" },
+    { "action": "waitForSelector", "selector": ".bali-life-dialogue" },
+    { "action": "screenshot", "name": "04-overheard-thirty-percent-squeeze" },
+    { "action": "pressKey", "key": "Escape" },
+    { "action": "screenshot", "name": "05-kitchen-attendance-one" },
+    { "action": "clickButton", "text": "Close" },
+
+    { "action": "moveTo", "x": 20221, "y": 1099 },
+    { "action": "pressKey", "key": "e" },
+    { "action": "waitForSelector", "selector": ".bali-life-dialogue" },
+    { "action": "screenshot", "name": "06-ibu-proud-deflection" },
+    { "action": "pressKey", "key": "Escape" },
+    { "action": "leaveInterior" },
+    { "action": "waitForState", "state": { "mode": "world" } },
+
+    { "action": "setClock", "day": 11, "minuteOfDay": 1110 },
+    { "action": "openPhoneTab", "tab": "Feed" },
+    { "action": "screenshot", "name": "07-menu-price-residue" }
+  ]
+}

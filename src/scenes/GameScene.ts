@@ -183,6 +183,15 @@ import {
   joinCrew
 } from "../systems/crews/CrewSystem";
 import { prepareAriCrewSessionBeat } from "../systems/story/Act2AriCrew";
+import {
+  buildKitchenCircleResidueMessage,
+  completeKitchenCircleInvitation,
+  consumeKitchenCircleDeflection,
+  hasSeenKitchenCircleSqueeze,
+  isKitchenCircleInvitationPending,
+  isKitchenCircleSessionEvent,
+  prepareKitchenCircleSessionBeat
+} from "../systems/story/Act2KitchenCircle";
 import { canSleepNow } from "../systems/time/DailyClock";
 import {
   createAuthoredDay1ClockState,
@@ -4096,6 +4105,25 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    if (npcId === "ibu_sari" && isKitchenCircleInvitationPending(this.world)) {
+      const invitation = completeKitchenCircleInvitation(this.world);
+      if (invitation.fired && invitation.dialogue) {
+        saveWorldState(this.world);
+        this.phone?.refresh();
+        this.openDialogue(npc.name, invitation.dialogue, npcId);
+        return;
+      }
+    }
+
+    if (npcId === "ibu_sari") {
+      const deflection = consumeKitchenCircleDeflection(this.world);
+      if (deflection) {
+        saveWorldState(this.world);
+        this.openDialogue(npc.name, deflection, npcId);
+        return;
+      }
+    }
+
     if (this.shouldOpenIbuHustleBoard(npcId)) {
       this.openIbuHustleBoard();
       return;
@@ -5664,7 +5692,13 @@ export class GameScene extends Phaser.Scene {
         this.appendActivityMenuRow(content, {
           title: event.title,
           body: `${event.description}\n${event.participation.timeCost} min | ${moneyCopy}${meterCopy ? ` | ${meterCopy}` : ""}${crewStatusCopy}`,
-          actionLabel: canJoinCrew ? "Join & talk" : !canAttendCrew ? "Join crew first" : canAfford ? "Talk & attend" : "Need Rp",
+          actionLabel: canJoinCrew
+            ? isKitchenCircleSessionEvent(event) ? "Join & serve" : "Join & talk"
+            : !canAttendCrew
+              ? "Join crew first"
+              : canAfford
+                ? isKitchenCircleSessionEvent(event) ? "Serve & attend" : "Talk & attend"
+                : "Need Rp",
           variant: canAfford && canAttendCrew ? "primary" : "blocked",
           onAction: () => {
             if (canJoinCrew && event.crewSession) {
@@ -7062,7 +7096,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    const crewBeat = prepareAriCrewSessionBeat(this.world, event);
+    const crewBeat = prepareAriCrewSessionBeat(this.world, event) ?? prepareKitchenCircleSessionBeat(this.world, event);
     if (crewBeat) {
       if (crewBeat.kind === "sunset_circle") {
         this.soundManager.setAmbientBed("nightQuiet");
@@ -8119,10 +8153,54 @@ export class GameScene extends Phaser.Scene {
       this.drawEventWorldScene(scene, x, y, phase, activeLabelIds);
     }
 
+    this.drawKitchenCircleInteriorScene(phase);
+
     for (const [id, label] of this.worldSceneLabels) {
       if (!activeLabelIds.has(id)) {
         label.setVisible(false);
       }
+    }
+  }
+
+  private drawKitchenCircleInteriorScene(phase: number): void {
+    if (this.activeInteriorId !== "warung_sari_interior") return;
+    const event = getActiveEventsAtVenue(this.world.clock, "canggu_station", this.world).find(isKitchenCircleSessionEvent);
+    if (!event) return;
+
+    const interior = interiorDefinitions.warung_sari_interior;
+    const { x, y } = interior.origin;
+    const steamAlpha = 0.34 + Math.sin(phase * 3.2) * 0.08;
+
+    for (const [index, steamX] of [2.2, 5.5, 8.9].entries()) {
+      const drift = Math.sin(phase * 2.2 + index) * TILE_SIZE * 0.08;
+      this.worldSceneLayer.lineStyle(2, 0xfff8df, steamAlpha);
+      this.worldSceneLayer.beginPath();
+      this.worldSceneLayer.moveTo(x + TILE_SIZE * steamX, y + TILE_SIZE * 2.05);
+      this.worldSceneLayer.lineTo(x + TILE_SIZE * steamX + drift, y + TILE_SIZE * 1.76);
+      this.worldSceneLayer.lineTo(x + TILE_SIZE * steamX - drift, y + TILE_SIZE * 1.55);
+      this.worldSceneLayer.lineTo(x + TILE_SIZE * steamX + drift, y + TILE_SIZE * 1.3);
+      this.worldSceneLayer.strokePath();
+    }
+
+    for (const plateX of [3.9, 4.45, 5, 5.55, 6.1]) {
+      this.worldSceneLayer.fillStyle(0xfff8df, 0.9);
+      this.worldSceneLayer.fillEllipse(x + TILE_SIZE * plateX, y + TILE_SIZE * 2.52, TILE_SIZE * 0.42, TILE_SIZE * 0.13);
+      this.worldSceneLayer.lineStyle(1, 0xc99b62, 0.82);
+      this.worldSceneLayer.strokeEllipse(x + TILE_SIZE * plateX, y + TILE_SIZE * 2.52, TILE_SIZE * 0.42, TILE_SIZE * 0.13);
+    }
+
+    const squeezeInProgress = hasSeenKitchenCircleSqueeze(this.world) &&
+      !hasCompletedCrewSessionOccurrence(this.world, event, this.world.clock.day);
+    if (squeezeInProgress) {
+      const phoneX = x + TILE_SIZE * 7.45;
+      const phoneY = y + TILE_SIZE * 2.03;
+      this.worldSceneLayer.fillStyle(0x26313c, 0.98);
+      this.worldSceneLayer.fillRoundedRect(phoneX, phoneY, TILE_SIZE * 0.22, TILE_SIZE * 0.38, 3);
+      this.worldSceneLayer.fillStyle(0x91b7dd, 0.92);
+      this.worldSceneLayer.fillRoundedRect(phoneX + 2, phoneY + 2, TILE_SIZE * 0.16, TILE_SIZE * 0.24, 2);
+      this.worldSceneLayer.lineStyle(2, 0xffc6a6, 0.56 + Math.sin(phase * 7) * 0.16);
+      this.worldSceneLayer.arc(phoneX + TILE_SIZE * 0.11, phoneY - TILE_SIZE * 0.04, TILE_SIZE * 0.18, Math.PI * 1.15, Math.PI * 1.85);
+      this.worldSceneLayer.strokePath();
     }
   }
 
@@ -8226,6 +8304,20 @@ export class GameScene extends Phaser.Scene {
           x + scaleDistance(markerX + 12), y + scaleDistance(12),
           x + scaleDistance(markerX), y + scaleDistance(16)
         );
+      }
+    } else if (scene.sceneKind === "crew_kitchen_door") {
+      this.worldSceneLayer.fillStyle(0xfff8df, 0.9);
+      for (const plateX of [-24, 0, 24]) {
+        this.worldSceneLayer.fillEllipse(x + scaleDistance(plateX), y + scaleDistance(20), scaleDistance(22), scaleDistance(7));
+      }
+      for (const [index, steamX] of [-24, 0, 24].entries()) {
+        const drift = Math.sin(phase * 2.4 + index) * scaleDistance(4);
+        this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(2)), 0xfff8df, 0.58);
+        this.worldSceneLayer.beginPath();
+        this.worldSceneLayer.moveTo(x + scaleDistance(steamX), y + scaleDistance(14));
+        this.worldSceneLayer.lineTo(x + scaleDistance(steamX) + drift, y - scaleDistance(4));
+        this.worldSceneLayer.lineTo(x + scaleDistance(steamX) - drift, y - scaleDistance(18));
+        this.worldSceneLayer.strokePath();
       }
     } else if (scene.sceneKind === "work_table") {
       this.worldSceneLayer.fillStyle(0x2b3d4f, 0.82);
@@ -8402,6 +8494,7 @@ export class GameScene extends Phaser.Scene {
   private eventSceneColor(kind: EventWorldScene["sceneKind"]): number {
     if (kind === "run_gathering" || kind === "crew_beach_run") return 0x8fe3b4;
     if (kind === "crew_sunset_circle") return 0xffb45f;
+    if (kind === "crew_kitchen_door") return 0xf59f43;
     if (kind === "work_table") return 0x91b7dd;
     if (kind === "market_walk") return 0xffd45c;
     if (kind === "party_pulse") return 0xd95c8a;
@@ -9858,6 +9951,12 @@ export class GameScene extends Phaser.Scene {
     const madeRoomOfferMessageAdded = madeRoomOfferMessage
       ? appendOpportunityMessage(this.world.opportunities, madeRoomOfferMessage)
       : false;
+    const kitchenResidueMessage = tutorialActive
+      ? undefined
+      : buildKitchenCircleResidueMessage(this.world, this.getAbsoluteMinute());
+    const kitchenResidueMessageAdded = kitchenResidueMessage
+      ? appendOpportunityMessage(this.world.opportunities, kitchenResidueMessage)
+      : false;
     const leoCadenceMessageAdded = tutorialActive
       ? false
       : flushAct1LeoCadence(this.world, this.getAbsoluteMinute());
@@ -9869,6 +9968,7 @@ export class GameScene extends Phaser.Scene {
       authoredTexts.length > 0 ||
       kadekRushMessageAdded ||
       madeRoomOfferMessageAdded ||
+      kitchenResidueMessageAdded ||
       leoCadenceMessageAdded ||
       eventMessages > 0;
 

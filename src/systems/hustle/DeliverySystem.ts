@@ -43,6 +43,7 @@ import {
   type Act1LuxuryTipTriggerResult
 } from "../story/Act1LuxuryTip";
 import { triggerAriCrewInvitation, type AriCrewInvitationSceneResult } from "../story/Act2AriCrew";
+import { recordAct2IbuDelivery } from "../story/Act2KitchenCircle";
 
 export interface DeliveryResult {
   ok: boolean;
@@ -217,6 +218,7 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
     : undefined;
   const luxuryTipScene = triggerAct1LuxuryTipDilemma(world, definition.id, authoredBreakdown);
   const ariCrewInvitation = triggerAriCrewInvitation(world, definition);
+  if (definition.boardAvailable) recordAct2IbuDelivery(world);
   rearmAct1BreakdownIfUnfired(world, definition.id);
   world.life.hustle.activeDelivery = null;
   const readiness = getAct1MoveOutReadiness(world);

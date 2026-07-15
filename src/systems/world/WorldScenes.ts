@@ -1,7 +1,7 @@
 import { activeStreetTemplate, venueMapNodes } from "../../data/authoredStreetLayout";
 import { npcDefinitions } from "../../data/npcs";
 import { socialGroupDefinitions } from "../../data/groups";
-import { ARI_SURF_RUN_CREW_ID, getCrewSessionSlot } from "../../data/crews";
+import { ARI_SURF_RUN_CREW_ID, KITCHEN_CIRCLE_CREW_ID, getCrewSessionSlot } from "../../data/crews";
 import { getActiveEvents } from "../events/EventScheduler";
 import { getOpportunityTemplate } from "../opportunities/OpportunityEngine";
 import { getRioRaceEligibility, RIO_RACE } from "../ride/RivalRace";
@@ -26,7 +26,8 @@ export type EventWorldSceneKind =
   | "party_pulse"
   | "club_circle"
   | "crew_sunset_circle"
-  | "crew_beach_run";
+  | "crew_beach_run"
+  | "crew_kitchen_door";
 
 export interface WorldSceneActor {
   id: string;
@@ -63,7 +64,7 @@ export interface EventWorldScene {
   cue: string;
   clubId?: string;
   crewId?: string;
-  dressing?: ReadonlyArray<"fire" | "boards" | "closed_laptop" | "run_markers">;
+  dressing?: ReadonlyArray<"fire" | "boards" | "closed_laptop" | "run_markers" | "steam" | "plates">;
   actors: WorldSceneActor[];
 }
 
@@ -115,6 +116,9 @@ export function getEventWorldScenes(world: WorldState): EventWorldScene[] {
       const ariCrewSlot = event.crewSession?.crewId === ARI_SURF_RUN_CREW_ID
         ? getCrewSessionSlot(event.crewSession.crewId, event.crewSession.sessionSlotId)
         : undefined;
+      const kitchenCrewSlot = event.crewSession?.crewId === KITCHEN_CIRCLE_CREW_ID
+        ? getCrewSessionSlot(event.crewSession.crewId, event.crewSession.sessionSlotId)
+        : undefined;
       const isAriCrewSession = Boolean(ariCrewSlot);
       return {
         source: "event" as const,
@@ -122,20 +126,30 @@ export function getEventWorldScenes(world: WorldState): EventWorldScene[] {
         eventId: event.id,
         venueId: event.locationVenueId,
         title: event.title,
-        sceneKind: ariCrewSlot?.kind === "sunset_circle"
+        sceneKind: kitchenCrewSlot?.kind === "kitchen_serve"
+          ? ("crew_kitchen_door" as const)
+          : ariCrewSlot?.kind === "sunset_circle"
           ? ("crew_sunset_circle" as const)
           : ariCrewSlot?.kind === "morning_run"
             ? ("crew_beach_run" as const)
             : eventSceneKind(event),
-        cue: ariCrewSlot?.kind === "sunset_circle" ? "CIRCLE" : ariCrewSlot?.kind === "morning_run" ? "RUN" : eventSceneCue(event, Boolean(group)),
+        cue: kitchenCrewSlot?.kind === "kitchen_serve"
+          ? "KITCHEN"
+          : ariCrewSlot?.kind === "sunset_circle"
+            ? "CIRCLE"
+            : ariCrewSlot?.kind === "morning_run" ? "RUN" : eventSceneCue(event, Boolean(group)),
         clubId,
         crewId: event.crewSession?.crewId,
-        dressing: ariCrewSlot?.kind === "sunset_circle"
+        dressing: kitchenCrewSlot?.kind === "kitchen_serve"
+          ? (["steam", "plates"] as const)
+          : ariCrewSlot?.kind === "sunset_circle"
           ? (["fire", "boards", "closed_laptop"] as const)
           : ariCrewSlot?.kind === "morning_run"
             ? (["run_markers"] as const)
             : undefined,
-        actors: isAriCrewSession
+        actors: kitchenCrewSlot?.kind === "kitchen_serve"
+          ? []
+          : isAriCrewSession
           ? buildAriCrewActors(ariCrewSlot?.kind === "morning_run" ? "morning_run" : "sunset_circle")
           : buildActors(npcIds.length ? npcIds : fallbackNpcIds(), group ? "social" : eventActorRole(event), 3)
       };
