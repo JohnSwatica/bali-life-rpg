@@ -7,6 +7,7 @@ import {
   isAct1ScooterBlown,
   markAct1BreakdownScooterRepaired
 } from "../story/Act1Breakdown";
+import { recordAct2RentPaid } from "../story/Act2KitchenCircle";
 
 const SCOOTER_KEY_ITEM_ID = "scooter_key";
 export const DAILY_SCOOTER_UPGRADE_COST = 260;
@@ -89,6 +90,7 @@ export function payHustleRent(world: WorldState, now: number): HustleActionResul
   adjustReputation(world.reputation, 1, "Paid local rent on time", now);
   const wasMoveOutReady = world.life.hustle.moveOutReady;
   world.life.hustle.moveOutReady = isAct1MoveOutReady(world);
+  recordAct2RentPaid(world);
   const moveOutCopy =
     !wasMoveOutReady && world.life.hustle.moveOutReady
       ? " Found your feet: the move-out numbers are ready. Talk to Ibu Sari before anything else changes."

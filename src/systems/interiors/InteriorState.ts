@@ -5,6 +5,13 @@ import { getActiveNpcRoute } from "../npcs/NpcRoutineRoutes";
 import { getVenueActivityContext, type VenueActivityContext } from "../life/ActivityEngine";
 import { isMadeRoomOfferPending } from "../story/Act1MadeRoomOffer";
 import { canMadeAcceptFinale, canStartIbuGuaranteeScene } from "../story/Act1Finale";
+import { getActiveEventsAtVenue } from "../events/EventScheduler";
+import {
+  isKadekAtKitchenCircleSession,
+  isKitchenCircleDeflectionPending,
+  isKitchenCircleInvitationPending,
+  isKitchenCircleSessionEvent
+} from "../story/Act2KitchenCircle";
 import type { FieldObjectiveTargetRef } from "../guidance/FieldObjective";
 import { scaleDistance } from "../map/WorldScale";
 import type { InteriorDefinition, InteriorNpcSlotDefinition, InteriorStationDefinition, WorldState } from "../../types";
@@ -47,6 +54,24 @@ export function isInteriorPointInsideRoom(interior: InteriorDefinition, point: {
 }
 
 export function isNpcScheduledForInterior(world: WorldState, interior: InteriorDefinition, npcId: string): boolean {
+  const activeKitchenSession = interior.id === "warung_sari_interior"
+    ? getActiveEventsAtVenue(world.clock, interior.venueId, world).find(isKitchenCircleSessionEvent)
+    : undefined;
+  if (
+    npcId === "ibu_sari" &&
+    interior.id === "warung_sari_interior" &&
+    (isKitchenCircleInvitationPending(world) || isKitchenCircleDeflectionPending(world) || Boolean(activeKitchenSession))
+  ) {
+    return true;
+  }
+  if (
+    npcId === "kadek" &&
+    interior.id === "warung_sari_interior" &&
+    activeKitchenSession &&
+    isKadekAtKitchenCircleSession(world.clock.day)
+  ) {
+    return true;
+  }
   if (npcId === "ibu_sari" && interior.id === "warung_sari_interior" && canStartIbuGuaranteeScene(world)) {
     return true;
   }

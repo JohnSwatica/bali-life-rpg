@@ -193,7 +193,7 @@ export interface CrewSessionSlot {
   startHour: number;
   endHour: number;
   title: string;
-  kind?: "sunset_circle" | "morning_run";
+  kind?: "sunset_circle" | "morning_run" | "kitchen_serve";
   description?: string;
   timeCost?: number;
 }
@@ -202,6 +202,7 @@ export interface CrewDefinition {
   id: string;
   name: string;
   venueId: string;
+  memberNpcIds?: string[];
   sessionSlots: CrewSessionSlot[];
   regularBenefit: {
     id: string;

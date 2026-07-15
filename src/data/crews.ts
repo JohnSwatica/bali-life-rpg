@@ -1,12 +1,14 @@
 import type { CrewDefinition, GameEvent } from "../types";
 
 export const ARI_SURF_RUN_CREW_ID = "berawa_surf_run_crew";
+export const KITCHEN_CIRCLE_CREW_ID = "warung_kitchen_circle";
 
 export const crewDefinitions: CrewDefinition[] = [
   {
     id: ARI_SURF_RUN_CREW_ID,
     name: "Berawa Surf & Run Crew",
     venueId: "berawa_beach",
+    memberNpcIds: ["ari"],
     sessionSlots: [
       {
         id: "wednesday_sunset_circle",
@@ -43,6 +45,38 @@ export const crewDefinitions: CrewDefinition[] = [
       id: "berawa_surf_run_regular_benefit",
       label: "Surf & Run regular benefit hook ready"
     }
+  },
+  {
+    id: KITCHEN_CIRCLE_CREW_ID,
+    name: "Warung Kitchen Circle",
+    venueId: "canggu_station",
+    memberNpcIds: ["ibu_sari", "kadek"],
+    sessionSlots: [
+      {
+        id: "tuesday_evening_kitchen",
+        dayOfWeek: 2,
+        startHour: 18,
+        endHour: 20,
+        title: "Warung Kitchen Circle",
+        kind: "kitchen_serve",
+        description: "Pass plates and watch the counter through Ibu's evening rush. Missing it costs nothing.",
+        timeCost: 25
+      },
+      {
+        id: "saturday_evening_kitchen",
+        dayOfWeek: 6,
+        startHour: 18,
+        endHour: 20,
+        title: "Warung Kitchen Circle",
+        kind: "kitchen_serve",
+        description: "Pass plates and watch the counter through Ibu's evening rush. Missing it costs nothing.",
+        timeCost: 25
+      }
+    ],
+    regularBenefit: {
+      id: "warung_kitchen_regular_benefit",
+      label: "Kitchen Circle regular benefit hook ready"
+    }
   }
 ];
 
@@ -56,31 +90,36 @@ export function getCrewSessionSlot(crewId: string, slotId: string) {
 
 export function buildCrewSessionEvents(definitions: readonly CrewDefinition[] = crewDefinitions): GameEvent[] {
   return definitions.flatMap((crew) =>
-    crew.sessionSlots.map((slot) => ({
-      id: `crew-session:${crew.id}:${slot.id}`,
-      title: slot.title,
-      type: slot.kind === "morning_run" ? ("run" as const) : ("crew_meetup" as const),
-      host: { type: "venue" as const, id: crew.venueId },
-      locationVenueId: crew.venueId,
-      schedule: {
-        recurringDays: [slot.dayOfWeek],
-        startHour: slot.startHour,
-        endHour: slot.endHour
-      },
-      description: slot.description ?? "A crew session on the weekly calendar.",
-      participation: {
-        timeCost: slot.timeCost ?? 20,
-        cost: 0,
-        meterDeltas: slot.kind === "morning_run"
-          ? { energy: -8, wellbeing: 8, social: 5 }
-          : { energy: -3, wellbeing: 6, social: 7 },
-        affinityBumps: [{ npcId: "ari", amount: 1 }],
-        meetNpcs: ["ari"]
-      },
-      crewSession: {
-        crewId: crew.id,
-        sessionSlotId: slot.id
-      }
-    }))
+    crew.sessionSlots.map((slot) => {
+      const memberNpcIds = crew.memberNpcIds ?? [];
+      return {
+        id: `crew-session:${crew.id}:${slot.id}`,
+        title: slot.title,
+        type: slot.kind === "morning_run" ? ("run" as const) : ("crew_meetup" as const),
+        host: { type: "venue" as const, id: crew.venueId },
+        locationVenueId: crew.venueId,
+        schedule: {
+          recurringDays: [slot.dayOfWeek],
+          startHour: slot.startHour,
+          endHour: slot.endHour
+        },
+        description: slot.description ?? "A crew session on the weekly calendar.",
+        participation: {
+          timeCost: slot.timeCost ?? 20,
+          cost: 0,
+          meterDeltas: slot.kind === "morning_run"
+            ? { energy: -8, wellbeing: 8, social: 5 }
+            : slot.kind === "kitchen_serve"
+              ? { energy: -5, wellbeing: 4, social: 7 }
+              : { energy: -3, wellbeing: 6, social: 7 },
+          affinityBumps: memberNpcIds[0] ? [{ npcId: memberNpcIds[0], amount: 1 }] : undefined,
+          meetNpcs: memberNpcIds
+        },
+        crewSession: {
+          crewId: crew.id,
+          sessionSlotId: slot.id
+        }
+      };
+    })
   );
 }

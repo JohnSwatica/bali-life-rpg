@@ -21,6 +21,7 @@ import {
   isIbuGuaranteeComplete
 } from "../story/Act1Finale";
 import { getEvent } from "../events/EventScheduler";
+import { isKitchenCircleInvitationPending } from "../story/Act2KitchenCircle";
 import { getRelationshipArcStates } from "../relationships/RelationshipArcs";
 import type { WorldState } from "../../types";
 
@@ -67,6 +68,15 @@ export function getFieldObjective(world: WorldState): FieldObjectiveState {
   }
 
   if (isAct2Unlocked(world)) {
+    if (isKitchenCircleInvitationPending(world)) {
+      return {
+        source: "act2",
+        title: "Answer Ibu's summons",
+        detail: "Ibu has a busy night and expects your hands at the warung. The invitation will not expire.",
+        urgency: "normal",
+        targets: [{ type: "npc", id: "act2_kitchen_circle_invitation", label: "Talk to Ibu Sari", npcId: "ibu_sari" }]
+      };
+    }
     const act3Next = areAct2GoalsComplete(world) ? getAct3ReadinessNextStep(world) : null;
     if (act3Next?.urgency === "ceo") {
       return {
