@@ -192,6 +192,15 @@ import {
   isKitchenCircleSessionEvent,
   prepareKitchenCircleSessionBeat
 } from "../systems/story/Act2KitchenCircle";
+import {
+  buildStructuralUnlockMessages,
+  getStructuralEventMeterState,
+  getStructuralNpcDialogueLine,
+  getStructuralShopItemIds,
+  getStructuralShopItemOffer,
+  getWarungInteriorAccessState,
+  purchaseKadekFocusBufferPastry
+} from "../systems/story/Act2StructuralUnlocks";
 import { canSleepNow } from "../systems/time/DailyClock";
 import {
   createAuthoredDay1ClockState,
@@ -566,7 +575,7 @@ declare global {
       teleport: (x: number, y: number) => void;
     };
     __BALI_LIFE_DEV_PROOF__?: {
-      bootState: (name: string) => DevProofInteractionResult;
+      bootState: (name: string, clock?: { day: number; minuteOfDay: number }) => DevProofInteractionResult;
       acceptDeliveryById: (id: string) => ReturnType<typeof acceptDelivery>;
       openPhoneTab: (tab: string) => DevProofInteractionResult;
       openVenuePanel: (venueId: string) => DevProofInteractionResult;
@@ -1011,12 +1020,23 @@ export class GameScene extends Phaser.Scene {
     if (import.meta.env.DEV && typeof window !== "undefined") {
       void import("../dev/DevProofStates").then(({ buildDevProofBootState, isDevProofBootStateName }) => {
         window.__BALI_LIFE_DEV_PROOF__ = {
-          bootState: (name) => {
+          bootState: (name, clock) => {
             if (!isDevProofBootStateName(name)) {
               return { ok: false, message: `Unknown proof boot state: ${name}.` };
             }
             try {
               const authoredWorld = buildDevProofBootState(name);
+              if (
+                clock &&
+                Number.isFinite(clock.day) &&
+                Number.isFinite(clock.minuteOfDay) &&
+                clock.day >= 1 &&
+                clock.minuteOfDay >= 0 &&
+                clock.minuteOfDay < 1440
+              ) {
+                authoredWorld.clock.day = Math.floor(clock.day);
+                authoredWorld.clock.minuteOfDay = Math.floor(clock.minuteOfDay);
+              }
               saveWorldState(authoredWorld);
               window.sessionStorage.setItem("bali-life-rpg.dev-proof-resume", name);
               window.setTimeout(() => window.location.reload(), 0);
@@ -1072,6 +1092,28 @@ export class GameScene extends Phaser.Scene {
         if (resumeName) {
           window.sessionStorage.removeItem("bali-life-rpg.dev-proof-resume");
           this.resumeFromMenu();
+          const proofVenueId = new URLSearchParams(window.location.search).get("proofVenue");
+          if (proofVenueId) {
+            const cleanUrl = new URL(window.location.href);
+            cleanUrl.searchParams.delete("proofVenue");
+            window.history.replaceState({}, "", cleanUrl);
+            window.setTimeout(() => this.devOpenVenuePanel(proofVenueId), 0);
+          }
+        } else {
+          const proofStateName = new URLSearchParams(window.location.search).get("proofState");
+          if (proofStateName) {
+            const cleanUrl = new URL(window.location.href);
+            const proofDay = Number(cleanUrl.searchParams.get("proofDay"));
+            const proofMinute = Number(cleanUrl.searchParams.get("proofMinute"));
+            const proofClock = Number.isFinite(proofDay) && Number.isFinite(proofMinute)
+              ? { day: proofDay, minuteOfDay: proofMinute }
+              : undefined;
+            cleanUrl.searchParams.delete("proofState");
+            cleanUrl.searchParams.delete("proofDay");
+            cleanUrl.searchParams.delete("proofMinute");
+            window.history.replaceState({}, "", cleanUrl);
+            window.__BALI_LIFE_DEV_PROOF__.bootState(proofStateName, proofClock);
+          }
         }
       });
     }
@@ -4184,6 +4226,8 @@ export class GameScene extends Phaser.Scene {
   private getNpcDialogueLine(npcId: string): string {
     const finaleLine = getAct1FinaleAmbientLine(this.world, npcId);
     if (finaleLine) return finaleLine;
+    const structuralLine = getStructuralNpcDialogueLine(this.world, npcId);
+    if (structuralLine) return structuralLine;
     if (npcId === "ibu_sari" && this.world.life.hustle.completedDeliveryIds.includes("act0_ibu_milk_madu_catering")) {
       if (!this.world.questFlags.act0_catering_on_time) {
         return this.world.questFlags.act0_negotiated_fee
@@ -4673,6 +4717,13 @@ export class GameScene extends Phaser.Scene {
     if (!interior || this.interiorTransitioning) {
       return;
     }
+    const warungAccess = interior.id === "warung_sari_interior"
+      ? getWarungInteriorAccessState(this.world)
+      : undefined;
+    if (warungAccess && !warungAccess.allowed) {
+      this.showToast(warungAccess.message);
+      return;
+    }
     this.renderInteriorIfNeeded(interior);
     this.closePanel(false);
     this.phone?.close();
@@ -4688,7 +4739,11 @@ export class GameScene extends Phaser.Scene {
       this.placePlayerSprite(interior.entrance, false);
       this.interiorTransitioning = false;
       this.cameras.main.fadeIn(400, 0, 0, 0);
-      this.showToast(`Entered ${interior.name}.`);
+      this.showToast(
+        warungAccess?.kind === "regular_after_hours"
+          ? warungAccess.message
+          : `Entered ${interior.name}.`
+      );
       this.maybeStartAct0InteriorBeat();
     });
   }
@@ -5685,7 +5740,7 @@ export class GameScene extends Phaser.Scene {
         const canJoinCrew = Boolean(crewState?.invited && !crewState.member);
         const canAttendCrew = !crewState || crewState.member || canJoinCrew;
         const moneyCopy = cost < 0 ? `Earn Rp ${Math.abs(cost)}` : cost > 0 ? `Cost Rp ${cost}` : "Free";
-        const meterCopy = formatMeterDeltaSummary(this.world, event.participation.meterDeltas);
+        const meterCopy = formatMeterDeltaSummary(this.world, getStructuralEventMeterState(this.world, event).meterDeltas);
         const crewStatusCopy = crewState
           ? `\nAttendance ${crewState.attendanceCount}/${CREW_REGULAR_ATTENDANCE_COUNT}${crewState.regular ? " · REGULAR" : ""}`
           : "";
@@ -7128,13 +7183,15 @@ export class GameScene extends Phaser.Scene {
     saveWorldState(this.world);
 
     const moneyCopy = cost < 0 ? `Rp ${Math.abs(cost)} earned` : cost > 0 ? `Rp ${cost} spent` : "free";
-    const meterCopy = formatMeterDeltaSummary(this.world, event.participation.meterDeltas);
+    const meterCopy = formatMeterDeltaSummary(this.world, participation.meterDeltas);
     const details = `${moneyCopy}${meterCopy ? ` | ${meterCopy}` : ""}`;
     const attendanceCopy = crewResult?.ok ? ` ${crewResult.message}` : "";
+    const benefitCopy = participation.benefitMessage ? ` ${participation.benefitMessage}` : "";
+    this.updateOpportunityFeed(0, true);
     this.showToast(
       goalMessage
-        ? `${intentResult.message} ${details}.${attendanceCopy} ${goalMessage}`
-        : `${intentResult.message} ${details}.${attendanceCopy}`
+        ? `${intentResult.message} ${details}.${attendanceCopy}${benefitCopy} ${goalMessage}`
+        : `${intentResult.message} ${details}.${attendanceCopy}${benefitCopy}`
     );
     this.openVenueActivityMenu(event.locationVenueId);
   }
@@ -7166,18 +7223,35 @@ export class GameScene extends Phaser.Scene {
     let rowY = y + 118;
     container.add(this.add.text(x + 22, rowY, "Buy", this.panelSectionStyle()));
     rowY += 30;
-    for (const itemId of shop.sells) {
+    for (const itemId of getStructuralShopItemIds(this.world, shop)) {
       const item = itemDefinitions[itemId];
-      this.addPanelButton(container, x + 22, rowY, panelWidth - 44, 38, `${item.name}  -  Rp ${item.buyPrice}`, () => {
+      const structuralOffer = getStructuralShopItemOffer(this.world, shop.id, itemId);
+      const benefitCopy = structuralOffer.benefitLabel ? `  ·  ${structuralOffer.benefitLabel}` : "";
+      const availabilityCopy = structuralOffer.available ? "" : `  ·  ${structuralOffer.reason ?? "Unavailable"}`;
+      this.addPanelButton(container, x + 22, rowY, panelWidth - 44, 38, `${structuralOffer.displayName}  -  Rp ${structuralOffer.price}${benefitCopy}${availabilityCopy}`, () => {
         if (itemId === BIKE_RENTAL_ITEM_ID) {
           this.buyBikeRental(shop);
           return;
         }
-        if (this.playerState.money < item.buyPrice) {
+        if (itemId === "focus_buffer_pastry") {
+          const purchase = purchaseKadekFocusBufferPastry(this.world, this.getAbsoluteMinute());
+          this.showToast(purchase.message);
+          if (purchase.ok) {
+            saveWorldState(this.world);
+            this.phone?.refresh();
+          }
+          this.renderShopPanel(shop);
+          return;
+        }
+        if (!structuralOffer.available) {
+          this.showToast(structuralOffer.reason ?? "That item is unavailable.");
+          return;
+        }
+        if (this.playerState.money < structuralOffer.price) {
           this.showToast("Not enough money.");
           return;
         }
-        this.playerState.money -= item.buyPrice;
+        this.playerState.money -= structuralOffer.price;
         addItem(this.playerState, itemId, 1);
         this.dispatchIntent({
           kind: "RecordMemory",
@@ -7186,7 +7260,7 @@ export class GameScene extends Phaser.Scene {
           memory: "bought_item",
           detail: item.name
         });
-        this.showToast(`Bought ${item.name}.`);
+        this.showToast(`Bought ${item.name} for Rp ${structuralOffer.price}.${structuralOffer.benefitLabel ? ` ${structuralOffer.benefitLabel}.` : ""}`);
         saveWorldState(this.world);
         this.renderShopPanel(shop);
       });
@@ -9957,6 +10031,10 @@ export class GameScene extends Phaser.Scene {
     const kitchenResidueMessageAdded = kitchenResidueMessage
       ? appendOpportunityMessage(this.world.opportunities, kitchenResidueMessage)
       : false;
+    const structuralUnlockMessagesAdded = tutorialActive
+      ? 0
+      : buildStructuralUnlockMessages(this.world, this.getAbsoluteMinute())
+          .filter((message) => appendOpportunityMessage(this.world.opportunities, message)).length;
     const leoCadenceMessageAdded = tutorialActive
       ? false
       : flushAct1LeoCadence(this.world, this.getAbsoluteMinute());
@@ -9969,6 +10047,7 @@ export class GameScene extends Phaser.Scene {
       kadekRushMessageAdded ||
       madeRoomOfferMessageAdded ||
       kitchenResidueMessageAdded ||
+      structuralUnlockMessagesAdded > 0 ||
       leoCadenceMessageAdded ||
       eventMessages > 0;
 

@@ -40,7 +40,7 @@ export const itemDefinitions: Record<string, ItemDefinition> = {
     id: "focus_buffer_pastry",
     name: "Focus Buffer Pastry",
     description: "Kadek's warm priority-list pastry. Eating it freezes Focus loss for three in-game hours.",
-    buyPrice: 0,
+    buyPrice: 18,
     sellPrice: 0
   },
   baked_ingredient_crate: {

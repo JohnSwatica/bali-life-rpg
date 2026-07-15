@@ -2,25 +2,35 @@ import { addItem } from "../Inventory";
 import { adjustPlayerMeters } from "../meters/PlayerMeters";
 import { bumpRelationshipAffinity } from "../relationships/RelationshipMemory";
 import { advanceWorldMinutes } from "../time/DailyClock";
-import type { GameEvent, WorldState } from "../../types";
+import { getStructuralEventMeterState } from "../story/Act2StructuralUnlocks";
+import type { GameEvent, Meter, WorldState } from "../../types";
 
 export interface EventParticipationResult {
   ok: boolean;
   message: string;
   moneyDelta: number;
   completedAt: number;
+  meterDeltas: Partial<Record<Meter, number>>;
+  benefitMessage?: string;
 }
 
 export function applyEventParticipation(world: WorldState, event: GameEvent, startedAt: number): EventParticipationResult {
   const player = world.players[world.localPlayerId];
   const cost = event.participation.cost ?? 0;
   if (cost > 0 && player.money < cost) {
-    return { ok: false, message: `Need Rp ${cost} for ${event.title}.`, moneyDelta: 0, completedAt: startedAt };
+    return {
+      ok: false,
+      message: `Need Rp ${cost} for ${event.title}.`,
+      moneyDelta: 0,
+      completedAt: startedAt,
+      meterDeltas: {}
+    };
   }
 
   const moneyDelta = -cost;
   player.money += moneyDelta;
-  adjustPlayerMeters(world, event.participation.meterDeltas);
+  const structuralMeters = getStructuralEventMeterState(world, event);
+  adjustPlayerMeters(world, structuralMeters.meterDeltas);
   advanceWorldMinutes(world, event.participation.timeCost);
   const completedAt = startedAt + event.participation.timeCost;
 
@@ -39,5 +49,12 @@ export function applyEventParticipation(world: WorldState, event: GameEvent, sta
     bumpRelationshipAffinity(world, "npc", npcId, amount, `Attended ${event.title}`, completedAt);
   }
 
-  return { ok: true, message: `Joined ${event.title}.`, moneyDelta, completedAt };
+  return {
+    ok: true,
+    message: `Joined ${event.title}.`,
+    moneyDelta,
+    completedAt,
+    meterDeltas: structuralMeters.meterDeltas,
+    benefitMessage: structuralMeters.benefitMessage
+  };
 }

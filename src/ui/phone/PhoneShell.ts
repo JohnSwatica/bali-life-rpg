@@ -25,6 +25,7 @@ import { getDeliveryOfferAvailability, getEffectiveDeliveryTerms, previewDeliver
 import { getRentPressureState, getScooterRepairStatus, getScooterUpgradeStatus } from "../../systems/hustle/HustleEconomy";
 import { getHustleGoalStates, getHustleNextStep } from "../../systems/hustle/HustleGoals";
 import { getCrewCalendarEntries, getCrewCalendarWeekLabel } from "../../systems/crews/CrewCalendar";
+import { getStructuralUnlockProfileLines } from "../../systems/story/Act2StructuralUnlocks";
 import type { GameEvent, LiveOpportunity, OpportunityMessage, RelationshipMemory, Venue, WorldState } from "../../types";
 import { getPhoneCameraScale, getPhonePanelLayout, PHONE_CONTENT_INSET_PX } from "./PhoneLayout";
 
@@ -776,7 +777,8 @@ export class PhoneShell {
     const world = this.options.getWorld();
     const profile = world.profile;
     const reputation = world.reputation;
-    this.renderTextList(container, x, y, width, [
+    const unlockLines = getStructuralUnlockProfileLines(world);
+    const profileText = this.renderTextList(container, x, y, width, [
       `${profile.displayName} @ ${profile.homeArea}`,
       `Avatar: ${profile.avatar.body}, ${profile.avatar.hair}, ${profile.avatar.outfit}${profile.avatar.accessory ? `, ${profile.avatar.accessory}` : ""}`,
       `Bio: ${profile.bio}`,
@@ -784,25 +786,27 @@ export class PhoneShell {
       `Reputation score: ${reputation.score}`,
       `Meters: ${formatVisibleMeterValues(world)}`,
       `Visible reputation tags: ${reputation.tags.length ? reputation.tags.join(", ") : "none yet"}`,
+      ...(unlockLines.length ? ["Structural unlocks:", ...unlockLines.map((line) => `· ${line}`)] : []),
       `Audio: ${this.options.isAudioMuted?.() ? "muted" : "on"}`,
       "Tap tags below to edit local profile tags."
     ]);
 
     const muted = this.options.isAudioMuted?.() ?? false;
+    const actionY = y + Math.max(174, profileText.height + 14);
     this.addButton(
       container,
       x,
-      y + 174,
+      actionY,
       116,
       28,
       muted ? "Audio Muted" : "Audio On",
       () => this.options.onAudioMutedChange?.(!muted),
       muted ? 0x4a3331 : 0x35533f
     );
-    this.addButton(container, x + 124, y + 174, 132, 28, "Send feedback", () => this.options.onFeedback(), 0x253a35);
+    this.addButton(container, x + 124, actionY, 132, 28, "Send feedback", () => this.options.onFeedback(), 0x253a35);
 
     let tagX = x;
-    let tagY = y + 216;
+    let tagY = actionY + 42;
     for (const tag of lifestyleTagSuggestions) {
       const active = profile.lifestyleTags.includes(tag);
       const labelWidth = Math.max(74, Math.min(116, tag.length * 8 + 26));
