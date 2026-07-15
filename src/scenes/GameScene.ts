@@ -214,6 +214,11 @@ import {
   purchaseKadekFocusBufferPastry
 } from "../systems/story/Act2StructuralUnlocks";
 import {
+  ACT2_KADEK_SOURDOUGH_SCENE_ID,
+  isKadekSourdoughChoicePending,
+  resolveKadekSourdoughChoice
+} from "../systems/story/Act2KadekSourdough";
+import {
   buildPdaRevealMessage,
   completePdaReveal,
   getPdaReputationReadModel,
@@ -2131,6 +2136,14 @@ export class GameScene extends Phaser.Scene {
     this.resumeAct0BackHalfIfNeeded();
     if (this.world.questFlags[ACT1_LUXURY_TIP_PENDING_FLAG]) {
       const scene = getRelationshipChoiceScene(ACT1_LUXURY_TIP_SCENE_ID);
+      if (scene) {
+        this.openRelationshipChoiceScene(scene);
+        this.sessionStartedAt ??= Date.now();
+        return;
+      }
+    }
+    if (isKadekSourdoughChoicePending(this.world)) {
+      const scene = getRelationshipChoiceScene(ACT2_KADEK_SOURDOUGH_SCENE_ID);
       if (scene) {
         this.openRelationshipChoiceScene(scene);
         this.sessionStartedAt ??= Date.now();
@@ -4425,6 +4438,21 @@ export class GameScene extends Phaser.Scene {
       this.openDialogue(
         scene.speakerName ?? npcDefinitions[scene.npcId]?.name ?? scene.npcId,
         resolution.ok ? option.resultLine : "The transfer has already been settled."
+      );
+      return;
+    }
+    if (
+      option.actionId === "protect_act2_kadek_sourdough" ||
+      option.actionId === "expose_act2_kadek_sourdough"
+    ) {
+      const choice = option.actionId === "protect_act2_kadek_sourdough" ? "protect" : "expose";
+      const resolution = resolveKadekSourdoughChoice(this.world, choice, this.getAbsoluteMinute());
+      saveWorldState(this.world);
+      this.phone?.refresh();
+      this.openDialogue(
+        scene.speakerName ?? npcDefinitions[scene.npcId]?.name ?? scene.npcId,
+        resolution.ok ? option.resultLine : resolution.message,
+        scene.npcId
       );
       return;
     }
@@ -9521,6 +9549,13 @@ export class GameScene extends Phaser.Scene {
     this.showToast(result.message);
     if (result.storyScene?.fired && result.storyScene.dialogue) {
       this.openDialogue("Kadek", result.storyScene.dialogue, "kadek");
+    }
+    if (result.kadekSourdoughBox?.fired) {
+      this.openDialogue("Wrong-address priority box", result.kadekSourdoughBox.dialogue);
+    }
+    if (result.kadekSourdoughScene?.fired) {
+      const scene = getRelationshipChoiceScene(ACT2_KADEK_SOURDOUGH_SCENE_ID);
+      if (scene) this.openRelationshipChoiceScene(scene);
     }
     if (result.breakdownScene?.fired && result.breakdownScene.dialogue) {
       this.openDialogue("Dropoff", result.breakdownScene.dialogue);

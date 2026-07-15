@@ -6,6 +6,7 @@ import {
   KADEK_RUSH_DELIVERY_ID,
   type KadekBoardStyle
 } from "../systems/story/Act1KadekPriority";
+import { ACT2_KADEK_SOURDOUGH_DELIVERY_ID } from "../systems/story/Act2KadekSourdough";
 
 export interface DeliveryCondition {
   id: string;
@@ -215,6 +216,30 @@ export const deliveryDefinitions: DeliveryDefinition[] = [
         ratingModifier: -0.5
       }
     ]
+  },
+  {
+    id: ACT2_KADEK_SOURDOUGH_DELIVERY_ID,
+    title: "PRIORITY · wrong-address pastry return",
+    description: "A one-time priority correction. The upper-lane address rejected a box that should not have carried Kadek's work under somebody else's name.",
+    pickupVenueId: "finns_recreation_club",
+    pickupLabel: "Take the returned pastry box. The folds are unmistakably Kadek's. Label: CORPORATE CAFÉ · supplier D. ARSA — not his name.",
+    dropoffId: "act2_kadek_after_hours_counter",
+    dropoffName: "BAKED. Berawa Counter",
+    dropoffLabel: "Bring the mislabeled box to Kadek at BAKED. after closing.",
+    dropoffVenueId: "baked_berawa",
+    dropoffPoint: {
+      ...offsetVenuePoint("baked_berawa", { x: 700, y: 470 }, 12, 70),
+      radius: 78
+    },
+    itemId: "delivery_pastry_box",
+    timeLimitMin: 70,
+    payout: 80,
+    meterDeltas: { energy: -5, wellbeing: 1, focus: 2, social: 1 },
+    ratingWeight: 0,
+    boardAvailable: true,
+    repeatable: false,
+    countsTowardHustleProgress: false,
+    boardStyle: "story_special"
   },
   {
     id: KADEK_PRIORITY_DELIVERY_ID,

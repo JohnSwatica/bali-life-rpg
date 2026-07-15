@@ -12,6 +12,7 @@ import {
   isKitchenCircleInvitationPending,
   isKitchenCircleSessionEvent
 } from "../story/Act2KitchenCircle";
+import { didKadekEndMoonlightingOnDay, isKadekMoonlightingEndPending } from "../story/Act2KadekSourdough";
 import type { FieldObjectiveTargetRef } from "../guidance/FieldObjective";
 import { scaleDistance } from "../map/WorldScale";
 import type { InteriorDefinition, InteriorNpcSlotDefinition, InteriorStationDefinition, WorldState } from "../../types";
@@ -68,7 +69,11 @@ export function isNpcScheduledForInterior(world: WorldState, interior: InteriorD
     npcId === "kadek" &&
     interior.id === "warung_sari_interior" &&
     activeKitchenSession &&
-    isKadekAtKitchenCircleSession(world.clock.day)
+    (
+      isKadekAtKitchenCircleSession(world.clock.day) ||
+      isKadekMoonlightingEndPending(world) ||
+      didKadekEndMoonlightingOnDay(world)
+    )
   ) {
     return true;
   }

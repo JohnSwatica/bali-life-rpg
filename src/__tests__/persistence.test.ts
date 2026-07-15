@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "../data/map";
+import { buildDevProofBootState } from "../dev/DevProofStates";
 import { CURRENT_SCHEMA_VERSION, hasSavedWorldState, loadWorldState, saveWorldState } from "../systems/Persistence";
 import { createInitialWorldState, LOCAL_PLAYER_ID } from "../systems/WorldState";
+import { acceptDelivery, completeDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
+import {
+  ACT2_KADEK_SOURDOUGH_DELIVERY_ID,
+  getKadekSourdoughChoice,
+  isKadekMoonlightingEndPending,
+  resolveKadekSourdoughChoice
+} from "../systems/story/Act2KadekSourdough";
 import { installMemoryLocalStorage, writeRawSave } from "./testUtils";
 import type { WorldState } from "../types";
 
@@ -481,5 +489,21 @@ describe("Persistence migration", () => {
     const restored = loadWorldState();
     expect(restored.schemaVersion).toBe(11);
     expect(restored.activeActivity).toEqual(world.activeActivity);
+  });
+
+  it("round-trips W2-07 choice and next-session residue through existing v11 flags", () => {
+    const world = buildDevProofBootState("act2_kadek_sourdough_ready");
+    const now = world.clock.day * 1440 + world.clock.minuteOfDay;
+    expect(acceptDelivery(world, ACT2_KADEK_SOURDOUGH_DELIVERY_ID, now).ok).toBe(true);
+    expect(pickupDelivery(world, now + 1).ok).toBe(true);
+    expect(completeDelivery(world, now + 2, 1).ok).toBe(true);
+    expect(resolveKadekSourdoughChoice(world, "expose", now + 3).ok).toBe(true);
+
+    saveWorldState(world);
+    const restored = loadWorldState();
+    expect(restored.schemaVersion).toBe(11);
+    expect(getKadekSourdoughChoice(restored)).toBe("expose");
+    expect(isKadekMoonlightingEndPending(restored)).toBe(true);
+    expect(restored.reputation).toEqual(world.reputation);
   });
 });

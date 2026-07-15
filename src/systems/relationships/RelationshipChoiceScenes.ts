@@ -8,6 +8,8 @@ export type RelationshipChoiceActionId =
   | "complete_act1_leo_encounter"
   | "keep_act1_luxury_tip"
   | "return_act1_luxury_tip"
+  | "protect_act2_kadek_sourdough"
+  | "expose_act2_kadek_sourdough"
   | "start_rio_race"
   | "decline_rio_race";
 
@@ -192,6 +194,32 @@ export const RELATIONSHIP_CHOICE_SCENES: Record<string, RelationshipChoiceScene>
         resultLine:
           'You stop the gate and show them the receipt. The guest actually looks at you. "Oh. Thank you. Next time, ask for me at the gate." Rp 50 posts to your wallet.',
         actionId: "return_act1_luxury_tip"
+      }
+    ]
+  },
+  act2_kadek_whistleblower_sourdough: {
+    id: "act2_kadek_whistleblower_sourdough",
+    npcId: "kadek",
+    speakerName: "Kadek · BAKED. after hours",
+    trigger: "manual",
+    skipOptionIndex: 0,
+    npcOpeningLine:
+      'The returned box sits under BAKED.\'s last light. The butter folds are Kadek\'s. The label is not: CORPORATE CAFÉ · supplier D. ARSA.\n\nKadek reads it once. “I made them. My brother\'s scooter debt did not wait for my pride. They pay for perfect hands, then print another name.”\n\nHe squares the label with the edge of the box. “That is the whole ugly recipe.”',
+    prompt: "The label is evidence. What do you do?",
+    options: [
+      {
+        id: "protect_kadek",
+        label: "PROTECT · Keep the label between you.",
+        resultLine:
+          'You fold the supplier copy and hand it back. Kadek exhales through his nose. “Good. Not because this makes me clean. Because it gives me one night to end it myself.”\n\nHe puts the label in his pocket. “When I bake under my own name again, you eat first.”',
+        actionId: "protect_act2_kadek_sourdough"
+      },
+      {
+        id: "expose_to_circle",
+        label: "EXPOSE · Tell the circle why this happened.",
+        resultLine:
+          '“The squeeze makes people hide the work that keeps them alive. The circle should know that, not shame you for it.”\n\nKadek looks at the closed ovens. “You could have warned me. But you are not wrong.”\n\nAt the warung, Ibu reads the label and pushes it back across the table. “Debts are not sins. Secrets are just heavy.” Nobody leaves.',
+        actionId: "expose_act2_kadek_sourdough"
       }
     ]
   }
