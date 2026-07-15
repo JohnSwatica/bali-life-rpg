@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-15 (RPG-20260715-06 complete locally; Warung Rush recast as Ibu's Kitchen SERVE beat)
+Last updated: 2026-07-15 (RPG-20260715-07 complete locally; Kadek's Whistleblower Sourdough choice and ending residue)
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -11,6 +11,8 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 `CLAUDE_PROJECT_REVIEW_2026-07-06.md` is Claude's full project review (bottlenecks, gap analysis, sequencing recommendation). It is a supervisory assessment, not a canonical design source — `GAME_DESIGN.md`/`STORY_BIBLE.md` still win on narrative/systems conflicts — but its top recommendation (no recorded human playtest yet; a `PLAYTEST_01.md` should exist before more systems work) should be treated as live until the user says otherwise.
 
 Current durable truth:
+
+- **RPG-20260715-07 complete locally on `feat/rpg-20260715-07-whistleblower-sourdough`, stacked on W2-06 at `2af6764`:** Kadek's existing friendly tier plus Kitchen Circle regular status replaces his recurring priority row with one after-hours scripted wrong-address pastry return. The evidence opens a two-option BAKED. scene: PROTECT is the explicit ESC/skip default and adds +5 Community Trust; EXPOSE closes the circle around him, leaves Platform Efficiency neutral, and applies a small -3 Community Trust dent. Neither branch changes cash terms or Kadek affinity. Both write ending-readable residue, and Kadek ends the anonymous corporate work by his own choice in one branch-specific line at the next attended Kitchen session. Schema stays v11; map delta is none. Proof: `docs/RPG-20260715-07_KADEK_SOURDOUGH_PROOF.md`; verification: 57 files / 391 tests, production build, and two clean four-shot browser proofs from the same `act2_kadek_sourdough_ready` state.
 
 - **RPG-20260715-06 complete locally on `feat/rpg-20260715-06-warung-rush-serve`, stacked on W2-05 at `8f4cf4b`:** Warung Rush no longer has a generic venue/activity launch and now runs only as Kitchen Circle participation or Ibu's member-only Thursday 18:00–21:00 busy-night ping, capped at one stable message/completion per week. Session attendance resolves only after the unchanged 75-second rush, weak rounds still count, and strong rounds add one rotating crew line. Tips are bounded at Rp 12–28 and Ibu affinity at +1–3; neither can go negative. Post-squeeze framing carries the app-tax line. Existing v11 active rush saves remain finishable; schema and map stay unchanged. Proof: `docs/RPG-20260715-06_WARUNG_SERVE_PROOF.md`; verification: 56 files / 381 tests, production build, desktop session/busy-night proof, and touch-capable 390×844 proof green from `act2_kitchen_serve_ready`.
 
@@ -58,7 +60,7 @@ Current durable truth:
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test` = 56 files / 381 passing, 0 skipped; `npm run build` passes. W2-06's desktop session and busy-night proofs pass, and touch-capable Chrome emulation confirms the shipped joystick/ACT controls at 390×844. Physical iOS/Android and first-read human timing verification remain pending.
+- Current verification: `npm test` = 57 files / 391 passing, 0 skipped; `npm run build` passes. W2-07's PROTECT and EXPOSE browser proofs each pass from the same boot state through the next-session closure with no console/page errors. Physical iOS/Android and first-read human timing verification remain pending.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Packet execution status (updated 2026-07-12):
