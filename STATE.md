@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-15 (RPG-20260715-07 complete locally; Kadek's Whistleblower Sourdough choice and ending residue)
+Last updated: 2026-07-15 (RPG-20260715-08 complete locally; Act 2 closes at the sunset circle and hands directly to Wave 3)
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -11,6 +11,8 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 `CLAUDE_PROJECT_REVIEW_2026-07-06.md` is Claude's full project review (bottlenecks, gap analysis, sequencing recommendation). It is a supervisory assessment, not a canonical design source — `GAME_DESIGN.md`/`STORY_BIBLE.md` still win on narrative/systems conflicts — but its top recommendation (no recorded human playtest yet; a `PLAYTEST_01.md` should exist before more systems work) should be treated as live until the user says otherwise.
 
 Current durable truth:
+
+- **RPG-20260715-08 complete locally on `feat/rpg-20260715-08-vance-seat-finale`, stacked on W2-07 at `cb2d131`:** completing the PDA reveal makes Julian Vance's one-time Milk & Madu real-job offer available; decline and take-card are story residue only, with TAKE CARD producing one delayed Feed follow-up. The Act 2 finale opens Sunday 17:00–20:00 after both crews are regular, the squeeze and PDA reveal are complete, and the preceding Vance conversation is settled. Both crews stage around one beach fire with Ibu's food, Ari's phone away, Kadek's branch-aware named bread, an open seat, and Leo visibly absent. Tip, sourdough, and No-Questions lines render only when their real save flags exist. Three warm toasts all persist the same Act 2 completion flag without changing mechanics or advancing `currentAct`; there is no completion card because Wave 3 attaches at the circle. Schema stays v11; map delta is none. Proof: `docs/RPG-20260715-08_VANCE_SEAT_FINALE_PROOF.md`; verification: 58 files / 405 tests, production build, and three clean browser proofs including the staged-wide poster and both Kadek variants.
 
 - **RPG-20260715-07 complete locally on `feat/rpg-20260715-07-whistleblower-sourdough`, stacked on W2-06 at `2af6764`:** Kadek's existing friendly tier plus Kitchen Circle regular status replaces his recurring priority row with one after-hours scripted wrong-address pastry return. The evidence opens a two-option BAKED. scene: PROTECT is the explicit ESC/skip default and adds +5 Community Trust; EXPOSE closes the circle around him, leaves Platform Efficiency neutral, and applies a small -3 Community Trust dent. Neither branch changes cash terms or Kadek affinity. Both write ending-readable residue, and Kadek ends the anonymous corporate work by his own choice in one branch-specific line at the next attended Kitchen session. Schema stays v11; map delta is none. Proof: `docs/RPG-20260715-07_KADEK_SOURDOUGH_PROOF.md`; verification: 57 files / 391 tests, production build, and two clean four-shot browser proofs from the same `act2_kadek_sourdough_ready` state.
 
@@ -54,13 +56,13 @@ Current durable truth:
 
 - **RPG-20260713-01/02 complete and merged:** authored venue interaction footprints are collision-safe, so Act 0's Milk & Madu objective can no longer resolve to adjacent Milu by Nook. Fresh Act 1 entry now visibly and persistently cuts NusaDrop board base pay 15%, then stages Leo's one-time pickup-rail encounter before his existing race. Fresh smoke proof covers the correct Milk & Madu panel, Act 0 completion, the rate-cut card, Leo's dialogue, and a lower first Act 1 payout. Proof: `docs/RPG-20260713-01_VENUE_COLLISION_PROOF.md` and `docs/RPG-20260713-02_ACT1_INCITING_HOOK_PROOF.md`. PR #1 (Phases 1-2 + all RPG-20260708/712/713 work) merged to `main` 2026-07-13 (`c20c527`); GitHub Pages deploy triggered automatically.
 
-- Branch: `feat/rpg-20260713-04-first-ten-minutes`, branched cleanly from freshly pulled `main` at `80a875c` for packet -04.
+- Branch: `feat/rpg-20260715-08-vance-seat-finale`, stacked on W2-07 head `cb2d131` because `origin/main` remains `71881d5`.
 - Remote: `https://github.com/JohnSwatica/bali-life-rpg` (created 2026-07-06). All branches pushed. New work should branch from `main` and open PRs. Merge authority: Claude has standing merge authority for this repo specifically (set 2026-07-13, see global CLAUDE.md Standing Rule 8) after actually reviewing a PR (diffs, tests, build, proof) — not a rubber stamp. match.co/NomadNest are unaffected; John still merges those himself.
 - Public playable build: `https://johnswatica.github.io/bali-life-rpg/` — auto-deploys from `main` via `.github/workflows/deploy-pages.yml` (CI runs tests, then builds with `--base=/bali-life-rpg/`; local dev/build unchanged). Verified live 2026-07-06 with assets resolving.
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test` = 57 files / 391 passing, 0 skipped; `npm run build` passes. W2-07's PROTECT and EXPOSE browser proofs each pass from the same boot state through the next-session closure with no console/page errors. Physical iOS/Android and first-read human timing verification remain pending.
+- Current verification: `npm test -- --run` = 58 files / 405 passing, 0 skipped; `npm run build` and `git diff --check` pass. W2-08's Vance, PROTECT finale, and EXPOSE finale browser proofs all pass with no console/page errors; the wide poster and delayed card Feed residue were visually inspected. Physical iOS/Android and first-read human timing verification remain pending.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Packet execution status (updated 2026-07-12):
@@ -89,7 +91,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move (2026-07-15): **Wave 2 continues with RPG-20260715-03 — Kitchen Circle + the overheard squeeze**, stacked after the completed -01 crew core and -02 Ari content. Remaining queue: -03 kitchen circle+squeeze → -04 milestones → -05 PDA reveal → -06 Warung Rush recast → -07 sourdough choice → -08 Vance+the seat. Wave 1 remains closed and passed; Wave 2 remains in stacked-continuation mode with no wait for merge. Hard boundaries unchanged.
+Immediate next move (2026-07-15): **Wave 2 is complete locally through RPG-20260715-08.** Claude reviews/merges the W2-01 → W2-08 stack in order; if an earlier review changes, rebase its dependents before merge. Wave 3 W3-01 owns the Season 1 ending and attaches directly to the completed sunset-circle state. Do not add an Act 2 completion card or advance `currentAct` before that attachment.
 
 ## Project
 
@@ -100,7 +102,7 @@ Immediate next move (2026-07-15): **Wave 2 continues with RPG-20260715-03 — Ki
 - Setting: compressed Berawa, Canggu neighborhood around the FINNS/Jl. Pantai Berawa area.
 - Current playable mode: local single-player vertical slice.
 - Multiplayer: visible in UI as a locked portal only; no real networking/server/backend.
-- Current branch: `main` (post 2026-07-06 merge; historical feature branches remain pushed to origin for reference).
+- Current branch: `feat/rpg-20260715-08-vance-seat-finale` (stacked on W2-07 head `cb2d131`; `origin/main` is `71881d5`).
 - Public URL: `https://johnswatica.github.io/bali-life-rpg/` (GitHub Pages, deploys on push to `main`).
 
 ## What Was Added Recently
