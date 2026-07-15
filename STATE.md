@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-15 (RPG-20260715-05 complete locally; two-axis reputation revealed read-only in Profile)
+Last updated: 2026-07-15 (RPG-20260715-06 complete locally; Warung Rush recast as Ibu's Kitchen SERVE beat)
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -11,6 +11,8 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 `CLAUDE_PROJECT_REVIEW_2026-07-06.md` is Claude's full project review (bottlenecks, gap analysis, sequencing recommendation). It is a supervisory assessment, not a canonical design source — `GAME_DESIGN.md`/`STORY_BIBLE.md` still win on narrative/systems conflicts — but its top recommendation (no recorded human playtest yet; a `PLAYTEST_01.md` should exist before more systems work) should be treated as live until the user says otherwise.
 
 Current durable truth:
+
+- **RPG-20260715-06 complete locally on `feat/rpg-20260715-06-warung-rush-serve`, stacked on W2-05 at `8f4cf4b`:** Warung Rush no longer has a generic venue/activity launch and now runs only as Kitchen Circle participation or Ibu's member-only Thursday 18:00–21:00 busy-night ping, capped at one stable message/completion per week. Session attendance resolves only after the unchanged 75-second rush, weak rounds still count, and strong rounds add one rotating crew line. Tips are bounded at Rp 12–28 and Ibu affinity at +1–3; neither can go negative. Post-squeeze framing carries the app-tax line. Existing v11 active rush saves remain finishable; schema and map stay unchanged. Proof: `docs/RPG-20260715-06_WARUNG_SERVE_PROOF.md`; verification: 56 files / 381 tests, production build, desktop session/busy-night proof, and touch-capable 390×844 proof green from `act2_kitchen_serve_ready`.
 
 - **RPG-20260715-05 complete locally on `feat/rpg-20260715-05-pda-reveal`, stacked on W2-04 at `b5a3d3b`:** after a real Surf & Run sunset-circle attendance and the overheard Kitchen squeeze, one stable NusaDrop “Driver transparency initiative” ping makes Profile open a two-step discovery: Platform Efficiency first, then leaked `metric_x` with Ibu's annotation and only the history branches present in the save. The permanent Profile surface derives both live existing axes and never writes reputation. Audit found the axes are independent rather than a strict inverse, so copy honestly says app rewards versus street memory; the `0..100` values are presentation-only projections over existing `rootedAxis` and `relationalAxis`. Schema stays v11; map delta is none. Proof: `docs/RPG-20260715-05_PDA_REVEAL_PROOF.md`; verification: 55 files / 373 tests, production build, and four-surface browser proof green from `act2_pda_reveal_ready`.
 
@@ -56,7 +58,7 @@ Current durable truth:
 - Save schema: `CURRENT_SCHEMA_VERSION = 11`; save key remains `bali-life-rpg.berawa-finns.save.v1`.
 - Active map: authored `32px` tile street for `Jl. Pantai Berawa` via `src/data/authoredStreetLayout.ts`.
 - OSM/generated data is sequencing/reference data only; no runtime map network calls.
-- Current verification: `npm test` = 53 files / 355 passing, 0 skipped; `npm run build` passes. The W2-03 `act2_ari_crew_complete` browser proof passes in 55.80s with seven screenshots and zero browser/runtime errors. Physical iOS/Android and first-read human timing verification remain pending.
+- Current verification: `npm test` = 56 files / 381 passing, 0 skipped; `npm run build` passes. W2-06's desktop session and busy-night proofs pass, and touch-capable Chrome emulation confirms the shipped joystick/ACT controls at 390×844. Physical iOS/Android and first-read human timing verification remain pending.
 - No scheduled automation should exist from the prior failed resume attempt. Do not create reminders/automations unless the user asks again.
 
 Packet execution status (updated 2026-07-12):

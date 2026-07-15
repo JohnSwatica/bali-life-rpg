@@ -1,0 +1,15 @@
+{
+  "name": "act2-warung-serve-mobile",
+  "viewport": { "width": 390, "height": 844, "isMobile": true, "hasTouch": true },
+  "steps": [
+    { "action": "setClock", "day": 23, "minuteOfDay": 1095 },
+    { "action": "openVenuePanel", "venueId": "canggu_station" },
+    { "action": "screenshot", "name": "01-mobile-session-entry" },
+    { "action": "clickButton", "text": "Serve & attend" },
+    { "action": "waitMs", "ms": 1200 },
+    { "action": "screenshot", "name": "02-mobile-session-framing" },
+    { "action": "pressKey", "key": "e" },
+    { "action": "waitMs", "ms": 1400 },
+    { "action": "screenshot", "name": "03-mobile-rush-running" }
+  ]
+}

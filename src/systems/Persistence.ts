@@ -168,6 +168,7 @@ function migrateActiveActivityState(raw: unknown): ActiveActivityState | null {
         ...base,
         source: "warungRush",
         activityId: "warung_lunch_rush",
+        serveContext: migrateWarungServeContext(value.serveContext),
         rush: {
           elapsedMs: Math.max(0, rush.elapsedMs), nextOrderAtMs: Math.max(0, rush.nextOrderAtMs),
           maxSimultaneousOrders: Math.max(2, Math.min(4, rush.maxSimultaneousOrders)),
@@ -184,6 +185,22 @@ function migrateActiveActivityState(raw: unknown): ActiveActivityState | null {
     }
   }
   return null;
+}
+
+function migrateWarungServeContext(raw: unknown): Extract<ActiveActivityState, { source: "warungRush" }>["serveContext"] {
+  if (!raw || typeof raw !== "object") return undefined;
+  const value = raw as Record<string, unknown>;
+  if (value.kind === "kitchen_session" && typeof value.eventId === "string" && typeof value.occurrenceDay === "number") {
+    return {
+      kind: "kitchen_session",
+      eventId: value.eventId,
+      occurrenceDay: Math.max(1, Math.floor(value.occurrenceDay))
+    };
+  }
+  if (value.kind === "busy_night" && typeof value.weekStartDay === "number") {
+    return { kind: "busy_night", weekStartDay: Math.max(1, Math.floor(value.weekStartDay)) };
+  }
+  return undefined;
 }
 
 function migrateActiveMinigameState(raw: unknown): ActiveMinigameState | undefined {

@@ -59,7 +59,7 @@ export const crewDefinitions: CrewDefinition[] = [
         endHour: 20,
         title: "Warung Kitchen Circle",
         kind: "kitchen_serve",
-        description: "Pass plates and watch the counter through Ibu's evening rush. Missing it costs nothing.",
+        description: "Run Ibu's real dinner SERVE round with the crew. A rough room still counts; missing it costs nothing.",
         timeCost: 25
       },
       {
@@ -69,7 +69,7 @@ export const crewDefinitions: CrewDefinition[] = [
         endHour: 20,
         title: "Warung Kitchen Circle",
         kind: "kitchen_serve",
-        description: "Pass plates and watch the counter through Ibu's evening rush. Missing it costs nothing.",
+        description: "Run Ibu's real dinner SERVE round with the crew. A rough room still counts; missing it costs nothing.",
         timeCost: 25
       }
     ],

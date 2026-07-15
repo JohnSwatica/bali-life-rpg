@@ -12,7 +12,6 @@ import {
 } from "../data/authoredStreetLayout";
 import { ambientNpcDefinitions, type AmbientNpcDefinition } from "../data/ambientNpcs";
 import { activityDefinitions, interestGroupDefinitions } from "../data/community";
-import type { Activity } from "../data/activities";
 import { itemDefinitions } from "../data/items";
 import { authoredPlayableBounds } from "../data/playableBounds";
 import { getPlayerHomeBase } from "../data/homeBase";
@@ -170,7 +169,7 @@ import {
   type RelationshipChoiceOption,
   type RelationshipChoiceScene
 } from "../systems/relationships/RelationshipChoiceScenes";
-import { getActiveEvents, getActiveEventsAtVenue, isEventActive } from "../systems/events/EventScheduler";
+import { getActiveEvents, getActiveEventsAtVenue, getEvent, isEventActive } from "../systems/events/EventScheduler";
 import { applyEventParticipation } from "../systems/events/EventParticipation";
 import {
   buildCrewSessionOpenMessage,
@@ -185,13 +184,26 @@ import {
 import { prepareAriCrewSessionBeat } from "../systems/story/Act2AriCrew";
 import {
   buildKitchenCircleResidueMessage,
+  buildKitchenBusyNightMessage,
   completeKitchenCircleInvitation,
   consumeKitchenCircleDeflection,
+  getKitchenBusyNightWeekStart,
   hasSeenKitchenCircleSqueeze,
+  isKitchenBusyNightServeAvailable,
   isKitchenCircleInvitationPending,
   isKitchenCircleSessionEvent,
   prepareKitchenCircleSessionBeat
 } from "../systems/story/Act2KitchenCircle";
+import {
+  getWarungServeStakesCopy,
+  getWarungServeTotalPlays,
+  resolveBusyNightWarungServe,
+  resolveKitchenSessionWarungServe,
+  resolveLegacyWarungRush,
+  WARUNG_SERVE_ACTIVITY_ID,
+  WARUNG_SERVE_DURATION_MIN,
+  WARUNG_SERVE_LABEL
+} from "../systems/story/Act2WarungServe";
 import {
   buildStructuralUnlockMessages,
   getStructuralEventMeterState,
@@ -418,6 +430,7 @@ import type {
   ShopDefinition,
   OpportunityType,
   VenueActivityDefinition,
+  WarungServeContext,
   WorldState
 } from "../types";
 
@@ -3749,7 +3762,7 @@ export class GameScene extends Phaser.Scene {
           : "Activity in progress. ESC cancels early."
       );
     } else if (this.mode === "warungRush") {
-      this.promptText.setText("Lunch rush — E / ACT at Ibu's counter to pick up, then at the matching table to serve.");
+      this.promptText.setText("Dinner SERVE — E / ACT at Ibu's counter to pick up, then at the matching table.");
     } else {
       this.promptText.setText("ESC closes the current panel.");
     }
@@ -4747,7 +4760,7 @@ export class GameScene extends Phaser.Scene {
       this.interiorTransitioning = false;
       this.cameras.main.fadeIn(400, 0, 0, 0);
       this.showToast(
-        warungAccess?.kind === "regular_after_hours"
+        warungAccess?.kind === "regular_after_hours" || warungAccess?.kind === "busy_night"
           ? warungAccess.message
           : `Entered ${interior.name}.`
       );
@@ -5737,6 +5750,21 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    const busyNightServeAvailable = context.venueId === "canggu_station" && isKitchenBusyNightServeAvailable(this.world);
+    if (busyNightServeAvailable) {
+      this.appendActivityMenuSection(content, "Ibu's busy night");
+      this.appendActivityMenuRow(content, {
+        title: WARUNG_SERVE_LABEL,
+        body: `${getWarungServeStakesCopy(this.world)}\nMember-only dinner rush · small tips · no penalty for a rough round.`,
+        actionLabel: "SERVE",
+        variant: "special",
+        onAction: () => this.startWarungRush(context, {
+          kind: "busy_night",
+          weekStartDay: getKitchenBusyNightWeekStart(this.world.clock.day)
+        })
+      });
+    }
+
     const activeEvents = getActiveEventsAtVenue(this.world.clock, venueId, this.world);
     if (activeEvents.length > 0) {
       this.appendActivityMenuSection(content, "Happening now");
@@ -5853,7 +5881,15 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    if (availability.length === 0) {
+    if (
+      availability.length === 0 &&
+      !shop &&
+      activeEvents.length === 0 &&
+      liveVenueOpportunities.length === 0 &&
+      joinableGroups.length === 0 &&
+      bridgeGroups.length === 0 &&
+      !busyNightServeAvailable
+    ) {
       const empty = document.createElement("div");
       empty.className = "bali-life-activity-menu-empty";
       empty.textContent = "No daily-life activities are defined for this venue category yet.";
@@ -6398,11 +6434,6 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (activityId === "warung_lunch_rush" && this.activeInteriorId === "warung_sari_interior") {
-      this.startWarungRush(context, option.activity);
-      return;
-    }
-
     if (!this.activeInteriorId) {
       const node = venueMapNodes.find((candidate) => candidate.venueId === context.venueId);
       this.placePlayerAtCommittedVenue(node);
@@ -6432,14 +6463,25 @@ export class GameScene extends Phaser.Scene {
     this.showToast(`${option.activity.label} started. ${activityHint}`);
   }
 
-  private startWarungRush(context: VenueActivityContext, activity: Activity): void {
-    const plays = this.world.life.activityHistory[`${context.venueId}:${activity.id}`]?.totalCount ?? 0;
+  private startWarungRush(context: VenueActivityContext, serveContext: WarungServeContext): void {
+    if (this.activeInteriorId !== "warung_sari_interior") {
+      this.enterInterior("warung_sari_interior");
+      this.time.delayedCall(900, () => {
+        if (this.activeInteriorId !== "warung_sari_interior") {
+          this.showToast("Ibu's side door did not open. Try the warung entrance again.");
+          return;
+        }
+        this.startWarungRush(context, serveContext);
+      });
+      return;
+    }
+    const plays = getWarungServeTotalPlays(this.world);
     this.closePanel(false);
     const rush = createWarungRushState(plays);
     this.committedActivity = {
-      source: "warungRush", activityId: "warung_lunch_rush", rush,
-      venueId: context.venueId, venueName: context.name, label: activity.label,
-      durationMin: activity.timeCost, elapsedMs: 0, realDurationMs: WARUNG_RUSH_FEEL_TUNING.roundDurationMs,
+      source: "warungRush", activityId: WARUNG_SERVE_ACTIVITY_ID, rush, serveContext,
+      venueId: context.venueId, venueName: context.name, label: WARUNG_SERVE_LABEL,
+      durationMin: WARUNG_SERVE_DURATION_MIN, elapsedMs: 0, realDurationMs: WARUNG_RUSH_FEEL_TUNING.roundDurationMs,
       startedAt: this.getAbsoluteMinute()
     };
     this.mode = "warungRush";
@@ -6447,7 +6489,7 @@ export class GameScene extends Phaser.Scene {
     this.createWarungRushVisuals();
     this.createCommittedActivityOverlay(this.committedActivity);
     saveWorldState(this.world);
-    this.showToast(`Lunch rush! Walk to Ibu's counter, then E / ACT at the matching table.`);
+    this.showToast(`Dinner rush · SERVE. ${getWarungServeStakesCopy(this.world)} Counter first, then E / ACT at the matching table.`);
   }
 
   private handleWarungRushAction(): void {
@@ -6652,8 +6694,45 @@ export class GameScene extends Phaser.Scene {
     }
     if (active.source === "warungRush") {
       this.destroyWarungRushVisuals();
-      const context = getVenueActivityContext(active.venueId);
-      if (context) this.resolveVenueActivity(context, active.activityId, calculateWarungRushPerformance(active.rush));
+      const score = calculateWarungRushPerformance(active.rush);
+      if (active.serveContext?.kind === "kitchen_session") {
+        const event = getEvent(active.serveContext.eventId);
+        const result = event
+          ? resolveKitchenSessionWarungServe(
+              this.world,
+              event,
+              active.serveContext.occurrenceDay,
+              score,
+              active.startedAt
+            )
+          : { ok: false, message: "The saved Kitchen Circle event could not be found." };
+        this.updateLighting();
+        saveWorldState(this.world);
+        this.phone?.refresh();
+        this.updateOpportunityFeed(0, true);
+        if (result.ok && result.residue) {
+          const feedback = result.residue.extraCrewLine
+            ? `${result.residue.feedback}\n\n${result.residue.extraCrewLine}`
+            : result.residue.feedback;
+          this.openStoryDialogue("Warung Kitchen Circle", feedback, undefined, () => {
+            this.showToast(result.attendance?.message ?? result.message);
+            this.openVenueActivityMenu(active.venueId);
+          });
+          return;
+        }
+        this.showToast(result.message);
+        this.openVenueActivityMenu(active.venueId);
+        return;
+      }
+      const result = active.serveContext?.kind === "busy_night"
+        ? resolveBusyNightWarungServe(this.world, active.serveContext, score, active.startedAt)
+        : resolveLegacyWarungRush(this.world, score, active.startedAt);
+      this.updateLighting();
+      saveWorldState(this.world);
+      this.phone?.refresh();
+      this.updateOpportunityFeed(0, true);
+      this.showToast(result.message);
+      this.openVenueActivityMenu(active.venueId);
       return;
     }
     if (active.source === "activity") {
@@ -7158,7 +7237,29 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    const crewBeat = prepareAriCrewSessionBeat(this.world, event) ?? prepareKitchenCircleSessionBeat(this.world, event);
+    if (isKitchenCircleSessionEvent(event)) {
+      const kitchenBeat = prepareKitchenCircleSessionBeat(this.world, event);
+      const startServe = () => {
+        const context = getVenueActivityContext(event.locationVenueId);
+        if (!context) {
+          this.showToast("The warung context is missing.");
+          return;
+        }
+        this.startWarungRush(context, {
+          kind: "kitchen_session",
+          eventId: event.id,
+          occurrenceDay
+        });
+      };
+      if (kitchenBeat) {
+        this.openStoryDialogue(kitchenBeat.speakerName, kitchenBeat.dialogue, undefined, startServe);
+      } else {
+        startServe();
+      }
+      return;
+    }
+
+    const crewBeat = prepareAriCrewSessionBeat(this.world, event);
     if (crewBeat) {
       if (crewBeat.kind === "sunset_circle") {
         this.soundManager.setAmbientBed("nightQuiet");
@@ -10044,6 +10145,12 @@ export class GameScene extends Phaser.Scene {
     const kitchenResidueMessageAdded = kitchenResidueMessage
       ? appendOpportunityMessage(this.world.opportunities, kitchenResidueMessage)
       : false;
+    const kitchenBusyNightMessage = tutorialActive
+      ? undefined
+      : buildKitchenBusyNightMessage(this.world, this.getAbsoluteMinute());
+    const kitchenBusyNightMessageAdded = kitchenBusyNightMessage
+      ? appendOpportunityMessage(this.world.opportunities, kitchenBusyNightMessage)
+      : false;
     const structuralUnlockMessagesAdded = tutorialActive
       ? 0
       : buildStructuralUnlockMessages(this.world, this.getAbsoluteMinute())
@@ -10061,6 +10168,7 @@ export class GameScene extends Phaser.Scene {
       kadekRushMessageAdded ||
       madeRoomOfferMessageAdded ||
       kitchenResidueMessageAdded ||
+      kitchenBusyNightMessageAdded ||
       structuralUnlockMessagesAdded > 0 ||
       leoCadenceMessageAdded ||
       eventMessages > 0;

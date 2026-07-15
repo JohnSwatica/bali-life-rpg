@@ -27,7 +27,7 @@ export interface VenueActivityContext {
 
 /** One sentence that tells the player why this stop exists before any action rows appear. */
 const VENUE_PURPOSE_LINES: Record<string, string> = {
-  canggu_station: "Stock up, eat with Ibu, or help carry the lunch rush.",
+  canggu_station: "Stock up, eat with Ibu, or answer a crew night when it comes.",
   milk_madu_berawa: "Brunch, a useful coffee, and a table worth opening the laptop at.",
   baked_berawa: "Pick up bakery fuel and meet Kadek around the ovens.",
   bungalow_living: "Browse home pieces and follow Made's lead toward a room of your own.",
@@ -197,7 +197,7 @@ function evaluateActivity(world: WorldState, context: VenueActivityContext, acti
   if (activity.requires?.maxDailyUses) {
     const existing = world.life.activityHistory[activityRecordKey(context.venueId, activity.id)];
     if (existing?.lastDay === world.clock.day && existing.count >= activity.requires.maxDailyUses) {
-      return { activity, available: false, reason: "Lunch rush is done for today.", timeModifier: getActiveActivityTimeModifier(world, activity) };
+      return { activity, available: false, reason: "This activity is done for today.", timeModifier: getActiveActivityTimeModifier(world, activity) };
     }
   }
   return { activity, available: true, reason: null, timeModifier: getActiveActivityTimeModifier(world, activity) };

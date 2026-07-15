@@ -346,6 +346,10 @@ export interface WarungRushState {
   orders: WarungRushOrder[];
 }
 
+export type WarungServeContext =
+  | { kind: "kitchen_session"; eventId: string; occurrenceDay: number }
+  | { kind: "busy_night"; weekStartDay: number };
+
 interface ActiveActivityBaseState {
   venueId: string;
   venueName: string;
@@ -384,6 +388,8 @@ export type ActiveActivityState =
       source: "warungRush";
       activityId: "warung_lunch_rush";
       rush: WarungRushState;
+      /** Absent only on legacy v11 saves that began the retired generic lunch-rush activity. */
+      serveContext?: WarungServeContext;
       opportunityId?: never;
     });
 

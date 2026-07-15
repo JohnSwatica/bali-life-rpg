@@ -47,7 +47,13 @@ try {
     args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-background-timer-throttling"]
   });
   page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
+  await page.setViewport({
+    width: proof.viewport?.width ?? 1280,
+    height: proof.viewport?.height ?? 800,
+    deviceScaleFactor: proof.viewport?.deviceScaleFactor ?? 1,
+    isMobile: proof.viewport?.isMobile ?? false,
+    hasTouch: proof.viewport?.hasTouch ?? false
+  });
   page.on("pageerror", (error) => {
     browserError ??= error;
     console.error(`[browser] ${error.stack ?? error.message}`);
@@ -122,7 +128,9 @@ async function runStep(step, index) {
       await page.setViewport({
         width: step.width,
         height: step.height,
-        deviceScaleFactor: step.deviceScaleFactor ?? 1
+        deviceScaleFactor: step.deviceScaleFactor ?? 1,
+        isMobile: step.isMobile ?? false,
+        hasTouch: step.hasTouch ?? false
       });
       await delay(240);
       console.log(`[STEP ${index}] viewport ${step.width}x${step.height}`);

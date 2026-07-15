@@ -1,0 +1,12 @@
+{
+  "name": "act2-warung-serve-busy-night",
+  "steps": [
+    { "action": "setClock", "day": 25, "minuteOfDay": 1095 },
+    { "action": "waitMs", "ms": 500 },
+    { "action": "openPhoneTab", "tab": "Feed" },
+    { "action": "screenshot", "name": "01-member-busy-night-ping" },
+    { "action": "closeOverlay" },
+    { "action": "openVenuePanel", "venueId": "canggu_station" },
+    { "action": "screenshot", "name": "02-member-busy-night-entry" }
+  ]
+}
