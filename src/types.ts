@@ -181,6 +181,38 @@ export interface GameEvent {
     reputationDelta?: number;
     itemIds?: string[];
   };
+  crewSession?: {
+    crewId: string;
+    sessionSlotId: string;
+  };
+}
+
+export interface CrewSessionSlot {
+  id: string;
+  dayOfWeek: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  startHour: number;
+  endHour: number;
+  title: string;
+}
+
+export interface CrewDefinition {
+  id: string;
+  name: string;
+  venueId: string;
+  sessionSlots: CrewSessionSlot[];
+  regularBenefit: {
+    id: string;
+    label: string;
+  };
+}
+
+export interface CrewState {
+  crewId: string;
+  invited: boolean;
+  member: boolean;
+  attendanceCount: number;
+  regular: boolean;
+  regularBenefitActive: boolean;
 }
 
 export interface SocialGroupDefinition {

@@ -106,6 +106,15 @@ async function runStep(step, index) {
     case "openVenuePanel":
       await requireApiResult("openVenuePanel", step.venueId);
       return;
+    case "inviteCrew":
+      await requireApiResult("inviteCrew", step.crewId);
+      return;
+    case "joinCrew":
+      await requireApiResult("joinCrew", step.crewId);
+      return;
+    case "setClock":
+      await requireApiResult("setClock", { day: step.day, minuteOfDay: step.minuteOfDay });
+      return;
     case "enterInterior":
       await requireApiResult("enterInterior", step.interiorId);
       return;

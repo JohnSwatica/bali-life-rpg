@@ -5,7 +5,7 @@ import { npcDefinitions } from "../../data/npcs";
 import { questDefinitions } from "../../data/quests";
 import { gameEventDefinitions } from "../../data/events";
 import { discoveryLedgerEntries } from "../../data/discoveryLedger";
-import { getActiveEvents, getUpcomingEvents, formatEventSchedule, formatEventTime, getEventsForGroup } from "../../systems/events/EventScheduler";
+import { formatEventSchedule, getEventsForGroup } from "../../systems/events/EventScheduler";
 import { getAllSocialGroups, isSocialGroupJoined } from "../../systems/groups/GroupRegistry";
 import { isDiscoveryLedgerEntryUnlocked } from "../../systems/discovery/DiscoveryLedger";
 import type { IntentDispatcher } from "../../systems/intents/IntentDispatcher";
@@ -24,6 +24,7 @@ import { getDeliveryDefinition } from "../../data/deliveries";
 import { getDeliveryOfferAvailability, getEffectiveDeliveryTerms, previewDeliveryCondition } from "../../systems/hustle/DeliverySystem";
 import { getRentPressureState, getScooterRepairStatus, getScooterUpgradeStatus } from "../../systems/hustle/HustleEconomy";
 import { getHustleGoalStates, getHustleNextStep } from "../../systems/hustle/HustleGoals";
+import { getCrewCalendarEntries, getCrewCalendarWeekLabel } from "../../systems/crews/CrewCalendar";
 import type { GameEvent, LiveOpportunity, OpportunityMessage, RelationshipMemory, Venue, WorldState } from "../../types";
 import { getPhoneCameraScale, getPhonePanelLayout, PHONE_CONTENT_INSET_PX } from "./PhoneLayout";
 
@@ -43,6 +44,12 @@ const PHONE_TABS = [
 ] as const;
 export const PHONE_VISIBLE_TABS = ["Feed", "Map", "Goals", "Profile"] as const;
 export type PhoneTab = (typeof PHONE_TABS)[number];
+
+export function getPhoneVisibleTabs(world: WorldState): PhoneTab[] {
+  return world.life.actProgress.currentAct >= 2
+    ? ["Feed", "Map", "Goals", "Calendar", "Profile"]
+    : [...PHONE_VISIBLE_TABS];
+}
 
 export interface PhoneFeedModel {
   priorityMessages: OpportunityMessage[];
@@ -226,9 +233,17 @@ export class PhoneShell {
       this.renderAct0StoryMoment(container, x, y, panelWidth, panelHeight, bodyX, bodyWidth);
     } else {
       const compact = panelWidth < 560;
+      const tabRows = Math.ceil(getPhoneVisibleTabs(this.options.getWorld()).length / (compact ? 4 : 8));
+      const extraTabHeight = (tabRows - 1) * 34;
       this.renderPortalHeader(container, x, y, panelWidth);
       this.renderTabs(container, x, y + (compact ? 112 : 74), panelWidth);
-      this.renderActiveTab(container, bodyX, y + (compact ? 160 : 148), bodyWidth, panelHeight - (compact ? 210 : 198));
+      this.renderActiveTab(
+        container,
+        bodyX,
+        y + (compact ? 160 + extraTabHeight : 148),
+        bodyWidth,
+        panelHeight - (compact ? 210 + extraTabHeight : 198)
+      );
       this.addButton(container, x + panelWidth - 116, y + panelHeight - 42, 92, 30, "Close", () => this.close(), 0x4a3331);
     }
     this.container = container;
@@ -337,7 +352,7 @@ export class PhoneShell {
     const gap = 6;
     const columns = panelWidth < 560 ? 4 : 8;
     const tabWidth = (panelWidth - PHONE_CONTENT_INSET_PX * 2 - gap * (columns - 1)) / columns;
-    PHONE_VISIBLE_TABS.forEach((tab, index) => {
+    getPhoneVisibleTabs(this.options.getWorld()).forEach((tab, index) => {
       const row = Math.floor(index / columns);
       const column = index % columns;
       const tabX = x + PHONE_CONTENT_INSET_PX + column * (tabWidth + gap);
@@ -379,7 +394,7 @@ export class PhoneShell {
     } else if (this.activeTab === "Goals" || this.activeTab === "Quests") {
       this.renderTextList(container, bodyX, textY, bodyWidth, this.questLines());
     } else if (this.activeTab === "Calendar") {
-      this.renderTextList(container, bodyX, textY, bodyWidth, this.calendarLines());
+      this.renderCrewCalendar(container, bodyX, textY, bodyWidth);
     } else if (this.activeTab === "Profile") {
       this.renderProfile(container, bodyX, textY, bodyWidth, contentHeight - 32);
     } else if (this.activeTab === "Events") {
@@ -721,11 +736,34 @@ export class PhoneShell {
     ];
   }
 
-  private calendarLines(): string[] {
+  private renderCrewCalendar(
+    container: Phaser.GameObjects.Container,
+    x: number,
+    y: number,
+    width: number
+  ): void {
     const world = this.options.getWorld();
-    const active = getActiveEvents(world.clock, world).map((event) => `Now: ${event.title} @ ${getVenue(event.locationVenueId)?.name ?? event.locationVenueId} (${formatEventTime(event)})`);
-    const upcoming = getUpcomingEvents(world.clock, world).map((event) => `Soon: ${event.title} @ ${getVenue(event.locationVenueId)?.name ?? event.locationVenueId} (${formatEventTime(event)})`);
-    return [...active, ...upcoming].length ? [...active, ...upcoming] : ["No events in the next window."];
+    const entries = getCrewCalendarEntries(world);
+    const heading = this.options.scene.add.text(x, y, getCrewCalendarWeekLabel(world), {
+      ...this.sectionStyle(),
+      fontSize: "14px"
+    });
+    container.add(heading);
+    let rowY = y + 30;
+    if (entries.length === 0) {
+      this.renderTextList(container, x, rowY, width, ["No crew promises or rent day on this week's calendar."]);
+      return;
+    }
+    for (const entry of entries) {
+      const suffix = entry.kind === "crew_session" && entry.membership === "invited" ? " · invited" : "";
+      const text = this.options.scene.add.text(x, rowY, `${entry.title}${suffix}`, {
+        ...this.bodyStyle(14),
+        fontStyle: entry.bold ? "700" : "normal",
+        wordWrap: { width }
+      });
+      container.add(text);
+      rowY += Math.max(28, text.height + 8);
+    }
   }
 
   private renderProfile(

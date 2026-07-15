@@ -1,0 +1,37 @@
+{
+  "name": "act2-crew-core",
+  "steps": [
+    { "action": "inviteCrew", "crewId": "act2_test_crew" },
+    { "action": "openPhoneTab", "tab": "Calendar" },
+    { "action": "waitMs", "ms": 320 },
+    { "action": "screenshot", "name": "01-calendar-invited-and-rent" },
+    { "action": "closeOverlay" },
+    { "action": "joinCrew", "crewId": "act2_test_crew" },
+    { "action": "openPhoneTab", "tab": "Calendar" },
+    { "action": "waitMs", "ms": 320 },
+    { "action": "screenshot", "name": "02-calendar-member-bold" },
+    { "action": "closeOverlay" },
+
+    { "action": "setClock", "day": 3, "minuteOfDay": 1035 },
+    { "action": "openVenuePanel", "venueId": "berawa_beach" },
+    { "action": "waitMs", "ms": 320 },
+    { "action": "screenshot", "name": "03-session-one-open" },
+    { "action": "clickButton", "text": "Attend" },
+    { "action": "waitMs", "ms": 320 },
+    { "action": "screenshot", "name": "04-attendance-one" },
+    { "action": "closeOverlay" },
+
+    { "action": "setClock", "day": 10, "minuteOfDay": 1035 },
+    { "action": "openVenuePanel", "venueId": "berawa_beach" },
+    { "action": "clickButton", "text": "Attend" },
+    { "action": "waitMs", "ms": 320 },
+    { "action": "screenshot", "name": "05-attendance-two" },
+    { "action": "closeOverlay" },
+
+    { "action": "setClock", "day": 17, "minuteOfDay": 1035 },
+    { "action": "openVenuePanel", "venueId": "berawa_beach" },
+    { "action": "clickButton", "text": "Attend" },
+    { "action": "waitMs", "ms": 320 },
+    { "action": "screenshot", "name": "06-regular-at-three" }
+  ]
+}

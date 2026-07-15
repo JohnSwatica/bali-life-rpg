@@ -1,4 +1,5 @@
 import type { GameEvent } from "../types";
+import { buildCrewSessionEvents } from "./crews";
 
 export const gameEventDefinitions: GameEvent[] = [
   {
@@ -166,5 +167,6 @@ export const gameEventDefinitions: GameEvent[] = [
       meetNpcs: ["ari"],
       reputationTag: "social"
     }
-  }
+  },
+  ...buildCrewSessionEvents()
 ];
