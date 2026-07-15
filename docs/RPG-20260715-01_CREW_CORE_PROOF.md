@@ -19,7 +19,7 @@ Save schema: unchanged at v11.
 - Invitations never expire and missed sessions write no penalty state.
 - Joined sessions emit one deduplicated open Feed ping per occurrence. Invited-but-unjoined sessions emit none.
 
-The only shipped definition is `act2_test_crew`, an explicitly temporary beach-session fixture for proving the loop. W2-02 must remove or repurpose it when Ari's authored crew arrives.
+The packet originally shipped `act2_test_crew`, an explicitly temporary beach-session fixture for proving the loop. The stacked W2-02 branch repurposes it as the canonical `berawa_surf_run_crew` and removes the temporary ID.
 
 ## Calendar contract
 
@@ -56,14 +56,14 @@ TypeScript + Vite production build passed
 
 ## Browser beat proof
 
-The `act2_entered` boot state is built by the real Act 0, Act 1, Ibu guarantee, Made key, move-out, weekly scooter, and Act 2-card mutations. The proof then uses public crew mutations, opens the real Calendar, time-warps the existing clock to three weekly occurrences, and completes each through the real Berawa Beach venue-session `Attend` action.
+The `act2_entered` boot state is built by the real Act 0, Act 1, Ibu guarantee, Made key, move-out, weekly scooter, and Act 2-card mutations. The proof then uses public crew mutations, opens the real Calendar, time-warps the existing clock to three weekly occurrences, and completes each through the real Berawa Beach venue-session TALK action.
 
-1. [Invited Calendar + rent day](../tmp/beat-proof/act2-crew-core/01-calendar-invited-and-rent-t+002.8s.png)
-2. [Joined Calendar row in bold](../tmp/beat-proof/act2-crew-core/02-calendar-member-bold-t+003.6s.png)
-3. [First scheduled session open on-site](../tmp/beat-proof/act2-crew-core/03-session-one-open-t+004.4s.png)
-4. [Attendance one](../tmp/beat-proof/act2-crew-core/04-attendance-one-t+005.0s.png)
-5. [Attendance two](../tmp/beat-proof/act2-crew-core/05-attendance-two-t+006.1s.png)
-6. [Attendance 3/3 · REGULAR](../tmp/beat-proof/act2-crew-core/06-regular-at-three-t+007.1s.png)
+1. [Invited Calendar + rent day](../tmp/beat-proof/act2-crew-core/01-calendar-invited-and-rent-t+002.9s.png)
+2. [Joined Calendar row in bold](../tmp/beat-proof/act2-crew-core/02-calendar-member-bold-t+003.5s.png)
+3. [First scheduled session open on-site](../tmp/beat-proof/act2-crew-core/03-session-one-open-t+004.1s.png)
+4. [Attendance one](../tmp/beat-proof/act2-crew-core/04-attendance-one-t+004.8s.png)
+5. [Attendance two](../tmp/beat-proof/act2-crew-core/05-attendance-two-t+005.8s.png)
+6. [Attendance 3/3 · REGULAR](../tmp/beat-proof/act2-crew-core/06-regular-at-three-t+006.8s.png)
 
 Command:
 
@@ -71,7 +71,7 @@ Command:
 npm run beat-proof -- act2_entered scripts/proofs/act2-crew-core.json
 ```
 
-Result: passed in 7.14 seconds with six screenshots and zero browser/runtime errors.
+Result after W2-02 fixture repurposing: passed in 6.88 seconds with six screenshots and zero browser/runtime errors.
 
 ## Boundary audit
 
