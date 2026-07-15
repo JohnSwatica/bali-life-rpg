@@ -1,15 +1,15 @@
 ```
-PACKET ID: RPG-DRAFT-W2-01 (assign + pin SHA at issue)
-STATUS:    DRAFT — do not ferry until issued
+PACKET ID: RPG-20260715-01
+STATUS:    ISSUED 2026-07-15
 PROJECT:   Bali Life RPG
 TARGET:    Codex
 CODEX:     Sol · High — the one new system of Act 2 (crew membership/attendance/regular status on the weekly calendar); save-state and gating correctness
-PREREQ:    merged main after Wave 1 gate (SHA at issue)
+PREREQ:    branch from main at b1920e2 or later (Wave 1 complete; gate passed: docs/WAVE1_GATE_REVIEW_2026-07-15.md)
 TITLE:     Act 2 W2-01 — crew system core: membership, attendance, regular status, weekly calendar surface
 MAP DELTA: none
-PR TAG: [<assigned ID>]
+PR TAG: [RPG-20260715-01]
 
-===== BEGIN PACKET RPG-DRAFT-W2-01 =====
+===== BEGIN PACKET RPG-20260715-01 =====
 
 ROLE & SCOPE
 docs/ACT2_FINDING_YOUR_PEOPLE_2026-07-14.md, "the one new system." Build
@@ -61,5 +61,5 @@ DO NOT
 - No crew content/dialogue (W2-02/03); no benefits (W2-04); no FOMO
   mechanics; no Community tab revival.
 
-===== END PACKET RPG-DRAFT-W2-01 =====
+===== END PACKET RPG-20260715-01 =====
 ```

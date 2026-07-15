@@ -1,15 +1,15 @@
 ```
-PACKET ID: RPG-DRAFT-W2-07 (assign + pin SHA at issue)
-STATUS:    DRAFT — do not ferry until issued
+PACKET ID: RPG-20260715-07
+STATUS:    ISSUED 2026-07-15
 PROJECT:   Bali Life RPG
 TARGET:    Codex
 CODEX:     Sol · Medium — Kadek's Act-2 moral choice; residue feeds the ending; voice-critical
-PREREQ:    merged main after W2-06 (SHA at issue)
+PREREQ:    STACKED CONTINUATION: if origin/main already contains the [RPG-20260715-06] merge, branch from origin/main; otherwise branch from the head of the RPG-20260715-06 feature branch and note the stacked base in the PR body. Claude reviews/merges the stack in order; if review changes an earlier packet, rebase before merge
 TITLE:     Act 2 W2-07 — the Whistleblower Sourdough (bible moral choice #2)
 MAP DELTA: none
-PR TAG: [<assigned ID>]
+PR TAG: [RPG-20260715-07]
 
-===== BEGIN PACKET RPG-DRAFT-W2-07 =====
+===== BEGIN PACKET RPG-20260715-07 =====
 
 ROLE & SCOPE
 Bible §G choice 2 and Kadek's Act-2-sized resolution. His secret (baking
@@ -59,5 +59,5 @@ DO NOT
 - No brother NPC, no corporate café venue, no debt mechanics — spoken,
   not simulated. No third option.
 
-===== END PACKET RPG-DRAFT-W2-07 =====
+===== END PACKET RPG-20260715-07 =====
 ```

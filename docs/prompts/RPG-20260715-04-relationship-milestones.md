@@ -1,15 +1,15 @@
 ```
-PACKET ID: RPG-DRAFT-W2-04 (assign + pin SHA at issue)
-STATUS:    DRAFT — do not ferry until issued
+PACKET ID: RPG-20260715-04
+STATUS:    ISSUED 2026-07-15
 PROJECT:   Bali Life RPG
 TARGET:    Codex
 CODEX:     Terra · Medium — structural unlocks on existing relationship/crew state; data + gating, no new systems
-PREREQ:    merged main after W2-03 (SHA at issue)
+PREREQ:    STACKED CONTINUATION: if origin/main already contains the [RPG-20260715-03] merge, branch from origin/main; otherwise branch from the head of the RPG-20260715-03 feature branch and note the stacked base in the PR body. Claude reviews/merges the stack in order; if review changes an earlier packet, rebase before merge
 TITLE:     Act 2 W2-04 — relationship milestone structural unlocks
 MAP DELTA: none
-PR TAG: [<assigned ID>]
+PR TAG: [RPG-20260715-04]
 
-===== BEGIN PACKET RPG-DRAFT-W2-04 =====
+===== BEGIN PACKET RPG-20260715-04 =====
 
 ROLE & SCOPE
 ACT2 contract "structural unlocks" (bible §E3): milestones unlock ACCESS,
@@ -53,5 +53,5 @@ DO NOT
 - No new benefits beyond the four listed; no tier ladders beyond what
   existing relationship arcs already define; no shop restructuring.
 
-===== END PACKET RPG-DRAFT-W2-04 =====
+===== END PACKET RPG-20260715-04 =====
 ```

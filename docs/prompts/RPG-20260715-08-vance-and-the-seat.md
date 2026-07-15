@@ -1,15 +1,15 @@
 ```
-PACKET ID: RPG-DRAFT-W2-08 (assign + pin SHA at issue)
-STATUS:    DRAFT — do not ferry until issued
+PACKET ID: RPG-20260715-08
+STATUS:    ISSUED 2026-07-15
 PROJECT:   Bali Life RPG
 TARGET:    Codex
 CODEX:     Sol · High — Act 2's closing milestone + the antagonist's first real scene; act-transition correctness
-PREREQ:    merged main after W2-07 (SHA at issue)
+PREREQ:    STACKED CONTINUATION: if origin/main already contains the [RPG-20260715-07] merge, branch from origin/main; otherwise branch from the head of the RPG-20260715-07 feature branch and note the stacked base in the PR body. Claude reviews/merges the stack in order; if review changes an earlier packet, rebase before merge
 TITLE:     Act 2 W2-08 — Vance's offer + the seat at the sunset circle (Act 2 finale)
 MAP DELTA: none expected (beach staging per W2-02's precedent)
-PR TAG: [<assigned ID>]
+PR TAG: [RPG-20260715-08]
 
-===== BEGIN PACKET RPG-DRAFT-W2-08 =====
+===== BEGIN PACKET RPG-20260715-08 =====
 
 ROLE & SCOPE
 ACT2 contract beats 7–8: the antagonist plants in person, then the season's
@@ -68,5 +68,5 @@ DO NOT
 - No Season 1 ending content (Wave 3 owns the END card/credits); no
   enclave mechanics; no Leo scene (his absence IS the beat).
 
-===== END PACKET RPG-DRAFT-W2-08 =====
+===== END PACKET RPG-20260715-08 =====
 ```

@@ -1,15 +1,15 @@
 ```
-PACKET ID: RPG-DRAFT-W2-03 (assign + pin SHA at issue)
-STATUS:    DRAFT — do not ferry until issued (CEO decision embedded: Crew B = Warung Kitchen Circle; swap here if CEO overrides)
+PACKET ID: RPG-20260715-03
+STATUS:    ISSUED 2026-07-15
 PROJECT:   Bali Life RPG
 TARGET:    Codex
 CODEX:     Sol · Medium — second crew + the golden thread's Act 2 turn (the squeeze reveal)
-PREREQ:    merged main after W2-02 (SHA at issue)
+PREREQ:    STACKED CONTINUATION: if origin/main already contains the [RPG-20260715-02] merge, branch from origin/main; otherwise branch from the head of the RPG-20260715-02 feature branch and note the stacked base in the PR body. Claude reviews/merges the stack in order; if review changes an earlier packet, rebase before merge
 TITLE:     Act 2 W2-03 — the Warung Kitchen Circle + the overheard commission squeeze
 MAP DELTA: none — Ibu's existing warung/station venue and interior
-PR TAG: [<assigned ID>]
+PR TAG: [RPG-20260715-03]
 
-===== BEGIN PACKET RPG-DRAFT-W2-03 =====
+===== BEGIN PACKET RPG-20260715-03 =====
 
 ROLE & SCOPE
 ACT2 contract beats 3–4. Crew B (recommended and drafted as such): the
@@ -54,5 +54,5 @@ DO NOT
 - No warung economy simulation; no commission mechanics (narrative until
   Season 2); no Kadek choice content; no Warung Rush wiring yet (W2-06).
 
-===== END PACKET RPG-DRAFT-W2-03 =====
+===== END PACKET RPG-20260715-03 =====
 ```

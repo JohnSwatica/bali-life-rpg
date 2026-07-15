@@ -1,15 +1,15 @@
 ```
-PACKET ID: RPG-DRAFT-W2-02 (assign + pin SHA at issue)
-STATUS:    DRAFT — do not ferry until issued
+PACKET ID: RPG-20260715-02
+STATUS:    ISSUED 2026-07-15
 PROJECT:   Bali Life RPG
 TARGET:    Codex
 CODEX:     Sol · Medium — first crew content on the new core; scene staging + rotating line pools
-PREREQ:    merged main after W2-01 (SHA at issue)
+PREREQ:    STACKED CONTINUATION: if origin/main already contains the [RPG-20260715-01] merge, branch from origin/main; otherwise branch from the head of the RPG-20260715-01 feature branch and note the stacked base in the PR body. Claude reviews/merges the stack in order; if review changes an earlier packet, rebase before merge
 TITLE:     Act 2 W2-02 — Ari's Surf & Run Crew + the Sunset Beach Circle
 MAP DELTA: expected none (existing berawa_beach area); if a small authored beach parcel is needed for the circle staging, declare it + MAP_CHANGELOG entry
-PR TAG: [<assigned ID>]
+PR TAG: [RPG-20260715-02]
 
-===== BEGIN PACKET RPG-DRAFT-W2-02 =====
+===== BEGIN PACKET RPG-20260715-02 =====
 
 ROLE & SCOPE
 ACT2 contract beats 1–2. Ari (§C3: flaky bridge, conflict-averse, secretly
@@ -53,5 +53,5 @@ DO NOT
 - No Ari arc resolution; no second crew; no benefit implementation
   (W2-04); no new minigames (the run is staging, not a race).
 
-===== END PACKET RPG-DRAFT-W2-02 =====
+===== END PACKET RPG-20260715-02 =====
 ```

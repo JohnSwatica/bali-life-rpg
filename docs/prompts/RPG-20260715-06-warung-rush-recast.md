@@ -1,15 +1,15 @@
 ```
-PACKET ID: RPG-DRAFT-W2-06 (assign + pin SHA at issue)
-STATUS:    DRAFT — do not ferry until issued
+PACKET ID: RPG-20260715-06
+STATUS:    ISSUED 2026-07-15
 PROJECT:   Bali Life RPG
 TARGET:    Codex
 CODEX:     Terra · High — restaging the existing Warung Rush minigame into the Kitchen Circle sessions; wide wiring, no new mechanics
-PREREQ:    merged main after W2-05 (SHA at issue)
+PREREQ:    STACKED CONTINUATION: if origin/main already contains the [RPG-20260715-05] merge, branch from origin/main; otherwise branch from the head of the RPG-20260715-05 feature branch and note the stacked base in the PR body. Claude reviews/merges the stack in order; if review changes an earlier packet, rebase before merge
 TITLE:     Act 2 W2-06 — Warung Rush recast as Ibu's real dinner rush (SERVE)
 MAP DELTA: none
-PR TAG: [<assigned ID>]
+PR TAG: [RPG-20260715-06]
 
-===== BEGIN PACKET RPG-DRAFT-W2-06 =====
+===== BEGIN PACKET RPG-20260715-06 =====
 
 ROLE & SCOPE
 The Warung Rush minigame (RPG-20260712-04) exists but floats as an
@@ -50,5 +50,5 @@ DO NOT
 - No new minigames or modes; no rush at other venues (the player's own
   café rush is Season 2); no difficulty ladder.
 
-===== END PACKET RPG-DRAFT-W2-06 =====
+===== END PACKET RPG-20260715-06 =====
 ```
