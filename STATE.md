@@ -91,7 +91,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move (2026-07-15): **Wave 2 is complete locally through RPG-20260715-08.** Claude reviews/merges the W2-01 → W2-08 stack in order; if an earlier review changes, rebase its dependents before merge. Wave 3 W3-01 owns the Season 1 ending and attaches directly to the completed sunset-circle state. Do not add an Act 2 completion card or advance `currentAct` before that attachment.
+Immediate next move (2026-07-15, evening): **Wave 3 — the Season 1 ending, stacked queue RPG-20260715-09 → -10.** Wave 2 is CLOSED: all eight packets merged in order (PRs #15–#22, main `35220c2`) and the gate PASSED (`docs/WAVE2_GATE_REVIEW_2026-07-15.md`; Stardew pillar 4.5; the finale's added Vance-resolution gate requirement reviewed and approved; 72-combination branch truth table tested). CEO decisions locked: ending tone = hopeful-communal with one sting (2026-07-15). Queue: -09 (ending sequence: toast → pan → Enclave banner sting → END card → credits, from `35220c2`) → -10 (post-ending free play + locked Season 2 teaser, stacked). Contract: `docs/SEASON1_ENDING_2026-07-14.md`. After -10 merges: the Wave 3 gate (FULL fresh-save playthrough New Game → Season 1 END → free play — the first complete-game run; reads the total-playtime number for launch copy), then Wave 4 (launch) issues from drafts + the title decision. Carried to Wave 4: drift-feel tuning (final assignment). Hard boundaries unchanged: no multiplayer, backend, AI calls, real commerce, Google data, or the Act 3 management sim (Act 3+ = Season 2).
 
 ## Project
 
