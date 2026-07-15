@@ -42,6 +42,7 @@ import {
   triggerAct1LuxuryTipDilemma,
   type Act1LuxuryTipTriggerResult
 } from "../story/Act1LuxuryTip";
+import { triggerAriCrewInvitation, type AriCrewInvitationSceneResult } from "../story/Act2AriCrew";
 
 export interface DeliveryResult {
   ok: boolean;
@@ -55,6 +56,7 @@ export interface DeliveryResult {
   storyScene?: KadekPrioritySceneResult;
   breakdownScene?: BreakdownDropoffResult;
   luxuryTipScene?: Act1LuxuryTipTriggerResult;
+  ariCrewInvitation?: AriCrewInvitationSceneResult;
 }
 
 export interface DeliveryOfferAvailability {
@@ -214,6 +216,7 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
     ? completeAct1BreakdownDropoff(world, now)
     : undefined;
   const luxuryTipScene = triggerAct1LuxuryTipDilemma(world, definition.id, authoredBreakdown);
+  const ariCrewInvitation = triggerAriCrewInvitation(world, definition);
   rearmAct1BreakdownIfUnfired(world, definition.id);
   world.life.hustle.activeDelivery = null;
   const readiness = getAct1MoveOutReadiness(world);
@@ -246,7 +249,8 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
     onTimeBonus,
     storyScene,
     breakdownScene,
-    luxuryTipScene
+    luxuryTipScene,
+    ariCrewInvitation
   };
 }
 

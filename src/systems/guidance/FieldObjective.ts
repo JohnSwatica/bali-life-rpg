@@ -1,7 +1,13 @@
 import { getDeliveryDefinition } from "../../data/deliveries";
 import { getPlayerHomeBase, playerHomeBase } from "../../data/homeBase";
 import { getAct0StepState, isAct0Complete } from "../life/ActProgression";
-import { areAct2GoalsComplete, getAct2NextStep, getAct2PayoffOpportunityState, isAct2Unlocked } from "../life/Act2Goals";
+import {
+  areAct2GoalsComplete,
+  getAct2NextStep,
+  getAct2PayoffOpportunityState,
+  getJoinedClubRecurringEventIds,
+  isAct2Unlocked
+} from "../life/Act2Goals";
 import { getAct3ReadinessNextStep } from "../life/Act3Readiness";
 import { getStationRecoveryNudge } from "../life/StationRecovery";
 import { getHustleNextStep } from "../hustle/HustleGoals";
@@ -14,7 +20,6 @@ import {
   isAct1MoveOutComplete,
   isIbuGuaranteeComplete
 } from "../story/Act1Finale";
-import { getSocialGroup } from "../groups/GroupRegistry";
 import { getEvent } from "../events/EventScheduler";
 import { getRelationshipArcStates } from "../relationships/RelationshipArcs";
 import type { WorldState } from "../../types";
@@ -45,6 +50,19 @@ export function getFieldObjective(world: WorldState): FieldObjectiveState {
       detail: step.objective,
       urgency: "normal",
       targets: getAct0ObjectiveTargets(world)
+    };
+  }
+
+  // A committed delivery remains the immediate field promise in every act.
+  // Act-level social guidance resumes as soon as the handoff is complete.
+  if (world.life.hustle.activeDelivery) {
+    const hustleNext = getHustleNextStep(world);
+    return {
+      source: "hustle",
+      title: hustleNext.title,
+      detail: hustleNext.detail,
+      urgency: hustleNext.urgency,
+      targets: getHustleObjectiveTargets(world)
     };
   }
 
@@ -213,7 +231,7 @@ function getAct2ObjectiveTargets(world: WorldState): FieldObjectiveTargetRef[] {
     ];
   }
 
-  const recurringEventId = world.life.joinedClubIds.flatMap((groupId) => getSocialGroup(groupId)?.recurringEventIds ?? [])[0];
+  const recurringEventId = getJoinedClubRecurringEventIds(world)[0];
   const recurringEvent = recurringEventId ? getEvent(recurringEventId) : undefined;
   if (recurringEvent && !world.runtimeEvents.attendedEventIds.includes(recurringEvent.id)) {
     return [{ type: "venue", id: `event_${recurringEvent.id}`, label: recurringEvent.title, venueId: recurringEvent.locationVenueId }];

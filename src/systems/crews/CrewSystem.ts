@@ -6,6 +6,10 @@ export const CREW_REGULAR_ATTENDANCE_COUNT = 3;
 const flagKey = (crewId: string, field: "invited" | "attendance" | "regular" | "benefit" | "lastOccurrence") =>
   `crew:${crewId}:${field}`;
 
+function crewSessionOccurrenceKey(event: GameEvent, occurrenceDay: number): string {
+  return `${event.id}:day-${Math.max(1, Math.floor(occurrenceDay))}`;
+}
+
 export interface CrewMutationResult {
   ok: boolean;
   message: string;
@@ -68,7 +72,7 @@ export function completeCrewSession(
   const before = getCrewState(world, crew.id);
   if (!before.member) return attendanceFailure(`Join ${crew.name} before attending its sessions.`, before);
 
-  const occurrenceKey = `${event.id}:day-${Math.max(1, Math.floor(occurrenceDay))}`;
+  const occurrenceKey = crewSessionOccurrenceKey(event, occurrenceDay);
   if (world.questFlags[flagKey(crew.id, "lastOccurrence")] === occurrenceKey) {
     return attendanceFailure(`${crew.name} already counted this session.`, before);
   }
@@ -93,6 +97,12 @@ export function completeCrewSession(
     becameRegular,
     regularBenefitActivated: becameRegular && state.regularBenefitActive
   };
+}
+
+export function hasCompletedCrewSessionOccurrence(world: WorldState, event: GameEvent, occurrenceDay: number): boolean {
+  const session = event.crewSession;
+  if (!session) return false;
+  return world.questFlags[flagKey(session.crewId, "lastOccurrence")] === crewSessionOccurrenceKey(event, occurrenceDay);
 }
 
 export function isCrewSessionVisible(world: WorldState, event: GameEvent): boolean {

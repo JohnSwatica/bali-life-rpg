@@ -88,7 +88,7 @@ export function getAct2NextStep(world: WorldState): Act2NextStepState | null {
   }
 
   if (!getAttendedJoinedClubEventId(world)) {
-    const nextEventId = world.life.joinedClubIds.flatMap((groupId) => getSocialGroup(groupId)?.recurringEventIds ?? [])[0];
+    const nextEventId = getJoinedClubRecurringEventIds(world)[0];
     return {
       title: nextEventId ? `Attend ${eventTitle(nextEventId)}` : "Attend a club rhythm",
       detail: nextEventId
@@ -172,10 +172,18 @@ export function getAct2PayoffOpportunityState(world: WorldState): Act2PayoffOppo
 }
 
 function getAttendedJoinedClubEventId(world: WorldState): string | null {
-  const joinedRecurringEventIds = new Set(
-    world.life.joinedClubIds.flatMap((groupId) => getSocialGroup(groupId)?.recurringEventIds ?? [])
-  );
+  const joinedRecurringEventIds = new Set(getJoinedClubRecurringEventIds(world));
   return world.runtimeEvents.attendedEventIds.find((eventId) => joinedRecurringEventIds.has(eventId)) ?? null;
+}
+
+export function getJoinedClubRecurringEventIds(world: WorldState): string[] {
+  const joinedIds = new Set(world.life.joinedClubIds);
+  return [...new Set([
+    ...world.life.joinedClubIds.flatMap((groupId) => getSocialGroup(groupId)?.recurringEventIds ?? []),
+    ...gameEventDefinitions
+      .filter((event) => event.crewSession && joinedIds.has(event.crewSession.crewId))
+      .map((event) => event.id)
+  ])];
 }
 
 function getCompletedRelationshipBeatCount(world: WorldState): number {

@@ -1,28 +1,47 @@
 import type { CrewDefinition, GameEvent } from "../types";
 
-/**
- * Temporary core-loop fixture. W2-02 replaces or repurposes this definition
- * when Ari's authored crew content lands.
- */
-export const ACT2_TEST_CREW_ID = "act2_test_crew";
+export const ARI_SURF_RUN_CREW_ID = "berawa_surf_run_crew";
 
 export const crewDefinitions: CrewDefinition[] = [
   {
-    id: ACT2_TEST_CREW_ID,
-    name: "Berawa Crew Session (Test)",
+    id: ARI_SURF_RUN_CREW_ID,
+    name: "Berawa Surf & Run Crew",
     venueId: "berawa_beach",
     sessionSlots: [
       {
-        id: "weekly_beach_check_in",
+        id: "wednesday_sunset_circle",
         dayOfWeek: 3,
         startHour: 17,
         endHour: 19,
-        title: "Crew Session Stub"
+        title: "Sunset Beach Circle",
+        kind: "sunset_circle",
+        description: "Boards in the sand, a small fire, and one honest ten-minute check-in before dark.",
+        timeCost: 20
+      },
+      {
+        id: "friday_sunset_circle",
+        dayOfWeek: 5,
+        startHour: 17,
+        endHour: 19,
+        title: "Sunset Beach Circle",
+        kind: "sunset_circle",
+        description: "Boards in the sand, a small fire, and one honest ten-minute check-in before dark.",
+        timeCost: 20
+      },
+      {
+        id: "sunday_morning_run",
+        dayOfWeek: 0,
+        startHour: 6.5,
+        endHour: 8.5,
+        title: "Sunday Beach-Edge Run",
+        kind: "morning_run",
+        description: "An easy out-and-back along the beach edge. No clock, no race, no penalty for missing it.",
+        timeCost: 30
       }
     ],
     regularBenefit: {
-      id: "act2_test_crew_regular_benefit",
-      label: "Regular benefit hook ready"
+      id: "berawa_surf_run_regular_benefit",
+      label: "Surf & Run regular benefit hook ready"
     }
   }
 ];
@@ -31,12 +50,16 @@ export function getCrewDefinition(crewId: string): CrewDefinition | undefined {
   return crewDefinitions.find((crew) => crew.id === crewId);
 }
 
+export function getCrewSessionSlot(crewId: string, slotId: string) {
+  return getCrewDefinition(crewId)?.sessionSlots.find((slot) => slot.id === slotId);
+}
+
 export function buildCrewSessionEvents(definitions: readonly CrewDefinition[] = crewDefinitions): GameEvent[] {
   return definitions.flatMap((crew) =>
     crew.sessionSlots.map((slot) => ({
       id: `crew-session:${crew.id}:${slot.id}`,
       title: slot.title,
-      type: "crew_meetup" as const,
+      type: slot.kind === "morning_run" ? ("run" as const) : ("crew_meetup" as const),
       host: { type: "venue" as const, id: crew.venueId },
       locationVenueId: crew.venueId,
       schedule: {
@@ -44,11 +67,15 @@ export function buildCrewSessionEvents(definitions: readonly CrewDefinition[] = 
         startHour: slot.startHour,
         endHour: slot.endHour
       },
-      description: "A minimal participation beat proving the weekly crew rhythm. No authored crew story ships in this packet.",
+      description: slot.description ?? "A crew session on the weekly calendar.",
       participation: {
-        timeCost: 20,
+        timeCost: slot.timeCost ?? 20,
         cost: 0,
-        meterDeltas: {}
+        meterDeltas: slot.kind === "morning_run"
+          ? { energy: -8, wellbeing: 8, social: 5 }
+          : { energy: -3, wellbeing: 6, social: 7 },
+        affinityBumps: [{ npcId: "ari", amount: 1 }],
+        meetNpcs: ["ari"]
       },
       crewSession: {
         crewId: crew.id,
