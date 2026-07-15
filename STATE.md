@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-15 (RPG-20260715-04 complete locally; structural crew/affinity unlocks filled)
+Last updated: 2026-07-15 (RPG-20260715-05 complete locally; two-axis reputation revealed read-only in Profile)
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -11,6 +11,8 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 `CLAUDE_PROJECT_REVIEW_2026-07-06.md` is Claude's full project review (bottlenecks, gap analysis, sequencing recommendation). It is a supervisory assessment, not a canonical design source — `GAME_DESIGN.md`/`STORY_BIBLE.md` still win on narrative/systems conflicts — but its top recommendation (no recorded human playtest yet; a `PLAYTEST_01.md` should exist before more systems work) should be treated as live until the user says otherwise.
 
 Current durable truth:
+
+- **RPG-20260715-05 complete locally on `feat/rpg-20260715-05-pda-reveal`, stacked on W2-04 at `b5a3d3b`:** after a real Surf & Run sunset-circle attendance and the overheard Kitchen squeeze, one stable NusaDrop “Driver transparency initiative” ping makes Profile open a two-step discovery: Platform Efficiency first, then leaked `metric_x` with Ibu's annotation and only the history branches present in the save. The permanent Profile surface derives both live existing axes and never writes reputation. Audit found the axes are independent rather than a strict inverse, so copy honestly says app rewards versus street memory; the `0..100` values are presentation-only projections over existing `rootedAxis` and `relationalAxis`. Schema stays v11; map delta is none. Proof: `docs/RPG-20260715-05_PDA_REVEAL_PROOF.md`; verification: 55 files / 373 tests, production build, and four-surface browser proof green from `act2_pda_reveal_ready`.
 
 - **RPG-20260715-04 complete locally on `feat/rpg-20260715-04-structural-unlocks`, stacked on W2-03 at `9f6e099`:** W2-01's two regular-benefit hooks now produce structural access/price/dialogue effects. Surf regular Sunday participation gets a flat +4 Energy/+4 Wellbeing through the existing meter path and unlocks beach regular dialogue. Kitchen regulars see Nasi Bungkus at Rp 30 (base Rp 35) and may enter the existing warung Tue/Sat until 22:00. The existing friendly affinity tier gives Ibu a warmer pool plus you-eat-first row priority, Kadek priority drivers a Rp 18 once-daily purchase of the existing 180-minute Focus Buffer pastry at BAKED., and Ari one pure-copy +1 invitation line. Five stable Feed messages fire once and five Profile rows derive from canonical state. Schema stays v11; map delta is none; Wave-1 reconciliation is untouched. Proof: `docs/RPG-20260715-04_STRUCTURAL_UNLOCKS_PROOF.md`; verification: 54 files / 364 tests, production build, and seven-surface browser proof green from `act2_both_crews_regular`.
 

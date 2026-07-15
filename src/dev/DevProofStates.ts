@@ -33,6 +33,7 @@ import {
 import { getDeliveryDefinition } from "../data/deliveries";
 import { ARI_SURF_RUN_CREW_ID, KITCHEN_CIRCLE_CREW_ID } from "../data/crews";
 import { gameEventDefinitions } from "../data/events";
+import { opportunityTemplates } from "../data/opportunities";
 import { completeCrewSession, inviteToCrew, joinCrew } from "../systems/crews/CrewSystem";
 import { prepareAriCrewSessionBeat } from "../systems/story/Act2AriCrew";
 import { prepareKitchenCircleSessionBeat } from "../systems/story/Act2KitchenCircle";
@@ -43,6 +44,11 @@ import {
   getRelationship
 } from "../systems/relationships/RelationshipMemory";
 import { resolveAct1LuxuryTipChoice } from "../systems/story/Act1LuxuryTip";
+import {
+  acceptOpportunity,
+  resolveOpportunity,
+  spawnOpportunity
+} from "../systems/opportunities/OpportunityEngine";
 import {
   acceptMadeFinale,
   completeAct1MoveOut,
@@ -63,7 +69,8 @@ export const DEV_PROOF_BOOT_STATE_NAMES = [
   "act1_finale_complete",
   "act2_entered",
   "act2_ari_crew_complete",
-  "act2_both_crews_regular"
+  "act2_both_crews_regular",
+  "act2_pda_reveal_ready"
 ] as const;
 
 export type DevProofBootStateName = (typeof DEV_PROOF_BOOT_STATE_NAMES)[number];
@@ -247,6 +254,17 @@ function buildAct2BothCrewsRegular(): WorldState {
   return world;
 }
 
+function buildAct2PdaRevealReady(): WorldState {
+  const world = buildAct2BothCrewsRegular();
+  const template = opportunityTemplates.find((candidate) => candidate.id === "no_questions_package");
+  if (!template) throw new Error("Could not find the No-Questions Package opportunity.");
+  const now = absoluteMinute(world);
+  const live = spawnOpportunity(world.opportunities, template, now);
+  requireOk(acceptOpportunity(world.opportunities, live.id, now), "accept the No-Questions Package");
+  requireOk(resolveOpportunity(world.opportunities, world, live.id, now + 1), "complete the No-Questions Package");
+  return world;
+}
+
 export const DEV_PROOF_BOOT_STATE_BUILDERS: Readonly<Record<DevProofBootStateName, DevProofBootStateBuilder>> = {
   act0_complete: buildAct0Complete,
   act1_leo_resolved: buildAct1LeoResolved,
@@ -257,7 +275,8 @@ export const DEV_PROOF_BOOT_STATE_BUILDERS: Readonly<Record<DevProofBootStateNam
   act1_finale_complete: buildAct1FinaleComplete,
   act2_entered: buildAct1FinaleComplete,
   act2_ari_crew_complete: buildAct2AriCrewComplete,
-  act2_both_crews_regular: buildAct2BothCrewsRegular
+  act2_both_crews_regular: buildAct2BothCrewsRegular,
+  act2_pda_reveal_ready: buildAct2PdaRevealReady
 };
 
 export function buildDevProofBootState(name: DevProofBootStateName): WorldState {
