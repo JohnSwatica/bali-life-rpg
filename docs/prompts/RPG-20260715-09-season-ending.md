@@ -1,15 +1,15 @@
 ```
-PACKET ID: RPG-DRAFT-W3-01 (assign + pin SHA at issue)
-STATUS:    DRAFT — do not ferry until issued; CEO tone decision (hopeful-communal recommended) locks at issue
+PACKET ID: RPG-20260715-09
+STATUS:    ISSUED 2026-07-15 — CEO TONE DECISION LOCKED: hopeful-communal with one sting; build the bittersweet swaps behind the single constant but ship the locked tone
 PROJECT:   Bali Life RPG
 TARGET:    Codex
 CODEX:     Sol · High — the season's payoff scene; branch-aware rendering + camera work; correctness is whether it lands
-PREREQ:    merged main after W2-08 + Wave 2 gate (SHA at issue)
+PREREQ:    branch from main at 35220c2 or later (Wave 2 complete; gate passed: docs/WAVE2_GATE_REVIEW_2026-07-15.md)
 TITLE:     Season 1 ending — toast, pan, sting, END card, credits
 MAP DELTA: none — the Enclave banner is dressing on an existing far-end building
-PR TAG: [<assigned ID>]
+PR TAG: [RPG-20260715-09]
 
-===== BEGIN PACKET RPG-DRAFT-W3-01 =====
+===== BEGIN PACKET RPG-20260715-09 =====
 
 ROLE & SCOPE
 Implement docs/SEASON1_ENDING_2026-07-14.md §"The sequence" beats 1–5,
@@ -53,5 +53,5 @@ DO NOT
 - No gameplay after the END card (hand off dark; W3-02 wakes the world).
 - No new systems, venues, or Season 2 content beyond the banner.
 
-===== END PACKET RPG-DRAFT-W3-01 =====
+===== END PACKET RPG-20260715-09 =====
 ```

@@ -1,15 +1,15 @@
 ```
-PACKET ID: RPG-DRAFT-W3-02 (assign + pin SHA at issue)
-STATUS:    DRAFT — do not ferry until issued
+PACKET ID: RPG-20260715-10
+STATUS:    ISSUED 2026-07-15
 PROJECT:   Bali Life RPG
 TARGET:    Codex
 CODEX:     Sol · Medium — post-ending world state; save-correctness is the risk
-PREREQ:    merged main after W3-01 (SHA at issue)
+PREREQ:    STACKED CONTINUATION: if origin/main already contains the [RPG-20260715-09] merge, branch from origin/main; otherwise branch from the head of the RPG-20260715-09 feature branch and note the stacked base in the PR body. Claude reviews/merges the stack in order; if review changes an earlier packet, rebase before merge
 TITLE:     Post-ending free play + the Season 2 teaser hook
 MAP DELTA: none
-PR TAG: [<assigned ID>]
+PR TAG: [RPG-20260715-10]
 
-===== BEGIN PACKET RPG-DRAFT-W3-02 =====
+===== BEGIN PACKET RPG-20260715-10 =====
 
 ROLE & SCOPE
 docs/SEASON1_ENDING_2026-07-14.md §"Post-ending free play" + sequence
@@ -51,5 +51,5 @@ DEFINITION OF DONE
 DO NOT
 - No epilogue quests, no NG+, no Season 2 scenes.
 
-===== END PACKET RPG-DRAFT-W3-02 =====
+===== END PACKET RPG-20260715-10 =====
 ```
