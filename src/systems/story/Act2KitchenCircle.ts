@@ -1,6 +1,7 @@
 import { KITCHEN_CIRCLE_CREW_ID, getCrewSessionSlot } from "../../data/crews";
 import type { GameEvent, OpportunityMessage, WorldState } from "../../types";
 import { getCrewState, inviteToCrew } from "../crews/CrewSystem";
+import { consumeKadekMoonlightingEndLine } from "./Act2KadekSourdough";
 
 export const KITCHEN_CIRCLE_INVITATION_LINE = "Busy night. You have hands. Come Tuesday.";
 export const KITCHEN_CIRCLE_SQUEEZE_LINE = "Then I cook for the app, not for people.";
@@ -81,6 +82,15 @@ export function prepareKitchenCircleSessionBeat(
   if (slot?.kind !== "kitchen_serve") return undefined;
 
   const attendanceCount = getCrewState(world, KITCHEN_CIRCLE_CREW_ID).attendanceCount;
+  const moonlightingEndLine = consumeKadekMoonlightingEndLine(world);
+  if (moonlightingEndLine) {
+    return {
+      speakerName: "Kadek",
+      dialogue: `${moonlightingEndLine}\n\nHe ties on an apron. The dinner rush opens around the circle; the decision is his, and the work is here.`,
+      includesSqueeze: false,
+      kind: "kitchen_serve"
+    };
+  }
   if (world.questFlags[SQUEEZE_SEEN_FLAG] !== true) {
     world.questFlags[SQUEEZE_SEEN_FLAG] = true;
     world.questFlags[SQUEEZE_DAY_FLAG] = world.clock.day;

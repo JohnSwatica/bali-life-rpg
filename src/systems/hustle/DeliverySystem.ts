@@ -44,6 +44,14 @@ import {
 } from "../story/Act1LuxuryTip";
 import { triggerAriCrewInvitation, type AriCrewInvitationSceneResult } from "../story/Act2AriCrew";
 import { recordAct2IbuDelivery } from "../story/Act2KitchenCircle";
+import {
+  ACT2_KADEK_SOURDOUGH_DELIVERY_ID,
+  getKadekSourdoughDeliveryGateReason,
+  recordKadekSourdoughBoxPickup,
+  shouldListKadekSourdoughDelivery,
+  triggerKadekSourdoughChoice,
+  type KadekSourdoughTriggerResult
+} from "../story/Act2KadekSourdough";
 
 export interface DeliveryResult {
   ok: boolean;
@@ -55,6 +63,8 @@ export interface DeliveryResult {
   onTime?: boolean;
   onTimeBonus?: number;
   storyScene?: KadekPrioritySceneResult;
+  kadekSourdoughBox?: { fired: boolean; dialogue: string };
+  kadekSourdoughScene?: KadekSourdoughTriggerResult;
   breakdownScene?: BreakdownDropoffResult;
   luxuryTipScene?: Act1LuxuryTipTriggerResult;
   ariCrewInvitation?: AriCrewInvitationSceneResult;
@@ -75,7 +85,12 @@ export interface EffectiveDeliveryTerms {
 
 export function getDeliveryOfferAvailability(world: WorldState): DeliveryOfferAvailability[] {
   return deliveryDefinitions
-    .filter((delivery) => delivery.boardAvailable && shouldListKadekDelivery(world, delivery.id))
+    .filter(
+      (delivery) =>
+        delivery.boardAvailable &&
+        shouldListKadekDelivery(world, delivery.id) &&
+        shouldListKadekSourdoughDelivery(world, delivery.id)
+    )
     .map((delivery) => evaluateDeliveryOffer(world, delivery));
 }
 
@@ -138,8 +153,21 @@ export function pickupDelivery(world: WorldState, now: number): DeliveryResult {
   active.rideRun = active.rideRun ?? createDeliveryRideRun();
   active.stage = "picked_up";
   active.pickedUpAt = now;
+  const kadekSourdoughBox = definition.id === ACT2_KADEK_SOURDOUGH_DELIVERY_ID && recordKadekSourdoughBoxPickup(world)
+    ? {
+        fired: true,
+        dialogue:
+          "The rejected box is still warm. The butter folds and tight corners are Kadek's work.\n\n" +
+          "The routing sticker reads WRONG ADDRESS · RETURN TO BAKED. Under it: CORPORATE CAFÉ · supplier D. ARSA. It is not his name."
+      }
+    : undefined;
   advanceWorldMinutes(world, 8);
-  return { ok: true, message: `${definition.pickupLabel} Now ride to ${definition.dropoffName}.`, activeDelivery: active };
+  return {
+    ok: true,
+    message: `${definition.pickupLabel} Now ride to ${definition.dropoffName}.`,
+    activeDelivery: active,
+    kadekSourdoughBox
+  };
 }
 
 export function completeDelivery(world: WorldState, now: number, performanceScore?: number): DeliveryResult {
@@ -205,6 +233,9 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
   const storyScene = definition.id === KADEK_RUSH_DELIVERY_ID
     ? completeKadekPriorityScene(world, active.cargoIntegrity ?? 100, now)
     : undefined;
+  const kadekSourdoughScene = definition.id === ACT2_KADEK_SOURDOUGH_DELIVERY_ID
+    ? triggerKadekSourdoughChoice(world)
+    : undefined;
   if (!world.life.hustle.completedDeliveryIds.includes(definition.id)) {
     world.life.hustle.completedDeliveryIds.push(definition.id);
   }
@@ -250,6 +281,7 @@ export function completeDelivery(world: WorldState, now: number, performanceScor
     onTime,
     onTimeBonus,
     storyScene,
+    kadekSourdoughScene,
     breakdownScene,
     luxuryTipScene,
     ariCrewInvitation
@@ -286,7 +318,7 @@ function evaluateDeliveryOffer(world: WorldState, delivery: DeliveryDefinition):
   if (world.activeActivity?.source === "rivalRace") {
     return { delivery, available: false, reason: "Finish Leo's race before taking a delivery." };
   }
-  const storyGate = getKadekDeliveryGateReason(world, delivery.id);
+  const storyGate = getKadekDeliveryGateReason(world, delivery.id) ?? getKadekSourdoughDeliveryGateReason(world, delivery.id);
   if (storyGate) {
     return { delivery, available: false, reason: storyGate };
   }

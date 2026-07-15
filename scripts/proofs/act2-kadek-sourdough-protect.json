@@ -1,0 +1,25 @@
+{
+  "name": "act2-kadek-sourdough-protect",
+  "steps": [
+    { "action": "setClock", "day": 24, "minuteOfDay": 1215 },
+    { "action": "acceptDeliveryById", "id": "act2_kadek_wrong_address_pastries" },
+    { "action": "pickupActiveDelivery" },
+    { "action": "screenshot", "name": "01-wrong-address-box" },
+    { "action": "pressKey", "key": "e" },
+    { "action": "completeActiveDelivery" },
+    { "action": "waitForSelector", "selector": ".bali-life-dialogue" },
+    { "action": "screenshot", "name": "02-kadek-evidence-choice" },
+    { "action": "clickButton", "text": "PROTECT · Keep the label between you." },
+    { "action": "waitMs", "ms": 300 },
+    { "action": "screenshot", "name": "03-protect-result" },
+    { "action": "pressKey", "key": "e" },
+    { "action": "leaveInterior" },
+    { "action": "setClock", "day": 27, "minuteOfDay": 1095 },
+    { "action": "teleport", "x": 2048, "y": 180 },
+    { "action": "waitMs", "ms": 1200 },
+    { "action": "openVenuePanel", "venueId": "canggu_station" },
+    { "action": "clickButton", "text": "Serve & attend" },
+    { "action": "waitForState", "state": { "mode": "dialogue" } },
+    { "action": "screenshot", "name": "04-protect-next-session" }
+  ]
+}
