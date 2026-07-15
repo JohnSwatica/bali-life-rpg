@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-15 (RPG-20260715-03 complete locally; Kitchen Circle and commission squeeze staged)
+Last updated: 2026-07-15 (RPG-20260715-04 complete locally; structural crew/affinity unlocks filled)
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -11,6 +11,8 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 `CLAUDE_PROJECT_REVIEW_2026-07-06.md` is Claude's full project review (bottlenecks, gap analysis, sequencing recommendation). It is a supervisory assessment, not a canonical design source — `GAME_DESIGN.md`/`STORY_BIBLE.md` still win on narrative/systems conflicts — but its top recommendation (no recorded human playtest yet; a `PLAYTEST_01.md` should exist before more systems work) should be treated as live until the user says otherwise.
 
 Current durable truth:
+
+- **RPG-20260715-04 complete locally on `feat/rpg-20260715-04-structural-unlocks`, stacked on W2-03 at `9f6e099`:** W2-01's two regular-benefit hooks now produce structural access/price/dialogue effects. Surf regular Sunday participation gets a flat +4 Energy/+4 Wellbeing through the existing meter path and unlocks beach regular dialogue. Kitchen regulars see Nasi Bungkus at Rp 30 (base Rp 35) and may enter the existing warung Tue/Sat until 22:00. The existing friendly affinity tier gives Ibu a warmer pool plus you-eat-first row priority, Kadek priority drivers a Rp 18 once-daily purchase of the existing 180-minute Focus Buffer pastry at BAKED., and Ari one pure-copy +1 invitation line. Five stable Feed messages fire once and five Profile rows derive from canonical state. Schema stays v11; map delta is none; Wave-1 reconciliation is untouched. Proof: `docs/RPG-20260715-04_STRUCTURAL_UNLOCKS_PROOF.md`; verification: 54 files / 364 tests, production build, and seven-surface browser proof green from `act2_both_crews_regular`.
 
 - **RPG-20260715-03 complete locally on `feat/rpg-20260715-03-kitchen-circle`, stacked on W2-02 at `7e9fcb0`:** Crew B is the Warung Kitchen Circle at Ibu's existing warung, with ordinary Tue/Sat 18:00–20:00 crew events on W2-01's scheduler. Two completed Act 2 Ibu-board deliveries or the first successful Act 2 rent payment makes Ibu's non-expiring summons available; her portrait scene invites without auto-joining. The first live session joins through the core, stages steam/plates/crowded stools with Ibu and every-other-session Kadek, and counts only after a short SERVE continuation. The first attended session always carries the one-time overheard 30% commission squeeze; Ibu offers one proud deflection, then a quiet Rp 2 menu-price Feed residue appears two days later. Regular remains the core's exact attendance-three hook with no W2-04 benefit effect. Schema stays v11; map delta is none; no economy, commission, Kadek-choice, or Warung Rush mechanics were added. Proof: `docs/RPG-20260715-03_KITCHEN_CIRCLE_PROOF.md`; verification: 53 files / 355 tests, production build, and seven-shot browser proof green from `act2_ari_crew_complete`.
 

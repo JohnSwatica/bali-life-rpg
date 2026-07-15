@@ -31,10 +31,17 @@ import {
   triggerAct1Breakdown
 } from "../systems/story/Act1Breakdown";
 import { getDeliveryDefinition } from "../data/deliveries";
-import { ARI_SURF_RUN_CREW_ID } from "../data/crews";
+import { ARI_SURF_RUN_CREW_ID, KITCHEN_CIRCLE_CREW_ID } from "../data/crews";
 import { gameEventDefinitions } from "../data/events";
 import { completeCrewSession, inviteToCrew, joinCrew } from "../systems/crews/CrewSystem";
 import { prepareAriCrewSessionBeat } from "../systems/story/Act2AriCrew";
+import { prepareKitchenCircleSessionBeat } from "../systems/story/Act2KitchenCircle";
+import { applyEventParticipation } from "../systems/events/EventParticipation";
+import {
+  bumpRelationshipAffinity,
+  getAffinityTier,
+  getRelationship
+} from "../systems/relationships/RelationshipMemory";
 import { resolveAct1LuxuryTipChoice } from "../systems/story/Act1LuxuryTip";
 import {
   acceptMadeFinale,
@@ -55,7 +62,8 @@ export const DEV_PROOF_BOOT_STATE_NAMES = [
   "act1_finale_ready",
   "act1_finale_complete",
   "act2_entered",
-  "act2_ari_crew_complete"
+  "act2_ari_crew_complete",
+  "act2_both_crews_regular"
 ] as const;
 
 export type DevProofBootStateName = (typeof DEV_PROOF_BOOT_STATE_NAMES)[number];
@@ -190,13 +198,51 @@ function buildAct2AriCrewComplete(): WorldState {
     );
     if (!event) throw new Error(`Could not find Ari crew session ${session.slotId}.`);
     world.clock.day = session.day;
+    world.clock.minuteOfDay = session.slotId === "sunday_morning_run" ? 7 * 60 : 17 * 60 + 15;
     prepareAriCrewSessionBeat(world, event);
-    requireOk(completeCrewSession(world, event, session.day, absoluteMinute(world) + index), `attend ${session.slotId}`);
+    const startedAt = absoluteMinute(world);
+    requireOk(applyEventParticipation(world, event, startedAt), `participate in ${session.slotId}`);
+    requireOk(completeCrewSession(world, event, session.day, startedAt + index), `attend ${session.slotId}`);
     if (!world.runtimeEvents.attendedEventIds.includes(event.id)) {
       world.runtimeEvents.attendedEventIds.push(event.id);
     }
   }
   world.clock.day = 8;
+  world.clock.minuteOfDay = 10 * 60;
+  return world;
+}
+
+function buildAct2BothCrewsRegular(): WorldState {
+  const world = buildAct2AriCrewComplete();
+  requireOk(inviteToCrew(world, KITCHEN_CIRCLE_CREW_ID), "invite Kitchen Circle");
+  requireOk(joinCrew(world, KITCHEN_CIRCLE_CREW_ID), "join Kitchen Circle");
+
+  const sessions = [
+    { slotId: "tuesday_evening_kitchen", day: 9 },
+    { slotId: "saturday_evening_kitchen", day: 13 },
+    { slotId: "tuesday_evening_kitchen", day: 16 }
+  ];
+  for (const [index, session] of sessions.entries()) {
+    const event = gameEventDefinitions.find(
+      (candidate) => candidate.crewSession?.crewId === KITCHEN_CIRCLE_CREW_ID &&
+        candidate.crewSession.sessionSlotId === session.slotId
+    );
+    if (!event) throw new Error(`Could not find Kitchen Circle session ${session.slotId}.`);
+    world.clock.day = session.day;
+    world.clock.minuteOfDay = 18 * 60 + 15;
+    prepareKitchenCircleSessionBeat(world, event);
+    const startedAt = absoluteMinute(world);
+    requireOk(applyEventParticipation(world, event, startedAt), `participate in ${session.slotId}`);
+    requireOk(completeCrewSession(world, event, session.day, startedAt + index), `attend ${session.slotId}`);
+    if (!world.runtimeEvents.attendedEventIds.includes(event.id)) {
+      world.runtimeEvents.attendedEventIds.push(event.id);
+    }
+  }
+
+  ensureFriendlyAffinity(world, "ibu_sari");
+  ensureFriendlyAffinity(world, "kadek");
+  ensureFriendlyAffinity(world, "ari");
+  world.clock.day = 23;
   world.clock.minuteOfDay = 10 * 60;
   return world;
 }
@@ -210,7 +256,8 @@ export const DEV_PROOF_BOOT_STATE_BUILDERS: Readonly<Record<DevProofBootStateNam
   act1_finale_ready: buildAct1FinaleReady,
   act1_finale_complete: buildAct1FinaleComplete,
   act2_entered: buildAct1FinaleComplete,
-  act2_ari_crew_complete: buildAct2AriCrewComplete
+  act2_ari_crew_complete: buildAct2AriCrewComplete,
+  act2_both_crews_regular: buildAct2BothCrewsRegular
 };
 
 export function buildDevProofBootState(name: DevProofBootStateName): WorldState {
@@ -237,6 +284,21 @@ function requireOk(result: { ok: boolean; message: string }, label: string): voi
 
 function requireMutation(ok: boolean, label: string): void {
   if (!ok) throw new Error(`Could not ${label}.`);
+}
+
+function ensureFriendlyAffinity(world: WorldState, npcId: string): void {
+  const relationship = getRelationship(world, "npc", npcId);
+  const tier = getAffinityTier(relationship);
+  if (tier === "friendly" || tier === "regular" || tier === "trusted") return;
+  const affinity = relationship?.affinity ?? 0;
+  bumpRelationshipAffinity(
+    world,
+    "npc",
+    npcId,
+    Math.max(1, 8 - affinity),
+    "Act 2 structural-unlock proof setup",
+    absoluteMinute(world)
+  );
 }
 
 function absoluteMinute(world: WorldState): number {

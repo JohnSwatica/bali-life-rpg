@@ -2,6 +2,7 @@ import { ARI_SURF_RUN_CREW_ID, getCrewSessionSlot } from "../../data/crews";
 import type { DeliveryDefinition } from "../../data/deliveries";
 import type { GameEvent, WorldState } from "../../types";
 import { getCrewState, inviteToCrew } from "../crews/CrewSystem";
+import { getAriCircleInviteExtension } from "./Act2StructuralUnlocks";
 
 export const ARI_CREW_INVITATION_LINE = "Stay ten minutes. The ocean doesn't take tips.";
 export const ARI_SECRET_PLANT_LINE = "Client calls, man. So many client calls.";
@@ -67,9 +68,10 @@ export function prepareAriCrewSessionBeat(world: WorldState, event: GameEvent): 
   const plant = includesAriPlant
     ? `\n\nAri glances at the closed laptop beside the boards. “${ARI_SECRET_PLANT_LINE}” Then he asks about your week instead.`
     : "";
+  const organizerExtension = kind === "sunset_circle" ? getAriCircleInviteExtension(world) : undefined;
   return {
     speakerName: memberBeat.speakerName,
-    dialogue: `“${memberBeat.line}”${plant}\n\nYou stay for the participation beat.`,
+    dialogue: `“${memberBeat.line}”${plant}${organizerExtension ? `\n\n${organizerExtension}` : ""}\n\nYou stay for the participation beat.`,
     includesAriPlant,
     kind
   };
