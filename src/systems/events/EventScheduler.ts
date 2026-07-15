@@ -1,4 +1,5 @@
 import { gameEventDefinitions } from "../../data/events";
+import { isCrewSessionVisible } from "../crews/CrewSystem";
 import type { GameEvent, PortalState, WorldClockState, WorldState } from "../../types";
 
 type EventVisibilityContext = PortalState | WorldState | undefined;
@@ -47,6 +48,9 @@ export function getEventsForGroup(groupId: string): GameEvent[] {
 }
 
 function isEventVisible(event: GameEvent, context?: EventVisibilityContext): boolean {
+  if (event.crewSession) {
+    return Boolean(context && "life" in context && isCrewSessionVisible(context, event));
+  }
   const requiredGroupId = event.visibility?.requiresJoinedGroupId;
   if (!requiredGroupId) {
     return true;

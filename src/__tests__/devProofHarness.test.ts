@@ -45,6 +45,15 @@ describe("dev proof harness authored boot states", () => {
     expect(world.life.hustle.driverRating).toBeLessThanOrEqual(5);
   });
 
+  it("constructs act2_entered through the real Act 1 finale mutations", () => {
+    const world = buildDevProofBootState("act2_entered");
+
+    expect(world.life.actProgress.currentAct).toBe(2);
+    expect(world.collectedPickups.act1_move_out_complete).toBeTruthy();
+    expect(world.collectedPickups.act1_weekly_scooter_contract_signed).toBeTruthy();
+    expect(world.collectedPickups.act2_intro_card_seen).toBeTruthy();
+  });
+
   it("constructs Leo-resolved state with the real story gate and Kadek offer", () => {
     const world = buildDevProofBootState("act1_leo_resolved");
 

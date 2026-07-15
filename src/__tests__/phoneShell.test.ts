@@ -9,6 +9,7 @@ import { completeMadeRoomOfferScene } from "../systems/story/Act1MadeRoomOffer";
 import {
   ACT0_SIGNUP_LEADERBOARD_ROWS,
   getPhoneFeedModel,
+  getPhoneVisibleTabs,
   PHONE_VISIBLE_TABS,
   PhoneShell
 } from "../ui/phone/PhoneShell";
@@ -80,6 +81,15 @@ describe("phone shell layout", () => {
     expect(PHONE_VISIBLE_TABS).not.toContain("Events");
     expect(PHONE_VISIBLE_TABS).not.toContain("Venues");
     expect(PHONE_VISIBLE_TABS).not.toContain("Community");
+  });
+
+  it("re-opens Calendar only after Act 2 entry without reviving Community", () => {
+    const world = createInitialWorldState();
+    expect(getPhoneVisibleTabs(world)).toEqual(["Feed", "Map", "Goals", "Profile"]);
+
+    world.life.actProgress.currentAct = 2;
+    expect(getPhoneVisibleTabs(world)).toEqual(["Feed", "Map", "Goals", "Calendar", "Profile"]);
+    expect(getPhoneVisibleTabs(world)).not.toContain("Community");
   });
 
   it("orders story and goal messages before paying jobs, then ambient content", () => {

@@ -49,7 +49,8 @@ export const DEV_PROOF_BOOT_STATE_NAMES = [
   "act1_both_tps",
   "act1_post_reversal",
   "act1_finale_ready",
-  "act1_finale_complete"
+  "act1_finale_complete",
+  "act2_entered"
 ] as const;
 
 export type DevProofBootStateName = (typeof DEV_PROOF_BOOT_STATE_NAMES)[number];
@@ -175,7 +176,8 @@ export const DEV_PROOF_BOOT_STATE_BUILDERS: Readonly<Record<DevProofBootStateNam
   act1_both_tps: buildAct1BothTurningPoints,
   act1_post_reversal: buildAct1PostReversal,
   act1_finale_ready: buildAct1FinaleReady,
-  act1_finale_complete: buildAct1FinaleComplete
+  act1_finale_complete: buildAct1FinaleComplete,
+  act2_entered: buildAct1FinaleComplete
 };
 
 export function buildDevProofBootState(name: DevProofBootStateName): WorldState {

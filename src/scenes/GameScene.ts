@@ -172,6 +172,15 @@ import {
 } from "../systems/relationships/RelationshipChoiceScenes";
 import { getActiveEvents, getActiveEventsAtVenue, isEventActive } from "../systems/events/EventScheduler";
 import { applyEventParticipation } from "../systems/events/EventParticipation";
+import {
+  buildCrewSessionOpenMessage,
+  completeCrewSession,
+  CREW_REGULAR_ATTENDANCE_COUNT,
+  getKnownCrewStates,
+  getCrewState,
+  inviteToCrew,
+  joinCrew
+} from "../systems/crews/CrewSystem";
 import { canSleepNow } from "../systems/time/DailyClock";
 import {
   createAuthoredDay1ClockState,
@@ -367,6 +376,7 @@ import { getPhoneCameraScale } from "../ui/phone/PhoneLayout";
 import { getAllVenues, getVenue } from "../systems/venues/VenueRegistry";
 import type {
   Direction,
+  CrewState,
   ActiveActivityState,
   GameEvent,
   GameIntent,
@@ -491,6 +501,7 @@ interface BaliLifeDebugSnapshot {
   activeQuestIds: string[];
   completedQuestIds: string[];
   joinedClubIds: string[];
+  crewStates: CrewState[];
   joinedGroupIds: string[];
   legacyJoinedGroupIds: string[];
   prompt: string;
@@ -551,6 +562,9 @@ declare global {
       payRent: () => ReturnType<typeof payHustleRent>;
       getBoardOffers: () => DevProofBoardOffer[];
       clickDialogueOption: (index: number) => DevProofInteractionResult;
+      inviteCrew: (crewId: string) => DevProofInteractionResult;
+      joinCrew: (crewId: string) => DevProofInteractionResult;
+      setClock: (clock: { day: number; minuteOfDay: number }) => DevProofInteractionResult;
     };
   }
 }
@@ -1010,7 +1024,20 @@ export class GameScene extends Phaser.Scene {
             return result;
           },
           getBoardOffers: () => this.devGetBoardOffers(),
-          clickDialogueOption: (index) => this.devClickDialogueOption(index)
+          clickDialogueOption: (index) => this.devClickDialogueOption(index),
+          inviteCrew: (crewId) => {
+            const result = inviteToCrew(this.world, crewId);
+            saveWorldState(this.world);
+            this.phone?.refresh();
+            return result;
+          },
+          joinCrew: (crewId) => {
+            const result = joinCrew(this.world, crewId);
+            saveWorldState(this.world);
+            this.phone?.refresh();
+            return result;
+          },
+          setClock: (clock) => this.devSetProofClock(clock)
         };
         const resumeName = window.sessionStorage.getItem("bali-life-rpg.dev-proof-resume");
         if (resumeName) {
@@ -5606,15 +5633,22 @@ export class GameScene extends Phaser.Scene {
       for (const event of activeEvents.slice(0, 2)) {
         const cost = event.participation.cost ?? 0;
         const canAfford = cost <= 0 || this.playerState.money >= cost;
+        const crewState = event.crewSession ? getCrewState(this.world, event.crewSession.crewId) : undefined;
+        const canAttendCrew = !crewState || crewState.member;
         const moneyCopy = cost < 0 ? `Earn Rp ${Math.abs(cost)}` : cost > 0 ? `Cost Rp ${cost}` : "Free";
         const meterCopy = formatMeterDeltaSummary(this.world, event.participation.meterDeltas);
+        const crewStatusCopy = crewState
+          ? `\nAttendance ${crewState.attendanceCount}/${CREW_REGULAR_ATTENDANCE_COUNT}${crewState.regular ? " · REGULAR" : ""}`
+          : "";
         this.appendActivityMenuRow(content, {
           title: event.title,
-          body: `${event.description}\n${event.participation.timeCost} min | ${moneyCopy}${meterCopy ? ` | ${meterCopy}` : ""}`,
-          actionLabel: canAfford ? "Attend" : "Need Rp",
-          variant: canAfford ? "primary" : "blocked",
+          body: `${event.description}\n${event.participation.timeCost} min | ${moneyCopy}${meterCopy ? ` | ${meterCopy}` : ""}${crewStatusCopy}`,
+          actionLabel: !canAttendCrew ? "Join crew first" : canAfford ? "Attend" : "Need Rp",
+          variant: canAfford && canAttendCrew ? "primary" : "blocked",
           onAction: () => {
-            if (canAfford) {
+            if (!canAttendCrew) {
+              this.showToast("This invitation is a promise. Join the crew before counting attendance.");
+            } else if (canAfford) {
               this.attendVenueEvent(event);
             } else {
               this.showToast(`Need Rp ${cost} for ${event.title}.`);
@@ -6980,6 +7014,12 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    if (event.crewSession && !getCrewState(this.world, event.crewSession.crewId).member) {
+      this.showToast("Join the invited crew before attending its session.");
+      return;
+    }
+
+    const occurrenceDay = this.world.clock.day;
     const cost = event.participation.cost ?? 0;
     if (cost > 0 && this.playerState.money < cost) {
       this.showToast(`Need Rp ${cost} for ${event.title}.`);
@@ -6993,6 +7033,9 @@ export class GameScene extends Phaser.Scene {
     }
 
     const intentResult = this.dispatchIntent({ kind: "AttendEvent", eventId: event.id });
+    const crewResult = event.crewSession
+      ? completeCrewSession(this.world, event, occurrenceDay, participation.completedAt)
+      : undefined;
     const goalMessage = this.refreshSettlingInGoals(false);
     this.updateLighting();
     saveWorldState(this.world);
@@ -7000,7 +7043,12 @@ export class GameScene extends Phaser.Scene {
     const moneyCopy = cost < 0 ? `Rp ${Math.abs(cost)} earned` : cost > 0 ? `Rp ${cost} spent` : "free";
     const meterCopy = formatMeterDeltaSummary(this.world, event.participation.meterDeltas);
     const details = `${moneyCopy}${meterCopy ? ` | ${meterCopy}` : ""}`;
-    this.showToast(goalMessage ? `${intentResult.message} ${details}. ${goalMessage}` : `${intentResult.message} ${details}.`);
+    const attendanceCopy = crewResult?.ok ? ` ${crewResult.message}` : "";
+    this.showToast(
+      goalMessage
+        ? `${intentResult.message} ${details}.${attendanceCopy} ${goalMessage}`
+        : `${intentResult.message} ${details}.${attendanceCopy}`
+    );
     this.openVenueActivityMenu(event.locationVenueId);
   }
 
@@ -9756,14 +9804,24 @@ export class GameScene extends Phaser.Scene {
     let added = 0;
     for (const event of getActiveEvents(this.world.clock, this.world)) {
       const venue = getVenue(event.locationVenueId);
-      const ok = appendOpportunityMessage(this.world.opportunities, {
-        id: `event-start:${event.id}:${this.world.clock.day}`,
-        at: now,
-        from: "Calendar",
-        body: `${event.title} is happening now at ${venue?.name ?? event.locationVenueId}. Go on-site and press E to join.`,
-        venueId: event.locationVenueId,
-        read: false
-      });
+      const message = event.crewSession
+        ? buildCrewSessionOpenMessage(
+            this.world,
+            event,
+            now,
+            this.world.clock.day,
+            venue?.name ?? event.locationVenueId
+          )
+        : {
+            id: `event-start:${event.id}:${this.world.clock.day}`,
+            at: now,
+            from: "Calendar",
+            body: `${event.title} is happening now at ${venue?.name ?? event.locationVenueId}. Go on-site and press E to join.`,
+            venueId: event.locationVenueId,
+            read: false
+          };
+      if (!message) continue;
+      const ok = appendOpportunityMessage(this.world.opportunities, message);
       if (ok) {
         added += 1;
       }
@@ -9810,6 +9868,25 @@ export class GameScene extends Phaser.Scene {
     }
     this.openVenueActivityMenu(venueId);
     return { ok: true, message: `${venueId} venue panel opened.` };
+  }
+
+  private devSetProofClock(clock: { day: number; minuteOfDay: number }): DevProofInteractionResult {
+    if (
+      !Number.isFinite(clock?.day) ||
+      !Number.isFinite(clock?.minuteOfDay) ||
+      clock.day < 1 ||
+      clock.minuteOfDay < 0 ||
+      clock.minuteOfDay >= 1440
+    ) {
+      return { ok: false, message: "Proof clock requires day >= 1 and minuteOfDay in 0..1439." };
+    }
+    this.world.clock.day = Math.floor(clock.day);
+    this.world.clock.minuteOfDay = Math.floor(clock.minuteOfDay);
+    this.updateLighting();
+    this.updateOpportunityFeed(0, true);
+    saveWorldState(this.world);
+    this.phone?.refresh();
+    return { ok: true, message: `Clock set to ${formatClock(this.world)}.` };
   }
 
   private devEnterInterior(interiorId: string): DevProofInteractionResult {
@@ -10184,6 +10261,7 @@ export class GameScene extends Phaser.Scene {
       activeQuestIds: [...this.playerState.activeQuestIds],
       completedQuestIds: [...this.playerState.completedQuestIds],
       joinedClubIds: membershipDebug.joinedClubIds,
+      crewStates: getKnownCrewStates(this.world),
       joinedGroupIds: membershipDebug.legacyJoinedGroupIds,
       legacyJoinedGroupIds: membershipDebug.legacyJoinedGroupIds,
       prompt: this.promptText.text,
