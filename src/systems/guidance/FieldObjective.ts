@@ -22,6 +22,13 @@ import {
 } from "../story/Act1Finale";
 import { getEvent } from "../events/EventScheduler";
 import { isKitchenCircleInvitationPending } from "../story/Act2KitchenCircle";
+import {
+  getAct2SeatGate,
+  hasResolvedVanceOffer,
+  isAct2FinaleComplete,
+  isAct2FinaleStarted,
+  isVanceOfferPending
+} from "../story/Act2Finale";
 import { getRelationshipArcStates } from "../relationships/RelationshipArcs";
 import type { WorldState } from "../../types";
 
@@ -75,6 +82,27 @@ export function getFieldObjective(world: WorldState): FieldObjectiveState {
         detail: "Ibu has a busy night and expects your hands at the warung. The invitation will not expire.",
         urgency: "normal",
         targets: [{ type: "npc", id: "act2_kitchen_circle_invitation", label: "Talk to Ibu Sari", npcId: "ibu_sari" }]
+      };
+    }
+    if (isVanceOfferPending(world)) {
+      return {
+        source: "act2",
+        title: "Meet Julian Vance",
+        detail: "He has your numbers open at Milk & Madu. Hear the offer; neither answer changes access or work.",
+        urgency: "normal",
+        targets: [{ type: "venue", id: "act2_vance_offer", label: "Enter Milk & Madu", venueId: "milk_madu_berawa" }]
+      };
+    }
+    const seatGate = getAct2SeatGate(world);
+    if (!isAct2FinaleComplete(world) && (isAct2FinaleStarted(world) || (seatGate.foundationComplete && hasResolvedVanceOffer(world)))) {
+      return {
+        source: "act2",
+        title: isAct2FinaleStarted(world) ? "Finish the sunset toast" : seatGate.sundaySunset ? "Take the seat" : "Return Sunday at sunset",
+        detail: seatGate.sundaySunset || isAct2FinaleStarted(world)
+          ? "Both circles are together at Berawa Beach, and a place is open for you."
+          : "The circle returns Sunday from 17:00 to 20:00. Missing it has no penalty.",
+        urgency: "normal",
+        targets: [{ type: "venue", id: "act2_sunset_seat", label: "Berawa Beach circle", venueId: "berawa_beach" }]
       };
     }
     const act3Next = areAct2GoalsComplete(world) ? getAct3ReadinessNextStep(world) : null;

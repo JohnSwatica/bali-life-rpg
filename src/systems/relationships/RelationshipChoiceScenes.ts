@@ -10,6 +10,11 @@ export type RelationshipChoiceActionId =
   | "return_act1_luxury_tip"
   | "protect_act2_kadek_sourdough"
   | "expose_act2_kadek_sourdough"
+  | "decline_act2_vance_offer"
+  | "take_act2_vance_card"
+  | "toast_act2_make_room"
+  | "toast_act2_serve_ourselves"
+  | "toast_act2_stay_longer"
   | "start_rio_race"
   | "decline_rio_race";
 
@@ -32,8 +37,8 @@ export interface RelationshipChoiceScene {
   npcOpeningLine: string;
   prompt: string;
   trigger?: "quest_turnin" | "manual";
-  skipOptionIndex?: 0 | 1;
-  options: [RelationshipChoiceOption, RelationshipChoiceOption];
+  skipOptionIndex?: number;
+  options: RelationshipChoiceOption[];
 }
 
 export const RELATIONSHIP_CHOICE_SCENES: Record<string, RelationshipChoiceScene> = {
@@ -220,6 +225,60 @@ export const RELATIONSHIP_CHOICE_SCENES: Record<string, RelationshipChoiceScene>
         resultLine:
           '“The squeeze makes people hide the work that keeps them alive. The circle should know that, not shame you for it.”\n\nKadek looks at the closed ovens. “You could have warned me. But you are not wrong.”\n\nAt the warung, Ibu reads the label and pushes it back across the table. “Debts are not sins. Secrets are just heavy.” Nobody leaves.',
         actionId: "expose_act2_kadek_sourdough"
+      }
+    ]
+  },
+  act2_vance_real_job_offer: {
+    id: "act2_vance_real_job_offer",
+    npcId: "pak_bagus",
+    speakerName: "Julian Vance · Milk & Madu",
+    trigger: "manual",
+    npcOpeningLine:
+      'Vance has the same corner table he had when you arrived. He turns his tablet around: your rating curve, completion windows, pressure runs.\n\n“Four-point-something under pressure. Enclave Berawa needs logistics people who don\'t break.”\n\nHe sets a cream card beside the tablet. “Salary. Badge. Off the street. A real job.”\n\n“The scooter noise problem you heard me mention was imprecise. The problem is unmanaged access. Enclave gives the street a system.”',
+    prompt: "He believes this is rescue. What do you do?",
+    options: [
+      {
+        id: "decline_vance",
+        label: "Decline outright. ‘I already have real work.’",
+        resultLine:
+          'Vance draws the card back without hurrying. “Of course. Informality feels like freedom until it sends an invoice.” He offers a polite nod. “The assessment was still accurate.”',
+        actionId: "decline_act2_vance_offer"
+      },
+      {
+        id: "take_vance_card",
+        label: "Take the card. Promise nothing.",
+        resultLine:
+          'You pocket the card. Vance smiles as if a forecast has corrected itself. “Good. You do not have to agree today. Serious people eventually get tired of improvising.”',
+        actionId: "take_act2_vance_card"
+      }
+    ]
+  },
+  act2_sunset_seat_toast: {
+    id: "act2_sunset_seat_toast",
+    npcId: "ari",
+    speakerName: "The Sunday sunset circle",
+    trigger: "manual",
+    npcOpeningLine:
+      "Ari passes you a chipped cup. Ibu lifts hers. Kadek waits with bread in both hands. The open place on the mat is yours now.",
+    prompt: "One line. No score. What do you toast?",
+    options: [
+      {
+        id: "toast_make_room",
+        label: "‘To the people who make room.’",
+        resultLine: "Ibu taps her cup to yours first. Around the fire, shoulders settle closer instead of pulling away.",
+        actionId: "toast_act2_make_room"
+      },
+      {
+        id: "toast_serve_ourselves",
+        label: "‘To every plate we serve ourselves.’",
+        resultLine: "Ibu's laugh is low and satisfied. Kadek breaks the loaf; every hand reaches in.",
+        actionId: "toast_act2_serve_ourselves"
+      },
+      {
+        id: "toast_stay_longer",
+        label: "‘To staying ten minutes longer.’",
+        resultLine: "Ari looks at the phone still zipped in his bag. “That is usually where the good part starts.”",
+        actionId: "toast_act2_stay_longer"
       }
     ]
   }

@@ -1,0 +1,17 @@
+{
+  "name": "act2-vance-offer",
+  "steps": [
+    { "action": "enterInterior", "interiorId": "milk_madu_interior" },
+    { "action": "interactNpc", "npcId": "pak_bagus" },
+    { "action": "waitForSelector", "selector": ".bali-life-dialogue" },
+    { "action": "screenshot", "name": "01-vance-knows-the-numbers" },
+    { "action": "clickButton", "text": "Take the card. Promise nothing." },
+    { "action": "waitMs", "ms": 300 },
+    { "action": "screenshot", "name": "02-card-residue-only" },
+    { "action": "pressKey", "key": "e" },
+    { "action": "leaveInterior" },
+    { "action": "setClock", "day": 25, "minuteOfDay": 830 },
+    { "action": "openPhoneTab", "tab": "Feed" },
+    { "action": "screenshot", "name": "03-later-vance-followup" }
+  ]
+}

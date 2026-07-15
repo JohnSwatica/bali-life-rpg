@@ -1,0 +1,20 @@
+{
+  "name": "act2-finale-protect",
+  "steps": [
+    { "action": "teleport", "x": 1936, "y": 2350 },
+    { "action": "openVenuePanel", "venueId": "berawa_beach" },
+    { "action": "screenshot", "name": "01-seat-available" },
+    { "action": "clickButton", "text": "Take the seat" },
+    { "action": "waitMs", "ms": 2200 },
+    { "action": "screenshot", "name": "02-sunday-circle-poster-wide" },
+    { "action": "pressKey", "key": "Escape" },
+    { "action": "waitForSelector", "selector": ".bali-life-dialogue" },
+    { "action": "screenshot", "name": "03-protect-return-completed-history" },
+    { "action": "pressKey", "key": "Escape" },
+    { "action": "waitForSelector", "selector": ".bali-life-dialogue-choices" },
+    { "action": "screenshot", "name": "04-three-warm-toast-flavors" },
+    { "action": "clickDialogueOption", "index": 0 },
+    { "action": "waitMs", "ms": 300 },
+    { "action": "screenshot", "name": "05-act2-completion-handoff" }
+  ]
+}

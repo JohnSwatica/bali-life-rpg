@@ -10,6 +10,12 @@ import {
   isKadekMoonlightingEndPending,
   resolveKadekSourdoughChoice
 } from "../systems/story/Act2KadekSourdough";
+import {
+  beginAct2Finale,
+  completeAct2Finale,
+  getAct2FinaleToast,
+  isAct2FinaleComplete
+} from "../systems/story/Act2Finale";
 import { installMemoryLocalStorage, writeRawSave } from "./testUtils";
 import type { WorldState } from "../types";
 
@@ -505,5 +511,18 @@ describe("Persistence migration", () => {
     expect(getKadekSourdoughChoice(restored)).toBe("expose");
     expect(isKadekMoonlightingEndPending(restored)).toBe(true);
     expect(restored.reputation).toEqual(world.reputation);
+  });
+
+  it("round-trips the W2-08 Act 2 completion hook without advancing the act", () => {
+    const world = buildDevProofBootState("act2_finale_protect_ready");
+    expect(beginAct2Finale(world)).toBe(true);
+    expect(completeAct2Finale(world, "stay_longer", 50_000).ok).toBe(true);
+
+    saveWorldState(world);
+    const restored = loadWorldState();
+    expect(restored.schemaVersion).toBe(11);
+    expect(isAct2FinaleComplete(restored)).toBe(true);
+    expect(getAct2FinaleToast(restored)).toBe("stay_longer");
+    expect(restored.life.actProgress.currentAct).toBe(2);
   });
 });

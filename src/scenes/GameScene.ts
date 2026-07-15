@@ -34,6 +34,7 @@ import { getAmbientNpcLine, getNpcDialogueSurface } from "../systems/dialogue/Di
 import { getPortraitDataUrl, getPortraitDefinition, portraitVariantForTier } from "../systems/dialogue/PortraitArt";
 import { buildAct1IntroCutscene, buildAct2IntroCutscene } from "../systems/cutscene/ActCardScripts";
 import { buildAct1MoveOutMontage } from "../systems/cutscene/Act1FinaleScripts";
+import { buildAct2SeatArrivalCutscene } from "../systems/cutscene/Act2FinaleScripts";
 import { buildAct0OpeningCutscene } from "../systems/cutscene/Act0OpeningScript";
 import {
   buildAct0CafeScene,
@@ -75,6 +76,7 @@ import {
 import { getFieldIndicators, type VenueFieldIndicator } from "../systems/guidance/FieldIndicators";
 import {
   getEventWorldScenes,
+  getAct2FinaleWorldScenes,
   getAct1IncitingHookWorldScenes,
   getFieldFirstDiscoveryAudit,
   getMadeRoomOfferWorldScenes,
@@ -224,6 +226,20 @@ import {
   getPdaReputationReadModel,
   isPdaRevealPending
 } from "../systems/story/Act2PdaReveal";
+import {
+  ACT2_SEAT_TOAST_SCENE_ID,
+  ACT2_VANCE_OFFER_SCENE_ID,
+  beginAct2Finale,
+  buildVanceCardFollowupMessage,
+  completeAct2Finale,
+  getAct2FinaleArrivalCopy,
+  getAct2SeatGate,
+  isAct2FinaleComplete,
+  isAct2FinaleStarted,
+  isVanceOfferPending,
+  resolveVanceOffer,
+  type Act2FinaleToast
+} from "../systems/story/Act2Finale";
 import { canSleepNow } from "../systems/time/DailyClock";
 import {
   createAuthoredDay1ClockState,
@@ -604,6 +620,7 @@ declare global {
       openPhoneTab: (tab: string) => DevProofInteractionResult;
       openVenuePanel: (venueId: string) => DevProofInteractionResult;
       enterInterior: (interiorId: string) => DevProofInteractionResult;
+      interactNpc: (npcId: string) => DevProofInteractionResult;
       payRent: () => ReturnType<typeof payHustleRent>;
       getBoardOffers: () => DevProofBoardOffer[];
       clickDialogueOption: (index: number) => DevProofInteractionResult;
@@ -1074,6 +1091,11 @@ export class GameScene extends Phaser.Scene {
           openPhoneTab: (tab) => this.devOpenPhoneTab(tab),
           openVenuePanel: (venueId) => this.devOpenVenuePanel(venueId),
           enterInterior: (interiorId) => this.devEnterInterior(interiorId),
+          interactNpc: (npcId) => {
+            if (!npcDefinitions[npcId]) return { ok: false, message: `Unknown NPC: ${npcId}.` };
+            this.interactWithNpc(npcId);
+            return { ok: true, message: `Interacted with ${npcId}.` };
+          },
           payRent: () => {
             const result = payHustleRent(this.world, this.getAbsoluteMinute());
             saveWorldState(this.world);
@@ -2149,6 +2171,11 @@ export class GameScene extends Phaser.Scene {
         this.sessionStartedAt ??= Date.now();
         return;
       }
+    }
+    if (isAct2FinaleStarted(this.world) && !isAct2FinaleComplete(this.world)) {
+      this.openAct2FinaleArrival();
+      this.sessionStartedAt ??= Date.now();
+      return;
     }
     if (this.world.collectedPickups[ACT1_MADE_KEY_FLAG] && !isAct1MoveOutComplete(this.world)) {
       this.startAct1MoveOutMontage();
@@ -4214,6 +4241,14 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    if (npcId === "pak_bagus" && isVanceOfferPending(this.world)) {
+      const scene = getRelationshipChoiceScene(ACT2_VANCE_OFFER_SCENE_ID);
+      if (scene) {
+        this.openRelationshipChoiceScene(scene);
+        return;
+      }
+    }
+
     const questInteraction = resolveNpcQuestInteraction(this.playerState, npcId);
     if (questInteraction?.handled) {
       for (const intent of questInteraction.intents) {
@@ -4453,6 +4488,39 @@ export class GameScene extends Phaser.Scene {
         scene.speakerName ?? npcDefinitions[scene.npcId]?.name ?? scene.npcId,
         resolution.ok ? option.resultLine : resolution.message,
         scene.npcId
+      );
+      return;
+    }
+    if (option.actionId === "decline_act2_vance_offer" || option.actionId === "take_act2_vance_card") {
+      const choice = option.actionId === "take_act2_vance_card" ? "take_card" : "decline";
+      const resolved = resolveVanceOffer(this.world, choice, this.getAbsoluteMinute());
+      saveWorldState(this.world);
+      this.phone?.refresh();
+      this.openDialogue(
+        scene.speakerName ?? npcDefinitions[scene.npcId]?.name ?? scene.npcId,
+        resolved ? option.resultLine : "Vance has already filed the conversation under decided.",
+        scene.npcId
+      );
+      return;
+    }
+    if (
+      option.actionId === "toast_act2_make_room" ||
+      option.actionId === "toast_act2_serve_ourselves" ||
+      option.actionId === "toast_act2_stay_longer"
+    ) {
+      const toast: Act2FinaleToast = option.actionId === "toast_act2_make_room"
+        ? "make_room"
+        : option.actionId === "toast_act2_serve_ourselves"
+          ? "serve_ourselves"
+          : "stay_longer";
+      const resolution = completeAct2Finale(this.world, toast, this.getAbsoluteMinute());
+      saveWorldState(this.world);
+      this.phone?.refresh();
+      this.openDialogue(
+        "The Sunday sunset circle",
+        resolution.ok
+          ? `${option.resultLine}\n\nThe fire holds. The seat stays yours. Whatever comes next begins here.`
+          : resolution.message
       );
       return;
     }
@@ -5793,6 +5861,19 @@ export class GameScene extends Phaser.Scene {
       });
     }
 
+    const act2SeatGate = context.venueId === "berawa_beach" ? getAct2SeatGate(this.world) : undefined;
+    const act2SeatAvailable = Boolean(act2SeatGate?.available);
+    if (act2SeatAvailable) {
+      this.appendActivityMenuSection(content, "Both circles · Sunday sunset");
+      this.appendActivityMenuRow(content, {
+        title: "The seat by the fire",
+        body: "Ibu brought dinner. Kadek brought bread. Ari put his phone away. Nobody needs a delivery; they saved you a place.",
+        actionLabel: "Take the seat",
+        variant: "special",
+        onAction: () => this.startAct2SeatFinale()
+      });
+    }
+
     const activeEvents = getActiveEventsAtVenue(this.world.clock, venueId, this.world);
     if (activeEvents.length > 0) {
       this.appendActivityMenuSection(content, "Happening now");
@@ -5916,7 +5997,8 @@ export class GameScene extends Phaser.Scene {
       liveVenueOpportunities.length === 0 &&
       joinableGroups.length === 0 &&
       bridgeGroups.length === 0 &&
-      !busyNightServeAvailable
+      !busyNightServeAvailable &&
+      !act2SeatAvailable
     ) {
       const empty = document.createElement("div");
       empty.className = "bali-life-activity-menu-empty";
@@ -8352,6 +8434,12 @@ export class GameScene extends Phaser.Scene {
       this.drawOpportunityWorldScene(scene, node.x, node.y - scaleDistance(58), phase, activeLabelIds);
     }
 
+    for (const scene of getAct2FinaleWorldScenes(this.world)) {
+      const node = resolveWorldSceneVenueAnchor(scene.venueId);
+      if (!node) continue;
+      this.drawEventWorldScene(scene, node.x, node.y - scaleDistance(8), phase, activeLabelIds);
+    }
+
     for (const scene of getEventWorldScenes(this.world)) {
       const node = resolveWorldSceneVenueAnchor(scene.venueId);
       if (!node) {
@@ -8475,6 +8563,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawEventWorldScene(scene: EventWorldScene, x: number, y: number, phase: number, activeLabelIds: Set<string>): void {
+    if (scene.sceneKind === "act2_finale_circle") {
+      this.drawAct2FinaleWorldScene(scene, x, y, phase, activeLabelIds);
+      return;
+    }
     const color = this.eventSceneColor(scene.sceneKind);
     const pulse = 0.62 + Math.sin(phase * (scene.clubId || scene.crewId ? 5.2 : 3.6)) * 0.18;
     this.worldSceneLayer.fillStyle(0x101820, 0.24);
@@ -8560,6 +8652,97 @@ export class GameScene extends Phaser.Scene {
 
     this.drawWorldSceneActors(scene.actors, x, y, phase, 1);
     this.drawWorldSceneSign(scene, x, y - scaleDistance(30), activeLabelIds, color);
+  }
+
+  private drawAct2FinaleWorldScene(
+    scene: EventWorldScene,
+    x: number,
+    y: number,
+    phase: number,
+    activeLabelIds: Set<string>
+  ): void {
+    const glow = 0.78 + Math.sin(phase * 5.5) * 0.08;
+    this.worldSceneLayer.fillStyle(0x101820, 0.24);
+    this.worldSceneLayer.fillEllipse(x, y + scaleDistance(42), scaleDistance(350), scaleDistance(126));
+    this.worldSceneLayer.fillStyle(0xb86a3f, 0.34);
+    this.worldSceneLayer.fillRoundedRect(
+      x - scaleDistance(118),
+      y - scaleDistance(18),
+      scaleDistance(236),
+      scaleDistance(92),
+      scaleDistance(24)
+    );
+    this.worldSceneLayer.lineStyle(Math.max(2, scaleDistance(3)), 0xffd166, 0.7);
+    this.worldSceneLayer.strokeRoundedRect(
+      x - scaleDistance(118),
+      y - scaleDistance(18),
+      scaleDistance(236),
+      scaleDistance(92),
+      scaleDistance(24)
+    );
+
+    // Boards bookend the two crews; neither moves a station or map boundary.
+    for (const boardX of [-158, 158]) {
+      this.worldSceneLayer.lineStyle(Math.max(2, scaleDistance(6)), boardX < 0 ? 0x79b7c5 : 0xf4b860, 0.92);
+      this.worldSceneLayer.lineBetween(
+        x + scaleDistance(boardX - 8),
+        y - scaleDistance(42),
+        x + scaleDistance(boardX + 8),
+        y + scaleDistance(42)
+      );
+    }
+
+    // Ibu's dinner and Kadek's named loaf make the overlap legible at a glance.
+    this.worldSceneLayer.fillStyle(0x5d3828, 0.96);
+    this.worldSceneLayer.fillRoundedRect(x - scaleDistance(108), y + scaleDistance(34), scaleDistance(62), scaleDistance(20), scaleDistance(5));
+    for (const plateX of [-98, -79, -60]) {
+      this.worldSceneLayer.fillStyle(0xfff8df, 0.92);
+      this.worldSceneLayer.fillEllipse(x + scaleDistance(plateX), y + scaleDistance(35), scaleDistance(18), scaleDistance(6));
+    }
+    this.worldSceneLayer.fillStyle(0xc98a4b, 0.98);
+    this.worldSceneLayer.fillRoundedRect(x + scaleDistance(48), y + scaleDistance(39), scaleDistance(62), scaleDistance(16), scaleDistance(7));
+    this.worldSceneLayer.fillStyle(0xfff0bd, 0.92);
+    this.worldSceneLayer.fillRoundedRect(x + scaleDistance(67), y + scaleDistance(41), scaleDistance(28), scaleDistance(7), scaleDistance(2));
+
+    // Ari's phone is visibly away from his hands.
+    this.worldSceneLayer.fillStyle(0x26313c, 0.96);
+    this.worldSceneLayer.fillRoundedRect(x - scaleDistance(143), y + scaleDistance(34), scaleDistance(20), scaleDistance(13), scaleDistance(4));
+    this.worldSceneLayer.lineStyle(Math.max(1, scaleDistance(1)), 0x91b7dd, 0.72);
+    this.worldSceneLayer.strokeRoundedRect(x - scaleDistance(143), y + scaleDistance(34), scaleDistance(20), scaleDistance(13), scaleDistance(4));
+
+    // The empty woven cushion is the thesis image: space made before the player asks.
+    this.worldSceneLayer.fillStyle(0xf4d58d, 0.98);
+    this.worldSceneLayer.fillRoundedRect(x - scaleDistance(35), y + scaleDistance(73), scaleDistance(70), scaleDistance(25), scaleDistance(8));
+    this.worldSceneLayer.lineStyle(Math.max(2, scaleDistance(3)), 0xfff8df, glow);
+    this.worldSceneLayer.strokeRoundedRect(x - scaleDistance(35), y + scaleDistance(73), scaleDistance(70), scaleDistance(25), scaleDistance(8));
+
+    this.worldSceneLayer.lineStyle(Math.max(2, scaleDistance(4)), 0x89542f, 0.94);
+    this.worldSceneLayer.lineBetween(x - scaleDistance(15), y + scaleDistance(22), x + scaleDistance(15), y + scaleDistance(38));
+    this.worldSceneLayer.lineBetween(x + scaleDistance(15), y + scaleDistance(22), x - scaleDistance(15), y + scaleDistance(38));
+    this.worldSceneLayer.fillStyle(0xff8a3d, glow);
+    this.worldSceneLayer.fillCircle(x, y + scaleDistance(20), scaleDistance(12));
+    this.worldSceneLayer.fillStyle(0xffd45c, 0.94);
+    this.worldSceneLayer.fillCircle(x, y + scaleDistance(15), scaleDistance(7));
+
+    this.drawWorldSceneActors(scene.actors, x, y, phase, 1);
+    this.drawWorldSceneSign(scene, x, y - scaleDistance(72), activeLabelIds, 0xffb45f);
+    for (const [id, label, labelX, labelY] of [
+      ["ari", "ARI · PHONE AWAY", -126, -54],
+      ["ibu", "IBU · DINNER", -72, 70],
+      ["kadek", "KADEK · HIS NAME", 76, 70],
+      ["seat", "ROOM FOR YOU", 0, 112]
+    ] as const) {
+      const key = `${scene.id}:${id}`;
+      const text = this.getWorldSceneLabel(key, label);
+      activeLabelIds.add(key);
+      text
+        .setPosition(x + scaleDistance(labelX), y + scaleDistance(labelY))
+        .setDepth(y + UI_DEPTH / 3)
+        .setColor("#101820")
+        .setBackgroundColor("rgba(255,240,189,0.94)")
+        .setVisible(true)
+        .disableInteractive();
+    }
   }
 
   private drawWorldSceneGathering(
@@ -8705,6 +8888,7 @@ export class GameScene extends Phaser.Scene {
     if (kind === "run_gathering" || kind === "crew_beach_run") return 0x8fe3b4;
     if (kind === "crew_sunset_circle") return 0xffb45f;
     if (kind === "crew_kitchen_door") return 0xf59f43;
+    if (kind === "act2_finale_circle") return 0xffb45f;
     if (kind === "work_table") return 0x91b7dd;
     if (kind === "market_walk") return 0xffd45c;
     if (kind === "party_pulse") return 0xd95c8a;
@@ -10078,6 +10262,34 @@ export class GameScene extends Phaser.Scene {
     this.maybeStartAct2Cutscene(previousAct);
   }
 
+  private startAct2SeatFinale(): void {
+    if (!beginAct2Finale(this.world)) {
+      this.showToast("The seat opens Sunday at sunset, after both circles and the Milk & Madu conversation are settled.");
+      return;
+    }
+    saveWorldState(this.world);
+    this.phone?.refresh();
+    this.soundManager.setAmbientBed("nightQuiet");
+    const beach = venueMapNodes.find((node) => node.venueId === "berawa_beach");
+    const target = beach ? { x: beach.x, y: beach.y } : { x: this.player.x, y: this.player.y };
+    this.startCutscene(buildAct2SeatArrivalCutscene(target), () => this.openAct2FinaleArrival());
+  }
+
+  private openAct2FinaleArrival(): void {
+    this.soundManager.setAmbientBed("nightQuiet");
+    this.openStoryDialogue(
+      "SUNDAY SUNSET · THE SEAT",
+      getAct2FinaleArrivalCopy(this.world),
+      undefined,
+      () => this.openAct2FinaleToast()
+    );
+  }
+
+  private openAct2FinaleToast(): void {
+    const scene = getRelationshipChoiceScene(ACT2_SEAT_TOAST_SCENE_ID);
+    if (scene) this.openRelationshipChoiceScene(scene);
+  }
+
   private canSleepHere(): boolean {
     if (this.world.life.actProgress.act0Step === "sleep_first_night") {
       return isPlayerAtHomeBase(this.world);
@@ -10186,6 +10398,12 @@ export class GameScene extends Phaser.Scene {
     const kitchenBusyNightMessageAdded = kitchenBusyNightMessage
       ? appendOpportunityMessage(this.world.opportunities, kitchenBusyNightMessage)
       : false;
+    const vanceFollowupMessage = tutorialActive
+      ? undefined
+      : buildVanceCardFollowupMessage(this.world, this.getAbsoluteMinute());
+    const vanceFollowupMessageAdded = vanceFollowupMessage
+      ? appendOpportunityMessage(this.world.opportunities, vanceFollowupMessage)
+      : false;
     const structuralUnlockMessagesAdded = tutorialActive
       ? 0
       : buildStructuralUnlockMessages(this.world, this.getAbsoluteMinute())
@@ -10204,6 +10422,7 @@ export class GameScene extends Phaser.Scene {
       madeRoomOfferMessageAdded ||
       kitchenResidueMessageAdded ||
       kitchenBusyNightMessageAdded ||
+      vanceFollowupMessageAdded ||
       structuralUnlockMessagesAdded > 0 ||
       leoCadenceMessageAdded ||
       eventMessages > 0;

@@ -44,6 +44,12 @@ import {
   getRelationship
 } from "../systems/relationships/RelationshipMemory";
 import { resolveAct1LuxuryTipChoice } from "../systems/story/Act1LuxuryTip";
+import { completePdaReveal } from "../systems/story/Act2PdaReveal";
+import {
+  ACT2_KADEK_SOURDOUGH_DELIVERY_ID,
+  resolveKadekSourdoughChoice
+} from "../systems/story/Act2KadekSourdough";
+import { resolveVanceOffer } from "../systems/story/Act2Finale";
 import {
   acceptOpportunity,
   resolveOpportunity,
@@ -72,7 +78,10 @@ export const DEV_PROOF_BOOT_STATE_NAMES = [
   "act2_both_crews_regular",
   "act2_pda_reveal_ready",
   "act2_kitchen_serve_ready",
-  "act2_kadek_sourdough_ready"
+  "act2_kadek_sourdough_ready",
+  "act2_vance_offer_ready",
+  "act2_finale_protect_ready",
+  "act2_finale_expose_ready"
 ] as const;
 
 export type DevProofBootStateName = (typeof DEV_PROOF_BOOT_STATE_NAMES)[number];
@@ -281,6 +290,29 @@ function buildAct2KadekSourdoughReady(): WorldState {
   return world;
 }
 
+function buildAct2VanceOfferReady(): WorldState {
+  const world = buildAct2PdaRevealReady();
+  requireMutation(completePdaReveal(world), "complete the PDA reveal");
+  world.clock.day = 24;
+  world.clock.minuteOfDay = 13 * 60 + 30;
+  return world;
+}
+
+function buildAct2FinaleReady(choice: "protect" | "expose"): WorldState {
+  const world = buildAct2VanceOfferReady();
+  let now = absoluteMinute(world);
+  requireMutation(resolveVanceOffer(world, choice === "protect" ? "take_card" : "decline", now), "resolve Vance's offer");
+  world.clock.minuteOfDay = 20 * 60 + 15;
+  now = absoluteMinute(world);
+  requireOk(acceptDelivery(world, ACT2_KADEK_SOURDOUGH_DELIVERY_ID, now), "accept Kadek's wrong-address delivery");
+  requireOk(pickupDelivery(world, now + 1), "pick up Kadek's evidence box");
+  requireOk(completeDelivery(world, now + 2, 1), "return Kadek's evidence box");
+  requireMutation(resolveKadekSourdoughChoice(world, choice, now + 3).ok, `resolve Kadek ${choice} branch`);
+  world.clock.day = 28;
+  world.clock.minuteOfDay = 17 * 60 + 30;
+  return world;
+}
+
 export const DEV_PROOF_BOOT_STATE_BUILDERS: Readonly<Record<DevProofBootStateName, DevProofBootStateBuilder>> = {
   act0_complete: buildAct0Complete,
   act1_leo_resolved: buildAct1LeoResolved,
@@ -294,7 +326,10 @@ export const DEV_PROOF_BOOT_STATE_BUILDERS: Readonly<Record<DevProofBootStateNam
   act2_both_crews_regular: buildAct2BothCrewsRegular,
   act2_pda_reveal_ready: buildAct2PdaRevealReady,
   act2_kitchen_serve_ready: buildAct2KitchenServeReady,
-  act2_kadek_sourdough_ready: buildAct2KadekSourdoughReady
+  act2_kadek_sourdough_ready: buildAct2KadekSourdoughReady,
+  act2_vance_offer_ready: buildAct2VanceOfferReady,
+  act2_finale_protect_ready: () => buildAct2FinaleReady("protect"),
+  act2_finale_expose_ready: () => buildAct2FinaleReady("expose")
 };
 
 export function buildDevProofBootState(name: DevProofBootStateName): WorldState {

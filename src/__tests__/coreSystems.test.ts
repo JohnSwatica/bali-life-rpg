@@ -45,6 +45,7 @@ import {
   type QuestObjective
 } from "../systems/quests/QuestRegistry";
 import { createInitialWorldState } from "../systems/WorldState";
+import { ACT2_FINALE_COMPLETION_FLAG } from "../systems/story/Act2Finale";
 import type { PlayerEntityState } from "../types";
 
 function completeIbuSariQuest(player: PlayerEntityState): void {
@@ -191,7 +192,8 @@ describe("Act 2 social goals", () => {
       join_first_crew: false,
       attend_club_rhythm: false,
       deepen_a_bond: false,
-      open_better_door: false
+      open_better_door: false,
+      earn_the_seat: false
     });
     expect(getAct2NextStep(world)).toMatchObject({ title: "Join a first crew" });
 
@@ -218,9 +220,10 @@ describe("Act 2 social goals", () => {
       join_first_crew: true,
       attend_club_rhythm: true,
       deepen_a_bond: true,
-      open_better_door: true
+      open_better_door: true,
+      earn_the_seat: false
     });
-    expect(getAct2NextStep(world)).toMatchObject({ title: "Act 2 foundation complete", urgency: "complete" });
+    expect(getAct2NextStep(world)).toMatchObject({ title: "Deepen the two circles", urgency: "normal" });
   });
 });
 
@@ -254,12 +257,16 @@ describe("Act 3 readiness hooks", () => {
 
     states = Object.fromEntries(getAct3ReadinessGoalStates(world).map((goal) => [goal.id, goal.complete]));
     expect(states).toEqual({
-      social_rhythm: true,
+      social_rhythm: false,
       mentor_trust: true,
       crew_candidate: true,
       seed_capital: true,
       business_lead: true
     });
+    expect(isAct3Ready(world)).toBe(false);
+    world.questFlags[ACT2_FINALE_COMPLETION_FLAG] = true;
+    states = Object.fromEntries(getAct3ReadinessGoalStates(world).map((goal) => [goal.id, goal.complete]));
+    expect(states.social_rhythm).toBe(true);
     expect(isAct3Ready(world)).toBe(true);
     expect(getAct3ReadinessNextStep(world)).toMatchObject({ title: "CEO unlock needed", urgency: "ceo" });
   });

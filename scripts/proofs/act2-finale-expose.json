@@ -1,0 +1,17 @@
+{
+  "name": "act2-finale-expose",
+  "steps": [
+    { "action": "teleport", "x": 1936, "y": 2350 },
+    { "action": "openVenuePanel", "venueId": "berawa_beach" },
+    { "action": "clickButton", "text": "Take the seat" },
+    { "action": "waitMs", "ms": 2200 },
+    { "action": "pressKey", "key": "Escape" },
+    { "action": "waitForSelector", "selector": ".bali-life-dialogue" },
+    { "action": "screenshot", "name": "01-expose-return-completed-history" },
+    { "action": "pressKey", "key": "Escape" },
+    { "action": "waitForSelector", "selector": ".bali-life-dialogue-choices" },
+    { "action": "clickDialogueOption", "index": 2 },
+    { "action": "waitMs", "ms": 300 },
+    { "action": "screenshot", "name": "02-expose-act2-handoff" }
+  ]
+}

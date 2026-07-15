@@ -123,6 +123,14 @@ async function runStep(step, index) {
       return;
     case "enterInterior":
       await requireApiResult("enterInterior", step.interiorId);
+      await waitForDebug(
+        (state) => state.activeInteriorId === step.interiorId && state.mode === "interior" && !state.interiorTransitioning,
+        `${step.interiorId} interior transition`,
+        4_000
+      );
+      return;
+    case "interactNpc":
+      await requireApiResult("interactNpc", step.npcId);
       return;
     case "setViewport":
       await page.setViewport({
@@ -182,6 +190,7 @@ async function runStep(step, index) {
       }, step.text);
       if (!clicked) throw new Error(`Button not found: ${step.text}`);
       await delay(180);
+      console.log(`[STEP ${index}] button ${step.text}; mode=${(await getDebug()).mode}`);
       return;
     }
     case "closeOverlay":
@@ -214,6 +223,11 @@ async function runStep(step, index) {
       const state = await getDebug();
       if (!state.interiorExit) throw new Error("Cannot leave: no active interior exit.");
       await moveToPoint(state.interiorExit, "interior");
+      await waitForDebug(
+        (next) => next.mode === "world" && next.activeInteriorId == null && !next.interiorTransitioning,
+        "interior exit transition",
+        4_000
+      );
       return;
     }
     case "completeActiveDelivery":
