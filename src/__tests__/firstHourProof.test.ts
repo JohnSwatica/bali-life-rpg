@@ -108,9 +108,10 @@ describe("first-hour proof path", () => {
       join_first_crew: true,
       attend_club_rhythm: true,
       deepen_a_bond: true,
-      open_better_door: true
+      open_better_door: true,
+      earn_the_seat: false
     });
-    expect(getAct2NextStep(world)).toMatchObject({ title: "Act 2 foundation complete", urgency: "complete" });
+    expect(getAct2NextStep(world)).toMatchObject({ title: "Deepen the two circles", urgency: "normal" });
   });
 });
 

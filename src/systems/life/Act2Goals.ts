@@ -4,9 +4,16 @@ import { getSocialGroup } from "../groups/GroupRegistry";
 import { getEligibleOpportunityTemplates } from "../opportunities/OpportunityEngine";
 import { getRelationshipArcStates } from "../relationships/RelationshipArcs";
 import type { WorldState } from "../../types";
+import {
+  getAct2SeatGate,
+  hasResolvedVanceOffer,
+  isAct2FinaleComplete,
+  isAct2FinaleStarted,
+  isVanceOfferPending
+} from "../story/Act2Finale";
 
 export interface Act2GoalState {
-  id: "join_first_crew" | "attend_club_rhythm" | "deepen_a_bond" | "open_better_door";
+  id: "join_first_crew" | "attend_club_rhythm" | "deepen_a_bond" | "open_better_door" | "earn_the_seat";
   title: string;
   description: string;
   progress: string;
@@ -70,6 +77,13 @@ export function getAct2GoalStates(world: WorldState): Act2GoalState[] {
       description: "Let the crew turn trust into one better opportunity, perk, or paid lead.",
       progress: payoff ? `${payoff.title} ${payoffComplete ? "completed" : payoff.status}` : "No crew payoff ready yet",
       complete: payoffComplete
+    },
+    {
+      id: "earn_the_seat",
+      title: "Earn the seat",
+      description: "Become regular in both circles, see what the app measures, then stay for the Sunday sunset circle.",
+      progress: getAct2SeatProgress(world),
+      complete: isAct2FinaleComplete(world)
     }
   ];
 }
@@ -77,6 +91,41 @@ export function getAct2GoalStates(world: WorldState): Act2GoalState[] {
 export function getAct2NextStep(world: WorldState): Act2NextStepState | null {
   if (!isAct2Unlocked(world)) {
     return null;
+  }
+
+  if (isAct2FinaleComplete(world)) {
+    return {
+      title: "Act 2 complete",
+      detail: "The seat at the sunset circle is yours. The Season 1 ending attaches here.",
+      urgency: "complete"
+    };
+  }
+
+  if (isAct2FinaleStarted(world)) {
+    return {
+      title: "Finish the sunset toast",
+      detail: "Both circles are waiting at the open seat on Berawa Beach.",
+      urgency: "normal"
+    };
+  }
+
+  if (isVanceOfferPending(world)) {
+    return {
+      title: "Meet Julian Vance",
+      detail: "He has your NusaDrop numbers open at Milk & Madu and calls his Enclave offer a real job.",
+      urgency: "normal"
+    };
+  }
+
+  const seatGate = getAct2SeatGate(world);
+  if (seatGate.foundationComplete && hasResolvedVanceOffer(world)) {
+    return {
+      title: seatGate.sundaySunset ? "Take the seat by the fire" : "Return for Sunday sunset",
+      detail: seatGate.sundaySunset
+        ? "Both crews overlap at Berawa Beach. They saved a place without asking."
+        : "The promise is waiting at Berawa Beach every Sunday from 17:00 to 20:00; missing it costs nothing.",
+      urgency: "normal"
+    };
   }
 
   if (world.life.joinedClubIds.length === 0) {
@@ -135,9 +184,9 @@ export function getAct2NextStep(world: WorldState): Act2NextStepState | null {
   }
 
   return {
-    title: "Act 2 foundation complete",
-    detail: "You have a crew, a rhythm, and a real bond. Better social opportunities can now point toward Act 3 hooks.",
-    urgency: "complete"
+    title: "Deepen the two circles",
+    detail: "The old social foundation is in place. Become regular with Ari and Ibu's crews, then follow the PDA reveal toward the Sunday seat.",
+    urgency: "normal"
   };
 }
 
@@ -146,8 +195,7 @@ export function isAct2Unlocked(world: WorldState): boolean {
 }
 
 export function areAct2GoalsComplete(world: WorldState): boolean {
-  const goals = getAct2GoalStates(world);
-  return goals.length > 0 && goals.every((goal) => goal.complete);
+  return isAct2FinaleComplete(world);
 }
 
 export function getAct2PayoffOpportunityState(world: WorldState): Act2PayoffOpportunityState | null {
@@ -212,4 +260,16 @@ function toPayoffState(
 
 function formatVenueName(venueId: string): string {
   return venueId.replace(/_/g, " ");
+}
+
+function getAct2SeatProgress(world: WorldState): string {
+  if (isAct2FinaleComplete(world)) return "Sunday sunset circle complete";
+  if (isAct2FinaleStarted(world)) return "Toast waiting at the open seat";
+  if (isVanceOfferPending(world)) return "Julian Vance is waiting at Milk & Madu";
+  const gate = getAct2SeatGate(world);
+  if (gate.foundationComplete && gate.vanceOfferComplete) {
+    return gate.sundaySunset ? "The seat is open now" : "Sunday 17:00–20:00 at Berawa Beach";
+  }
+  const readyCount = 5 - gate.missing.filter((missing) => missing !== "sunday_sunset").length;
+  return `${Math.max(0, readyCount)}/5 circle promises complete`;
 }

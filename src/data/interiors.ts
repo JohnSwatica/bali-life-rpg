@@ -135,6 +135,11 @@ export const interiorDefinitions: Record<string, InteriorDefinition> = {
         npcId: "ibu_sari",
         x: MILK_MADU_X + TILE_SIZE * 3.25,
         y: MILK_MADU_Y + TILE_SIZE * 2.45
+      },
+      {
+        npcId: "pak_bagus",
+        x: MILK_MADU_X + TILE_SIZE * 8.65,
+        y: MILK_MADU_Y + TILE_SIZE * 2.7
       }
     ]
   },

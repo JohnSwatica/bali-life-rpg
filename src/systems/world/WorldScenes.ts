@@ -7,6 +7,7 @@ import { getOpportunityTemplate } from "../opportunities/OpportunityEngine";
 import { getRioRaceEligibility, RIO_RACE } from "../ride/RivalRace";
 import { isAct1LeoEncounterPending } from "../story/Act1IncitingHook";
 import { isMadeRoomOfferPending } from "../story/Act1MadeRoomOffer";
+import { isAct2FinaleSceneStaged } from "../story/Act2Finale";
 import type { GameEvent, OpportunityType, WorldState } from "../../types";
 
 export type OpportunityWorldSceneKind =
@@ -27,7 +28,8 @@ export type EventWorldSceneKind =
   | "club_circle"
   | "crew_sunset_circle"
   | "crew_beach_run"
-  | "crew_kitchen_door";
+  | "crew_kitchen_door"
+  | "act2_finale_circle";
 
 export interface WorldSceneActor {
   id: string;
@@ -253,12 +255,38 @@ export function getMadeRoomOfferWorldScenes(world: WorldState): OpportunityWorld
   ];
 }
 
+export function getAct2FinaleWorldScenes(world: WorldState): EventWorldScene[] {
+  if (!isAct2FinaleSceneStaged(world) || !resolveWorldSceneVenueAnchor("berawa_beach")) return [];
+  const actors: WorldSceneActor[] = [
+    finaleActor("ari", "npc-ari", -118, -18),
+    finaleActor("ibu_sari", "npc-sari", -72, 28),
+    finaleActor("kitchen-member", "npc-made", -28, -32),
+    finaleActor("surf-member", "npc-sari", 18, -34),
+    finaleActor("kadek", "npc-kadek", 68, 28),
+    finaleActor("mira", "npc-made", 112, -16),
+    finaleActor("circle-member", "npc-ari", 126, 38)
+  ];
+  return [
+    {
+      source: "event",
+      id: "story:act2:sunset-seat",
+      eventId: "act2_sunset_seat",
+      venueId: "berawa_beach",
+      title: "The Sunday sunset circle",
+      sceneKind: "act2_finale_circle",
+      cue: "STAY",
+      actors
+    }
+  ];
+}
+
 export function getVisibleWorldScenes(world: WorldState): WorldScene[] {
   return [
     ...getOpportunityWorldScenes(world),
     ...getRivalRaceWorldScenes(world),
     ...getAct1IncitingHookWorldScenes(world),
     ...getMadeRoomOfferWorldScenes(world),
+    ...getAct2FinaleWorldScenes(world),
     ...getEventWorldScenes(world)
   ];
 }
@@ -383,6 +411,19 @@ function buildAriCrewActors(kind: "sunset_circle" | "morning_run"): WorldSceneAc
     approachOffsetX: offsetX + (index % 2 === 0 ? -54 : 54),
     approachOffsetY: offsetY - 72 - index * 5
   }));
+}
+
+function finaleActor(npcId: string, spriteKey: string, offsetX: number, offsetY: number): WorldSceneActor {
+  return {
+    id: `act2-finale-${npcId}`,
+    npcId: npcDefinitions[npcId]?.id,
+    spriteKey: npcDefinitions[npcId]?.spriteKey ?? spriteKey,
+    role: "social",
+    offsetX,
+    offsetY,
+    approachOffsetX: offsetX,
+    approachOffsetY: offsetY - 70
+  };
 }
 
 function fallbackNpcIds(): string[] {

@@ -13,6 +13,7 @@ import {
   isKitchenCircleSessionEvent
 } from "../story/Act2KitchenCircle";
 import { didKadekEndMoonlightingOnDay, isKadekMoonlightingEndPending } from "../story/Act2KadekSourdough";
+import { isVanceOfferPending } from "../story/Act2Finale";
 import type { FieldObjectiveTargetRef } from "../guidance/FieldObjective";
 import { scaleDistance } from "../map/WorldScale";
 import type { InteriorDefinition, InteriorNpcSlotDefinition, InteriorStationDefinition, WorldState } from "../../types";
@@ -84,6 +85,9 @@ export function isNpcScheduledForInterior(world: WorldState, interior: InteriorD
     return true;
   }
   if (npcId === "made" && interior.venueId === "bungalow_living" && isMadeRoomOfferPending(world)) {
+    return true;
+  }
+  if (npcId === "pak_bagus" && interior.id === "milk_madu_interior" && isVanceOfferPending(world)) {
     return true;
   }
   const npc = npcDefinitions[npcId];
