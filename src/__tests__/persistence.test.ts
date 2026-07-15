@@ -462,4 +462,24 @@ describe("Persistence migration", () => {
     saveWorldState(world);
     expect(loadWorldState().activeActivity).toEqual(world.activeActivity);
   });
+
+  it("round-trips the W2-06 SERVE entry context while keeping schema v11", () => {
+    const world = createInitialWorldState();
+    world.activeActivity = {
+      source: "warungRush", activityId: "warung_lunch_rush", venueId: "canggu_station", venueName: "Warung Sari",
+      label: "Ibu's dinner rush · SERVE", durationMin: 25, elapsedMs: 18000, realDurationMs: 75000, startedAt: 18 * 60,
+      serveContext: {
+        kind: "kitchen_session",
+        eventId: "crew-session:warung_kitchen_circle:tuesday_evening_kitchen",
+        occurrenceDay: 23
+      },
+      rush: { elapsedMs: 18000, nextOrderAtMs: 18600, maxSimultaneousOrders: 3, servedCount: 2, expiredCount: 1, orders: [
+        { id: "order-1", tableId: "left", dishId: "nasi_campur", patienceMs: 4000, maxPatienceMs: 18000, status: "served" }
+      ] }
+    };
+    saveWorldState(world);
+    const restored = loadWorldState();
+    expect(restored.schemaVersion).toBe(11);
+    expect(restored.activeActivity).toEqual(world.activeActivity);
+  });
 });

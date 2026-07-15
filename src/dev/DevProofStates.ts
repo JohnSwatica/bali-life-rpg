@@ -70,7 +70,8 @@ export const DEV_PROOF_BOOT_STATE_NAMES = [
   "act2_entered",
   "act2_ari_crew_complete",
   "act2_both_crews_regular",
-  "act2_pda_reveal_ready"
+  "act2_pda_reveal_ready",
+  "act2_kitchen_serve_ready"
 ] as const;
 
 export type DevProofBootStateName = (typeof DEV_PROOF_BOOT_STATE_NAMES)[number];
@@ -265,6 +266,13 @@ function buildAct2PdaRevealReady(): WorldState {
   return world;
 }
 
+function buildAct2KitchenServeReady(): WorldState {
+  const world = buildAct2BothCrewsRegular();
+  world.clock.day = 23;
+  world.clock.minuteOfDay = 18 * 60 + 15;
+  return world;
+}
+
 export const DEV_PROOF_BOOT_STATE_BUILDERS: Readonly<Record<DevProofBootStateName, DevProofBootStateBuilder>> = {
   act0_complete: buildAct0Complete,
   act1_leo_resolved: buildAct1LeoResolved,
@@ -276,7 +284,8 @@ export const DEV_PROOF_BOOT_STATE_BUILDERS: Readonly<Record<DevProofBootStateNam
   act2_entered: buildAct1FinaleComplete,
   act2_ari_crew_complete: buildAct2AriCrewComplete,
   act2_both_crews_regular: buildAct2BothCrewsRegular,
-  act2_pda_reveal_ready: buildAct2PdaRevealReady
+  act2_pda_reveal_ready: buildAct2PdaRevealReady,
+  act2_kitchen_serve_ready: buildAct2KitchenServeReady
 };
 
 export function buildDevProofBootState(name: DevProofBootStateName): WorldState {

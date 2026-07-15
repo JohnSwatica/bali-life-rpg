@@ -124,6 +124,19 @@ describe("phone shell layout", () => {
     expect(model.otherMessages.map((message) => message.id)).toEqual(["ambient:1"]);
   });
 
+  it("surfaces unread story pings ahead of newer read history", () => {
+    const world = createInitialWorldState();
+    world.opportunities.messages.push(
+      { id: "story:read-history", at: 900, from: "NusaDrop", body: "Old update", read: true },
+      { id: "story:busy-night", at: 100, from: "Ibu Sari", body: "Busy night.", read: false }
+    );
+
+    expect(getPhoneFeedModel(world).priorityMessages.map((message) => message.id)).toEqual([
+      "story:busy-night",
+      "story:read-history"
+    ]);
+  });
+
   it("renders Made's tracked room goal in the Goals tab", () => {
     const world = createInitialWorldState();
     world.life.actProgress.currentAct = 1;

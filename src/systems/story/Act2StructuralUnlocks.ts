@@ -9,7 +9,7 @@ import {
   isKadekPriorityDriver,
   KADEK_FOCUS_BUFFER_ITEM_ID
 } from "./Act1KadekPriority";
-import { isKitchenCircleInvitationPending } from "./Act2KitchenCircle";
+import { isKitchenBusyNightServeAvailable, isKitchenCircleInvitationPending } from "./Act2KitchenCircle";
 
 export const STRUCTURAL_AFFINITY_TIER: AffinityTier = "friendly";
 export const IBU_BULK_NASI_PRICE = 30;
@@ -44,7 +44,7 @@ export interface StructuralEventMeterState {
 
 export interface WarungInteriorAccessState {
   allowed: boolean;
-  kind: "legacy" | "public" | "active_commitment" | "crew_session" | "regular_after_hours" | "closed";
+  kind: "legacy" | "public" | "active_commitment" | "crew_session" | "busy_night" | "regular_after_hours" | "closed";
   message: string;
 }
 
@@ -110,6 +110,9 @@ export function getWarungInteriorAccessState(world: WorldState): WarungInteriorA
   const minute = world.clock.minuteOfDay;
   if (minute >= 7 * 60 && minute < WARUNG_PUBLIC_CLOSE_MINUTE) {
     return { allowed: true, kind: "public", message: "Warung Sari is open." };
+  }
+  if (isKitchenBusyNightServeAvailable(world)) {
+    return { allowed: true, kind: "busy_night", message: "Ibu's busy-night ping keeps the crew side door open until 21:00." };
   }
 
   const dayOfWeek = world.clock.day % 7;

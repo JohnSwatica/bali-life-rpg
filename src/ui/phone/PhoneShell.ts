@@ -66,7 +66,10 @@ export interface PhoneFeedModel {
 export function getPhoneFeedModel(world: WorldState): PhoneFeedModel {
   const priorityMessages = world.opportunities.messages
     .filter(isPriorityPhoneMessage)
-    .sort((a, b) => b.at - a.at);
+    .sort((a, b) => {
+      if (a.read !== b.read) return a.read ? 1 : -1;
+      return b.at - a.at;
+    });
   const live = world.opportunities.live
     .filter((opportunity) => opportunity.status === "live" || opportunity.status === "accepted")
     .sort((a, b) => {

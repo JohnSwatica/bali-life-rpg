@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { activityDefinitions } from "../data/activities";
 import { createInitialWorldState } from "../systems/WorldState";
-import { applyActivity, getActivityAvailability, getVenueActivityContext } from "../systems/life/ActivityEngine";
+import { getActivityAvailability, getVenueActivityContext } from "../systems/life/ActivityEngine";
 import { calculateWarungRushPerformance, createWarungRushState, getWarungRushDifficulty, pickUpWarungDish, serveWarungOrder, updateWarungRush } from "../systems/minigames/WarungRush";
 
 describe("Warung Rush", () => {
@@ -27,27 +28,18 @@ describe("Warung Rush", () => {
     expect(getWarungRushDifficulty(99)).toBe(4);
   });
 
-  it("uses served count and patience to scale the existing activity reward path", () => {
-    const world = createInitialWorldState();
-    world.life.actProgress.currentAct = 1;
-    world.clock.minuteOfDay = 12 * 60;
-    const context = getVenueActivityContext("canggu_station")!;
+  it("uses served count and patience to calculate performance without changing its mechanics", () => {
     let rush = pickUpWarungDish(createWarungRushState(0));
     rush = serveWarungOrder(rush, "left").state;
-    const result = applyActivity(world, context, "warung_lunch_rush", { performanceScore: calculateWarungRushPerformance(rush) });
-    expect(result.ok).toBe(true);
-    expect(result.moneyDelta).toBeGreaterThan(0);
-    expect(world.meters.social).toBeGreaterThan(40);
+    expect(calculateWarungRushPerformance(rush)).toBeGreaterThan(0.5);
   });
 
-  it("caps the authored lunch hook at two plays per day", () => {
+  it("has no generic activity definition or venue-menu launch surface", () => {
     const world = createInitialWorldState();
-    world.life.actProgress.currentAct = 1;
+    world.life.actProgress.currentAct = 2;
     world.clock.minuteOfDay = 12 * 60;
     const context = getVenueActivityContext("canggu_station")!;
-    const score = 1;
-    applyActivity(world, context, "warung_lunch_rush", { performanceScore: score });
-    applyActivity(world, context, "warung_lunch_rush", { performanceScore: score });
-    expect(getActivityAvailability(world, context).find((entry) => entry.activity.id === "warung_lunch_rush")?.reason).toBe("Lunch rush is done for today.");
+    expect(activityDefinitions.some((activity) => activity.id === "warung_lunch_rush")).toBe(false);
+    expect(getActivityAvailability(world, context).some((entry) => entry.activity.id === "warung_lunch_rush")).toBe(false);
   });
 });

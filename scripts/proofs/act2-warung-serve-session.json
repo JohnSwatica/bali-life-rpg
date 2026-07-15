@@ -1,0 +1,14 @@
+{
+  "name": "act2-warung-serve-session",
+  "steps": [
+    { "action": "setClock", "day": 23, "minuteOfDay": 1095 },
+    { "action": "openVenuePanel", "venueId": "canggu_station" },
+    { "action": "screenshot", "name": "01-session-entry" },
+    { "action": "clickButton", "text": "Serve & attend" },
+    { "action": "waitMs", "ms": 1200 },
+    { "action": "screenshot", "name": "02-session-framing" },
+    { "action": "pressKey", "key": "e" },
+    { "action": "waitMs", "ms": 1400 },
+    { "action": "screenshot", "name": "03-rush-running" }
+  ]
+}

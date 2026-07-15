@@ -6,17 +6,21 @@ export const KITCHEN_CIRCLE_INVITATION_LINE = "Busy night. You have hands. Come 
 export const KITCHEN_CIRCLE_SQUEEZE_LINE = "Then I cook for the app, not for people.";
 export const KITCHEN_CIRCLE_DEFLECTION_LINE = "The phone has had enough of my time. Plates first.";
 export const KITCHEN_CIRCLE_RESIDUE_MESSAGE_ID = "story:act2:kitchen-circle:menu-price-residue";
+export const KITCHEN_BUSY_NIGHT_MESSAGE_PREFIX = "story:act2:kitchen-circle:busy-night";
+export const KITCHEN_BUSY_NIGHT_START_MINUTE = 18 * 60;
+export const KITCHEN_BUSY_NIGHT_END_MINUTE = 21 * 60;
 
 const IBU_DELIVERY_COUNT_FLAG = "act2:kitchen-circle:ibuDeliveries";
 const ACT2_RENT_PAID_FLAG = "act2:kitchen-circle:rentPaid";
 const SQUEEZE_SEEN_FLAG = "act2:kitchen-circle:squeezeSeen";
 const SQUEEZE_DAY_FLAG = "act2:kitchen-circle:squeezeDay";
 const DEFLECTION_USED_FLAG = "act2:kitchen-circle:deflectionUsed";
+const BUSY_NIGHT_COMPLETED_PREFIX = "act2:kitchen-circle:busyNightCompleted";
 
-const SERVE_LINES = [
-  { speakerName: "Wayan", line: "Two plates to the stools, then watch the counter. If Ibu points, move first and ask later." },
-  { speakerName: "Mira", line: "Keep the sambal with the table, not your sleeve. That is the whole technique tonight." },
-  { speakerName: "Kadek", line: "Pass left, clear right. I am off shift, which apparently means I get the heavier stack." }
+const SESSION_START_LINES = [
+  { speakerName: "Wayan", line: "Apron on. Ibu calls the plate; you find the table." },
+  { speakerName: "Mira", line: "Counter, stools, back again. Find the rhythm before the room finds it for you." },
+  { speakerName: "Kadek", line: "I am off shift. Apparently that makes me qualified to point at the table you missed." }
 ] as const;
 
 export interface KitchenCircleInvitationSceneResult {
@@ -88,10 +92,10 @@ export function prepareKitchenCircleSessionBeat(
     };
   }
 
-  const beat = SERVE_LINES[attendanceCount % SERVE_LINES.length];
+  const beat = SESSION_START_LINES[attendanceCount % SESSION_START_LINES.length];
   return {
     speakerName: beat.speakerName,
-    dialogue: `“${beat.line}”\n\nYou pass plates, clear the counter, and finish the participation beat.`,
+    dialogue: `“${beat.line}”\n\nThe dinner rush opens around you. Take the counter, carry the right plates, and stay with it until the room settles.`,
     includesSqueeze: false,
     kind: "kitchen_serve"
   };
@@ -132,4 +136,48 @@ export function isKadekAtKitchenCircleSession(day: number): boolean {
 
 export function isKitchenCircleSessionEvent(event: GameEvent | undefined): boolean {
   return event?.crewSession?.crewId === KITCHEN_CIRCLE_CREW_ID;
+}
+
+export function getKitchenBusyNightWeekStart(day: number): number {
+  const safeDay = Math.max(1, Math.floor(day));
+  return safeDay - ((safeDay - 1) % 7);
+}
+
+export function isKitchenBusyNightWindow(world: WorldState): boolean {
+  return world.clock.day % 7 === 4 &&
+    world.clock.minuteOfDay >= KITCHEN_BUSY_NIGHT_START_MINUTE &&
+    world.clock.minuteOfDay < KITCHEN_BUSY_NIGHT_END_MINUTE;
+}
+
+export function getKitchenBusyNightMessageId(day: number): string {
+  return `${KITCHEN_BUSY_NIGHT_MESSAGE_PREFIX}:week-${getKitchenBusyNightWeekStart(day)}`;
+}
+
+export function buildKitchenBusyNightMessage(world: WorldState, at: number): OpportunityMessage | undefined {
+  if (world.life.actProgress.currentAct < 2 || !getCrewState(world, KITCHEN_CIRCLE_CREW_ID).member) return undefined;
+  if (!isKitchenBusyNightWindow(world)) return undefined;
+  const id = getKitchenBusyNightMessageId(world.clock.day);
+  if (world.opportunities.messages.some((message) => message.id === id)) return undefined;
+  return {
+    id,
+    at,
+    from: "Ibu Sari",
+    body: "Busy night. Crew hands only. The dinner rush is open at the warung until 21:00 — come SERVE if you are nearby.",
+    venueId: "canggu_station",
+    read: false
+  };
+}
+
+export function isKitchenBusyNightServeAvailable(world: WorldState, weekStartDay = getKitchenBusyNightWeekStart(world.clock.day)): boolean {
+  if (!getCrewState(world, KITCHEN_CIRCLE_CREW_ID).member || !isKitchenBusyNightWindow(world)) return false;
+  if (world.questFlags[`${BUSY_NIGHT_COMPLETED_PREFIX}:week-${weekStartDay}`] === true) return false;
+  return world.opportunities.messages.some((message) => message.id === `${KITCHEN_BUSY_NIGHT_MESSAGE_PREFIX}:week-${weekStartDay}`);
+}
+
+export function completeKitchenBusyNightServe(world: WorldState, weekStartDay: number): boolean {
+  const normalized = getKitchenBusyNightWeekStart(weekStartDay);
+  const key = `${BUSY_NIGHT_COMPLETED_PREFIX}:week-${normalized}`;
+  if (world.questFlags[key] === true) return false;
+  world.questFlags[key] = true;
+  return true;
 }
