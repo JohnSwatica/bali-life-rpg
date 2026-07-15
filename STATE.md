@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-15 (RPG-20260714-10 complete locally on stacked -09 base; Wave 1 implementation closed)
+Last updated: 2026-07-15 (RPG-20260715-01 complete locally; Wave 2 crew substrate opened)
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -11,6 +11,8 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 `CLAUDE_PROJECT_REVIEW_2026-07-06.md` is Claude's full project review (bottlenecks, gap analysis, sequencing recommendation). It is a supervisory assessment, not a canonical design source — `GAME_DESIGN.md`/`STORY_BIBLE.md` still win on narrative/systems conflicts — but its top recommendation (no recorded human playtest yet; a `PLAYTEST_01.md` should exist before more systems work) should be treated as live until the user says otherwise.
 
 Current durable truth:
+
+- **RPG-20260715-01 complete locally on `feat/rpg-20260715-01-crew-core`:** Act 2 now has the one new crew substrate: data-defined venue-anchored weekly session slots generate ordinary events for the existing scheduler; invitation/member/attendance/regular/benefit-hook state persists through v11's existing `joinedClubIds` + `questFlags` patterns; attendance dedupes per occurrence and regular fires exactly at three. Calendar returns only in Act 2 and lists this week's invited/joined crew promises plus rent day, with joined rows bold; Community stays hidden. Joined sessions get one deduped open ping and unjoined invitations get none. `act2_test_crew` is an explicit temporary fixture for W2-02 to remove or repurpose. Proof: `docs/RPG-20260715-01_CREW_CORE_PROOF.md`; verification: 51 files / 338 tests, production build, and six-shot browser proof green. Schema remains v11; no map or Act 0/1 change.
 
 - **RPG-20260714-10 complete locally on `feat/rpg-20260714-10-leo-glue-economy`, stacked on -09 commit `33cd990`:** Leo now sends exactly three ordered milestone texts—Kadek's artisan detour, the single existing breakdown slot, and race-state-aware finale respect—while an existing-flag queue ensures no more than one unread Leo message at once. The Wave 1 reconciliation suite fixes one audited one-line data drift (Act 0 catering no longer counts as an Act 1 run), proves five real runs / Rp 600, preserves premium 142 > normal 141 and four-run Rp 598, and proves the Rp 500 KEEP tip is wallet-only. A deterministic post-Leo Act 1 fast path reaches the Act 2 boundary in 136.74s; the explicit first-read model is 59.7 minutes, inside the 45–75 minute audit band, with human timing still required. Schema remains v11; proof: `docs/RPG-20260714-10_LEO_GLUE_RECONCILIATION_PROOF.md`; verification: 50 files / 329 tests and production build green, four browser proofs green.
 
@@ -75,7 +77,7 @@ Canonical act order, set in stone for near-term work:
 5. Act 4 - The Good Life: solo win state.
 6. Act 5 - The Open World: multiplayer/Nomad Nest, future only.
 
-Immediate next move (2026-07-15): **Wave 2 — Act 2 "Finding Your People", stacked queue RPG-20260715-01…08.** Wave 1 is CLOSED: all six beats merged (Kadek #5, Made #7, breakdown #10 — with Claude's re-arm review fix, tip dilemma #12, finale #13, Leo/reconciliation #14) and the gate PASSED (`docs/WAVE1_GATE_REVIEW_2026-07-15.md`: modeled first-read 59.7 min vs the 60-min bible target; economy enforced by the reconciliation suite; carried notes: drift feel on critical path, rating-agnostic Act 2 gating, Day-2 fast entry). Wave 2 runs on `docs/ACT2_FINDING_YOUR_PEOPLE_2026-07-14.md` in STACKED CONTINUATION mode — Codex never waits on a merge; Claude reviews/merges the stack in order (Standing Rule 9 unchanged). Queue: -01 crew core/calendar (from `b1920e2`) → -02 Ari+circle → -03 kitchen circle+squeeze → -04 milestones → -05 PDA reveal → -06 Warung Rush recast → -07 sourdough choice → -08 Vance+the seat. CEO decision embedded at -03 (Crew B = Warung Kitchen Circle, recommended). Wave 2 gate before Wave 3. Hard boundaries unchanged: no multiplayer, backend, AI calls, real commerce, Google data, or the Act 3 management sim (Act 3+ = Season 2).
+Immediate next move (2026-07-15): **Wave 2 continues with RPG-20260715-02 — Ari + Surf & Run + Sunset Circle**, stacked on the completed -01 crew/calendar substrate. W2-02 must remove or repurpose `act2_test_crew`. Remaining queue: -02 Ari+circle → -03 kitchen circle+squeeze → -04 milestones → -05 PDA reveal → -06 Warung Rush recast → -07 sourdough choice → -08 Vance+the seat. Wave 1 remains closed and passed; Wave 2 remains in stacked-continuation mode with no wait for merge. Hard boundaries unchanged.
 
 ## Project
 

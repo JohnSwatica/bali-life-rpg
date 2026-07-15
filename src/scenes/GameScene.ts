@@ -1037,7 +1037,24 @@ export class GameScene extends Phaser.Scene {
             this.phone?.refresh();
             return result;
           },
-          setClock: (clock) => this.devSetProofClock(clock)
+          setClock: (clock) => {
+            if (
+              !Number.isFinite(clock?.day) ||
+              !Number.isFinite(clock?.minuteOfDay) ||
+              clock.day < 1 ||
+              clock.minuteOfDay < 0 ||
+              clock.minuteOfDay >= 1440
+            ) {
+              return { ok: false, message: "Proof clock requires day >= 1 and minuteOfDay in 0..1439." };
+            }
+            this.world.clock.day = Math.floor(clock.day);
+            this.world.clock.minuteOfDay = Math.floor(clock.minuteOfDay);
+            this.updateLighting();
+            this.updateOpportunityFeed(0, true);
+            saveWorldState(this.world);
+            this.phone?.refresh();
+            return { ok: true, message: `Clock set to ${formatClock(this.world)}.` };
+          }
         };
         const resumeName = window.sessionStorage.getItem("bali-life-rpg.dev-proof-resume");
         if (resumeName) {
@@ -9868,25 +9885,6 @@ export class GameScene extends Phaser.Scene {
     }
     this.openVenueActivityMenu(venueId);
     return { ok: true, message: `${venueId} venue panel opened.` };
-  }
-
-  private devSetProofClock(clock: { day: number; minuteOfDay: number }): DevProofInteractionResult {
-    if (
-      !Number.isFinite(clock?.day) ||
-      !Number.isFinite(clock?.minuteOfDay) ||
-      clock.day < 1 ||
-      clock.minuteOfDay < 0 ||
-      clock.minuteOfDay >= 1440
-    ) {
-      return { ok: false, message: "Proof clock requires day >= 1 and minuteOfDay in 0..1439." };
-    }
-    this.world.clock.day = Math.floor(clock.day);
-    this.world.clock.minuteOfDay = Math.floor(clock.minuteOfDay);
-    this.updateLighting();
-    this.updateOpportunityFeed(0, true);
-    saveWorldState(this.world);
-    this.phone?.refresh();
-    return { ok: true, message: `Clock set to ${formatClock(this.world)}.` };
   }
 
   private devEnterInterior(interiorId: string): DevProofInteractionResult {
