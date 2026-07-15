@@ -1,5 +1,5 @@
 import { getDeliveryDefinition } from "../../data/deliveries";
-import { playerHomeBase } from "../../data/homeBase";
+import { getPlayerHomeBase, playerHomeBase } from "../../data/homeBase";
 import { getAct0StepState, isAct0Complete } from "../life/ActProgression";
 import { areAct2GoalsComplete, getAct2NextStep, getAct2PayoffOpportunityState, isAct2Unlocked } from "../life/Act2Goals";
 import { getAct3ReadinessNextStep } from "../life/Act3Readiness";
@@ -7,6 +7,13 @@ import { getStationRecoveryNudge } from "../life/StationRecovery";
 import { getHustleNextStep } from "../hustle/HustleGoals";
 import { getRentPressureState, getScooterUpgradeStatus, MIN_DELIVERY_BIKE_CONDITION } from "../hustle/HustleEconomy";
 import { getAct1MoveOutReadiness } from "../hustle/HustleMilestones";
+import {
+  ACT1_MADE_KEY_FLAG,
+  ACT1_WEEKLY_SCOOTER_CONTRACT_FLAG,
+  canStartIbuGuaranteeScene,
+  isAct1MoveOutComplete,
+  isIbuGuaranteeComplete
+} from "../story/Act1Finale";
 import { getSocialGroup } from "../groups/GroupRegistry";
 import { getEvent } from "../events/EventScheduler";
 import { getRelationshipArcStates } from "../relationships/RelationshipArcs";
@@ -141,6 +148,19 @@ function getHustleObjectiveTargets(world: WorldState): FieldObjectiveTargetRef[]
   }
 
   const player = world.players[world.localPlayerId];
+
+  if (canStartIbuGuaranteeScene(world)) {
+    return [{ type: "npc", id: "act1_ibu_guarantee", label: "Ask Ibu Sari to vouch", npcId: "ibu_sari" }];
+  }
+  if (isIbuGuaranteeComplete(world) && !world.collectedPickups[ACT1_MADE_KEY_FLAG]) {
+    return [{ type: "npc", id: "act1_made_key", label: "Bring Ibu's letter to Made", npcId: "made" }];
+  }
+  if (world.collectedPickups[ACT1_MADE_KEY_FLAG] && !isAct1MoveOutComplete(world)) {
+    return [];
+  }
+  if (isAct1MoveOutComplete(world) && !world.collectedPickups[ACT1_WEEKLY_SCOOTER_CONTRACT_FLAG]) {
+    return [{ type: "venue", id: "act1_weekly_scooter", label: "Sign weekly scooter contract", venueId: "bali_family_rental_scooter" }];
+  }
   if (!player.hasBike || player.bikeCondition < MIN_DELIVERY_BIKE_CONDITION) {
     return [{ type: "venue", id: "scooter_counter", label: "Scooter counter", venueId: "bali_family_rental_scooter" }];
   }
@@ -162,14 +182,6 @@ function getHustleObjectiveTargets(world: WorldState): FieldObjectiveTargetRef[]
     return [{ type: "home", id: playerHomeBase.id, label: "Cover first rent" }];
   }
 
-  if (world.life.hustle.moveOutReady) {
-    return [
-      { type: "venue", id: "act2_beach_crew", label: "Find beach crew", venueId: "berawa_beach" },
-      { type: "venue", id: "act2_focus_table", label: "Find focus table", venueId: "satu_satu_coffee" },
-      { type: "venue", id: "act2_brunch_builders", label: "Find brunch builders", venueId: "milk_madu_berawa" }
-    ];
-  }
-
   if (getScooterUpgradeStatus(world).available) {
     return [{ type: "venue", id: "scooter_upgrade_counter", label: "Upgrade scooter", venueId: "bali_family_rental_scooter" }];
   }
@@ -177,7 +189,7 @@ function getHustleObjectiveTargets(world: WorldState): FieldObjectiveTargetRef[]
   const recoveryNudge = getStationRecoveryNudge(world);
   if (recoveryNudge) {
     return [
-      ...(recoveryNudge.includeHome ? ([{ type: "home" as const, id: playerHomeBase.id, label: playerHomeBase.name }] satisfies FieldObjectiveTargetRef[]) : []),
+      ...(recoveryNudge.includeHome ? ([{ type: "home" as const, id: getPlayerHomeBase(world).id, label: getPlayerHomeBase(world).name }] satisfies FieldObjectiveTargetRef[]) : []),
       ...recoveryNudge.venueIds.map(
         (venueId): FieldObjectiveTargetRef => ({
           type: "venue",

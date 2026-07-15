@@ -2,7 +2,7 @@ import { appendOpportunityMessage } from "../systems/opportunities/OpportunityEn
 import { createInitialWorldState } from "../systems/WorldState";
 import { applyAct0NegotiatedCompletionFee, completeAct0Step } from "../systems/life/ActProgression";
 import { sleepAtHomeUntilMorning } from "../systems/life/SleepCycle";
-import { repairScooter } from "../systems/hustle/HustleEconomy";
+import { payHustleRent, repairScooter } from "../systems/hustle/HustleEconomy";
 import { acceptDelivery, completeDelivery, pickupDelivery } from "../systems/hustle/DeliverySystem";
 import {
   ACT0_STORM_DELIVERY_ID,
@@ -27,6 +27,7 @@ import {
   triggerAct1Breakdown
 } from "../systems/story/Act1Breakdown";
 import { getDeliveryDefinition } from "../data/deliveries";
+import { resolveAct1LuxuryTipChoice } from "../systems/story/Act1LuxuryTip";
 import type { WorldState } from "../types";
 
 export const DEV_PROOF_BOOT_STATE_NAMES = [
@@ -34,7 +35,8 @@ export const DEV_PROOF_BOOT_STATE_NAMES = [
   "act1_leo_resolved",
   "act1_steady_runner",
   "act1_both_tps",
-  "act1_post_reversal"
+  "act1_post_reversal",
+  "act1_finale_ready"
 ] as const;
 
 export type DevProofBootStateName = (typeof DEV_PROOF_BOOT_STATE_NAMES)[number];
@@ -128,12 +130,23 @@ function buildAct1PostReversal(): WorldState {
   return world;
 }
 
+function buildAct1FinaleReady(): WorldState {
+  const world = buildAct1PostReversal();
+  let now = absoluteMinute(world) + 44;
+  completeCountedDelivery(world, "milk_madu_brunch_bag", now);
+  requireMutation(resolveAct1LuxuryTipChoice(world, "return", now + 31).ok, "resolve Luxury Tip return branch");
+  now += 36;
+  requireOk(payHustleRent(world, now), "cover first rent");
+  return world;
+}
+
 export const DEV_PROOF_BOOT_STATE_BUILDERS: Readonly<Record<DevProofBootStateName, DevProofBootStateBuilder>> = {
   act0_complete: buildAct0Complete,
   act1_leo_resolved: buildAct1LeoResolved,
   act1_steady_runner: buildAct1SteadyRunner,
   act1_both_tps: buildAct1BothTurningPoints,
-  act1_post_reversal: buildAct1PostReversal
+  act1_post_reversal: buildAct1PostReversal,
+  act1_finale_ready: buildAct1FinaleReady
 };
 
 export function buildDevProofBootState(name: DevProofBootStateName): WorldState {

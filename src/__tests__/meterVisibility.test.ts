@@ -22,7 +22,7 @@ describe("meter visibility staging", () => {
     expect(getVisibleMeters(world)).toEqual(["energy"]);
   });
 
-  it("reveals all meters from Act 2 and does not re-hide after move-out readiness", () => {
+  it("reveals all meters only from the authored Act 2 transition", () => {
     const world = createInitialWorldState();
 
     world.life.actProgress.currentAct = 2;
@@ -32,8 +32,8 @@ describe("meter visibility staging", () => {
     world.life.actProgress.currentAct = 1;
     world.life.hustle.moveOutReady = true;
 
-    expect(areAdvancedMetersVisible(world)).toBe(true);
-    expect(getVisibleMeters(world)).toEqual(["energy", "wellbeing", "focus", "social"]);
+    expect(areAdvancedMetersVisible(world)).toBe(false);
+    expect(getVisibleMeters(world)).toEqual(["energy"]);
   });
 
   it("filters visible meter delta copy before Act 2", () => {

@@ -11,6 +11,13 @@ import {
 import { getStationRecoveryNudge } from "../life/StationRecovery";
 import { getMadeRoomGoalState } from "../story/Act1MadeRoomOffer";
 import {
+  ACT1_MADE_KEY_FLAG,
+  ACT1_WEEKLY_SCOOTER_CONTRACT_FLAG,
+  canStartIbuGuaranteeScene,
+  isAct1MoveOutComplete,
+  isIbuGuaranteeComplete
+} from "../story/Act1Finale";
+import {
   isAct1BreakdownPushActive,
   isAct1ScooterBlown
 } from "../story/Act1Breakdown";
@@ -71,9 +78,9 @@ export function getHustleGoalStates(world: WorldState): HustleGoalState[] {
     {
       id: "move_out_ready",
       title: "Move-out ready",
-      description: `Reach ${ACT1_MOVE_OUT_DELIVERIES} deliveries, Rp ${ACT1_MOVE_OUT_DELIVERY_EARNINGS} delivery earnings, ${ACT1_MOVE_OUT_DRIVER_RATING.toFixed(1)}★ driver rating, and first rent covered.`,
-      progress: `${Math.min(ACT1_MOVE_OUT_DELIVERIES, hustle.completedDeliveryCount)}/${ACT1_MOVE_OUT_DELIVERIES} runs, Rp ${Math.min(ACT1_MOVE_OUT_DELIVERY_EARNINGS, hustle.deliveryEarnings)}/${ACT1_MOVE_OUT_DELIVERY_EARNINGS}, ${Math.min(ACT1_MOVE_OUT_DRIVER_RATING, hustle.driverRating).toFixed(1)}/${ACT1_MOVE_OUT_DRIVER_RATING.toFixed(1)}★, rent ${moveOutReadiness.firstRentCovered ? "covered" : "open"}`,
-      complete: hustle.moveOutReady
+      description: `Reach ${ACT1_MOVE_OUT_DELIVERIES} deliveries, Rp ${ACT1_MOVE_OUT_DELIVERY_EARNINGS} delivery earnings, first rent covered, and either ${ACT1_MOVE_OUT_DRIVER_RATING.toFixed(1)}★ or Ibu Sari's guarantee.`,
+      progress: `${Math.min(ACT1_MOVE_OUT_DELIVERIES, hustle.completedDeliveryCount)}/${ACT1_MOVE_OUT_DELIVERIES} runs, Rp ${Math.min(ACT1_MOVE_OUT_DELIVERY_EARNINGS, hustle.deliveryEarnings)}/${ACT1_MOVE_OUT_DELIVERY_EARNINGS}, ${Math.min(ACT1_MOVE_OUT_DRIVER_RATING, hustle.driverRating).toFixed(1)}/${ACT1_MOVE_OUT_DRIVER_RATING.toFixed(1)}★ or letter ${moveOutReadiness.guaranteeComplete ? "✓" : "✗"}, rent ${moveOutReadiness.firstRentCovered ? "covered" : "open"}`,
+      complete: moveOutReadiness.complete
     }
   ];
   const madeRoomGoal = getMadeRoomGoalState(world);
@@ -116,10 +123,42 @@ export function getHustleNextStep(world: WorldState): HustleNextStepState {
     };
   }
 
-  if (hustle.moveOutReady) {
+  if (canStartIbuGuaranteeScene(world)) {
     return {
-      title: "Start Act 2",
-      detail: "You have the hustle baseline. Follow Ari's social markers, join a crew, and turn familiar faces into friends.",
+      title: "Ask Ibu Sari to vouch",
+      detail: "The deliveries, earnings, and first rent are covered. Meet Ibu at the warung; the app rating is not the final word.",
+      urgency: "complete"
+    };
+  }
+
+  if (isIbuGuaranteeComplete(world) && !world.collectedPickups[ACT1_MADE_KEY_FLAG]) {
+    return {
+      title: "Bring Ibu's letter to Made",
+      detail: "Made is waiting inside Bungalow Living. The recommendation now satisfies the room condition.",
+      urgency: "complete"
+    };
+  }
+
+  if (world.collectedPickups[ACT1_MADE_KEY_FLAG] && !isAct1MoveOutComplete(world)) {
+    return {
+      title: "Move out of the kos",
+      detail: "Pack the temporary room, look back once, and take the shared-room key forward.",
+      urgency: "complete"
+    };
+  }
+
+  if (isAct1MoveOutComplete(world) && !world.collectedPickups[ACT1_WEEKLY_SCOOTER_CONTRACT_FLAG]) {
+    return {
+      title: "Sign the weekly scooter contract",
+      detail: "Take the borrowed rattletrap to the rental counter and sign for a sustainable weekly ride.",
+      urgency: "complete"
+    };
+  }
+
+  if (world.collectedPickups[ACT1_WEEKLY_SCOOTER_CONTRACT_FLAG]) {
+    return {
+      title: "Act 1 complete",
+      detail: "The room and ride are secured. Finding your people comes next.",
       urgency: "complete"
     };
   }
@@ -213,7 +252,7 @@ export function getHustleNextStep(world: WorldState): HustleNextStepState {
     };
   }
 
-  if (hustle.driverRating < ACT1_MOVE_OUT_DRIVER_RATING) {
+  if (!moveOutReadiness.ratingOrGuaranteeComplete) {
     return {
       title: "Raise driver rating",
       detail: `You need ${(ACT1_MOVE_OUT_DRIVER_RATING - hustle.driverRating).toFixed(1)}★ more. Pick cleaner jobs and arrive before the timer bites.`,

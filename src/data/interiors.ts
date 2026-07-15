@@ -17,6 +17,8 @@ const SATU_SATU_X = OFFSCREEN_INTERIOR_X;
 const SATU_SATU_Y = OFFSCREEN_INTERIOR_Y + TILE_SIZE * 54;
 const BUNGALOW_X = OFFSCREEN_INTERIOR_X;
 const BUNGALOW_Y = OFFSCREEN_INTERIOR_Y + TILE_SIZE * 65;
+const SHARED_ROOM_X = OFFSCREEN_INTERIOR_X;
+const SHARED_ROOM_Y = OFFSCREEN_INTERIOR_Y + TILE_SIZE * 76;
 
 export const interiorDefinitions: Record<string, InteriorDefinition> = {
   warung_sari_interior: {
@@ -270,5 +272,33 @@ export const interiorDefinitions: Record<string, InteriorDefinition> = {
         y: BUNGALOW_Y + TILE_SIZE * 2.62
       }
     ]
+  },
+  shared_room_interior: {
+    id: "shared_room_interior",
+    venueId: "shared_room",
+    name: "Bungalow Shared Room",
+    origin: { x: SHARED_ROOM_X, y: SHARED_ROOM_Y },
+    width: TILE_SIZE * 10,
+    height: TILE_SIZE * 7,
+    entrance: {
+      x: SHARED_ROOM_X + TILE_SIZE * 5,
+      y: SHARED_ROOM_Y + TILE_SIZE * 5.65
+    },
+    exitMat: {
+      x: SHARED_ROOM_X + TILE_SIZE * 5,
+      y: SHARED_ROOM_Y + TILE_SIZE * 6.35,
+      radius: TILE_SIZE * 0.65
+    },
+    stations: [
+      {
+        id: "shared_room_corner",
+        x: SHARED_ROOM_X + TILE_SIZE * 5,
+        y: SHARED_ROOM_Y + TILE_SIZE * 3.7,
+        radius: TILE_SIZE * 1.35,
+        label: "Use shared room",
+        activityVenueId: "shared_room"
+      }
+    ],
+    npcSlots: []
   }
 };

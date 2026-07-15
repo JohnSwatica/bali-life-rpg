@@ -1,6 +1,6 @@
 # AI Handoff / Project State
 
-Last updated: 2026-07-15 (RPG-20260714-08 complete locally; RPG-20260714-07 and -11 merged)
+Last updated: 2026-07-15 (RPG-20260714-09 complete locally; RPG-20260714-07 and -11 merged)
 
 Copy/paste this into a new AI session to bring it up to speed.
 
@@ -11,6 +11,8 @@ If a new AI tab gets only "keep working", it must first read `AGENTS.md`, this f
 `CLAUDE_PROJECT_REVIEW_2026-07-06.md` is Claude's full project review (bottlenecks, gap analysis, sequencing recommendation). It is a supervisory assessment, not a canonical design source — `GAME_DESIGN.md`/`STORY_BIBLE.md` still win on narrative/systems conflicts — but its top recommendation (no recorded human playtest yet; a `PLAYTEST_01.md` should exist before more systems work) should be treated as live until the user says otherwise.
 
 Current durable truth:
+
+- **RPG-20260714-09 complete locally on `feat/rpg-20260714-09-act1-finale`:** Act 1 now closes through authored scenes instead of a numeric auto-transition. Five deliveries, Rp 600 delivery earnings, first rent, and either 4.2★ or Ibu's completed guarantee establish readiness; Ibu writes the only valid letter, Made accepts it and hands over the key, a three-card montage swaps every home/sleep reference to a persisted modest shared-room interior, the rental counter signs the weekly scooter tier without resetting rating, and only then does the existing Act 2 card advance the act. Schema stays v11; no street geometry changed. Proof: `docs/RPG-20260714-09_ACT1_FINALE_PROOF.md`; verification: 49 files / 323 tests and production build green, browser proof green with ten screenshots and zero browser errors.
 
 - **RPG-20260714-08 complete locally on `feat/rpg-20260714-08-luxury-tip-dilemma`:** the first villa-gate board delivery completed after the authored transmission reversal now opens one neutral `RelationshipChoiceScene`: KEEP posts Rp 500 and Platform-Efficiency/red-flag residue; RETURN posts the intended Rp 50, Community-Trust/green-flag residue, and a villa regular who remembers the player. Both paths set ending-readable one-time flags and one later Feed echo without changing rating or delivery earnings; ESC/skip explicitly resolves to RETURN, and a saved pending choice reopens after reload. New gameplay-reachable proof state: `act1_post_reversal`, built through the real breakdown, ruined dropoff, and counter repair mutations. Schema remains v11; proof: `docs/RPG-20260714-08_LUXURY_TIP_PROOF.md`; verification: 48 files / 316 tests and production build green, two packet browser proofs green with six screenshots and zero browser errors.
 

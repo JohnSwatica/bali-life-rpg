@@ -1,7 +1,7 @@
 import { activityDefinitions, type Activity } from "../../data/activities";
 import { curatedVenues, type CuratedCategory, type CuratedVenue } from "../../data/curatedVenues";
 import { curatedVenueNodes } from "../../data/authoredStreetLayout";
-import { playerHomeBase } from "../../data/homeBase";
+import { playerHomeBase, sharedRoomHomeBase } from "../../data/homeBase";
 import { getGameplayStationLoopForVenue, type GameplayStationId, type StationTimeOfDayModifier } from "../../data/stationLoops";
 import { venueDefinitions } from "../../data/venues";
 import { addItem } from "../Inventory";
@@ -38,7 +38,8 @@ const VENUE_PURPOSE_LINES: Record<string, string> = {
   ulekan_berawa: "Eat cheap, pack a meal, and catch the neighborhood rhythm.",
   tropical_nomad_coworking_space: "Buy a structured work block instead of borrowing a cafe table.",
   outpost_canggu_coworking: "Buy a structured work block instead of borrowing a cafe table.",
-  cheap_kos: "Sleep, plan tomorrow, and make this temporary room work for one more night."
+  cheap_kos: "Sleep, plan tomorrow, and make this temporary room work for one more night.",
+  shared_room: "Sleep, plan tomorrow, and let the better room do its quiet work."
 };
 
 export function getVenuePurposeLine(venueId: string): string | null {
@@ -71,11 +72,12 @@ export interface StationRhythmState {
 }
 
 export function getVenueActivityContext(venueId: string): VenueActivityContext | null {
-  if (venueId === playerHomeBase.id) {
+  const home = venueId === sharedRoomHomeBase.id ? sharedRoomHomeBase : playerHomeBase;
+  if (venueId === home.id) {
     return {
-      venueId: playerHomeBase.id,
+      venueId: home.id,
       curatedVenueId: null,
-      name: playerHomeBase.name,
+      name: home.name,
       category: "shop",
       stationId: "home",
       openHours: undefined,

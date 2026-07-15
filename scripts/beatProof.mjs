@@ -149,6 +149,19 @@ async function runStep(step, index) {
     case "clickDialogueOption":
       await requireApiResult("clickDialogueOption", step.index);
       return;
+    case "clickButton": {
+      const clicked = await page.evaluate((label) => {
+        const button = [...document.querySelectorAll("button")].find(
+          (candidate) => candidate.textContent?.trim() === label
+        );
+        if (!(button instanceof HTMLButtonElement)) return false;
+        button.click();
+        return true;
+      }, step.text);
+      if (!clicked) throw new Error(`Button not found: ${step.text}`);
+      await delay(180);
+      return;
+    }
     case "closeOverlay":
       await press("Escape");
       await waitForDebug((state) => state.mode === "world" || state.mode === "interior", "overlay closed", 4_000);
@@ -168,6 +181,12 @@ async function runStep(step, index) {
       return;
     case "moveTo":
       await moveToPoint({ x: step.x, y: step.y });
+      return;
+    case "interactObjective":
+      await interactWithObjective();
+      return;
+    case "waitMs":
+      await delay(step.ms);
       return;
     case "leaveInterior": {
       const state = await getDebug();
@@ -245,6 +264,37 @@ async function completeActiveDelivery() {
     await delay(420);
   }
   throw new Error(`Timed out completing active delivery; last=${JSON.stringify(await getDebug())}`);
+}
+
+async function interactWithObjective() {
+  const deadline = Date.now() + STEP_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const state = await getDebug();
+    if (state.interiorTransitioning) {
+      await delay(90);
+      continue;
+    }
+    if (state.mode !== "world" && state.mode !== "interior") {
+      throw new Error(`Cannot interact with objective while mode=${state.mode}`);
+    }
+    const target = state.objectiveTargets[0];
+    if (!target) throw new Error(`No objective target for ${state.fieldObjectiveLine}`);
+    const distance = pointDistance(state.player, target);
+    if (distance > (state.mode === "interior" ? 18 : 32)) {
+      if (state.mode === "world") {
+        await page.evaluate((point) => window.__BALI_LIFE_DEV_SENSATION__?.teleport(point.x, point.y), target);
+        await delay(180);
+      } else {
+        await moveToward(state.player, target, distance);
+      }
+      continue;
+    }
+    if (state.mode === "world" && state.player.onBike) await ensureOnFoot();
+    await press("e");
+    await delay(260);
+    return;
+  }
+  throw new Error(`Timed out interacting with objective; last=${JSON.stringify(await getDebug())}`);
 }
 
 async function pickupActiveDelivery() {

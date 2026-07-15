@@ -1,4 +1,5 @@
 import type { WorldState } from "../../types";
+import { MADE_RECOMMENDATION_LETTER_FLAG } from "../story/Act1MadeRoomOffer";
 
 export const ACT1_STEADY_RUNNER_DELIVERIES = 3;
 export const ACT1_MOVE_OUT_DELIVERIES = 5;
@@ -10,6 +11,8 @@ export interface Act1MoveOutReadiness {
   deliveriesComplete: boolean;
   earningsComplete: boolean;
   ratingComplete: boolean;
+  guaranteeComplete: boolean;
+  ratingOrGuaranteeComplete: boolean;
   firstRentCovered: boolean;
   complete: boolean;
 }
@@ -19,13 +22,17 @@ export function getAct1MoveOutReadiness(world: WorldState): Act1MoveOutReadiness
   const deliveriesComplete = hustle.completedDeliveryCount >= ACT1_MOVE_OUT_DELIVERIES;
   const earningsComplete = hustle.deliveryEarnings >= ACT1_MOVE_OUT_DELIVERY_EARNINGS;
   const ratingComplete = hustle.driverRating >= ACT1_MOVE_OUT_DRIVER_RATING;
+  const guaranteeComplete = Boolean(world.collectedPickups[MADE_RECOMMENDATION_LETTER_FLAG]);
+  const ratingOrGuaranteeComplete = ratingComplete || guaranteeComplete;
   const firstRentCovered = hasCoveredFirstRent(world);
   return {
     deliveriesComplete,
     earningsComplete,
     ratingComplete,
+    guaranteeComplete,
+    ratingOrGuaranteeComplete,
     firstRentCovered,
-    complete: deliveriesComplete && earningsComplete && ratingComplete && firstRentCovered
+    complete: deliveriesComplete && earningsComplete && ratingOrGuaranteeComplete && firstRentCovered
   };
 }
 

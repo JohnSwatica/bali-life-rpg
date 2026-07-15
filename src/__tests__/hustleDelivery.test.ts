@@ -395,7 +395,7 @@ describe("Act 0 hustle and deliveries", () => {
     expect(getQuantity(player, definition!.itemId)).toBe(0);
   });
 
-  it("announces move-out readiness when a delivery crosses the Act 1 threshold", () => {
+  it("announces numeric move-out readiness without skipping the authored Act 1 finale", () => {
     const world = createInitialWorldState();
     world.players[world.localPlayerId].hasBike = true;
     world.life.actProgress.firstDayComplete = true;
@@ -412,12 +412,12 @@ describe("Act 0 hustle and deliveries", () => {
 
     expect(completed.ok).toBe(true);
     expect(world.life.hustle.moveOutReady).toBe(true);
-    expect(world.life.actProgress.currentAct).toBe(2);
-    expect(completed.message).toContain("Move-out ready");
-    expect(completed.message).toContain("Act 2 begins");
+    expect(world.life.actProgress.currentAct).toBe(1);
+    expect(completed.message).toContain("Move-out numbers ready");
+    expect(completed.message).not.toContain("Act 2 begins");
   });
 
-  it("keeps the Act 2 chapter turn ahead of scooter repair guidance when condition is low", () => {
+  it("does not unlock Act 2 from readiness alone when scooter condition is low", () => {
     const world = createInitialWorldState();
     const player = world.players[world.localPlayerId];
     player.hasBike = true;
@@ -433,18 +433,13 @@ describe("Act 0 hustle and deliveries", () => {
 
     const rent = payHustleRent(world, 2 * 1440 + 14 * 60);
 
-    expect(rent.message).toContain("Act 2 begins");
+    expect(rent.message).toContain("move-out numbers are ready");
     expect(world.life.hustle.moveOutReady).toBe(true);
-    expect(getHustleNextStep(world)).toMatchObject({ title: "Start Act 2" });
+    expect(world.life.actProgress.currentAct).toBe(1);
+    expect(getHustleNextStep(world)).toMatchObject({ title: "Repair scooter" });
     expect(getFieldObjective(world)).toMatchObject({
-      source: "act2",
-      title: "Join a first crew"
-    });
-
-    world.life.actProgress.currentAct = 1;
-    expect(getFieldObjective(world)).toMatchObject({
-      source: "act2",
-      title: "Join a first crew"
+      source: "hustle",
+      title: "Repair scooter"
     });
   });
 

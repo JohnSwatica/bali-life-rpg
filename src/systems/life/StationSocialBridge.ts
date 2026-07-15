@@ -25,7 +25,7 @@ const STATION_SOCIAL_GROUP_IDS: Record<GameplayStationId, string[]> = {
 };
 
 export function getStationSocialBridgeOptions(world: WorldState, context: VenueActivityContext): StationSocialBridgeOption[] {
-  if (!context.stationId || (world.life.actProgress.currentAct < 2 && !world.life.hustle.moveOutReady)) {
+  if (!context.stationId || world.life.actProgress.currentAct < 2) {
     return [];
   }
 

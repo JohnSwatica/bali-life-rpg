@@ -1,11 +1,12 @@
-import { playerHomeBase } from "../../data/homeBase";
+import { getPlayerHomeBase } from "../../data/homeBase";
 import type { WorldState } from "../../types";
 
-export function isPlayerAtHomeBase(world: WorldState, radius = playerHomeBase.radius): boolean {
+export function isPlayerAtHomeBase(world: WorldState, radius?: number): boolean {
+  const home = getPlayerHomeBase(world);
   const player = world.players[world.localPlayerId];
-  const dx = player.x - playerHomeBase.x;
-  const dy = player.y - playerHomeBase.y;
-  return Math.hypot(dx, dy) <= radius;
+  const dx = player.x - home.x;
+  const dy = player.y - home.y;
+  return Math.hypot(dx, dy) <= (radius ?? home.radius);
 }
 
 export function canUseHomeSleep(world: WorldState): boolean {
