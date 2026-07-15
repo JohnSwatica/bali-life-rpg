@@ -1,4 +1,7 @@
-import { appendOpportunityMessage } from "../systems/opportunities/OpportunityEngine";
+import {
+  appendOpportunityMessage,
+  markOpportunityMessagesRead
+} from "../systems/opportunities/OpportunityEngine";
 import { createInitialWorldState } from "../systems/WorldState";
 import { applyAct0NegotiatedCompletionFee, completeAct0Step } from "../systems/life/ActProgression";
 import { sleepAtHomeUntilMorning } from "../systems/life/SleepCycle";
@@ -19,6 +22,7 @@ import {
 } from "../systems/story/Act1IncitingHook";
 import {
   buildKadekRushOfferMessage,
+  KADEK_PRIORITY_DELIVERY_ID,
   KADEK_RUSH_DELIVERY_ID
 } from "../systems/story/Act1KadekPriority";
 import { completeMadeRoomOfferScene } from "../systems/story/Act1MadeRoomOffer";
@@ -28,6 +32,14 @@ import {
 } from "../systems/story/Act1Breakdown";
 import { getDeliveryDefinition } from "../data/deliveries";
 import { resolveAct1LuxuryTipChoice } from "../systems/story/Act1LuxuryTip";
+import {
+  acceptMadeFinale,
+  completeAct1MoveOut,
+  completeIbuGuaranteeScene,
+  markMoveOutMontageStarted,
+  signWeeklyScooterContract,
+  startAct2AfterFinale
+} from "../systems/story/Act1Finale";
 import type { WorldState } from "../types";
 
 export const DEV_PROOF_BOOT_STATE_NAMES = [
@@ -36,7 +48,8 @@ export const DEV_PROOF_BOOT_STATE_NAMES = [
   "act1_steady_runner",
   "act1_both_tps",
   "act1_post_reversal",
-  "act1_finale_ready"
+  "act1_finale_ready",
+  "act1_finale_complete"
 ] as const;
 
 export type DevProofBootStateName = (typeof DEV_PROOF_BOOT_STATE_NAMES)[number];
@@ -100,11 +113,13 @@ function buildAct1SteadyRunner(): WorldState {
   requireOk(repairScooter(world, now, 1), "repair scooter after Kadek rush");
   now += 4;
   completeCountedDelivery(world, "milk_madu_brunch_bag", now);
+  completeCountedDelivery(world, KADEK_PRIORITY_DELIVERY_ID, now + 36);
   return world;
 }
 
 function buildAct1BothTurningPoints(): WorldState {
   const world = buildAct1SteadyRunner();
+  markOpportunityMessagesRead(world.opportunities);
   const roomOffer = completeMadeRoomOfferScene(world, absoluteMinute(world) + 1);
   requireMutation(roomOffer.fired, "complete Made hidden-room scene");
   return world;
@@ -132,11 +147,24 @@ function buildAct1PostReversal(): WorldState {
 
 function buildAct1FinaleReady(): WorldState {
   const world = buildAct1PostReversal();
+  markOpportunityMessagesRead(world.opportunities);
   let now = absoluteMinute(world) + 44;
   completeCountedDelivery(world, "milk_madu_brunch_bag", now);
   requireMutation(resolveAct1LuxuryTipChoice(world, "return", now + 31).ok, "resolve Luxury Tip return branch");
   now += 36;
   requireOk(payHustleRent(world, now), "cover first rent");
+  return world;
+}
+
+function buildAct1FinaleComplete(): WorldState {
+  const world = buildAct1FinaleReady();
+  const now = absoluteMinute(world) + 1;
+  requireMutation(completeIbuGuaranteeScene(world, now).ok, "complete Ibu guarantee");
+  requireMutation(acceptMadeFinale(world, now + 1).ok, "accept Made finale");
+  requireMutation(markMoveOutMontageStarted(world, now + 2), "start move-out montage");
+  requireMutation(completeAct1MoveOut(world, now + 3), "complete move-out montage");
+  requireMutation(signWeeklyScooterContract(world, now + 4).ok, "sign weekly scooter contract");
+  requireMutation(startAct2AfterFinale(world, now + 5), "start Act 2 card");
   return world;
 }
 
@@ -146,7 +174,8 @@ export const DEV_PROOF_BOOT_STATE_BUILDERS: Readonly<Record<DevProofBootStateNam
   act1_steady_runner: buildAct1SteadyRunner,
   act1_both_tps: buildAct1BothTurningPoints,
   act1_post_reversal: buildAct1PostReversal,
-  act1_finale_ready: buildAct1FinaleReady
+  act1_finale_ready: buildAct1FinaleReady,
+  act1_finale_complete: buildAct1FinaleComplete
 };
 
 export function buildDevProofBootState(name: DevProofBootStateName): WorldState {

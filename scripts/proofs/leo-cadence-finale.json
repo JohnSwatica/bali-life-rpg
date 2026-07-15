@@ -1,0 +1,8 @@
+{
+  "name": "leo-cadence-finale",
+  "steps": [
+    { "action": "openPhoneTab", "tab": "Feed" },
+    { "action": "waitMs", "ms": 300 },
+    { "action": "screenshot", "name": "03-finale-rematch" }
+  ]
+}

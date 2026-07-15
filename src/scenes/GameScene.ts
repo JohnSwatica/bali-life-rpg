@@ -270,6 +270,7 @@ import {
   signWeeklyScooterContract,
   startAct2AfterFinale
 } from "../systems/story/Act1Finale";
+import { flushAct1LeoCadence } from "../systems/story/Act1LeoCadence";
 import {
   ACT0_STORM_DELIVERY_ID,
   ACT0_STORM_TRIGGER_MS,
@@ -547,6 +548,7 @@ declare global {
       openPhoneTab: (tab: string) => DevProofInteractionResult;
       openVenuePanel: (venueId: string) => DevProofInteractionResult;
       enterInterior: (interiorId: string) => DevProofInteractionResult;
+      payRent: () => ReturnType<typeof payHustleRent>;
       getBoardOffers: () => DevProofBoardOffer[];
       clickDialogueOption: (index: number) => DevProofInteractionResult;
     };
@@ -1001,6 +1003,12 @@ export class GameScene extends Phaser.Scene {
           openPhoneTab: (tab) => this.devOpenPhoneTab(tab),
           openVenuePanel: (venueId) => this.devOpenVenuePanel(venueId),
           enterInterior: (interiorId) => this.devEnterInterior(interiorId),
+          payRent: () => {
+            const result = payHustleRent(this.world, this.getAbsoluteMinute());
+            saveWorldState(this.world);
+            this.phone?.refresh();
+            return result;
+          },
           getBoardOffers: () => this.devGetBoardOffers(),
           clickDialogueOption: (index) => this.devClickDialogueOption(index)
         };
@@ -9709,6 +9717,9 @@ export class GameScene extends Phaser.Scene {
     const madeRoomOfferMessageAdded = madeRoomOfferMessage
       ? appendOpportunityMessage(this.world.opportunities, madeRoomOfferMessage)
       : false;
+    const leoCadenceMessageAdded = tutorialActive
+      ? false
+      : flushAct1LeoCadence(this.world, this.getAbsoluteMinute());
     const eventMessages = tutorialActive ? 0 : this.appendActiveEventMessages();
     const afterUnread = getUnreadOpportunityMessageCount(this.world.opportunities);
     const changed =
@@ -9717,6 +9728,7 @@ export class GameScene extends Phaser.Scene {
       authoredTexts.length > 0 ||
       kadekRushMessageAdded ||
       madeRoomOfferMessageAdded ||
+      leoCadenceMessageAdded ||
       eventMessages > 0;
 
     if (afterUnread > beforeUnread) {
@@ -9873,13 +9885,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   private markPhoneFeedRead(): void {
-    if (getUnreadOpportunityMessageCount(this.world.opportunities) === 0) {
-      return;
-    }
-    markOpportunityMessagesRead(this.world.opportunities);
-    this.phoneBuzzTimer = 0;
-    this.hudController.updatePhoneBadge(0, false);
+    const hadUnread = getUnreadOpportunityMessageCount(this.world.opportunities) > 0;
+    if (hadUnread) markOpportunityMessagesRead(this.world.opportunities);
+    const leoCadenceMessageAdded = flushAct1LeoCadence(this.world, this.getAbsoluteMinute());
+    if (!hadUnread && !leoCadenceMessageAdded) return;
+    const unread = getUnreadOpportunityMessageCount(this.world.opportunities);
+    this.phoneBuzzTimer = unread > 0 ? 1800 : 0;
+    this.hudController.updatePhoneBadge(unread, unread > 0);
     saveWorldState(this.world);
+    if (leoCadenceMessageAdded) this.phone?.refresh();
   }
 
   private saveGame(): void {

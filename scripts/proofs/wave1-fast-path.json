@@ -1,0 +1,71 @@
+{
+  "name": "wave1-fast-path",
+  "steps": [
+    { "action": "acceptDeliveryById", "id": "act1_kadek_rush_ingredients" },
+    { "action": "completeActiveDelivery" },
+    { "action": "waitForSelector", "selector": ".bali-life-dialogue" },
+    { "action": "closeOverlay" },
+
+    { "action": "openVenuePanel", "venueId": "bali_family_rental_scooter" },
+    { "action": "clickButton", "text": "Repair Rp 78" },
+    { "action": "waitForState", "state": { "mode": "interior", "player": { "bikeCondition": 72 } }, "timeoutMs": 8000 },
+
+    { "action": "acceptDeliveryById", "id": "baked_priority_fragile_order" },
+    { "action": "completeActiveDelivery" },
+
+    { "action": "acceptDeliveryById", "id": "baked_priority_fragile_order" },
+    { "action": "completeActiveDelivery" },
+
+    { "action": "enterInterior", "interiorId": "bungalow_living_interior" },
+    { "action": "waitForState", "state": { "mode": "interior", "activeInteriorId": "bungalow_living_interior" } },
+    { "action": "moveTo", "x": 20230, "y": 3188 },
+    { "action": "pressKey", "key": "e" },
+    { "action": "waitForSelector", "selector": ".bali-life-dialogue" },
+    { "action": "closeOverlay" },
+    { "action": "leaveInterior" },
+    { "action": "waitForState", "state": { "mode": "world" } },
+
+    { "action": "acceptDeliveryById", "id": "milk_madu_brunch_bag" },
+    { "action": "pickupActiveDelivery" },
+    { "action": "rideUntilBreakdown" },
+    { "action": "completeActiveDelivery" },
+    { "action": "waitForSelector", "selector": ".bali-life-dialogue" },
+    { "action": "closeOverlay" },
+
+    { "action": "openVenuePanel", "venueId": "bali_family_rental_scooter" },
+    { "action": "clickButton", "text": "Repair Rp 90" },
+    { "action": "waitForState", "state": { "mode": "world", "player": { "bikeCondition": 71 } }, "timeoutMs": 8000 },
+
+    { "action": "acceptDeliveryById", "id": "milk_madu_brunch_bag" },
+    { "action": "completeActiveDelivery" },
+    { "action": "waitForSelector", "selector": ".bali-life-dialogue-choice" },
+    { "action": "clickDialogueOption", "index": 1 },
+    { "action": "waitForSelector", "selector": ".bali-life-dialogue" },
+    { "action": "closeOverlay" },
+
+    { "action": "payRent" },
+
+    { "action": "enterInterior", "interiorId": "warung_sari_interior" },
+    { "action": "interactObjective" },
+    { "action": "waitForSelector", "selector": ".bali-life-dialogue" },
+    { "action": "pressKey", "key": "Escape" },
+    { "action": "leaveInterior" },
+    { "action": "waitForState", "state": { "mode": "world" } },
+
+    { "action": "enterInterior", "interiorId": "bungalow_living_interior" },
+    { "action": "interactObjective" },
+    { "action": "waitForSelector", "selector": ".bali-life-dialogue" },
+    { "action": "pressKey", "key": "Escape" },
+    { "action": "waitForState", "state": { "mode": "cutscene" } },
+    { "action": "waitForState", "state": { "mode": "interior", "activeInteriorId": "shared_room_interior" }, "timeoutMs": 10000 },
+    { "action": "leaveInterior" },
+    { "action": "waitForState", "state": { "mode": "world" } },
+
+    { "action": "openVenuePanel", "venueId": "bali_family_rental_scooter" },
+    { "action": "clickButton", "text": "Sign contract" },
+    { "action": "waitForSelector", "selector": ".bali-life-dialogue" },
+    { "action": "pressKey", "key": "Escape" },
+    { "action": "waitForState", "state": { "mode": "cutscene", "currentAct": 2 } },
+    { "action": "screenshot", "name": "01-act1-fast-path-complete" }
+  ]
+}

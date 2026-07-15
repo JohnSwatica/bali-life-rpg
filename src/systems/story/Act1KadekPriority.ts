@@ -2,6 +2,7 @@ import type { OpportunityMessage, WorldState } from "../../types";
 import { addItem, removeItem } from "../Inventory";
 import { activateFocusBuffer } from "../meters/FocusBuffer";
 import { ACT1_LEO_ENCOUNTER_FLAG } from "./Act1IncitingHook";
+import { queueAct1LeoCadenceMilestone } from "./Act1LeoCadence";
 
 export const KADEK_RUSH_DELIVERY_ID = "act1_kadek_rush_ingredients";
 export const KADEK_PRIORITY_DELIVERY_ID = "baked_priority_fragile_order";
@@ -79,6 +80,7 @@ export function completeKadekPriorityScene(
   const cleanEnough = cargoIntegrity >= 70;
   world.collectedPickups[KADEK_PRIORITY_SCENE_FLAG] = Math.max(1, now);
   world.collectedPickups[KADEK_PRIORITY_FLAG] = Math.max(1, now);
+  queueAct1LeoCadenceMilestone(world, "priority", now + 1);
 
   const player = world.players[world.localPlayerId];
   addItem(player, KADEK_FOCUS_BUFFER_ITEM_ID, 1);

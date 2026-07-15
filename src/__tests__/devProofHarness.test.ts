@@ -38,7 +38,7 @@ describe("dev proof harness authored boot states", () => {
     expect(world.collectedPickups[ACT1_RATE_CUT_FLAG]).toBeTruthy();
     expect(isAct1LeoEncounterPending(world)).toBe(true);
     expect(world.collectedPickups[ACT1_LEO_ENCOUNTER_FLAG]).toBeUndefined();
-    expect(world.life.hustle.completedDeliveryCount).toBe(1);
+    expect(world.life.hustle.completedDeliveryCount).toBe(0);
     expect(player.money).toBeGreaterThanOrEqual(0);
     expect(player.money).toBeLessThan(1_000);
     expect(world.life.hustle.driverRating).toBeGreaterThanOrEqual(1);

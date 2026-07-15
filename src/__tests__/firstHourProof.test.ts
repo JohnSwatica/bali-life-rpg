@@ -25,6 +25,8 @@ import {
   revealAct0Deposit
 } from "../systems/story/Act0BackHalf";
 import { completeMadeRoomOfferScene } from "../systems/story/Act1MadeRoomOffer";
+import { completeAct1LeoEncounter, triggerAct1RateCut } from "../systems/story/Act1IncitingHook";
+import { KADEK_RUSH_DELIVERY_ID } from "../systems/story/Act1KadekPriority";
 import {
   acceptMadeFinale,
   completeAct1MoveOut,
@@ -47,6 +49,9 @@ describe("first-hour proof path", () => {
     expect(player.money).toBeGreaterThanOrEqual(0);
     expect(getFieldObjective(world)).toMatchObject({ source: "hustle", title: "Build delivery rhythm" });
 
+    expect(triggerAct1RateCut(world, 2 * 1440 + 8 * 60)).toMatchObject({ fired: true });
+    expect(completeAct1LeoEncounter(world, 2 * 1440 + 8 * 60 + 1)).toBe(true);
+    completeBoardDelivery(world, KADEK_RUSH_DELIVERY_ID, 2 * 1440 + 8 * 60 + 10);
     completeBoardDelivery(world, "milk_madu_brunch_bag", 2 * 1440 + 9 * 60);
     expect(getHustleNextStep(world)).toMatchObject({ title: "Build delivery rhythm" });
 
