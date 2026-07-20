@@ -1,5 +1,39 @@
 # Decisions
 
+## 2026-07-15 — Project Superseded: Foundation Is A Dead End, Clean-Slate Rebuild Kicked Off
+
+CEO verdict, delivered directly after Wave 2's gate passed: "the world isn't
+too much to look at" — a dead end, not a polish gap. Root cause, named
+plainly: every visual in this codebase is a Phaser `Graphics` primitive
+drawn in code (rectangles for buildings, circles for people). Four separate
+overhaul passes (RPG-20260713-03 sensation layer, RPG-20260714-01
+presentation polish, RPG-20260714-05 phone diet, RPG-20260714-06 venue/
+street/interior dressing) all improved their specific target and still
+landed at the same verdict, because dressing cannot fix a foundation with
+no real art in it. Compounding causes: `GameScene.ts` grew into a
+single file every packet had to touch, and the OSM-derived map coordinate
+pipeline caused a real player-blocking bug (the Milk & Madu venue
+collision, RPG-20260713-01).
+
+Decision: `bali-life-rpg` is superseded, not deleted. It remains a
+reference resource for tuning values, dialogue voice, and design-contract
+documents (FIRST_TEN_MINUTES.md, ACT1_BACKBONE, ACT2_FINDING_YOUR_PEOPLE,
+STORY_BIBLE.md, GAME_DESIGN.md) — all judged genuinely worth carrying
+forward. What's discarded: the procedural-only art pipeline, the
+monolithic scene architecture, and the OSM map-generation approach.
+
+Full carry-forward/discard brief and new-project onboarding prompt:
+`NEW_PROJECT_KICKOFF_PROMPT_2026-07-15.md` (root of this repo). New art
+pipeline decided: free/CC0 tileset + sprite packs, recolored toward a
+tropical Bali palette (not AI-generated assets, not a commissioned
+artist, not doubling down on procedural rendering — CEO decision,
+2026-07-15).
+
+Status of in-flight work in this repo: RPG-20260715-09 and -10 (the Season
+1 ending + post-ending free play, Wave 3) were issued before this verdict
+and are NOT withdrawn, but further packet issuance in this repo is
+PAUSED pending explicit CEO direction — see STATE.md.
+
 ## 2026-07-14 — Venue Menus Pass The Verb Test; Street Density Must Tell Place, Availability, Or Direction
 
 RPG-20260714-06 sets the venue-menu rule: each venue states one purpose and
